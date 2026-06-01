@@ -5,12 +5,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -37,7 +34,7 @@ model Session {
 
 model Tour {
   id          String    @id @default(uuid())
-  shopifyId   String?   // Para vincular com o produto real da Shopify
+  shopifyId   String?
   title       String
   bookings    Booking[]
   createdAt   DateTime  @default(now())
@@ -52,7 +49,7 @@ model Booking {
   customerPhone String?
   language      String?
   startTime     DateTime
-  platform      String   // Ex: SHOPIFY, VIATOR, GYG, MANUAL
+  platform      String
   status        String   @default("CONFIRMED")
   createdAt     DateTime @default(now())
 }
@@ -68,9 +65,9 @@ model Guide {
 
 model BlockedDate {
   id          String    @id @default(uuid())
-  tourId      String?   // Se vazio, bloqueia a agência toda
-  date        DateTime? // Data específica
-  dayOfWeek   String?   // Dias recorrentes (Ex: "0, 1")
-  timeSlot    String?   // Horário específico ou "ALL"
+  tourId      String?
+  date        DateTime?
+  dayOfWeek   String?
+  timeSlot    String?
   createdAt   DateTime  @default(now())
 }
