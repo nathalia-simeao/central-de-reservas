@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -53,12 +50,14 @@ model Booking {
 }
 
 model Guide {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  whatsapp  String
-  photoUrl  String?
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  whatsapp      String
+  photoUrl      String?
+  utmId         String?  // ID da campanha UTM (ex: 21d91c)
+  referralLink  String?  // Link completo com parâmetros UTM
+  createdAt     DateTime @default(now())
 }
 
 model BlockedDate {

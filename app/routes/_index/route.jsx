@@ -24,22 +24,33 @@ export const loader = async ({ request }) => {
   try {
     const gqlResponse = await admin.graphql(`
       query {
-        shop {
-          name
-          myshopifyDomain
-        }
+        shop { name myshopifyDomain }
         products(first: 100) {
           edges {
             node {
               id
               title
               status
-              variants(first: 1) {
+              description
+              featuredImage { url altText }
+              collections(first: 5) {
+                edges { node { id title } }
+              }
+              variants(first: 20) {
                 edges {
                   node {
+                    id
+                    title
                     sku
                     price
+                    compareAtPrice
+                    availableForSale
                   }
+                }
+              }
+              metafields(first: 10, namespace: "custom") {
+                edges {
+                  node { key value }
                 }
               }
             }
@@ -48,19 +59,58 @@ export const loader = async ({ request }) => {
       }
     `);
     const gqlData = await gqlResponse.json();
-    // Nome real da loja
     shopName = gqlData?.data?.shop?.name || shopName;
-    // Produtos reais
-    shopifyProducts = (gqlData?.data?.products?.edges || []).map(({ node }) => ({
-      id:     node.id,
-      name:   node.title,
-      sku:    node.variants?.edges?.[0]?.node?.sku || "—",
-      price:  node.variants?.edges?.[0]?.node?.price
-                ? "€" + parseFloat(node.variants.edges[0].node.price).toFixed(0)
-                : "—",
-      active: node.status === "ACTIVE",
-      synced: true,
-    }));
+
+    shopifyProducts = (gqlData?.data?.products?.edges || []).map(({ node }) => {
+      // Pega todas as variantes (preços, categorias de passageiro, horários)
+      const variants = (node.variants?.edges || []).map(({ node: v }) => ({
+        id: v.id,
+        title: v.title,
+        sku: v.sku || "—",
+        price: v.price ? "€" + parseFloat(v.price).toFixed(0) : "—",
+        priceRaw: parseFloat(v.price || 0),
+        compareAtPrice: v.compareAtPrice ? "€" + parseFloat(v.compareAtPrice).toFixed(0) : null,
+        available: v.availableForSale,
+      }));
+
+      // Metafields customizados (horários, etc)
+      const metafields = {};
+      for (const { node: mf } of (node.metafields?.edges || [])) {
+        metafields[mf.key] = mf.value;
+      }
+
+      // Coleções (categorias)
+      const collections = (node.collections?.edges || []).map(({ node: c }) => ({
+        id: c.id, title: c.title,
+      }));
+
+      // Preço base (primeira variante adulto ou a menor)
+      const baseVariant = variants[0];
+      const minPrice = variants.length > 0 ? Math.min(...variants.map(v => v.priceRaw)) : 0;
+
+      // Horários do produto — tenta metafield 'schedule', depois 'times', depois padrão
+      const scheduleRaw = metafields['schedule'] || metafields['times'] || metafields['horarios'] || null;
+      const scheduleSlots = scheduleRaw
+        ? scheduleRaw.split(/[,;|]/).map(s => s.trim()).filter(Boolean)
+        : [];
+
+      return {
+        id:          node.id,
+        name:        node.title,
+        description: node.description || "",
+        sku:         baseVariant?.sku || "—",
+        price:       minPrice > 0 ? "€" + minPrice.toFixed(0) : "—",
+        priceRaw:    minPrice,
+        active:      node.status === "ACTIVE",
+        synced:      true,
+        image:       node.featuredImage?.url || null,
+        imageAlt:    node.featuredImage?.altText || node.title,
+        variants,
+        collections,
+        scheduleSlots, // horários reais do produto
+        metafields,
+      };
+    });
   } catch (e) {
     shopifyProducts = [];
   }
@@ -300,10 +350,17 @@ export const action = async ({ request }) => {
       const email    = formData.get("email") || null;
       const whatsapp = formData.get("whatsapp");
       const photoUrl = formData.get("photoUrl") || null;
+      const utmId    = formData.get("utmId") || null;
+      const baseUrl  = formData.get("baseUrl") || "https://portugalmeandyou.com/";
+      // Gera utm_content a partir do nome (ex: "Renan Stein" → "renan_stein")
+      const utmContent = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+      const referralLink = utmId
+        ? `${baseUrl}?utm_campaign=${utmId}&utm_source=guia&utm_medium=indicacao&utm_content=${utmContent}`
+        : null;
       if (id) {
-        await prisma.guide.update({ where: { id }, data: { name, email, whatsapp, photoUrl } });
+        await prisma.guide.update({ where: { id }, data: { name, email, whatsapp, photoUrl, utmId, referralLink } });
       } else {
-        await prisma.guide.create({ data: { name, email, whatsapp, photoUrl } });
+        await prisma.guide.create({ data: { name, email, whatsapp, photoUrl, utmId, referralLink } });
       }
       return json({ success: true });
     } catch (e) {
@@ -636,11 +693,13 @@ export default function CentralDeReservas() {
   // Guias vêm do banco (dinâmico) — fallback para lista vazia se banco vazio
   const [guidesList, setGuidesList] = useState(
     dbGuides.length > 0
-      ? dbGuides.map(g => ({ id: g.id, name: g.name, email: g.email || "", whatsapp: g.whatsapp, photo: g.photoUrl || "https://via.placeholder.com/150" }))
+      ? dbGuides.map(g => ({ id: g.id, name: g.name, email: g.email || "", whatsapp: g.whatsapp, photo: g.photoUrl || "https://via.placeholder.com/150", utmId: g.utmId || "", referralLink: g.referralLink || "" }))
       : []
   );
   const [selectedGuideInfo, setSelectedGuideInfo] = useState(null);
   const [upcomingToursFilter, setUpcomingToursFilter] = useState("7d");
+  const [guideUtmId, setGuideUtmId] = useState("");        // campo UTM no form de cadastro
+  const [editGuideUtmId, setEditGuideUtmId] = useState(""); // campo UTM no form de edição
   const [editingGuide, setEditingGuide] = useState(null);
   const [editGuideName, setEditGuideName] = useState("");
   const [editGuideEmail, setEditGuideEmail] = useState("");
@@ -659,7 +718,8 @@ export default function CentralDeReservas() {
     ...shopifyImages.filter(si => !mediaFiles.some(mf => mf.url === si.url)),
   ];
   const [mediaList, setMediaList] = useState(allMediaCombined);
-  const [showShopifySource, setShowShopifySource] = useState(true); // toggle mostrar/ocultar mídias do Shopify
+  const [showShopifySource, setShowShopifySource] = useState(true);
+  const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit' // toggle mostrar/ocultar mídias do Shopify
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
@@ -732,15 +792,31 @@ export default function CentralDeReservas() {
   const activeProductsCount = shopifyProducts.filter(p => p.active).length;
   const inactiveProductsCount = shopifyProducts.filter(p => !p.active).length;
 
-  // tourOptions: usa produtos do Shopify (reais) + tours do Prisma como fallback
+  // tourOptions: usa produtos do Shopify (reais) com todos os dados
   const tourOptions = shopifyProducts.length > 0
-    ? shopifyProducts.map(p => ({ id: p.id, title: p.name, price: p.price, sku: p.sku }))
-    : (tours || []).map(t => ({ id: t.id, title: t.title, price: null, sku: null }));
+    ? shopifyProducts.map(p => ({
+        id: p.id, title: p.name, price: p.price, priceRaw: p.priceRaw,
+        sku: p.sku, image: p.image, imageAlt: p.imageAlt,
+        active: p.active, variants: p.variants, collections: p.collections,
+        scheduleSlots: p.scheduleSlots, description: p.description,
+      }))
+    : (tours || []).map(t => ({ id: t.id, title: t.title, price: null, sku: null, image: null, collections: [], scheduleSlots: [] }));
 
-  // Categorias para o dashboard (Day Trips vs Walking)
-  const dynamicDayTrips     = tourOptions.filter(t => !t.title.toLowerCase().includes("walking"));
-  const dynamicWalkingTours = tourOptions.filter(t =>  t.title.toLowerCase().includes("walking"));
-  const categoriesData      = [{ name: "Day Trips", toursList: dynamicDayTrips }, { name: "Walking Tours", toursList: dynamicWalkingTours }];
+  // Categorias: agrupa pelas coleções do Shopify (dinâmico)
+  const allCollections = [...new Set(
+    tourOptions.flatMap(t => (t.collections || []).map(c => c.title))
+  )].filter(Boolean);
+
+  // Se não tiver coleções, fallback por nome
+  const categoriesData = allCollections.length > 0
+    ? allCollections.map(colName => ({
+        name: colName,
+        toursList: tourOptions.filter(t => (t.collections || []).some(c => c.title === colName))
+      })).filter(c => c.toursList.length > 0)
+    : [
+        { name: "Day Trips", toursList: tourOptions.filter(t => !t.title.toLowerCase().includes("walking")) },
+        { name: "Walking Tours", toursList: tourOptions.filter(t =>  t.title.toLowerCase().includes("walking")) },
+      ];
 
     // ---- HANDLERS ----
   const handleGeneratePaymentLink = (e) => {
@@ -756,22 +832,24 @@ export default function CentralDeReservas() {
     if (!guideName || !guideWhatsapp) return;
     const whatsapp = `${guideDdi} ${guideWhatsapp}`;
     const photoUrl = guidePhoto || null;
-    // Optimistic update local
+    const utmContent = guideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+    const referralLink = guideUtmId
+      ? `https://portugalmeandyou.com/?utm_campaign=${guideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${utmContent}`
+      : "";
     const tempId = `temp_${Date.now()}`;
-    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150" };
+    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150", utmId: guideUtmId, referralLink };
     setGuidesList(prev => [...prev, newGuide]);
-    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null);
-    // Persist to DB
+    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null); setGuideUtmId("");
     try {
       const fd = new FormData();
       fd.append("_action", "saveGuide");
       fd.append("name", guideName);
       fd.append("email", guideEmail || "");
       fd.append("whatsapp", whatsapp);
+      fd.append("utmId", guideUtmId || "");
       if (photoUrl) fd.append("photoUrl", photoUrl);
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const data = await res.json();
-      // Reload to get real ID from DB
       if (data.success) window.location.reload();
     } catch {}
   };
@@ -784,6 +862,7 @@ export default function CentralDeReservas() {
     setEditGuideDdi(parts[0] || "+351");
     setEditGuideWhatsapp(parts.slice(1).join(" ") || "");
     setEditGuidePhoto(guide.photo || null);
+    setEditGuideUtmId(guide.utmId || "");
   };
 
   const handleSaveEditGuide = async (e) => {
@@ -791,9 +870,13 @@ export default function CentralDeReservas() {
     if (!editGuideName || !editGuideWhatsapp) return;
     const whatsapp = `${editGuideDdi} ${editGuideWhatsapp}`;
     // Optimistic update
+    const editUtmContent = editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+    const editReferralLink = editGuideUtmId
+      ? `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editUtmContent}`
+      : "";
     setGuidesList(prev => prev.map(g =>
       g.id === editingGuide
-        ? { ...g, name: editGuideName, email: editGuideEmail, whatsapp, photo: editGuidePhoto || g.photo }
+        ? { ...g, name: editGuideName, email: editGuideEmail, whatsapp, photo: editGuidePhoto || g.photo, utmId: editGuideUtmId, referralLink: editReferralLink }
         : g
     ));
     setEditingGuide(null);
@@ -806,6 +889,7 @@ export default function CentralDeReservas() {
         fd.append("name", editGuideName);
         fd.append("email", editGuideEmail || "");
         fd.append("whatsapp", whatsapp);
+        fd.append("utmId", editGuideUtmId || "");
         if (editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
         await fetch(window.location.href, { method: "POST", body: fd });
       } catch {}
@@ -1003,12 +1087,20 @@ export default function CentralDeReservas() {
 
   const handleModalTourChange = (id) => {
     setModalSelectedTour(id);
-    setModalAvailableHours(id.charCodeAt(0)%2===0 ? ["08:30","13:00","17:30"] : ["09:00","14:00"]);
+    const tour = tourOptions.find(t => t.id === id);
+    const slots = tour?.scheduleSlots?.length > 0
+      ? tour.scheduleSlots
+      : ["09:00", "14:00"]; // fallback se não tiver metafield
+    setModalAvailableHours(slots);
   };
 
   const handleBlockTourSelectionChange = (id) => {
     setBlockTourId(id);
-    setTourAvailableHours(id.charCodeAt(0)%2===0 ? ["08:30","13:00","17:30"] : ["09:00","14:00"]);
+    const tour = tourOptions.find(t => t.id === id);
+    const slots = tour?.scheduleSlots?.length > 0
+      ? tour.scheduleSlots
+      : ["09:00", "14:00"];
+    setTourAvailableHours(slots);
   };
 
   const handleCapacityChange = (id, change) => {
@@ -1371,6 +1463,36 @@ export default function CentralDeReservas() {
           )}
         </div>
       );
+    } else if (activeModal === 'pickPhotoForGuide') {
+      title = "🖼️ Escolher Foto do Banco de Mídias";
+      const allImages = [...mediaFiles, ...shopifyImages].filter(m => m.mimetype?.startsWith('image/'));
+      content = (
+        <div>
+          <p style={{ fontSize:'13px', color:'#666', marginBottom:'16px' }}>
+            Clique em uma imagem para usá-la como foto do guia.
+          </p>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', maxHeight:'420px', overflowY:'auto' }}>
+            {allImages.map(img => (
+              <div key={img.id} onClick={() => {
+                setGuidePhoto(img.url);
+                setActiveModal(null);
+              }} style={{ cursor:'pointer', borderRadius:'10px', overflow:'hidden', border:'2px solid #eee', transition:'0.15s' }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary-green)'}
+                onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
+                <img src={img.url} alt={img.label} style={{ width:'100%', height:'80px', objectFit:'cover', display:'block' }} />
+                <div style={{ padding:'4px 6px', fontSize:'10px', color:'#888', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {img.label || img.filename}
+                </div>
+              </div>
+            ))}
+            {allImages.length === 0 && (
+              <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'30px', color:'#aaa', fontSize:'13px' }}>
+                Nenhuma imagem no banco. Faça upload na aba <strong>Banco de Mídias</strong>.
+              </div>
+            )}
+          </div>
+        </div>
+      );
     } else if (activeModal === 'guideDetails' && selectedGuideInfo) {
       title = `Detalhes do Guia`;
       content = (
@@ -1390,10 +1512,41 @@ export default function CentralDeReservas() {
             <div className="pmy-list-item" style={{ padding:'8px 0', borderBottom:'none' }}><span>🚶‍♂️ Lisboa Walking Tour (Baixa)</span><strong>30/Maio, 14:00</strong></div>
           </div>
           <h4 style={{ fontSize:'15px', color:'#555', fontWeight:'bold', marginBottom:'10px' }}>Horários Disponíveis Padrão:</h4>
-          <div style={{ display:'flex', gap:'10px' }}>
+          <div style={{ display:'flex', gap:'10px', marginBottom:'16px' }}>
             <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>Segunda a Sábado</span>
             <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>08:00 - 18:00</span>
           </div>
+
+          {selectedGuideInfo?.utmId && (
+            <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'14px' }}>
+              <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--primary-green)', marginBottom:'10px' }}>🔗 Link de Indicação UTM</h4>
+              <div style={{ display:'flex', gap:'6px', alignItems:'center', marginBottom:'8px' }}>
+                <code style={{ fontSize:'11px', background:'#fff', border:'1px solid #ddd', borderRadius:'5px', padding:'4px 8px', flex:1, wordBreak:'break-all', color:'#555' }}>
+                  {selectedGuideInfo.referralLink}
+                </code>
+                <button onClick={() => navigator.clipboard.writeText(selectedGuideInfo.referralLink).then(()=>alert('Copiado!')).catch(()=>{})}
+                  style={{ padding:'6px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
+                  📋
+                </button>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'8px', fontSize:'11px' }}>
+                {[
+                  { label: 'utm_campaign', value: selectedGuideInfo.utmId },
+                  { label: 'utm_source',   value: 'guia' },
+                  { label: 'utm_medium',   value: 'indicacao' },
+                  { label: 'utm_content',  value: selectedGuideInfo.name?.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"") },
+                ].map((p,i) => (
+                  <div key={i} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'6px', padding:'6px 8px' }}>
+                    <div style={{ color:'#aaa', marginBottom:'2px' }}>{p.label}</div>
+                    <code style={{ color:'var(--primary-green)', fontWeight:'700', fontSize:'11px' }}>{p.value}</code>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:'10px', fontSize:'12px', color:'#888' }}>
+                💡 Acesse <strong>Shopify → Marketing → Campanhas</strong> para ver as métricas desta campanha.
+              </div>
+            </div>
+          )}
         </div>
       );
     } else if (activeModal === 'sales') {
@@ -1428,9 +1581,120 @@ export default function CentralDeReservas() {
               ))}
         </div>
       );
-    } else if (['confirmed','estimated','upcoming'].includes(activeModal)) {
-      title = activeModal==='confirmed' ? t.modal_confirmed_details : activeModal==='estimated' ? t.modal_estimated_details : t.modal_upcoming_details;
-      content = <div style={{ textAlign:'center', padding:'40px 0', color:'#888' }}>Detalhamentos aparecerão nesta seção.</div>;
+    } else if (activeModal === 'confirmed') {
+      title = t.modal_confirmed_details;
+      content = (
+        <div>
+          {realConfirmedBookings.length === 0
+            ? <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
+                <div style={{ fontSize:'32px', marginBottom:'10px' }}>📋</div>
+                <div style={{ fontWeight:'700' }}>Nenhuma reserva confirmada ainda</div>
+                <div style={{ fontSize:'13px', marginTop:'6px' }}>As reservas aparecerão aqui quando forem registradas na Agenda Central.</div>
+              </div>
+            : realConfirmedBookings.map(b => (
+                <div className="pmy-list-item" key={b.id}>
+                  <div>
+                    <strong>{b.customerName}</strong>
+                    <div style={{ fontSize:'12px', color:'#888' }}>{b.platform} · {new Date(b.startTime).toLocaleDateString('pt-PT')}</div>
+                  </div>
+                  <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>✓ Confirmado</span>
+                </div>
+              ))
+          }
+        </div>
+      );
+    } else if (activeModal === 'estimated') {
+      title = "Receita Potencial — Produtos Ativos";
+      content = (
+        <div>
+          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'16px', marginBottom:'20px' }}>
+            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)' }}>
+              € {Math.round(estimatedRevenueValue).toLocaleString('pt-BR')}
+            </div>
+            <div style={{ fontSize:'13px', color:'#555', marginTop:'4px' }}>
+              Soma dos preços base de {shopifyProducts.filter(p=>p.active).length} produtos ativos
+            </div>
+          </div>
+          {shopifyProducts.filter(p=>p.active).map(p => (
+            <div className="pmy-list-item" key={p.id}>
+              <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
+                {p.image
+                  ? <img src={p.image} alt={p.imageAlt} style={{ width:'36px', height:'36px', borderRadius:'6px', objectFit:'cover' }} />
+                  : <div style={{ width:'36px', height:'36px', borderRadius:'6px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px' }}>🏰</div>
+                }
+                <div>
+                  <strong style={{ fontSize:'13px' }}>{p.name}</strong>
+                  {p.collections?.length > 0 && <div style={{ fontSize:'11px', color:'#aaa' }}>{p.collections.map(c=>c.title).join(', ')}</div>}
+                </div>
+              </div>
+              <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>{p.price}</span>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (activeModal === 'upcoming') {
+      title = "Catálogo de Produtos";
+      const activeProds   = shopifyProducts.filter(p => p.active);
+      const inactiveProds = shopifyProducts.filter(p => !p.active);
+      content = (
+        <div>
+          <div style={{ display:'flex', gap:'10px', marginBottom:'20px' }}>
+            <div style={{ flex:1, background:'#e6f2e6', border:'1px solid #b8e6b8', borderRadius:'8px', padding:'12px', textAlign:'center' }}>
+              <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>{activeProds.length}</div>
+              <div style={{ fontSize:'12px', color:'#555' }}>Ativos</div>
+            </div>
+            <div style={{ flex:1, background:'#f5f5f5', border:'1px solid #eee', borderRadius:'8px', padding:'12px', textAlign:'center' }}>
+              <div style={{ fontSize:'24px', fontWeight:'900', color:'#aaa' }}>{inactiveProds.length}</div>
+              <div style={{ fontSize:'12px', color:'#888' }}>Inativos</div>
+            </div>
+          </div>
+          <div style={{ fontWeight:'800', fontSize:'13px', color:'var(--primary-green)', marginBottom:'10px' }}>✅ Ativos ({activeProds.length})</div>
+          {activeProds.map(p => (
+            <div key={p.id} style={{ display:'flex', gap:'12px', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f0f0f0' }}>
+              {p.image
+                ? <img src={p.image} alt={p.imageAlt} style={{ width:'44px', height:'44px', borderRadius:'8px', objectFit:'cover', flexShrink:0 }} />
+                : <div style={{ width:'44px', height:'44px', borderRadius:'8px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🏰</div>
+              }
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:'700', fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                <div style={{ fontSize:'11px', color:'#aaa', marginTop:'2px' }}>
+                  {p.sku !== '—' && <span>SKU: {p.sku} · </span>}
+                  {p.collections?.map(c=>c.title).join(', ')}
+                  {p.scheduleSlots?.length > 0 && <span style={{ color:'var(--primary-green)' }}> · ⏰ {p.scheduleSlots.join(', ')}</span>}
+                </div>
+                {p.variants?.length > 1 && (
+                  <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
+                    {p.variants.map((v,i) => (
+                      <span key={i} style={{ fontSize:'10px', background:'#f0f0f0', padding:'1px 6px', borderRadius:'4px', color:'#555' }}>
+                        {v.title}: {v.price}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span style={{ color:'var(--primary-green)', fontWeight:'800', flexShrink:0 }}>{p.price}</span>
+            </div>
+          ))}
+          {inactiveProds.length > 0 && (
+            <>
+              <div style={{ fontWeight:'800', fontSize:'13px', color:'#aaa', margin:'16px 0 10px' }}>⚫ Inativos ({inactiveProds.length})</div>
+              {inactiveProds.map(p => (
+                <div key={p.id} style={{ display:'flex', gap:'12px', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f0f0f0', opacity:0.5 }}>
+                  {p.image
+                    ? <img src={p.image} alt={p.imageAlt} style={{ width:'44px', height:'44px', borderRadius:'8px', objectFit:'cover', flexShrink:0 }} />
+                    : <div style={{ width:'44px', height:'44px', borderRadius:'8px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🏰</div>
+                  }
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:'700', fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                    <div style={{ fontSize:'11px', color:'#aaa' }}>{p.collections?.map(c=>c.title).join(', ')}</div>
+                  </div>
+                  <span style={{ color:'#aaa', fontWeight:'700', flexShrink:0 }}>{p.price}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      );
     }
 
     return (
@@ -1493,6 +1757,26 @@ export default function CentralDeReservas() {
                   </div>
                   <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} required />
                 </div>
+              </div>
+
+              <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                <label>ID da Campanha UTM</label>
+                <input type="text" className="pmy-form-input" placeholder="Ex: 21d91c"
+                  value={editGuideUtmId} onChange={e => setEditGuideUtmId(e.target.value)}
+                  style={{ fontFamily:'monospace' }} />
+                {editGuideUtmId && editGuideName && (
+                  <div style={{ marginTop:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
+                    <div style={{ fontSize:'11px', color:'#555', background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'6px', padding:'5px 8px', flex:1, wordBreak:'break-all' }}>
+                      🔗 {`https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`}
+                    </div>
+                    <button type="button" onClick={() => {
+                      const url = `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`;
+                      navigator.clipboard.writeText(url).then(() => alert('Link copiado!')).catch(()=>{});
+                    }} style={{ padding:'5px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
+                      📋 Copiar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div style={{ display:"flex", gap:"10px", marginTop:"22px", paddingTop:"18px", borderTop:"1px solid #f0f0f0" }}>
@@ -1875,7 +2159,10 @@ export default function CentralDeReservas() {
                           const gygB     = tourBookings.filter(b=>b.platform==='GETYOURGUIDE').length;
                           return (
                             <div className="pmy-tour-item" key={tour.id}>
-                              <div className={`pmy-tour-img ${imageShape}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background:'#f9f2f2' }}>🏰</div>
+                              {tour.image
+                                ? <img src={tour.image} alt={tour.imageAlt || tour.title} className={`pmy-tour-img ${imageShape}`} />
+                                : <div className={`pmy-tour-img ${imageShape}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background:'#f9f2f2' }}>🏰</div>
+                              }
                               <div className="pmy-tour-details">
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
                                 {tour.price && <div style={{ fontSize:'12px', color:'var(--primary-green)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
@@ -1924,17 +2211,49 @@ export default function CentralDeReservas() {
                         </select>
                       </div>
                     )}
-                    {selectedTour && (
-                      <div className="pmy-form-group" style={{ background:'#fefefe', padding:'15px', borderRadius:'8px', border:'1px solid #eee' }}>
-                        <label style={{ color:'var(--primary-green)' }}>🛒 Ingressos por Variantes:</label>
-                        <div className="pmy-variants-form-grid">
-                          {activeProductVariants.includes("adulto") && <div><label style={{ fontSize:'11px' }}>Adulto</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.adulto} onChange={e=>setTourVariants({...tourVariants,adulto:parseInt(e.target.value)||0})} /></div>}
-                          {activeProductVariants.includes("jovem") && <div><label style={{ fontSize:'11px' }}>Jovem</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.jovem} onChange={e=>setTourVariants({...tourVariants,jovem:parseInt(e.target.value)||0})} /></div>}
-                          {activeProductVariants.includes("crianca") && <div><label style={{ fontSize:'11px' }}>Criança</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.crianca} onChange={e=>setTourVariants({...tourVariants,crianca:parseInt(e.target.value)||0})} /></div>}
-                          {activeProductVariants.includes("senior") && <div><label style={{ fontSize:'11px' }}>Senior</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.senior} onChange={e=>setTourVariants({...tourVariants,senior:parseInt(e.target.value)||0})} /></div>}
+                    {selectedTour && (() => {
+                      const selTour = tourOptions.find(t => t.id === selectedTour);
+                      const realVariants = selTour?.variants || [];
+                      return (
+                        <div className="pmy-form-group" style={{ background:'#fefefe', padding:'15px', borderRadius:'8px', border:'1px solid #eee' }}>
+                          <label style={{ color:'var(--primary-green)', marginBottom:'10px', display:'block' }}>🛒 Ingressos por Variante:</label>
+                          {realVariants.length > 0 ? (
+                            <div className="pmy-variants-form-grid">
+                              {realVariants.map(v => (
+                                <div key={v.id}>
+                                  <label style={{ fontSize:'11px', fontWeight:'700' }}>
+                                    {v.title === 'Default Title' ? 'Quantidade' : v.title}
+                                    <span style={{ color:'var(--primary-green)', marginLeft:'4px' }}>{v.price}</span>
+                                  </label>
+                                  <input type="number" className="pmy-form-input" min="0"
+                                    value={tourVariants[v.id] || 0}
+                                    onChange={e => setTourVariants({...tourVariants, [v.id]: parseInt(e.target.value)||0})} />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="pmy-variants-form-grid">
+                              <div><label style={{ fontSize:'11px' }}>Adulto</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.adulto||0} onChange={e=>setTourVariants({...tourVariants,adulto:parseInt(e.target.value)||0})} /></div>
+                              <div><label style={{ fontSize:'11px' }}>Jovem</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.jovem||0} onChange={e=>setTourVariants({...tourVariants,jovem:parseInt(e.target.value)||0})} /></div>
+                            </div>
+                          )}
+                          {selTour?.scheduleSlots?.length > 0 && (
+                            <div style={{ marginTop:'12px' }}>
+                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>⏰ Horário do Tour:</label>
+                              <select className="pmy-form-input" value={custLang} onChange={e=>setCustLang(e.target.value)}>
+                                {selTour.scheduleSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                              </select>
+                            </div>
+                          )}
+                          {selTour?.image && (
+                            <div style={{ marginTop:'10px', display:'flex', alignItems:'center', gap:'10px' }}>
+                              <img src={selTour.image} alt={selTour.imageAlt} style={{ width:'40px', height:'40px', borderRadius:'6px', objectFit:'cover' }} />
+                              <span style={{ fontSize:'12px', color:'#888' }}>{selTour.title}</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* PLATAFORMAS DA RESERVA */}
                     <div className="pmy-form-group" style={{ marginBottom:'18px' }}>
@@ -2383,11 +2702,27 @@ export default function CentralDeReservas() {
                   </div>
                   <div className="pmy-form-group">
                     <label>{t.form_guide_photo}</label>
-                    <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
-                      <button type="button" className="pmy-format-btn" onClick={() => guidePhotoRef.current.click()}>Escolher Foto</button>
+                    <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
+                      <button type="button" className="pmy-format-btn" onClick={() => guidePhotoRef.current.click()}>📤 Upload</button>
                       <input type="file" accept="image/*" onChange={handleGuidePhotoChange} style={{ display:'none' }} ref={guidePhotoRef} />
+                      <button type="button" className="pmy-format-btn" onClick={() => setActiveModal('pickPhotoForGuide')}>
+                        🛍️ Escolher do Banco
+                      </button>
                       {guidePhoto && <img src={guidePhoto} alt="preview" style={{ width:'40px', height:'40px', borderRadius:'8px', objectFit:'cover' }} />}
                     </div>
+                  </div>
+                  <div className="pmy-form-group">
+                    <label>ID da Campanha UTM (opcional):</label>
+                    <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                      <input type="text" className="pmy-form-input" placeholder="Ex: 21d91c"
+                        value={guideUtmId} onChange={e=>setGuideUtmId(e.target.value)}
+                        style={{ fontFamily:'monospace' }} />
+                    </div>
+                    {guideUtmId && guideName && (
+                      <div style={{ marginTop:'6px', fontSize:'11px', background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'6px', padding:'6px 10px', wordBreak:'break-all', color:'#555' }}>
+                        🔗 {`https://portugalmeandyou.com/?utm_campaign=${guideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${guideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`}
+                      </div>
+                    )}
                   </div>
                   <button type="submit" className="pmy-btn-submit" style={{ marginTop:'10px' }}>{t.btn_add_guide}</button>
                 </form>
@@ -2404,6 +2739,10 @@ export default function CentralDeReservas() {
                         <div className="pmy-guide-square-name">{g.name.split(' ')[0]}<br/>{g.name.split(' ').slice(1).join(' ')}</div>
                         <div style={{ display:'flex', gap:'5px', marginTop:'10px', width:'100%' }} onClick={e=>e.stopPropagation()}>
                           <button className="pmy-guide-edit-btn" onClick={()=>handleOpenEditGuide(g)}>✏️ Editar</button>
+                          {g.referralLink && (
+                            <button title="Copiar link de indicação" onClick={()=>navigator.clipboard.writeText(g.referralLink).then(()=>alert('Link copiado!')).catch(()=>{})}
+                              style={{ padding:'5px 8px', background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'6px', fontSize:'13px', cursor:'pointer' }}>🔗</button>
+                          )}
                           <button className="pmy-guide-delete-btn" onClick={()=>handleDeleteGuide(g.id)}>🗑️</button>
                         </div>
                       </div>
