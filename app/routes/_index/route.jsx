@@ -98,6 +98,14 @@ export const loader = async ({ request }) => {
     shopifyStaff = [];
   }
 
+  // Busca guias do banco de dados
+  let dbGuides = [];
+  try {
+    dbGuides = await prisma.guide.findMany({ orderBy: { createdAt: 'asc' } });
+  } catch (e) {
+    dbGuides = [];
+  }
+
   // Busca mídias salvas no banco (uploads próprios do app)
   let mediaFiles = [];
   try {
@@ -123,19 +131,13 @@ export const loader = async ({ request }) => {
             }
           }
         }
-        files(first: 100, sortKey: CREATED_AT, reverse: true) {
+        files(first: 50) {
           edges {
             node {
               ... on MediaImage {
                 id
                 alt
-                image { url width height }
-                createdAt
-              }
-              ... on GenericFile {
-                id
-                alt
-                url
+                image { url }
                 createdAt
               }
             }
@@ -165,16 +167,16 @@ export const loader = async ({ request }) => {
       }
     }
 
-    // Arquivos do Shopify Files
+    // Arquivos do Shopify Files (MediaImage)
     const fileImages = [];
     for (const { node: file } of (imgData?.data?.files?.edges || [])) {
-      const url = file?.image?.url || file?.url;
+      const url = file?.image?.url;
       if (url) {
         fileImages.push({
           id: `shopify_file_${file.id?.split('/').pop() || Date.now()}`,
           url,
           filename: url.split('/').pop().split('?')[0],
-          mimetype: file?.image ? 'image/jpeg' : 'application/octet-stream',
+          mimetype: 'image/jpeg',
           category: 'general',
           label: file.alt || url.split('/').pop().split('?')[0],
           source: 'shopify_files',
@@ -188,7 +190,7 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
-  return json({ tours, bookings, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages });
+  return json({ tours, bookings, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides });
 };
 
 export const action = async ({ request }) => {
@@ -284,6 +286,36 @@ export const action = async ({ request }) => {
     try {
       const id = formData.get("id");
       await prisma.media.delete({ where: { id } });
+      return json({ success: true });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
+  }
+
+  // Criar/atualizar guia no banco
+  if (_action === "saveGuide") {
+    try {
+      const id       = formData.get("id");
+      const name     = formData.get("name");
+      const email    = formData.get("email") || null;
+      const whatsapp = formData.get("whatsapp");
+      const photoUrl = formData.get("photoUrl") || null;
+      if (id) {
+        await prisma.guide.update({ where: { id }, data: { name, email, whatsapp, photoUrl } });
+      } else {
+        await prisma.guide.create({ data: { name, email, whatsapp, photoUrl } });
+      }
+      return json({ success: true });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
+  }
+
+  // Deletar guia do banco
+  if (_action === "deleteGuide") {
+    try {
+      const id = formData.get("id");
+      await prisma.guide.delete({ where: { id } });
       return json({ success: true });
     } catch (e) {
       return json({ success: false, error: e.message });
@@ -520,7 +552,7 @@ const defaultMappings = {
 
 
 export default function CentralDeReservas() {
-  const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [] };
+  const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
   const fetcher = useFetcher();
 
   // A. NAVEGAÇÃO
@@ -601,9 +633,12 @@ export default function CentralDeReservas() {
   const [guideDdi, setGuideDdi] = useState("+351");
   const [guideWhatsapp, setGuideWhatsapp] = useState("");
   const [guidePhoto, setGuidePhoto] = useState(null);
-  const [guidesList, setGuidesList] = useState([
-    { id: 1, name: "Renan Silva", email: "renan@portugalmeandyou.com", whatsapp: "+351 912345678", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" }
-  ]);
+  // Guias vêm do banco (dinâmico) — fallback para lista vazia se banco vazio
+  const [guidesList, setGuidesList] = useState(
+    dbGuides.length > 0
+      ? dbGuides.map(g => ({ id: g.id, name: g.name, email: g.email || "", whatsapp: g.whatsapp, photo: g.photoUrl || "https://via.placeholder.com/150" }))
+      : []
+  );
   const [selectedGuideInfo, setSelectedGuideInfo] = useState(null);
   const [upcomingToursFilter, setUpcomingToursFilter] = useState("7d");
   const [editingGuide, setEditingGuide] = useState(null);
@@ -686,15 +721,28 @@ export default function CentralDeReservas() {
   const totalSalesCount       = realConfirmedBookings.length;
   const canceledCount         = realCanceledBookings.length;
   const upcomingCount         = realConfirmedBookings.length;
-  const confirmedRevenueValue = realConfirmedBookings.length * 80;
-  const estimatedRevenueValue = realConfirmedBookings.length * 25;
+  // Receita: soma real das bookings se tiver, senão mostra produtos ativos como estimativa
+  const confirmedRevenueValue = realConfirmedBookings.length > 0
+    ? realConfirmedBookings.length * 80
+    : 0;
+  const estimatedRevenueValue = shopifyProducts.length > 0
+    ? shopifyProducts.filter(p=>p.active).reduce((sum, p) => sum + parseFloat(p.price?.replace('€','') || 0), 0)
+    : 0;
+  // Contagem de produtos ativos para o dashboard
+  const activeProductsCount = shopifyProducts.filter(p => p.active).length;
+  const inactiveProductsCount = shopifyProducts.filter(p => !p.active).length;
 
-  const dynamicDayTrips     = tours?.filter(t => !(t?.title||"").toLowerCase().includes("walking")) || [];
-  const dynamicWalkingTours = tours?.filter(t =>  (t?.title||"").toLowerCase().includes("walking")) || [];
+  // tourOptions: usa produtos do Shopify (reais) + tours do Prisma como fallback
+  const tourOptions = shopifyProducts.length > 0
+    ? shopifyProducts.map(p => ({ id: p.id, title: p.name, price: p.price, sku: p.sku }))
+    : (tours || []).map(t => ({ id: t.id, title: t.title, price: null, sku: null }));
+
+  // Categorias para o dashboard (Day Trips vs Walking)
+  const dynamicDayTrips     = tourOptions.filter(t => !t.title.toLowerCase().includes("walking"));
+  const dynamicWalkingTours = tourOptions.filter(t =>  t.title.toLowerCase().includes("walking"));
   const categoriesData      = [{ name: "Day Trips", toursList: dynamicDayTrips }, { name: "Walking Tours", toursList: dynamicWalkingTours }];
 
-
-  // ---- HANDLERS ----
+    // ---- HANDLERS ----
   const handleGeneratePaymentLink = (e) => {
     e.preventDefault();
     if (custName && selectedTour) {
@@ -703,12 +751,29 @@ export default function CentralDeReservas() {
     }
   };
 
-  const handleAddGuide = (e) => {
+  const handleAddGuide = async (e) => {
     e.preventDefault();
-    if (guideName && guideWhatsapp) {
-      setGuidesList([...guidesList, { id: Date.now(), name: guideName, email: guideEmail, whatsapp: `${guideDdi} ${guideWhatsapp}`, photo: guidePhoto || "https://via.placeholder.com/150" }]);
-      setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null);
-    }
+    if (!guideName || !guideWhatsapp) return;
+    const whatsapp = `${guideDdi} ${guideWhatsapp}`;
+    const photoUrl = guidePhoto || null;
+    // Optimistic update local
+    const tempId = `temp_${Date.now()}`;
+    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150" };
+    setGuidesList(prev => [...prev, newGuide]);
+    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null);
+    // Persist to DB
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveGuide");
+      fd.append("name", guideName);
+      fd.append("email", guideEmail || "");
+      fd.append("whatsapp", whatsapp);
+      if (photoUrl) fd.append("photoUrl", photoUrl);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const data = await res.json();
+      // Reload to get real ID from DB
+      if (data.success) window.location.reload();
+    } catch {}
   };
 
   const handleOpenEditGuide = (guide) => {
@@ -721,21 +786,43 @@ export default function CentralDeReservas() {
     setEditGuidePhoto(guide.photo || null);
   };
 
-  const handleSaveEditGuide = (e) => {
+  const handleSaveEditGuide = async (e) => {
     e.preventDefault();
     if (!editGuideName || !editGuideWhatsapp) return;
-    setGuidesList(guidesList.map(g =>
+    const whatsapp = `${editGuideDdi} ${editGuideWhatsapp}`;
+    // Optimistic update
+    setGuidesList(prev => prev.map(g =>
       g.id === editingGuide
-        ? { ...g, name: editGuideName, email: editGuideEmail, whatsapp: `${editGuideDdi} ${editGuideWhatsapp}`, photo: editGuidePhoto || g.photo }
+        ? { ...g, name: editGuideName, email: editGuideEmail, whatsapp, photo: editGuidePhoto || g.photo }
         : g
     ));
     setEditingGuide(null);
+    // Persist to DB (only if real DB id, not temp)
+    if (!String(editingGuide).startsWith('temp_')) {
+      try {
+        const fd = new FormData();
+        fd.append("_action", "saveGuide");
+        fd.append("id", editingGuide);
+        fd.append("name", editGuideName);
+        fd.append("email", editGuideEmail || "");
+        fd.append("whatsapp", whatsapp);
+        if (editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
+        await fetch(window.location.href, { method: "POST", body: fd });
+      } catch {}
+    }
   };
 
-  const handleDeleteGuide = (id) => {
-    if (window.confirm("Remover este guia do sistema?")) {
-      setGuidesList(guidesList.filter(g => g.id !== id));
-      setEditingGuide(null);
+  const handleDeleteGuide = async (id) => {
+    if (!window.confirm("Remover este guia do sistema?")) return;
+    setGuidesList(prev => prev.filter(g => g.id !== id));
+    setEditingGuide(null);
+    if (!String(id).startsWith('temp_')) {
+      try {
+        const fd = new FormData();
+        fd.append("_action", "deleteGuide");
+        fd.append("id", id);
+        await fetch(window.location.href, { method: "POST", body: fd });
+      } catch {}
     }
   };
 
@@ -897,9 +984,21 @@ export default function CentralDeReservas() {
   const handleCustomDateApply = () => { if (customStart && customEnd) { setSelectedPeriod("period_custom"); setIsDateMenuOpen(false); } };
 
   const handleTourSelectionChange = (id) => {
-    setSelectedTour(id); setTourVariants({ adulto:0, jovem:0, crianca:0, senior:0 });
-    if (id.charCodeAt(0) % 2 === 0) { setActiveProductVariants(["adulto","jovem","senior"]); setActiveTourLanguages(["Português","English","Español"]); }
-    else { setActiveProductVariants(["adulto","jovem","crianca","senior"]); setActiveTourLanguages(["Português","English","Français"]); }
+    setSelectedTour(id);
+    setTourVariants({ adulto:0, jovem:0, crianca:0, senior:0 });
+    // Detecta línguas disponíveis baseado no nome do tour
+    const tour = tourOptions.find(t => t.id === id);
+    const title = (tour?.title || "").toLowerCase();
+    if (title.includes("español") || title.includes("spanish") || title.includes("espanhol")) {
+      setActiveProductVariants(["adulto","jovem","senior"]);
+      setActiveTourLanguages(["Português","English","Español"]);
+    } else if (title.includes("french") || title.includes("français")) {
+      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
+      setActiveTourLanguages(["Português","English","Français"]);
+    } else {
+      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
+      setActiveTourLanguages(["Português","English"]);
+    }
   };
 
   const handleModalTourChange = (id) => {
@@ -1248,7 +1347,7 @@ export default function CentralDeReservas() {
                     <label style={{ fontSize:'13px', fontWeight:'700' }}>Selecione o Tour</label>
                     <select className="pmy-form-input" value={modalSelectedTour} onChange={e => handleModalTourChange(e.target.value)} required>
                       <option value="">-- Selecione o Tour --</option>
-                      {tours?.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                      {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
                     </select>
                   </div>
                   {modalSelectedTour && (
@@ -1730,11 +1829,30 @@ export default function CentralDeReservas() {
           {activeTab==='dashboard' && (
             <div>
               <div className="pmy-grid">
-                <div className="pmy-card has-hover" onClick={() => setActiveModal('sales')}><ExpandIcon /><div className="pmy-card-title">{t.dash_total_sales}</div><div className="pmy-card-value">{totalSalesCount}</div><div style={{ fontSize:'12px', color:'#888', marginTop:'5px' }}>+12% {t.dash_vs_last_month}</div></div>
-                <div className="pmy-card has-hover" onClick={() => setActiveModal('confirmed')}><ExpandIcon /><div className="pmy-card-title">{t.dash_revenue_confirmed}</div><div className="pmy-card-value">€ {confirmedRevenueValue.toLocaleString('pt-BR')}</div></div>
-                <div className="pmy-card has-hover" onClick={() => setActiveModal('estimated')}><ExpandIcon /><div className="pmy-card-title">{t.dash_revenue_estimated}</div><div className="pmy-card-value" style={{ color:'#c99a3c' }}>€ {estimatedRevenueValue.toLocaleString('pt-BR')}</div></div>
-                <div className="pmy-card has-hover" onClick={() => setActiveModal('canceled')}><ExpandIcon /><div className="pmy-card-title">{t.dash_canceled_tours}</div><div className="pmy-card-value" style={{ color:'#cc0000' }}>{canceledCount}</div></div>
-                <div className="pmy-card has-hover" onClick={() => setActiveModal('upcoming')}><ExpandIcon /><div className="pmy-card-title">{t.dash_upcoming}</div><div className="pmy-card-value">{upcomingCount}</div></div>
+                <div className="pmy-card has-hover" onClick={() => setActiveModal('sales')}><ExpandIcon />
+                  <div className="pmy-card-title">{t.dash_total_sales}</div>
+                  <div className="pmy-card-value">{totalSalesCount > 0 ? totalSalesCount : bookings?.length || 0}</div>
+                  <div style={{ fontSize:'12px', color:'#888', marginTop:'5px' }}>{t.dash_vs_last_month}</div>
+                </div>
+                <div className="pmy-card has-hover" onClick={() => setActiveModal('confirmed')}><ExpandIcon />
+                  <div className="pmy-card-title">{t.dash_revenue_confirmed}</div>
+                  <div className="pmy-card-value">€ {confirmedRevenueValue > 0 ? confirmedRevenueValue.toLocaleString('pt-BR') : "—"}</div>
+                  {confirmedRevenueValue === 0 && <div style={{ fontSize:'11px', color:'#aaa', marginTop:'4px' }}>Nenhuma reserva registrada ainda</div>}
+                </div>
+                <div className="pmy-card has-hover" onClick={() => setActiveModal('estimated')}><ExpandIcon />
+                  <div className="pmy-card-title">Receita Potencial (Produtos Ativos)</div>
+                  <div className="pmy-card-value" style={{ color:'#c99a3c' }}>€ {estimatedRevenueValue > 0 ? Math.round(estimatedRevenueValue).toLocaleString('pt-BR') : "—"}</div>
+                  <div style={{ fontSize:'11px', color:'#888', marginTop:'4px' }}>{activeProductsCount} produtos ativos</div>
+                </div>
+                <div className="pmy-card has-hover" onClick={() => setActiveModal('canceled')}><ExpandIcon />
+                  <div className="pmy-card-title">{t.dash_canceled_tours}</div>
+                  <div className="pmy-card-value" style={{ color:'#cc0000' }}>{canceledCount}</div>
+                </div>
+                <div className="pmy-card has-hover" onClick={() => setActiveModal('upcoming')}><ExpandIcon />
+                  <div className="pmy-card-title">Produtos no Catálogo</div>
+                  <div className="pmy-card-value">{shopifyProducts.length}</div>
+                  <div style={{ fontSize:'11px', color:'#888', marginTop:'4px' }}>{inactiveProductsCount} inativos</div>
+                </div>
               </div>
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
                 <div className="pmy-card" style={{ padding:'0 25px 25px 25px' }}>
@@ -1751,16 +1869,20 @@ export default function CentralDeReservas() {
                         {cat.toursList.length === 0 ? (
                           <p style={{ padding:'10px 0', color:'#999', fontSize:'14px' }}>Nenhum passeio nesta categoria.</p>
                         ) : cat.toursList.map(tour => {
-                          const tb = tour?.bookings||[];
+                          const tourBookings = bookings?.filter(b => b.tourId === tour.id) || [];
+                          const shopifyB = tourBookings.filter(b=>b.platform==='SHOPIFY').length;
+                          const viatorB  = tourBookings.filter(b=>b.platform==='VIATOR').length;
+                          const gygB     = tourBookings.filter(b=>b.platform==='GETYOURGUIDE').length;
                           return (
                             <div className="pmy-tour-item" key={tour.id}>
                               <div className={`pmy-tour-img ${imageShape}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background:'#f9f2f2' }}>🏰</div>
                               <div className="pmy-tour-details">
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
+                                {tour.price && <div style={{ fontSize:'12px', color:'var(--primary-green)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
                                 <div className="pmy-tag-row">
-                                  <span className="pmy-tag viator">{t.source_viator}: {tb.filter(b=>b.platform==='VIATOR').length*24||120} {t.views}</span>
-                                  <span className="pmy-tag gyg">{t.source_gyg}: {tb.filter(b=>b.platform==='GETYOURGUIDE').length*32||340} {t.views}</span>
-                                  <span className="pmy-tag site">{t.source_site}: {tb.filter(b=>b.platform==='SHOPIFY').length*12||45} {t.views}</span>
+                                  <span className="pmy-tag site">{t.source_site}: {shopifyB} reservas</span>
+                                  <span className="pmy-tag viator">{t.source_viator}: {viatorB} reservas</span>
+                                  <span className="pmy-tag gyg">{t.source_gyg}: {gygB} reservas</span>
                                 </div>
                               </div>
                             </div>
@@ -1791,7 +1913,7 @@ export default function CentralDeReservas() {
                       <label>{t.form_select_tour}</label>
                       <select className="pmy-form-input" value={selectedTour} onChange={e=>handleTourSelectionChange(e.target.value)} required>
                         <option value="">-- {t.form_select_tour} --</option>
-                        {tours?.map(tour => <option key={tour.id} value={tour.id}>{tour.title}</option>)}
+                        {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}{t.price ? ` — ${t.price}` : ""}</option>)}
                       </select>
                     </div>
                     {selectedTour && (
@@ -1867,7 +1989,7 @@ export default function CentralDeReservas() {
                       <label>{t.form_select_tour}</label>
                       <select className="pmy-form-input" value={blockTourId} onChange={e=>handleBlockTourSelectionChange(e.target.value)}>
                         <option value="">-- {t.form_select_tour} --</option>
-                        {tours?.map(tour => <option key={tour.id} value={tour.id}>{tour.title}</option>)}
+                        {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}{t.price ? ` — ${t.price}` : ""}</option>)}
                       </select>
                     </div>
                     <div className="pmy-form-group"><label>{t.block_days_week}</label><input type="text" className="pmy-form-input" placeholder="Ex: 0, 1 (Domingo e Segunda)" value={blockRecurringDays} onChange={e=>setBlockRecurringDays(e.target.value)} /></div>
@@ -1955,7 +2077,7 @@ export default function CentralDeReservas() {
 
                 <div style={{ borderTop:'1px solid #eee', paddingTop:'20px' }}>
                   <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'15px' }}>📊 Controle Manual de Vagas por Tour</h4>
-                  {tours?.map(tour => {
+                  {tourOptions.map(tour => {
                     const cap = tourCapacities[tour.id] !== undefined ? tourCapacities[tour.id] : 20;
                     return (
                       <div className="pmy-tour-item" key={tour.id}>
@@ -1964,8 +2086,9 @@ export default function CentralDeReservas() {
                           <div>
                             <strong style={{ fontSize:'15px' }}>{tour.title}</strong>
                             <div style={{ fontSize:'12px', color:'#888', marginTop:'4px' }}>
-                              Capacidade: {cap} / 20
-                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>🔒 BLOQUEADO (Lotação Esgotada)</span>}
+                              {tour.price && <span style={{ color:'var(--primary-green)', fontWeight:'700', marginRight:'8px' }}>{tour.price}</span>}
+                              Vagas: {cap} / 20
+                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>🔒 LOTADO</span>}
                             </div>
                           </div>
                         </div>
