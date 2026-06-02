@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { useLoaderData, useFetcher, data } from "react-router";
 import { authenticate } from "../../shopify.server";
 import db from "../../db.server";
@@ -645,9 +646,102 @@ const defaultMappings = {
 };
 
 
+// Componente de seleção de imagem com busca — usado como fallback do picker nativo
+function PickerModalContent({ allImages, onSelect, onOpenNative }) {
+  const [search, setSearch] = useState("");
+  const filtered = allImages.filter(img =>
+    !search || (img.label || img.filename || "").toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <div>
+      {/* Botão para abrir picker nativo da Shopify */}
+      <button
+        onClick={onOpenNative}
+        style={{ width:'100%', padding:'11px', background:'#2b2b2b', color:'#fff', border:'none', borderRadius:'8px', fontWeight:'700', fontSize:'13px', cursor:'pointer', marginBottom:'14px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+        🛍️ Abrir Biblioteca Completa da Shopify ↗
+      </button>
+
+      {/* Divisor */}
+      <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
+        <div style={{ flex:1, height:'1px', background:'#eee' }}></div>
+        <span style={{ fontSize:'11px', color:'#bbb', fontWeight:'600' }}>ou buscar nas imagens já carregadas</span>
+        <div style={{ flex:1, height:'1px', background:'#eee' }}></div>
+      </div>
+
+      {/* Campo de busca */}
+      <div style={{ position:'relative', marginBottom:'14px' }}>
+        <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', fontSize:'14px', pointerEvents:'none' }}>🔍</span>
+        <input
+          type="text"
+          placeholder="Buscar por nome da imagem..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          autoFocus
+          style={{ width:'100%', padding:'9px 12px 9px 36px', border:'1.5px solid #ddd', borderRadius:'8px', fontSize:'13px', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+          onFocus={e => e.target.style.borderColor = '#006600'}
+          onBlur={e  => e.target.style.borderColor = '#ddd'}
+        />
+        {search && (
+          <button onClick={() => setSearch("")}
+            style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#aaa', lineHeight:1 }}>×</button>
+        )}
+      </div>
+
+      {/* Contador */}
+      <div style={{ fontSize:'12px', color:'#aaa', marginBottom:'10px' }}>
+        {filtered.length} de {allImages.length} imagens
+        {search && <span> para "<strong>{search}</strong>"</span>}
+      </div>
+
+      {/* Grid */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', maxHeight:'360px', overflowY:'auto' }}>
+        {filtered.map(img => (
+          <div key={img.id || img.url} onClick={() => onSelect(img.url)}
+            style={{ cursor:'pointer', borderRadius:'10px', overflow:'hidden', border:'2px solid #eee', transition:'0.15s' }}
+            onMouseOver={e => e.currentTarget.style.borderColor = '#006600'}
+            onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
+            <img src={img.url} alt={img.label || img.filename}
+              style={{ width:'100%', height:'80px', objectFit:'cover', display:'block' }}
+              onError={e => { e.target.style.display='none'; }} />
+            <div style={{ padding:'4px 6px', fontSize:'10px', color:'#888', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              {img.label || img.filename || "Sem nome"}
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'30px', color:'#aaa', fontSize:'13px' }}>
+            {search ? `Nenhuma imagem encontrada para "${search}"` : "Nenhuma imagem disponível. Clique em Abrir Biblioteca acima."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CentralDeReservas() {
   const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
   const fetcher = useFetcher();
+  const shopify = useAppBridge();
+
+  // Abre o File Picker nativo do Shopify (acessa TODA a biblioteca da loja)
+  const openShopifyFilePicker = useCallback((onSelect) => {
+    shopify.resourcePicker({
+      type: 'file',
+      action: 'select',
+      filter: { fileTypes: ['Image'] },
+      selectionIds: [],
+    }).then((selected) => {
+      if (selected?.length > 0) {
+        const file = selected[0];
+        // O file picker retorna um objeto com preview e url
+        const url = file?.preview?.image?.url || file?.url || file?.preview?.url;
+        if (url && onSelect) onSelect(url);
+      }
+    }).catch(() => {
+      // fallback — abre modal interno se picker nativo não disponível
+      setActiveModal('pickPhotoForGuide');
+    });
+  }, [shopify]);
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1125,19 +1219,71 @@ export default function CentralDeReservas() {
   const handleModalTourChange = (id) => {
     setModalSelectedTour(id);
     const tour = tourOptions.find(t => t.id === id);
-    const slots = tour?.scheduleSlots?.length > 0
-      ? tour.scheduleSlots
-      : ["09:00", "14:00"]; // fallback se não tiver metafield
-    setModalAvailableHours(slots);
+
+    // 1. Metafield
+    if (tour?.scheduleSlots?.length > 0) {
+      setModalAvailableHours(tour.scheduleSlots);
+      return;
+    }
+
+    // 2. Extrai dos títulos das variantes
+    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timesFromVariants = new Set();
+    for (const v of (tour?.variants || [])) {
+      const matches = (v.title || "").matchAll(timeRegex);
+      for (const m of matches) {
+        const raw = m[1].replace('h', ':').replace('H', ':');
+        const parts = raw.split(':');
+        if (parts.length === 2) {
+          timesFromVariants.add(`${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}`);
+        }
+      }
+    }
+
+    if (timesFromVariants.size > 0) {
+      setModalAvailableHours([...timesFromVariants].sort());
+      return;
+    }
+
+    setModalAvailableHours(["09:00", "14:00"]);
   };
 
   const handleBlockTourSelectionChange = (id) => {
     setBlockTourId(id);
     const tour = tourOptions.find(t => t.id === id);
-    const slots = tour?.scheduleSlots?.length > 0
-      ? tour.scheduleSlots
-      : ["09:00", "14:00"];
-    setTourAvailableHours(slots);
+
+    // 1. Tenta metafield 'schedule' primeiro
+    if (tour?.scheduleSlots?.length > 0) {
+      setTourAvailableHours(tour.scheduleSlots);
+      return;
+    }
+
+    // 2. Extrai horários únicos dos títulos das variantes
+    // Padrão comum: "Adult / 09:30 - Description" ou "09:00 - Title"
+    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timesFromVariants = new Set();
+    for (const v of (tour?.variants || [])) {
+      const matches = (v.title || "").matchAll(timeRegex);
+      for (const m of matches) {
+        // Normaliza para HH:MM
+        const raw = m[1].replace('h', ':').replace('H', ':');
+        const parts = raw.split(':');
+        if (parts.length === 2) {
+          const hh = parts[0].padStart(2, '0');
+          const mm = parts[1].padStart(2, '0');
+          timesFromVariants.add(`${hh}:${mm}`);
+        }
+      }
+    }
+
+    if (timesFromVariants.size > 0) {
+      // Ordena cronologicamente
+      setTourAvailableHours([...timesFromVariants].sort());
+      return;
+    }
+
+    // 3. Fallback: sem horários definidos
+    setTourAvailableHours([]);
   };
 
   const handleCapacityChange = (id, change) => {
@@ -1501,34 +1647,18 @@ export default function CentralDeReservas() {
         </div>
       );
     } else if (activeModal === 'pickPhotoForGuide') {
-      title = "🖼️ Escolher Foto do Banco de Mídias";
-      const allImages = [...mediaFiles, ...shopifyImages].filter(m => m.mimetype?.startsWith('image/'));
+      title = "🖼️ Escolher Foto";
+      const allImages = [
+        ...mediaFiles,
+        ...mediaList.filter(m => m.source?.startsWith('shopify')),
+        ...shopifyImages,
+      ].filter((m, idx, arr) => m.mimetype?.startsWith('image/') && arr.findIndex(x => x.url === m.url) === idx);
       content = (
-        <div>
-          <p style={{ fontSize:'13px', color:'#666', marginBottom:'16px' }}>
-            Clique em uma imagem para usá-la como foto do guia.
-          </p>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', maxHeight:'420px', overflowY:'auto' }}>
-            {allImages.map(img => (
-              <div key={img.id} onClick={() => {
-                setGuidePhoto(img.url);
-                setActiveModal(null);
-              }} style={{ cursor:'pointer', borderRadius:'10px', overflow:'hidden', border:'2px solid #eee', transition:'0.15s' }}
-                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary-green)'}
-                onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
-                <img src={img.url} alt={img.label} style={{ width:'100%', height:'80px', objectFit:'cover', display:'block' }} />
-                <div style={{ padding:'4px 6px', fontSize:'10px', color:'#888', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {img.label || img.filename}
-                </div>
-              </div>
-            ))}
-            {allImages.length === 0 && (
-              <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'30px', color:'#aaa', fontSize:'13px' }}>
-                Nenhuma imagem no banco. Faça upload na aba <strong>Banco de Mídias</strong>.
-              </div>
-            )}
-          </div>
-        </div>
+        <PickerModalContent
+          allImages={allImages}
+          onSelect={(url) => { setGuidePhoto(url); setActiveModal(null); }}
+          onOpenNative={() => { setActiveModal(null); openShopifyFilePicker((url) => setGuidePhoto(url)); }}
+        />
       );
     } else if (activeModal === 'guideDetails' && selectedGuideInfo) {
       title = `Detalhes do Guia`;
@@ -1761,7 +1891,8 @@ export default function CentralDeReservas() {
               <div style={{ position:"relative" }}>
                 <img src={editGuidePhoto || guide.photo} alt={guide.name}
                   style={{ width:"62px", height:"62px", borderRadius:"14px", objectFit:"cover", border:"2.5px solid rgba(255,255,255,0.35)", display:"block" }} />
-                <button type="button" onClick={() => editGuidePhotoRef.current.click()}
+                <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
+                  title="Escolher do banco da Shopify"
                   style={{ position:"absolute", bottom:"-7px", right:"-7px", width:"22px", height:"22px", borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", boxShadow:"0 2px 6px rgba(0,0,0,0.2)" }}>📷</button>
                 <input type="file" accept="image/*" style={{ display:"none" }} ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
               </div>
@@ -2382,13 +2513,22 @@ export default function CentralDeReservas() {
                             <select className="pmy-form-input" value={blockSelectedHour} onChange={e=>setBlockSelectedHour(e.target.value)}>
                               <option value="ALL">🔒 Bloquear Todos os Horários</option>
                               {tourAvailableHours.length > 0
-                                ? tourAvailableHours.map(h => <option key={h} value={h}>Bloquear apenas {h}</option>)
-                                : <option disabled>Sem horários cadastrados — configure metafield "schedule" no produto</option>
+                                ? tourAvailableHours.map(h => {
+                                    // Mostra quais variantes existem nesse horário
+                                    const selTourForHour = tourOptions.find(t => t.id === blockTourId);
+                                    const variantsAtHour = (selTourForHour?.variants || []).filter(v => (v.title || "").includes(h));
+                                    return (
+                                      <option key={h} value={h}>
+                                        {h} {variantsAtHour.length > 0 ? `— ${variantsAtHour.length} variant${variantsAtHour.length > 1 ? 'es' : 'e'}` : ''}
+                                      </option>
+                                    );
+                                  })
+                                : null
                               }
                             </select>
                             {tourAvailableHours.length === 0 && (
                               <div style={{ fontSize:'11px', color:'#e08000', marginTop:'5px', background:'#fffbeb', padding:'5px 8px', borderRadius:'5px', border:'1px solid #fcd34d' }}>
-                                ⚠️ Nenhum horário encontrado para este passeio. Adicione um metafield <code>schedule</code> no produto Shopify com os horários separados por vírgula (ex: <code>09:00, 14:00, 17:30</code>).
+                                ⚠️ Nenhum horário encontrado. Os horários são extraídos automaticamente das variantes do produto (ex: "Adult / 09:30 - Tour") ou do metafield <code>schedule</code>.
                               </div>
                             )}
                           </div>
@@ -2793,7 +2933,7 @@ export default function CentralDeReservas() {
                     <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
                       <button type="button" className="pmy-format-btn" onClick={() => guidePhotoRef.current.click()}>📤 Upload</button>
                       <input type="file" accept="image/*" onChange={handleGuidePhotoChange} style={{ display:'none' }} ref={guidePhotoRef} />
-                      <button type="button" className="pmy-format-btn" onClick={() => setActiveModal('pickPhotoForGuide')}>
+                      <button type="button" className="pmy-format-btn" onClick={() => openShopifyFilePicker((url) => setGuidePhoto(url))}>
                         🛍️ Escolher do Banco
                       </button>
                       {guidePhoto && <img src={guidePhoto} alt="preview" style={{ width:'40px', height:'40px', borderRadius:'8px', objectFit:'cover' }} />}
@@ -3365,6 +3505,29 @@ export default function CentralDeReservas() {
                     <input type="file" accept="image/*,application/pdf" ref={mediaUploadRef}
                       style={{ display:'none' }} onChange={handleMediaUpload} />
 
+                    <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'8px' }}>
+                      <button type="button" className="pmy-btn-submit"
+                        onClick={() => openShopifyFilePicker((url) => {
+                          const newItem = {
+                            id: `shopify_picked_${Date.now()}`,
+                            url,
+                            filename: url.split('/').pop().split('?')[0],
+                            mimetype: 'image/jpeg',
+                            category: mediaCategoryInput,
+                            label: mediaLabelInput || url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/,''),
+                            source: 'shopify_files',
+                            createdAt: new Date().toISOString(),
+                          };
+                          setMediaList(prev => {
+                            if (prev.some(m => m.url === url)) return prev;
+                            return [newItem, ...prev];
+                          });
+                          setMediaLabelInput('');
+                        })}>
+                        🛍️ Selecionar da Biblioteca Shopify
+                      </button>
+                      <div style={{ textAlign:'center', fontSize:'11px', color:'#aaa' }}>ou</div>
+                    </div>
                     <div className="pmy-upload-zone" onClick={() => !mediaUploading && mediaUploadRef.current?.click()}>
                       {mediaUploading ? (
                         <div>
