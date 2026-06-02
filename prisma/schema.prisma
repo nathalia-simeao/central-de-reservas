@@ -30,8 +30,6 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
-// --- TABELAS DA AGENDA CENTRAL PMY ---
-
 model Tour {
   id          String    @id @default(uuid())
   shopifyId   String?
@@ -70,4 +68,14 @@ model BlockedDate {
   dayOfWeek   String?
   timeSlot    String?
   createdAt   DateTime  @default(now())
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  url       String
+  filename  String
+  mimetype  String
+  category  String   @default("general")
+  label     String?
+  createdAt DateTime @default(now())
 }

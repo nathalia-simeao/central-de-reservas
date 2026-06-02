@@ -65,18 +65,143 @@ export const loader = async ({ request }) => {
     shopifyProducts = [];
   }
 
-  return json({ tours, bookings, shopifyProducts, shopName });
+  // Busca usuários da equipe (staff) da loja Shopify
+  let shopifyStaff = [];
+  try {
+    const staffResponse = await admin.graphql(`
+      query {
+        staffMembers(first: 50) {
+          edges {
+            node {
+              id
+              name
+              email
+              isOwner
+              active
+              avatar { url }
+            }
+          }
+        }
+      }
+    `);
+    const staffData = await staffResponse.json();
+    shopifyStaff = (staffData?.data?.staffMembers?.edges || []).map(({ node }) => ({
+      id: node.id,
+      name: node.name,
+      email: node.email,
+      isOwner: node.isOwner,
+      active: node.active,
+      avatar: node.avatar?.url || null,
+      role: node.isOwner ? "Admin (Proprietário)" : "Membro da Equipe",
+    }));
+  } catch (e) {
+    shopifyStaff = [];
+  }
+
+  // Busca mídias salvas no banco (uploads próprios do app)
+  let mediaFiles = [];
+  try {
+    mediaFiles = await prisma.media.findMany({ orderBy: { createdAt: 'desc' } });
+  } catch (e) {
+    mediaFiles = [];
+  }
+
+  // Busca imagens do próprio Shopify (produtos + arquivos Files)
+  let shopifyImages = [];
+  try {
+    const imgResponse = await admin.graphql(`
+      query {
+        products(first: 100) {
+          edges {
+            node {
+              id
+              title
+              featuredImage { url altText }
+              images(first: 5) {
+                edges { node { url altText } }
+              }
+            }
+          }
+        }
+        files(first: 100, sortKey: CREATED_AT, reverse: true) {
+          edges {
+            node {
+              ... on MediaImage {
+                id
+                alt
+                image { url width height }
+                createdAt
+              }
+              ... on GenericFile {
+                id
+                alt
+                url
+                createdAt
+              }
+            }
+          }
+        }
+      }
+    `);
+    const imgData = await imgResponse.json();
+
+    // Imagens dos produtos
+    const productImages = [];
+    for (const { node: product } of (imgData?.data?.products?.edges || [])) {
+      for (const { node: img } of (product?.images?.edges || [])) {
+        if (img?.url) {
+          productImages.push({
+            id: `shopify_prod_${Buffer.from(img.url).toString('base64').slice(0,12)}`,
+            url: img.url,
+            filename: img.url.split('/').pop().split('?')[0],
+            mimetype: 'image/jpeg',
+            category: 'tour',
+            label: img.altText || product.title,
+            source: 'shopify_product',
+            productTitle: product.title,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    // Arquivos do Shopify Files
+    const fileImages = [];
+    for (const { node: file } of (imgData?.data?.files?.edges || [])) {
+      const url = file?.image?.url || file?.url;
+      if (url) {
+        fileImages.push({
+          id: `shopify_file_${file.id?.split('/').pop() || Date.now()}`,
+          url,
+          filename: url.split('/').pop().split('?')[0],
+          mimetype: file?.image ? 'image/jpeg' : 'application/octet-stream',
+          category: 'general',
+          label: file.alt || url.split('/').pop().split('?')[0],
+          source: 'shopify_files',
+          createdAt: file.createdAt || new Date().toISOString(),
+        });
+      }
+    }
+
+    shopifyImages = [...fileImages, ...productImages];
+  } catch (e) {
+    shopifyImages = [];
+  }
+
+  return json({ tours, bookings, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages });
 };
 
 export const action = async ({ request }) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
   if (_action === "createTour") {
     const title = formData.get("title");
     await prisma.tour.create({ data: { title } });
     return json({ success: true });
   }
+
   if (_action === "createBooking") {
     const tourId = formData.get("tourId");
     const customerName = formData.get("customerName");
@@ -85,6 +210,86 @@ export const action = async ({ request }) => {
     await prisma.booking.create({ data: { tourId, customerName, startTime, platform, status: "CONFIRMED" } });
     return json({ success: true });
   }
+
+  // Upload de mídia via Shopify Files API (staged upload)
+  if (_action === "uploadMedia") {
+    try {
+      const filename = formData.get("filename");
+      const mimetype = formData.get("mimetype");
+      const size     = parseInt(formData.get("size") || "0");
+      const category = formData.get("category") || "general"; // logo | guide | tour | general
+
+      // 1. Solicitar URL de upload staged ao Shopify
+      const stagedRes = await admin.graphql(`
+        mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+          stagedUploadsCreate(input: $input) {
+            stagedTargets {
+              url
+              resourceUrl
+              parameters { name value }
+            }
+            userErrors { field message }
+          }
+        }
+      `, {
+        variables: {
+          input: [{
+            filename,
+            mimeType: mimetype,
+            resource: "FILE",
+            fileSize: String(size),
+            httpMethod: "POST",
+          }]
+        }
+      });
+      const stagedData = await stagedRes.json();
+      const target = stagedData?.data?.stagedUploadsCreate?.stagedTargets?.[0];
+      if (!target) return json({ success: false, error: "Falha ao criar staged upload" });
+
+      // 2. Retornar URL e parâmetros para o cliente fazer o upload direto
+      return json({
+        success: true,
+        uploadUrl: target.url,
+        resourceUrl: target.resourceUrl,
+        parameters: target.parameters,
+        category,
+        filename,
+        mimetype,
+      });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
+  }
+
+  // Registrar mídia no banco após upload concluído
+  if (_action === "registerMedia") {
+    try {
+      const url      = formData.get("url");
+      const filename = formData.get("filename");
+      const mimetype = formData.get("mimetype");
+      const category = formData.get("category") || "general";
+      const label    = formData.get("label") || filename;
+
+      await prisma.media.create({
+        data: { url, filename, mimetype, category, label }
+      });
+      return json({ success: true });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
+  }
+
+  // Deletar mídia
+  if (_action === "deleteMedia") {
+    try {
+      const id = formData.get("id");
+      await prisma.media.delete({ where: { id } });
+      return json({ success: true });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
+  }
+
   return json({ success: true });
 };
 
@@ -315,16 +520,42 @@ const defaultMappings = {
 
 
 export default function CentralDeReservas() {
-  const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify" } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify" };
+  const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [] };
   const fetcher = useFetcher();
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [logoUrl, setLogoUrl] = useState(null);
+  // logoUrl state moved to top (localStorage persistence)
   const [lang, setLang] = useState("pt");
   const [imageShape, setImageShape] = useState("rounded");
   const [activeModal, setActiveModal] = useState(null);
   const [openCategories, setOpenCategories] = useState(["Day Trips", "Walking Tours"]);
+
+  // LOGO PERSISTENTE (localStorage)
+  const [logoUrl, setLogoUrl] = useState(() => {
+    try { return localStorage.getItem('pmy_logo_url') || null; } catch { return null; }
+  });
+
+  // THEME / PERSONALIZAÇÃO
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pmy_theme');
+      return saved ? JSON.parse(saved) : {
+        bgColor: '#F4DCDC',
+        primaryColor: '#006600',
+        sidebarBg: '#ffffff',
+        fontFamily: 'Assistant',
+        fontSize: '14px',
+        titleColor: '#006600',
+        textColor: '#2b2b2b',
+      };
+    } catch {
+      return {
+        bgColor: '#F4DCDC', primaryColor: '#006600', sidebarBg: '#ffffff',
+        fontFamily: 'Assistant', fontSize: '14px', titleColor: '#006600', textColor: '#2b2b2b',
+      };
+    }
+  });
 
   // B. FILTROS DASHBOARD
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
@@ -385,6 +616,22 @@ export default function CentralDeReservas() {
 
   // H. INTEGRAÇÕES CUSTOMIZADAS
   const [customName, setCustomName] = useState("");
+
+  // BANCO DE MÍDIA
+  // Merge: uploads próprios + imagens do Shopify (deduplicado por URL)
+  const allMediaCombined = [
+    ...mediaFiles,
+    ...shopifyImages.filter(si => !mediaFiles.some(mf => mf.url === si.url)),
+  ];
+  const [mediaList, setMediaList] = useState(allMediaCombined);
+  const [showShopifySource, setShowShopifySource] = useState(true); // toggle mostrar/ocultar mídias do Shopify
+  const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
+  const [mediaLabelInput, setMediaLabelInput] = useState("");
+  const [mediaCategoryInput, setMediaCategoryInput] = useState("general");
+  const [mediaPreview, setMediaPreview] = useState(null); // modal de preview
+  const mediaUploadRef = useRef(null);
   const [customUrl, setCustomUrl] = useState("");
   const [customKey, setCustomKey] = useState("");
   const [customIntegrations, setCustomIntegrations] = useState([]);
@@ -497,6 +744,105 @@ export default function CentralDeReservas() {
     if (f) setEditGuidePhoto(URL.createObjectURL(f));
   };
 
+  // HANDLERS DE MÍDIA
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setMediaUploading(true);
+    setMediaUploadProgress(10);
+
+    try {
+      // 1. Solicitar staged upload ao servidor
+      const fd = new FormData();
+      fd.append("_action", "uploadMedia");
+      fd.append("filename", file.name);
+      fd.append("mimetype", file.type);
+      fd.append("size", String(file.size));
+      fd.append("category", mediaCategoryInput);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const data = await res.json();
+      setMediaUploadProgress(30);
+
+      if (!data.success) throw new Error(data.error || "Erro no staged upload");
+
+      // 2. Upload direto para a URL retornada (multipart)
+      const uploadForm = new FormData();
+      data.parameters.forEach(p => uploadForm.append(p.name, p.value));
+      uploadForm.append("file", file);
+      setMediaUploadProgress(60);
+
+      const uploadRes = await fetch(data.uploadUrl, { method: "POST", body: uploadForm });
+      if (!uploadRes.ok) throw new Error("Falha no upload para Shopify");
+      setMediaUploadProgress(85);
+
+      // 3. Registrar no banco
+      const regFd = new FormData();
+      regFd.append("_action", "registerMedia");
+      regFd.append("url", data.resourceUrl);
+      regFd.append("filename", file.name);
+      regFd.append("mimetype", file.type);
+      regFd.append("category", mediaCategoryInput);
+      regFd.append("label", mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""));
+
+      const regRes = await fetch(window.location.href, { method: "POST", body: regFd });
+      const regData = await regRes.json();
+      setMediaUploadProgress(100);
+
+      if (regData.success) {
+        // Adiciona à lista local com URL temporária
+        const newItem = {
+          id: Date.now().toString(),
+          url: data.resourceUrl,
+          filename: file.name,
+          mimetype: file.type,
+          category: mediaCategoryInput,
+          label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
+          createdAt: new Date().toISOString(),
+        };
+        setMediaList(prev => [newItem, ...prev]);
+        setMediaLabelInput("");
+      }
+    } catch (err) {
+      // Fallback: salvar base64 local se Shopify falhar
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const newItem = {
+          id: Date.now().toString(),
+          url: ev.target.result,
+          filename: file.name,
+          mimetype: file.type,
+          category: mediaCategoryInput,
+          label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
+          createdAt: new Date().toISOString(),
+          isLocal: true,
+        };
+        setMediaList(prev => [newItem, ...prev]);
+        setMediaLabelInput("");
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setMediaUploading(false);
+      setMediaUploadProgress(0);
+      if (mediaUploadRef.current) mediaUploadRef.current.value = "";
+    }
+  };
+
+  const handleDeleteMedia = async (id) => {
+    if (!window.confirm("Remover esta mídia do banco?")) return;
+    const fd = new FormData();
+    fd.append("_action", "deleteMedia");
+    fd.append("id", id);
+    try {
+      await fetch(window.location.href, { method: "POST", body: fd });
+    } catch {}
+    setMediaList(prev => prev.filter(m => m.id !== id));
+  };
+
+  const handleCopyMediaUrl = (url) => {
+    navigator.clipboard.writeText(url).then(() => alert("URL copiada!")).catch(() => {});
+  };
+
   const handleTogglePlatformSelection = (key, stateArr, setStateArr) => {
     setStateArr(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
@@ -520,7 +866,31 @@ export default function CentralDeReservas() {
     }
   };
 
-  const handleLogoChange = (e) => { const f = e.target.files[0]; if (f) setLogoUrl(URL.createObjectURL(f)); };
+  const handleLogoChange = (e) => {
+    const f = e.target.files[0];
+    if (f) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        setLogoUrl(dataUrl);
+        try { localStorage.setItem('pmy_logo_url', dataUrl); } catch {}
+      };
+      reader.readAsDataURL(f);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl(null);
+    try { localStorage.removeItem('pmy_logo_url'); } catch {}
+  };
+
+  const handleThemeChange = (key, value) => {
+    setTheme(prev => {
+      const updated = { ...prev, [key]: value };
+      try { localStorage.setItem('pmy_theme', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
   const handleGuidePhotoChange = (e) => { const f = e.target.files[0]; if (f) setGuidePhoto(URL.createObjectURL(f)); };
   const toggleCategory = (n) => setOpenCategories(p => p.includes(n) ? p.filter(c=>c!==n) : [...p,n]);
   const handlePresetSelection = (k) => { setSelectedPeriod(k); setIsDateMenuOpen(false); };
@@ -1040,8 +1410,8 @@ export default function CentralDeReservas() {
   };
 
     const styles = `
-    :root { --bg-color:#F4DCDC; --primary-green:#006600; --primary-hover:#004d00; --text-dark:#2b2b2b; --text-muted:#666666; --card-bg:#ffffff; --border-radius:12px; }
-    * { box-sizing:border-box; margin:0; padding:0; font-family:'Assistant',sans-serif; }
+    :root { --bg-color:${theme.bgColor}; --primary-green:${theme.primaryColor}; --primary-hover:${theme.primaryColor}dd; --text-dark:${theme.textColor}; --text-muted:#666666; --card-bg:#ffffff; --border-radius:12px; --font-family:${theme.fontFamily},'sans-serif'; --font-size:${theme.fontSize}; --title-color:${theme.titleColor}; --sidebar-bg:${theme.sidebarBg}; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:var(--font-family); font-size:var(--font-size); }
     body, html { overflow-x:hidden; background-color:var(--bg-color); }
     .Polaris-Page { padding:0 !important; max-width:100% !important; }
     h1.Polaris-Header-Title { display:none !important; }
@@ -1049,7 +1419,7 @@ export default function CentralDeReservas() {
     ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); border-radius:10px; }
 
     .pmy-app-container { display:flex; height:100vh; width:100vw; margin-left:-20px; overflow:hidden; }
-    .pmy-sidebar { width:260px; background-color:#ffffff; border-right:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; box-shadow:2px 0 15px rgba(0,0,0,0.03); flex-shrink:0; }
+    .pmy-sidebar { width:260px; background-color:var(--sidebar-bg); border-right:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; box-shadow:2px 0 15px rgba(0,0,0,0.03); flex-shrink:0; }
     .pmy-logo-area { padding:30px 20px; text-align:center; border-bottom:1px solid #f0f0f0; display:flex; justify-content:center; align-items:center; min-height:180px; }
     .pmy-logo-placeholder { width:180px; height:80px; margin:0 auto; border:2px dashed #ccc; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#999; font-weight:bold; }
     .pmy-logo-wrapper { position:relative; width:180px; height:140px; margin:0 auto; display:flex; justify-content:center; align-items:center; border-radius:8px; overflow:hidden; }
@@ -1067,7 +1437,7 @@ export default function CentralDeReservas() {
     .pmy-credit-text { font-size:12px; color:#999; text-align:center; }
     .pmy-content { flex:1; padding:40px; overflow-y:auto; height:100vh; }
     .pmy-header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
-    .pmy-page-title { font-size:28px; font-weight:800; color:var(--primary-green); margin:0; }
+    .pmy-page-title { font-size:28px; font-weight:800; color:var(--title-color); margin:0; }
 
     .pmy-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px,1fr)); gap:20px; margin-bottom:30px; }
     .pmy-card { background:var(--card-bg); border-radius:var(--border-radius); padding:22px; box-shadow:0 8px 20px rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.02); position:relative; transition:0.2s ease; }
@@ -1247,11 +1617,44 @@ export default function CentralDeReservas() {
     .pmy-field-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:700; white-space:nowrap; }
     .pmy-field-badge.required { background:#fff0f0; color:#cc0000; }
     .pmy-field-badge.optional { background:#f0f0f0; color:#888; }
+
+    /* BANCO DE MÍDIA */
+    .pmy-media-filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+    .pmy-media-ftab { padding:6px 14px; border-radius:20px; border:1.5px solid #ddd; background:#fff; font-size:12px; font-weight:700; cursor:pointer; transition:0.2s; color:#666; }
+    .pmy-media-ftab:hover { border-color:var(--primary-color); color:var(--primary-green); }
+    .pmy-media-ftab.active { background:var(--primary-green); color:#fff; border-color:var(--primary-green); }
+    .pmy-media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:16px; }
+    .pmy-media-card { background:#fff; border:1.5px solid #eee; border-radius:12px; overflow:hidden; transition:0.2s; position:relative; cursor:pointer; }
+    .pmy-media-card:hover { border-color:var(--primary-green); box-shadow:0 6px 20px rgba(0,0,0,0.08); transform:translateY(-2px); }
+    .pmy-media-thumb { width:100%; height:120px; object-fit:cover; display:block; background:#f5f5f5; }
+    .pmy-media-thumb-placeholder { width:100%; height:120px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:32px; }
+    .pmy-media-info { padding:10px 12px; }
+    .pmy-media-label { font-size:12px; font-weight:700; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+    .pmy-media-meta { font-size:10px; color:#aaa; }
+    .pmy-media-cat-badge { display:inline-block; font-size:9px; font-weight:800; padding:2px 7px; border-radius:10px; text-transform:uppercase; margin-bottom:5px; }
+    .pmy-media-cat-logo { background:#e6f2e6; color:var(--primary-green); }
+    .pmy-media-cat-guide { background:#e6e6f9; color:#5e35b1; }
+    .pmy-media-cat-tour { background:#fff4cc; color:#cc9900; }
+    .pmy-media-cat-general { background:#f0f0f0; color:#666; }
+    .pmy-media-actions { position:absolute; top:8px; right:8px; display:flex; gap:5px; opacity:0; transition:0.2s; }
+    .pmy-media-card:hover .pmy-media-actions { opacity:1; }
+    .pmy-media-action-btn { width:28px; height:28px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; backdrop-filter:blur(4px); }
+    .pmy-media-action-copy { background:rgba(255,255,255,0.9); color:#333; }
+    .pmy-media-action-delete { background:rgba(255,80,80,0.9); color:#fff; }
+    .pmy-upload-zone { border:2px dashed #ddd; border-radius:12px; padding:30px; text-align:center; cursor:pointer; transition:0.2s; background:#fafafa; }
+    .pmy-upload-zone:hover { border-color:var(--primary-green); background:#f5fcf5; }
+    .pmy-upload-progress { height:4px; background:#eee; border-radius:4px; overflow:hidden; margin-top:10px; }
+    .pmy-upload-progress-bar { height:100%; background:var(--primary-green); border-radius:4px; transition:width 0.3s; }
+    .pmy-media-preview-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:99999; cursor:zoom-out; }
+    .pmy-media-preview-img { max-width:90vw; max-height:85vh; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
   `;
 
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+      `}</style>
       <style>{styles}</style>
       <div className="pmy-app-container">
 
@@ -1269,6 +1672,7 @@ export default function CentralDeReservas() {
             <div className={`pmy-menu-item ${activeTab==='integracoes'?'active':''}`} onClick={() => setActiveTab('integracoes')}>{t.menu_integrations}</div>
             <div className={`pmy-menu-item ${activeTab==='guias'?'active':''}`} onClick={() => setActiveTab('guias')}>{t.menu_guides}</div>
             <div className={`pmy-menu-item ${activeTab==='automacoes'?'active':''}`} onClick={() => setActiveTab('automacoes')}>{t.menu_automations}</div>
+            <div className={`pmy-menu-item ${activeTab==='midias'?'active':''}`} onClick={() => setActiveTab('midias')}>🗂️ Banco de Mídias</div>
           </nav>
           <div className="pmy-sidebar-footer">
             <div style={{ width:'100%', padding:'5px 0' }}>
@@ -1292,6 +1696,7 @@ export default function CentralDeReservas() {
               {activeTab==='guias' && t.guides_title}
               {activeTab==='automacoes' && t.automations_title}
               {activeTab==='configuracoes' && t.settings_title}
+              {activeTab==='midias' && '🗂️ Banco de Mídias'}
             </h1>
             {activeTab==='dashboard' && (
               <div className="pmy-date-wrapper">
@@ -1938,47 +2343,221 @@ export default function CentralDeReservas() {
           {/* ===== TAB: CONFIGURAÇÕES ===== */}
           {activeTab==='configuracoes' && (
             <div style={{ display:'grid', gap:'30px' }}>
+
+              {/* LOGO */}
               <div className="pmy-form-box">
-                <h3>🎨 Configurações de Layout</h3>
-                <div style={{ display:'flex', flexDirection:'column', gap:'25px', marginTop:'15px' }}>
-                  <div className="pmy-form-group">
-                    <label>Logo da Agência (Aparecerá na barra lateral):</label>
-                    <div style={{ display:'flex', gap:'15px', alignItems:'center', marginTop:'5px' }}>
-                      <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display:'none' }} ref={fileInputRef} />
-                      {logoUrl && <img src={logoUrl} alt="Logo" style={{ height:'45px', objectFit:'contain', background:'#f5f5f5', padding:'5px', borderRadius:'4px' }} />}
-                      <button type="button" className="pmy-format-btn" onClick={() => fileInputRef.current.click()}>Carregar Nova Logo</button>
-                      {logoUrl && <button type="button" className="pmy-format-btn" style={{ color:'#cc0000', background:'#ffe6e6' }} onClick={() => setLogoUrl(null)}>Remover</button>}
+                <h3>🖼️ Logo da Agência</h3>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'20px' }}>Aparece na barra lateral. Salva automaticamente e persiste mesmo após reiniciar.</p>
+                <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
+                  <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display:'none' }} ref={fileInputRef} />
+                  {logoUrl
+                    ? <img src={logoUrl} alt="Logo" style={{ height:'60px', maxWidth:'180px', objectFit:'contain', background:'#f5f5f5', padding:'8px', borderRadius:'8px', border:'1px solid #eee' }} />
+                    : <div style={{ width:'120px', height:'60px', background:'#f5f5f5', borderRadius:'8px', border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:'#aaa' }}>Sem logo</div>
+                  }
+                  <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                    <button type="button" className="pmy-format-btn" onClick={() => fileInputRef.current.click()}>📤 Carregar Logo</button>
+                    {logoUrl && <button type="button" className="pmy-format-btn" style={{ color:'#cc0000', background:'#ffe6e6' }} onClick={handleRemoveLogo}>🗑️ Remover</button>}
+                  </div>
+                </div>
+              </div>
+
+              {/* PERSONALIZAÇÃO / THEME */}
+              <div className="pmy-form-box">
+                <h3>🎨 Personalização Visual</h3>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'25px' }}>Adapte o sistema às cores e tipografia da sua marca. As alterações são salvas automaticamente.</p>
+
+                {/* Presets rápidos */}
+                <div className="pmy-form-group">
+                  <label>Esquemas Prontos (Presets):</label>
+                  <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginTop:'8px' }}>
+                    {[
+                      { name:'Verde PMY', bg:'#F4DCDC', primary:'#006600', sidebar:'#ffffff', title:'#006600', text:'#2b2b2b' },
+                      { name:'Azul Oceano', bg:'#dce8f4', primary:'#004e9a', sidebar:'#f0f6ff', title:'#003377', text:'#1a2b3c' },
+                      { name:'Laranja Terra', bg:'#fdf0e6', primary:'#c45e00', sidebar:'#fff8f2', title:'#a04a00', text:'#2b2010' },
+                      { name:'Roxo Moderno', bg:'#f0ecf9', primary:'#5e35b1', sidebar:'#faf8ff', title:'#4527a0', text:'#1a0a3b' },
+                      { name:'Preto Elegante', bg:'#f0f0f0', primary:'#1a1a1a', sidebar:'#1a1a1a', title:'#000000', text:'#2b2b2b' },
+                      { name:'Minimalista', bg:'#f9f9f9', primary:'#333333', sidebar:'#ffffff', title:'#111111', text:'#444444' },
+                    ].map((preset, i) => (
+                      <button key={i} type="button"
+                        onClick={() => {
+                          const newTheme = { ...theme, bgColor: preset.bg, primaryColor: preset.primary, sidebarBg: preset.sidebar, titleColor: preset.title, textColor: preset.text };
+                          setTheme(newTheme);
+                          try { localStorage.setItem('pmy_theme', JSON.stringify(newTheme)); } catch {}
+                        }}
+                        style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', border:'1.5px solid #ddd', borderRadius:'20px', background:'#fff', cursor:'pointer', fontSize:'13px', fontWeight:'700', transition:'0.2s' }}>
+                        <span style={{ display:'flex', gap:'3px' }}>
+                          <span style={{ width:'12px', height:'12px', borderRadius:'50%', background: preset.bg, border:'1px solid #ccc', display:'inline-block' }}></span>
+                          <span style={{ width:'12px', height:'12px', borderRadius:'50%', background: preset.primary, display:'inline-block' }}></span>
+                          <span style={{ width:'12px', height:'12px', borderRadius:'50%', background: preset.sidebar, border:'1px solid #ccc', display:'inline-block' }}></span>
+                        </span>
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginTop:'10px' }}>
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Cor de Fundo Principal:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.bgColor} onChange={e=>handleThemeChange('bgColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.bgColor} onChange={e=>handleThemeChange('bgColor',e.target.value)} />
                     </div>
                   </div>
-                  <div className="pmy-form-group">
-                    <label>Formato de Recorte das Imagens de Perfil:</label>
-                    <div style={{ display:'flex', gap:'10px', marginTop:'5px' }}>
-                      {[['circle','Redonda'],['rounded','Arredondada']].map(([v,l]) => (
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Cor Primária (botões, menu ativo):</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.primaryColor} onChange={e=>handleThemeChange('primaryColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.primaryColor} onChange={e=>handleThemeChange('primaryColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Cor de Fundo da Sidebar:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.sidebarBg} onChange={e=>handleThemeChange('sidebarBg',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.sidebarBg} onChange={e=>handleThemeChange('sidebarBg',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Cor dos Títulos:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.titleColor} onChange={e=>handleThemeChange('titleColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.titleColor} onChange={e=>handleThemeChange('titleColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Cor do Texto Principal:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.textColor} onChange={e=>handleThemeChange('textColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.textColor} onChange={e=>handleThemeChange('textColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Tipo de Fonte:</label>
+                    <select className="pmy-form-input" style={{ marginTop:'6px' }} value={theme.fontFamily} onChange={e=>handleThemeChange('fontFamily',e.target.value)}>
+                      <option value="Assistant">Assistant (Padrão)</option>
+                      <option value="Inter">Inter</option>
+                      <option value="Roboto">Roboto</option>
+                      <option value="Poppins">Poppins</option>
+                      <option value="Lato">Lato</option>
+                      <option value="Open Sans">Open Sans</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Nunito">Nunito</option>
+                      <option value="Georgia">Georgia (Serif)</option>
+                    </select>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Tamanho da Fonte:</label>
+                    <select className="pmy-form-input" style={{ marginTop:'6px' }} value={theme.fontSize} onChange={e=>handleThemeChange('fontSize',e.target.value)}>
+                      <option value="12px">Pequena (12px)</option>
+                      <option value="13px">Compacta (13px)</option>
+                      <option value="14px">Padrão (14px)</option>
+                      <option value="15px">Média (15px)</option>
+                      <option value="16px">Grande (16px)</option>
+                    </select>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Formato das Imagens de Perfil:</label>
+                    <div style={{ display:'flex', gap:'10px', marginTop:'8px' }}>
+                      {[['circle','🔵 Redonda'],['rounded','⬜ Arredondada']].map(([v,l]) => (
                         <button key={v} type="button" className="pmy-format-btn"
                           style={{ background: imageShape===v?'var(--primary-green)':'#f0f0f0', color: imageShape===v?'#fff':'#555' }}
                           onClick={() => setImageShape(v)}>{l}</button>
                       ))}
                     </div>
                   </div>
-                  <div className="pmy-form-group">
-                    <label>Tamanho da Fonte da Interface:</label>
-                    <select className="pmy-form-input" style={{ maxWidth:'240px' }}><option>Padrão (Assistant)</option><option>Compacta</option></select>
-                  </div>
                 </div>
-              </div>
 
-              <div className="pmy-form-box">
-                <h3>👥 Gestão de Usuários (Acessos)</h3>
-                <p style={{ fontSize:'13px', color:'#666', marginBottom:'15px' }}>Gerencie quem da sua equipe administrativa pode acessar a Agenda Central.</p>
-                <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'15px' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <strong style={{ fontSize:'14px', display:'block' }}>Nathalia Simeão</strong>
-                      <span style={{ fontSize:'12px', color:'#888' }}>Admin (Acesso Total)</span>
+                {/* Preview */}
+                <div style={{ marginTop:'25px', padding:'20px', background: theme.bgColor, borderRadius:'12px', border:'1px solid #eee' }}>
+                  <div style={{ fontSize:'11px', fontWeight:'800', color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px' }}>Preview</div>
+                  <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
+                    <div style={{ width:'120px', background: theme.sidebarBg, borderRadius:'10px', padding:'15px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <div style={{ width:'100%', height:'8px', background: theme.primaryColor, borderRadius:'4px', marginBottom:'8px' }}></div>
+                      <div style={{ width:'80%', height:'6px', background:'#eee', borderRadius:'4px', marginBottom:'5px' }}></div>
+                      <div style={{ width:'60%', height:'6px', background:'#eee', borderRadius:'4px' }}></div>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:'18px', fontWeight:'800', color: theme.titleColor, fontFamily: theme.fontFamily, marginBottom:'8px' }}>Visão Geral</div>
+                      <div style={{ fontSize: theme.fontSize, color: theme.textColor, fontFamily: theme.fontFamily }}>Texto de exemplo com a fonte e cor selecionadas.</div>
+                      <div style={{ marginTop:'10px', display:'inline-block', background: theme.primaryColor, color:'#fff', padding:'6px 14px', borderRadius:'6px', fontSize:'12px', fontWeight:'700' }}>Botão Primário</div>
                     </div>
                   </div>
                 </div>
-                <button type="button" className="pmy-btn-submit" style={{ width:'auto', padding:'10px 20px', background:'#2b2b2b' }}>+ Convidar Novo Usuário</button>
+
+                <div style={{ marginTop:'15px' }}>
+                  <button type="button"
+                    onClick={() => {
+                      const def = { bgColor:'#F4DCDC', primaryColor:'#006600', sidebarBg:'#ffffff', fontFamily:'Assistant', fontSize:'14px', titleColor:'#006600', textColor:'#2b2b2b' };
+                      setTheme(def);
+                      try { localStorage.setItem('pmy_theme', JSON.stringify(def)); } catch {}
+                    }}
+                    style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'10px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
+                    🔄 Restaurar Padrões
+                  </button>
+                </div>
+              </div>
+
+              {/* USUÁRIOS DA LOJA */}
+              <div className="pmy-form-box">
+                <h3>👥 Equipe com Acesso ao App</h3>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'20px', lineHeight:'1.6' }}>
+                  Estes são os membros da sua equipe no Shopify que têm acesso ao app.
+                  Para adicionar ou remover pessoas, gerencie no <a href="https://admin.shopify.com/settings/account" target="_blank" rel="noreferrer" style={{ color:'var(--primary-green)', fontWeight:'700' }}>painel de conta do Shopify ↗</a>
+                </p>
+
+                {shopifyStaff.length === 0 ? (
+                  <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'20px', textAlign:'center', color:'#888', fontSize:'13px' }}>
+                    Nenhum membro da equipe encontrado. Verifique as permissões do app no Shopify.
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                    {shopifyStaff.map(staff => (
+                      <div key={staff.id} style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 16px', background:'#fafafa', borderRadius:'10px', border:'1px solid #eee' }}>
+                        {staff.avatar
+                          ? <img src={staff.avatar} alt={staff.name} style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+                          : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:'var(--primary-green)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:'800', fontSize:'16px', flexShrink:0 }}>
+                              {staff.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                        }
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:'700', fontSize:'14px', color:'var(--text-dark)', display:'flex', alignItems:'center', gap:'8px' }}>
+                            {staff.name}
+                            {staff.isOwner && <span style={{ fontSize:'10px', background:'#e6f2e6', color:'var(--primary-green)', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>Proprietário</span>}
+                            {!staff.active && <span style={{ fontSize:'10px', background:'#f5f5f5', color:'#aaa', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>Inativo</span>}
+                          </div>
+                          <div style={{ fontSize:'12px', color:'#888', marginTop:'2px' }}>{staff.email}</div>
+                          <div style={{ fontSize:'11px', color:'#aaa', marginTop:'2px' }}>{staff.role}</div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                          <span style={{ width:'8px', height:'8px', borderRadius:'50%', background: staff.active ? '#22c55e' : '#ddd', display:'inline-block' }}></span>
+                          <span style={{ fontSize:'11px', color: staff.active ? '#22c55e' : '#aaa', fontWeight:'700' }}>{staff.active ? 'Ativo' : 'Inativo'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ marginTop:'20px', padding:'14px 16px', background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'8px', fontSize:'13px', color:'#92400e', lineHeight:'1.5' }}>
+                  💡 <strong>Para convidar novos membros:</strong> Vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe. Após adicionado, ele aparecerá automaticamente aqui.
+                </div>
               </div>
 
               {/* MAPEAMENTO DE CAMPOS */}
@@ -2086,6 +2665,214 @@ export default function CentralDeReservas() {
                     style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'11px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
                     🔄 Restaurar Padrões
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* ===== TAB: BANCO DE MÍDIAS ===== */}
+          {activeTab==='midias' && (
+            <div>
+              {/* Preview modal */}
+              {mediaPreview && (
+                <div className="pmy-media-preview-overlay" onClick={() => setMediaPreview(null)}>
+                  <img src={mediaPreview} alt="preview" className="pmy-media-preview-img" onClick={e=>e.stopPropagation()} />
+                </div>
+              )}
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'25px', alignItems:'start' }}>
+                {/* Área principal */}
+                <div>
+                  {/* Header com filtros e toggle de fonte */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px', flexWrap:'wrap', gap:'10px' }}>
+                    <div className="pmy-media-filter-tabs" style={{ marginBottom:0 }}>
+                      {[
+                        ['all','🗂️ Todas', mediaList.filter(m=>showShopifySource || !m.source?.startsWith('shopify')).length],
+                        ['logo','🖼️ Logos', mediaList.filter(m=>m.category==='logo'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['guide','👤 Guias', mediaList.filter(m=>m.category==='guide'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['tour','🏰 Tours', mediaList.filter(m=>m.category==='tour'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['general','📎 Geral', mediaList.filter(m=>m.category==='general'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                      ].map(([v,l,count]) => (
+                        <button key={v} className={`pmy-media-ftab ${mediaFilter===v?'active':''}`} onClick={()=>setMediaFilter(v)}>
+                          {l} <span style={{ opacity:0.7, marginLeft:'4px' }}>({count})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Toggle fonte Shopify */}
+                    <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#f5f5f5', padding:'6px 14px', borderRadius:'20px', flexShrink:0 }}>
+                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#555' }}>🛍️ Imagens do Shopify</span>
+                      <label style={{ position:'relative', width:'36px', height:'20px', cursor:'pointer', flexShrink:0 }}>
+                        <input type="checkbox" checked={showShopifySource} onChange={e=>setShowShopifySource(e.target.checked)}
+                          style={{ opacity:0, width:0, height:0 }} />
+                        <span style={{
+                          position:'absolute', top:0, left:0, right:0, bottom:0,
+                          background: showShopifySource ? 'var(--primary-green)' : '#ddd',
+                          borderRadius:'20px', transition:'0.2s'
+                        }}>
+                          <span style={{
+                            position:'absolute', width:'14px', height:'14px', top:'3px',
+                            left: showShopifySource ? '19px' : '3px',
+                            background:'#fff', borderRadius:'50%', transition:'0.2s'
+                          }}></span>
+                        </span>
+                      </label>
+                      <span style={{ fontSize:'11px', color:'#aaa' }}>
+                        {shopifyImages.length} imagens
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Grid de mídias */}
+                  {mediaList.filter(m => mediaFilter==='all' || m.category===mediaFilter).length === 0 ? (
+                    <div style={{ background:'#f9f9f9', borderRadius:'12px', padding:'50px', textAlign:'center', color:'#aaa' }}>
+                      <div style={{ fontSize:'40px', marginBottom:'12px' }}>📂</div>
+                      <div style={{ fontWeight:'700', fontSize:'15px', marginBottom:'6px' }}>Nenhuma mídia nesta categoria</div>
+                      <div style={{ fontSize:'13px' }}>Use o painel ao lado para fazer upload</div>
+                    </div>
+                  ) : (
+                    <div className="pmy-media-grid">
+                      {mediaList
+                        .filter(m => {
+                          if (!showShopifySource && m.source?.startsWith('shopify')) return false;
+                          if (mediaFilter !== 'all' && m.category !== mediaFilter) return false;
+                          return true;
+                        })
+                        .map(media => (
+                          <div key={media.id} className="pmy-media-card" onClick={() => setMediaPreview(media.url)}>
+                            {/* Badge de fonte */}
+                            {media.source?.startsWith('shopify') && (
+                              <div style={{
+                                position:'absolute', top:'8px', left:'8px', zIndex:2,
+                                background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)',
+                                color:'#fff', fontSize:'9px', fontWeight:'800', padding:'2px 7px',
+                                borderRadius:'10px', textTransform:'uppercase', letterSpacing:'0.3px'
+                              }}>
+                                🛍️ {media.source === 'shopify_product' ? 'Produto' : 'Files'}
+                              </div>
+                            )}
+
+                            {/* Ações hover */}
+                            <div className="pmy-media-actions" onClick={e=>e.stopPropagation()}>
+                              <button className="pmy-media-action-btn pmy-media-action-copy"
+                                title="Copiar URL" onClick={() => handleCopyMediaUrl(media.url)}>📋</button>
+                              {/* Só mostra excluir para uploads próprios */}
+                              {!media.source?.startsWith('shopify') && (
+                                <button className="pmy-media-action-btn pmy-media-action-delete"
+                                  title="Remover" onClick={() => handleDeleteMedia(media.id)}>🗑️</button>
+                              )}
+                            </div>
+
+                            {/* Thumbnail */}
+                            {media.mimetype?.startsWith('image/')
+                              ? <img src={media.url} alt={media.label} className="pmy-media-thumb"
+                                  onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                                />
+                              : null
+                            }
+                            <div className="pmy-media-thumb-placeholder" style={{ display: media.mimetype?.startsWith('image/') ? 'none' : 'flex' }}>📄</div>
+
+                            {/* Info */}
+                            <div className="pmy-media-info">
+                              <span className={`pmy-media-cat-badge pmy-media-cat-${media.category}`}>
+                                {media.category === 'logo' ? '🖼️ Logo' : media.category === 'guide' ? '👤 Guia' : media.category === 'tour' ? '🏰 Tour' : '📎 Geral'}
+                              </span>
+                              <div className="pmy-media-label" title={media.label || media.filename}>{media.label || media.filename}</div>
+                              <div className="pmy-media-meta">
+                                {media.source === 'shopify_product' && <span style={{ color:'#cc9900' }}>{media.productTitle} · </span>}
+                                {media.filename?.length > 25 ? media.filename.slice(0,22)+'...' : media.filename}
+                                {media.isLocal && <span style={{ color:'#e08000', marginLeft:'5px' }}>• local</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
+
+                {/* Painel de upload */}
+                <div style={{ position:'sticky', top:'0' }}>
+                  <div className="pmy-form-box" style={{ marginBottom:0 }}>
+                    <h3 style={{ marginBottom:'16px' }}>📤 Adicionar Mídia</h3>
+
+                    <div className="pmy-form-group">
+                      <label>Categoria:</label>
+                      <select className="pmy-form-input" value={mediaCategoryInput} onChange={e=>setMediaCategoryInput(e.target.value)}>
+                        <option value="logo">🖼️ Logo</option>
+                        <option value="guide">👤 Foto de Guia</option>
+                        <option value="tour">🏰 Imagem de Tour</option>
+                        <option value="general">📎 Geral</option>
+                      </select>
+                    </div>
+
+                    <div className="pmy-form-group">
+                      <label>Nome/Etiqueta (opcional):</label>
+                      <input type="text" className="pmy-form-input" placeholder="Ex: Logo PMY 2024"
+                        value={mediaLabelInput} onChange={e=>setMediaLabelInput(e.target.value)} />
+                    </div>
+
+                    <input type="file" accept="image/*,application/pdf" ref={mediaUploadRef}
+                      style={{ display:'none' }} onChange={handleMediaUpload} />
+
+                    <div className="pmy-upload-zone" onClick={() => !mediaUploading && mediaUploadRef.current?.click()}>
+                      {mediaUploading ? (
+                        <div>
+                          <div style={{ fontSize:'24px', marginBottom:'8px' }}>⏳</div>
+                          <div style={{ fontSize:'13px', fontWeight:'700', color:'var(--primary-green)', marginBottom:'8px' }}>
+                            Enviando... {mediaUploadProgress}%
+                          </div>
+                          <div className="pmy-upload-progress">
+                            <div className="pmy-upload-progress-bar" style={{ width:`${mediaUploadProgress}%` }}></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize:'32px', marginBottom:'8px' }}>📁</div>
+                          <div style={{ fontSize:'13px', fontWeight:'700', color:'#555', marginBottom:'4px' }}>
+                            Clique para selecionar arquivo
+                          </div>
+                          <div style={{ fontSize:'11px', color:'#aaa' }}>PNG, JPG, GIF, PDF · Máx 10MB</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginTop:'20px', padding:'12px', background:'#f5f5f5', borderRadius:'8px', fontSize:'12px', color:'#888', lineHeight:'1.6' }}>
+                      <strong style={{ display:'block', color:'#555', marginBottom:'4px' }}>💡 Como usar:</strong>
+                      <div>• <strong>Logo</strong> → aparece na sidebar do app</div>
+                      <div>• <strong>Guia</strong> → foto de perfil dos guias</div>
+                      <div>• <strong>Tour</strong> → imagem dos passeios</div>
+                      <div>• Clique em 📋 para copiar a URL de qualquer imagem</div>
+                      <div>• Clique na imagem para ampliar</div>
+                    </div>
+
+                    {/* Estatísticas */}
+                    <div style={{ marginTop:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                      {[
+                        { label:'Total', count: mediaList.length, color:'#555' },
+                        { label:'Uploads', count: mediaList.filter(m=>!m.source?.startsWith('shopify')).length, color:'var(--primary-green)' },
+                        { label:'Shopify', count: shopifyImages.length, color:'#e08000' },
+                        { label:'Tours', count: mediaList.filter(m=>m.category==='tour').length, color:'#cc9900' },
+                      ].map((stat,i) => (
+                        <div key={i} style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', textAlign:'center' }}>
+                          <div style={{ fontSize:'20px', fontWeight:'900', color:stat.color }}>{stat.count}</div>
+                          <div style={{ fontSize:'11px', color:'#aaa', fontWeight:'600' }}>{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Legenda de fontes */}
+                    <div style={{ marginTop:'12px', padding:'10px 12px', background:'#fafafa', borderRadius:'8px', fontSize:'11px', color:'#888', lineHeight:'1.8' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'3px' }}>
+                        <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--primary-green)', display:'inline-block' }}></span>
+                        <strong>Uploads</strong> — enviados diretamente aqui
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                        <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#e08000', display:'inline-block' }}></span>
+                        <strong>🛍️ Shopify</strong> — imagens dos seus produtos e Files
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
