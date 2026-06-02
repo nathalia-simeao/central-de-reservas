@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from "react";
-import { useAppBridge } from "@shopify/app-bridge-react";
 import { useLoaderData, useFetcher, data } from "react-router";
 import { authenticate } from "../../shopify.server";
 import db from "../../db.server";
@@ -647,25 +646,16 @@ const defaultMappings = {
 
 
 // Componente de seleção de imagem com busca — usado como fallback do picker nativo
-function PickerModalContent({ allImages, onSelect, onOpenNative }) {
+function PickerModalContent({ allImages, onSelect }) {
   const [search, setSearch] = useState("");
   const filtered = allImages.filter(img =>
     !search || (img.label || img.filename || "").toLowerCase().includes(search.toLowerCase())
   );
   return (
     <div>
-      {/* Botão para abrir picker nativo da Shopify */}
-      <button
-        onClick={onOpenNative}
-        style={{ width:'100%', padding:'11px', background:'#2b2b2b', color:'#fff', border:'none', borderRadius:'8px', fontWeight:'700', fontSize:'13px', cursor:'pointer', marginBottom:'14px', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
-        🛍️ Abrir Biblioteca Completa da Shopify ↗
-      </button>
-
-      {/* Divisor */}
-      <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
-        <div style={{ flex:1, height:'1px', background:'#eee' }}></div>
-        <span style={{ fontSize:'11px', color:'#bbb', fontWeight:'600' }}>ou buscar nas imagens já carregadas</span>
-        <div style={{ flex:1, height:'1px', background:'#eee' }}></div>
+      {/* Header */}
+      <div style={{ fontSize:'13px', color:'#666', marginBottom:'14px' }}>
+        Busque e clique em uma imagem para selecioná-la.
       </div>
 
       {/* Campo de busca */}
@@ -721,27 +711,12 @@ function PickerModalContent({ allImages, onSelect, onOpenNative }) {
 export default function CentralDeReservas() {
   const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
   const fetcher = useFetcher();
-  const shopify = useAppBridge();
-
-  // Abre o File Picker nativo do Shopify (acessa TODA a biblioteca da loja)
+  // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
-    shopify.resourcePicker({
-      type: 'file',
-      action: 'select',
-      filter: { fileTypes: ['Image'] },
-      selectionIds: [],
-    }).then((selected) => {
-      if (selected?.length > 0) {
-        const file = selected[0];
-        // O file picker retorna um objeto com preview e url
-        const url = file?.preview?.image?.url || file?.url || file?.preview?.url;
-        if (url && onSelect) onSelect(url);
-      }
-    }).catch(() => {
-      // fallback — abre modal interno se picker nativo não disponível
-      setActiveModal('pickPhotoForGuide');
-    });
-  }, [shopify]);
+    // Armazena callback para usar quando usuário selecionar
+    window.__pmyPickerCallback = onSelect;
+    setActiveModal('pickPhotoForGuide');
+  }, []);
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1653,11 +1628,14 @@ export default function CentralDeReservas() {
         ...mediaList.filter(m => m.source?.startsWith('shopify')),
         ...shopifyImages,
       ].filter((m, idx, arr) => m.mimetype?.startsWith('image/') && arr.findIndex(x => x.url === m.url) === idx);
+      const pickerCallback = window.__pmyPickerCallback;
       content = (
         <PickerModalContent
           allImages={allImages}
-          onSelect={(url) => { setGuidePhoto(url); setActiveModal(null); }}
-          onOpenNative={() => { setActiveModal(null); openShopifyFilePicker((url) => setGuidePhoto(url)); }}
+          onSelect={(url) => {
+            if (pickerCallback) { pickerCallback(url); window.__pmyPickerCallback = null; }
+            setActiveModal(null);
+          }}
         />
       );
     } else if (activeModal === 'guideDetails' && selectedGuideInfo) {
@@ -3507,24 +3485,25 @@ export default function CentralDeReservas() {
 
                     <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'8px' }}>
                       <button type="button" className="pmy-btn-submit"
-                        onClick={() => openShopifyFilePicker((url) => {
-                          const newItem = {
-                            id: `shopify_picked_${Date.now()}`,
-                            url,
-                            filename: url.split('/').pop().split('?')[0],
-                            mimetype: 'image/jpeg',
-                            category: mediaCategoryInput,
-                            label: mediaLabelInput || url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/,''),
-                            source: 'shopify_files',
-                            createdAt: new Date().toISOString(),
+                        onClick={() => {
+                          window.__pmyPickerCallback = (url) => {
+                            const newItem = {
+                              id: `shopify_picked_${Date.now()}`,
+                              url,
+                              filename: url.split('/').pop().split('?')[0],
+                              mimetype: 'image/jpeg',
+                              category: mediaCategoryInput,
+                              label: mediaLabelInput || url.split('/').pop().split('?')[0],
+                              source: 'shopify_files',
+                              createdAt: new Date().toISOString(),
+                            };
+                            setMediaList(prev => prev.some(m => m.url === url) ? prev : [newItem, ...prev]);
+                            setMediaLabelInput('');
+                            window.__pmyPickerCallback = null;
                           };
-                          setMediaList(prev => {
-                            if (prev.some(m => m.url === url)) return prev;
-                            return [newItem, ...prev];
-                          });
-                          setMediaLabelInput('');
-                        })}>
-                        🛍️ Selecionar da Biblioteca Shopify
+                          setActiveModal('pickPhotoForGuide');
+                        }}>
+                        🖼️ Selecionar do Banco de Imagens
                       </button>
                       <div style={{ textAlign:'center', fontSize:'11px', color:'#aaa' }}>ou</div>
                     </div>
