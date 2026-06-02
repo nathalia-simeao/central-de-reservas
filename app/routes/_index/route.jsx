@@ -167,43 +167,39 @@ export const loader = async ({ request }) => {
   // Busca imagens do próprio Shopify (produtos + arquivos Files)
   let shopifyImages = [];
   try {
-    const imgResponse = await admin.graphql(`
+    // ── Imagens dos produtos (todas as imagens de todos os produtos) ──────────
+    const prodImgRes = await admin.graphql(`
       query {
         products(first: 100) {
           edges {
             node {
               id
               title
-              featuredImage { url altText }
-              images(first: 5) {
-                edges { node { url altText } }
-              }
-            }
-          }
-        }
-        files(first: 50) {
-          edges {
-            node {
-              ... on MediaImage {
-                id
-                alt
-                image { url }
-                createdAt
+              images(first: 10) {
+                edges {
+                  node {
+                    id
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
               }
             }
           }
         }
       }
     `);
-    const imgData = await imgResponse.json();
-
-    // Imagens dos produtos
+    const prodImgData = await prodImgRes.json();
     const productImages = [];
-    for (const { node: product } of (imgData?.data?.products?.edges || [])) {
+    for (const { node: product } of (prodImgData?.data?.products?.edges || [])) {
       for (const { node: img } of (product?.images?.edges || [])) {
         if (img?.url) {
+          // ID seguro sem Buffer
+          const safeId = img.id?.split('/').pop() || String(Date.now() + Math.random()).replace('.','');
           productImages.push({
-            id: `shopify_prod_${Buffer.from(img.url).toString('base64').slice(0,12)}`,
+            id: `shopify_prod_${safeId}`,
             url: img.url,
             filename: img.url.split('/').pop().split('?')[0],
             mimetype: 'image/jpeg',
@@ -211,31 +207,72 @@ export const loader = async ({ request }) => {
             label: img.altText || product.title,
             source: 'shopify_product',
             productTitle: product.title,
+            width: img.width,
+            height: img.height,
             createdAt: new Date().toISOString(),
           });
         }
       }
     }
 
-    // Arquivos do Shopify Files (MediaImage)
-    const fileImages = [];
-    for (const { node: file } of (imgData?.data?.files?.edges || [])) {
-      const url = file?.image?.url;
-      if (url) {
-        fileImages.push({
-          id: `shopify_file_${file.id?.split('/').pop() || Date.now()}`,
-          url,
-          filename: url.split('/').pop().split('?')[0],
-          mimetype: 'image/jpeg',
-          category: 'general',
-          label: file.alt || url.split('/').pop().split('?')[0],
-          source: 'shopify_files',
-          createdAt: file.createdAt || new Date().toISOString(),
-        });
+    // ── Arquivos do Shopify Files (galeria da loja — todos os usuários) ────────
+    // Requer scope read_files — tenta, se falhar retorna só os de produtos
+    let fileImages = [];
+    try {
+      const filesRes = await admin.graphql(`
+        query {
+          files(first: 100, query: "media_type:IMAGE") {
+            edges {
+              node {
+                ... on MediaImage {
+                  id
+                  alt
+                  createdAt
+                  image {
+                    id
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+              }
+            }
+          }
+        }
+      `);
+      const filesData = await filesRes.json();
+      for (const { node: file } of (filesData?.data?.files?.edges || [])) {
+        const url = file?.image?.url;
+        if (url) {
+          const safeId = file.id?.split('/').pop() || String(Date.now() + Math.random()).replace('.','');
+          fileImages.push({
+            id: `shopify_file_${safeId}`,
+            url,
+            filename: url.split('/').pop().split('?')[0],
+            mimetype: 'image/jpeg',
+            category: 'general',
+            label: file.alt || file.image?.altText || url.split('/').pop().split('?')[0],
+            source: 'shopify_files',
+            width: file.image?.width,
+            height: file.image?.height,
+            createdAt: file.createdAt || new Date().toISOString(),
+          });
+        }
       }
+    } catch (filesErr) {
+      // Files API pode não ter permissão — apenas ignora, usa só produtos
+      fileImages = [];
     }
 
-    shopifyImages = [...fileImages, ...productImages];
+    // Deduplica por URL
+    const seen = new Set();
+    shopifyImages = [...fileImages, ...productImages].filter(img => {
+      if (seen.has(img.url)) return false;
+      seen.add(img.url);
+      return true;
+    });
+
   } catch (e) {
     shopifyImages = [];
   }
@@ -2313,15 +2350,66 @@ export default function CentralDeReservas() {
                     </div>
                     <div className="pmy-form-group"><label>{t.block_days_week}</label><input type="text" className="pmy-form-input" placeholder="Ex: 0, 1 (Domingo e Segunda)" value={blockRecurringDays} onChange={e=>setBlockRecurringDays(e.target.value)} /></div>
                     <div className="pmy-form-group"><label>{t.form_date_time}</label><input type="date" className="pmy-form-input" value={blockDateTime} onChange={e=>setBlockDateTime(e.target.value)} /></div>
-                    {blockTourId && (
-                      <div className="pmy-form-group">
-                        <label>{t.block_select_hour}</label>
-                        <select className="pmy-form-input" value={blockSelectedHour} onChange={e=>setBlockSelectedHour(e.target.value)}>
-                          <option value="ALL">Bloquear Todos os Horários</option>
-                          {tourAvailableHours.map(h => <option key={h} value={h}>Bloquear apenas {h}</option>)}
-                        </select>
-                      </div>
-                    )}
+                    {blockTourId && (() => {
+                      const selTour = tourOptions.find(t => t.id === blockTourId);
+                      return (
+                        <>
+                          {/* Info do passeio selecionado */}
+                          <div style={{ background:'#f5fcf5', border:'1px solid #c5e0c5', borderRadius:'8px', padding:'12px', marginBottom:'12px', display:'flex', gap:'10px', alignItems:'center' }}>
+                            {selTour?.image && <img src={selTour.image} alt={selTour.imageAlt} style={{ width:'44px', height:'44px', borderRadius:'6px', objectFit:'cover', flexShrink:0 }} />}
+                            <div>
+                              <div style={{ fontWeight:'700', fontSize:'13px', color:'var(--text-dark)' }}>{selTour?.title}</div>
+                              <div style={{ fontSize:'11px', color:'#888', marginTop:'2px' }}>
+                                {selTour?.collections?.map(c=>c.title).join(' · ')}
+                                {selTour?.price && <span style={{ color:'var(--primary-green)', marginLeft:'6px', fontWeight:'700' }}>{selTour.price}</span>}
+                              </div>
+                              {/* Variantes do produto */}
+                              {selTour?.variants?.length > 1 && (
+                                <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'5px' }}>
+                                  {selTour.variants.map((v,i) => (
+                                    <span key={i} style={{ fontSize:'10px', background:'#fff', border:'1px solid #ddd', padding:'2px 6px', borderRadius:'4px', color:'#555' }}>
+                                      {v.title === 'Default Title' ? 'Ingresso' : v.title}: {v.price}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Seletor de horário */}
+                          <div className="pmy-form-group">
+                            <label>{t.block_select_hour}</label>
+                            <select className="pmy-form-input" value={blockSelectedHour} onChange={e=>setBlockSelectedHour(e.target.value)}>
+                              <option value="ALL">🔒 Bloquear Todos os Horários</option>
+                              {tourAvailableHours.length > 0
+                                ? tourAvailableHours.map(h => <option key={h} value={h}>Bloquear apenas {h}</option>)
+                                : <option disabled>Sem horários cadastrados — configure metafield "schedule" no produto</option>
+                              }
+                            </select>
+                            {tourAvailableHours.length === 0 && (
+                              <div style={{ fontSize:'11px', color:'#e08000', marginTop:'5px', background:'#fffbeb', padding:'5px 8px', borderRadius:'5px', border:'1px solid #fcd34d' }}>
+                                ⚠️ Nenhum horário encontrado para este passeio. Adicione um metafield <code>schedule</code> no produto Shopify com os horários separados por vírgula (ex: <code>09:00, 14:00, 17:30</code>).
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Metafields do produto */}
+                          {selTour?.metafields && Object.keys(selTour.metafields).length > 0 && (
+                            <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', marginBottom:'12px' }}>
+                              <div style={{ fontSize:'11px', fontWeight:'800', color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'8px' }}>Metafields do Produto</div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+                                {Object.entries(selTour.metafields).map(([key, val]) => (
+                                  <div key={key} style={{ display:'flex', justifyContent:'space-between', fontSize:'12px' }}>
+                                    <span style={{ color:'#888', fontFamily:'monospace' }}>{key}</span>
+                                    <span style={{ color:'var(--text-dark)', fontWeight:'600', maxWidth:'60%', textAlign:'right', wordBreak:'break-all' }}>{val}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* PLATAFORMAS DO BLOQUEIO */}
                     <div className="pmy-form-group" style={{ marginBottom:'18px' }}>
