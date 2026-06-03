@@ -22,7 +22,7 @@
  *   GYG_API_BASE=https://api.getyourguide.com  (ou URL do sandbox)
  */
 
-import db from "../../db.server";
+import db from "../db.server";
 
 const prisma = db;
 
