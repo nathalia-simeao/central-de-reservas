@@ -22,12 +22,12 @@ function normalizeTimeSlot(value) {
   return `${match[1].padStart(2, "0")}:${match[2]}`;
 }
 
-export function getLisbonDateParts(value) {
+export function getDatePartsInTimeZone(value, timeZone = LISBON_TIMEZONE) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
 
   const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: LISBON_TIMEZONE,
+    timeZone: timeZone || LISBON_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -48,6 +48,10 @@ export function getLisbonDateParts(value) {
   const dayOfWeek = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
 
   return { dateKey, timeKey, dayOfWeek };
+}
+
+export function getLisbonDateParts(value) {
+  return getDatePartsInTimeZone(value, LISBON_TIMEZONE);
 }
 
 function getStoredDateKey(value) {

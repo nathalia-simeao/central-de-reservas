@@ -35,6 +35,11 @@ model Tour {
   shopifyStatus          String?
   maxCapacity            Int           @default(20)
   capacitySource         String        @default("DEFAULT")
+  scheduleSlots          String[]      @default([])
+  scheduleSource         String        @default("UNCONFIGURED")
+  timezone               String        @default("Europe/Lisbon")
+  bookingCutoffSeconds   Int?
+  gygPriceOverApi        Boolean       @default(false)
 
   // IDs do mesmo passeio em cada canal.
   shopifyProductId       String?       @unique
@@ -69,12 +74,18 @@ model TourVariant {
 
   title             String?
   sku               String?
+  passengerCategory String?
+  startTimeSlot     String?
+  price             Decimal? @db.Decimal(12, 2)
+  currency          String?  @db.VarChar(3)
   active            Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @default(now()) @updatedAt
 
   @@index([tourId])
   @@index([sku])
+  @@index([passengerCategory])
+  @@index([startTimeSlot])
 }
 
 model Booking {

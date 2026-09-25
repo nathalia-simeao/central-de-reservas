@@ -6,6 +6,7 @@ import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToM
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
+import { localSlotToInstant, notifyGygSlotAvailability, notifyGygTourAvailabilityWindow } from "../../utils/gyg-v1.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -87,7 +88,7 @@ export const loader = async ({ request }) => {
   try {
     const gqlResponse = await admin.graphql(`
       query {
-        shop { name myshopifyDomain }
+        shop { name myshopifyDomain currencyCode }
         products(first: 100) {
           edges {
             node {
@@ -112,7 +113,7 @@ export const loader = async ({ request }) => {
                   }
                 }
               }
-              metafields(first: 10, namespace: "custom") {
+              metafields(first: 30, namespace: "custom") {
                 edges {
                   node { key value }
                 }
@@ -124,6 +125,7 @@ export const loader = async ({ request }) => {
     `);
     const gqlData = await gqlResponse.json();
     shopName = gqlData?.data?.shop?.name || shopName;
+    const shopCurrency = gqlData?.data?.shop?.currencyCode || "EUR";
 
     shopifyProducts = (gqlData?.data?.products?.edges || []).map(({ node }) => {
       // Pega todas as variantes (preços, categorias de passageiro, horários)
@@ -174,6 +176,7 @@ export const loader = async ({ request }) => {
         collections,
         scheduleSlots, // horários reais do produto
         metafields,
+        currency: shopCurrency,
       };
     });
 
@@ -354,7 +357,57 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
-  return json({ tours, bookings, blockedDates, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides, shopifyWebhookStatus });
+  const gygMappedTours = (tours || []).filter((tour) => Boolean(tour.gygActivityId));
+  const gygReadyTours = gygMappedTours.filter(
+    (tour) =>
+      Array.isArray(tour.scheduleSlots) &&
+      tour.scheduleSlots.length > 0 &&
+      (tour.variants || []).some(
+        (variant) =>
+          variant.active !== false &&
+          ["ADULT", "CHILD", "YOUTH", "SENIOR"].includes(
+            String(variant.passengerCategory || "").toUpperCase(),
+          ),
+      ),
+  );
+  const gygScheduleMissing = gygMappedTours.filter(
+    (tour) => !Array.isArray(tour.scheduleSlots) || tour.scheduleSlots.length === 0,
+  );
+
+  const gygIntegrationStatus = {
+    incomingAuthConfigured: Boolean(
+      process.env.GYG_INCOMING_USER && process.env.GYG_INCOMING_PASS,
+    ),
+    outgoingAuthConfigured: Boolean(
+      process.env.GYG_OUTGOING_USER && process.env.GYG_OUTGOING_PASS,
+    ),
+    apiBaseConfigured: Boolean(process.env.GYG_API_BASE),
+    credentialsReady: Boolean(
+      process.env.GYG_INCOMING_USER &&
+        process.env.GYG_INCOMING_PASS &&
+        process.env.GYG_OUTGOING_USER &&
+        process.env.GYG_OUTGOING_PASS &&
+        process.env.GYG_API_BASE,
+    ),
+    endpointBase: `${String(process.env.SHOPIFY_APP_URL || "").replace(/\/+$/, "")}/1`,
+    mappedTours: gygMappedTours.length,
+    readyTours: gygReadyTours.length,
+    scheduleMissing: gygScheduleMissing.length,
+  };
+
+  return json({
+    tours,
+    bookings,
+    blockedDates,
+    shopifyProducts,
+    shopName,
+    shopifyStaff,
+    mediaFiles,
+    shopifyImages,
+    dbGuides,
+    shopifyWebhookStatus,
+    gygIntegrationStatus,
+  });
 };
 
 export const action = async ({ request }) => {
@@ -383,6 +436,85 @@ export const action = async ({ request }) => {
       return json({ success: true, tour });
     } catch (e) {
       return json({ success: false, error: e.message });
+    }
+  }
+
+  if (_action === "saveGygTourConfig") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      if (!id) {
+        return json({ success: false, error: "Tour ID is required." }, { status: 400 });
+      }
+
+      const gygActivityId = String(formData.get("gygActivityId") || "").trim() || null;
+      const timezone = String(formData.get("timezone") || "Europe/Lisbon").trim();
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: timezone }).format(new Date());
+      } catch {
+        return json({ success: false, error: "Fuso horário inválido." }, { status: 400 });
+      }
+
+      const cutoffRaw = String(formData.get("bookingCutoffSeconds") || "").trim();
+      let bookingCutoffSeconds = null;
+      if (cutoffRaw) {
+        bookingCutoffSeconds = Number.parseInt(cutoffRaw, 10);
+        if (
+          !Number.isInteger(bookingCutoffSeconds) ||
+          bookingCutoffSeconds < 0 ||
+          bookingCutoffSeconds > 604800
+        ) {
+          return json(
+            { success: false, error: "Cutoff deve ficar entre 0 e 604800 segundos." },
+            { status: 400 },
+          );
+        }
+      }
+
+      const scheduleRaw = String(formData.get("scheduleSlots") || "").trim();
+      const update = {
+        gygActivityId,
+        timezone,
+        bookingCutoffSeconds,
+        gygPriceOverApi: String(formData.get("gygPriceOverApi") || "") === "true",
+      };
+
+      if (scheduleRaw) {
+        const scheduleSlots = [
+          ...new Set(
+            scheduleRaw
+              .split(/[,;|\s]+/)
+              .map((slot) => slot.trim())
+              .filter(Boolean)
+              .map((slot) => {
+                const match = slot.match(/^([01]?\d|2[0-3])[:hH](\d{2})$/);
+                return match
+                  ? `${match[1].padStart(2, "0")}:${match[2]}`
+                  : null;
+              }),
+          ),
+        ].filter(Boolean).sort();
+
+        if (scheduleSlots.length === 0) {
+          return json(
+            { success: false, error: "Informe horários válidos no formato HH:MM." },
+            { status: 400 },
+          );
+        }
+
+        update.scheduleSlots = scheduleSlots;
+        update.scheduleSource = "MANUAL";
+      }
+
+      const tour = await prisma.tour.update({
+        where: { id },
+        data: update,
+        include: { variants: true },
+      });
+
+      return json({ success: true, tour });
+    } catch (e) {
+      console.error("[PMY] saveGygTourConfig error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
     }
   }
 
@@ -472,6 +604,35 @@ export const action = async ({ request }) => {
         created.push(block);
       }
 
+      if (specificDate && tour.gygActivityId) {
+        const slotsToNotify =
+          timeSlot === "ALL"
+            ? tour.scheduleSlots || []
+            : [timeSlot];
+
+        await Promise.allSettled(
+          slotsToNotify
+            .map((slot) =>
+              localSlotToInstant(
+                specificDate,
+                slot,
+                tour.timezone || "Europe/Lisbon",
+              ),
+            )
+            .filter(Boolean)
+            .map((startTime) =>
+              notifyGygSlotAvailability({
+                tourId: tour.id,
+                startTime,
+              }),
+            ),
+        );
+      }
+
+      if (recurringDays.length > 0 && tour.gygActivityId) {
+        await notifyGygTourAvailabilityWindow({ tourId: tour.id, days: 30 });
+      }
+
       return json({
         success: true,
         created: created.length,
@@ -491,6 +652,11 @@ export const action = async ({ request }) => {
       const id = formData.get("id");
       if (!id) return json({ success: false, error: "Block ID is required" }, { status: 400 });
 
+      const existingBlock = await prisma.blockedDate.findUnique({
+        where: { id },
+        include: { tour: true },
+      });
+
       await prisma.blockedDate.update({
         where: { id },
         data: {
@@ -498,6 +664,40 @@ export const action = async ({ request }) => {
           syncStatus: "PENDING_RELEASE",
         },
       });
+
+      if (existingBlock?.tour?.gygActivityId && existingBlock.date) {
+        const dateKey = new Date(existingBlock.date).toISOString().slice(0, 10);
+        const slotsToNotify =
+          !existingBlock.timeSlot || existingBlock.timeSlot === "ALL"
+            ? existingBlock.tour.scheduleSlots || []
+            : [existingBlock.timeSlot];
+
+        await Promise.allSettled(
+          slotsToNotify
+            .map((slot) =>
+              localSlotToInstant(
+                dateKey,
+                slot,
+                existingBlock.tour.timezone || "Europe/Lisbon",
+              ),
+            )
+            .filter(Boolean)
+            .map((startTime) =>
+              notifyGygSlotAvailability({
+                tourId: existingBlock.tour.id,
+                startTime,
+                force: true,
+              }),
+            ),
+        );
+      }
+
+      if (existingBlock?.tour?.gygActivityId && existingBlock.dayOfWeek != null) {
+        await notifyGygTourAvailabilityWindow({
+          tourId: existingBlock.tour.id,
+          days: 30,
+        });
+      }
 
       return json({ success: true });
     } catch (e) {
@@ -527,6 +727,13 @@ export const action = async ({ request }) => {
           capacitySource: "MANUAL",
         },
       });
+
+      if (updated.gygActivityId) {
+        await notifyGygTourAvailabilityWindow({
+          tourId: updated.id,
+          days: 30,
+        });
+      }
 
       return json({ success: true, maxCapacity: updated.maxCapacity });
     } catch (e) {
@@ -569,6 +776,11 @@ export const action = async ({ request }) => {
           availability: guarded.availability || null,
         }, { status: 409 });
       }
+
+      await notifyGygSlotAvailability({
+        tourId,
+        startTime,
+      });
 
       return json({
         success: true,
@@ -857,7 +1069,7 @@ const allPlatforms = [
   { key: "getyourguide", logo: "💛", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
-    docsUrl: "https://api.getyourguide.com/" },
+    docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
   { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
     desc: { pt: "Importe avaliações e sincronize seus widgets de reserva.", en: "Import your reviews and sync booking widgets." },
     authType: "api", oauthLabel: "Acessar TripAdvisor Owners", oauthUrl: "https://www.tripadvisor.com/Owners",
@@ -894,10 +1106,10 @@ const defaultMappings = {
     price: "totalPrice.amount", currency: "totalPrice.currency", bookingRef: "bookingRef", language: "languageGuide.language",
   },
   getyourguide: {
-    customerName: "traveler.firstName + traveler.lastName", tourId: "activity.activityId",
-    startTime: "bookingDate + timeslot.startTime", status: "status",
-    email: "customer.email", phone: "customer.phone", quantity: "participants.adults + participants.children",
-    price: "price.amount", currency: "price.currency", bookingRef: "bookingId", language: "languageCode",
+    customerName: "travelers[0].firstName + travelers[0].lastName", tourId: "productId",
+    startTime: "dateTime", status: "reserve → book → cancel",
+    email: "travelers[0].email", phone: "travelers[0].phoneNumber", quantity: "bookingItems[].count",
+    price: "bookingItems[].retailPrice", currency: "currency", bookingRef: "gygBookingReference", language: "supplier option",
   },
   headout: {
     customerName: "firstName + lastName", tourId: "experienceId",
@@ -990,7 +1202,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -1144,7 +1356,11 @@ export default function CentralDeReservas() {
   const [platformConnections, setPlatformConnections] = useState({
     shopify:      { connected: true,  accountName: shopName, lastSync: new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"}) },
     viator:       { connected: false },
-    getyourguide: { connected: false },
+    getyourguide: {
+      connected: Boolean(gygIntegrationStatus?.credentialsReady),
+      accountName: "PMY Supplier API v1",
+      lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
+    },
     tripadvisor:  { connected: false },
     headout:      { connected: false },
     civitatis:    { connected: false },
@@ -1152,6 +1368,16 @@ export default function CentralDeReservas() {
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [apiSecretInput, setApiSecretInput] = useState("");
+
+  // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
+  const [gygConfigTourId, setGygConfigTourId] = useState("");
+  const [gygConfigActivityId, setGygConfigActivityId] = useState("");
+  const [gygConfigSchedule, setGygConfigSchedule] = useState("");
+  const [gygConfigTimezone, setGygConfigTimezone] = useState("Europe/Lisbon");
+  const [gygConfigCutoff, setGygConfigCutoff] = useState("");
+  const [gygConfigPriceOverApi, setGygConfigPriceOverApi] = useState(false);
+  const [gygConfigMessage, setGygConfigMessage] = useState("");
+  const [gygConfigSaving, setGygConfigSaving] = useState(false);
 
   // J. MAPEAMENTO DE CAMPOS (NOVO)
   const [fieldMappings, setFieldMappings] = useState(defaultMappings);
@@ -1778,8 +2004,67 @@ export default function CentralDeReservas() {
     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y=>y+1); } else setCurrentMonth(m=>m+1);
   };
 
+  const handleGygTourSelection = (id) => {
+    setGygConfigTourId(id);
+    setGygConfigMessage("");
+    const tour = (tours || []).find((item) => item.id === id);
+
+    setGygConfigActivityId(tour?.gygActivityId || "");
+    setGygConfigSchedule((tour?.scheduleSlots || []).join(", "));
+    setGygConfigTimezone(tour?.timezone || "Europe/Lisbon");
+    setGygConfigCutoff(
+      Number.isInteger(tour?.bookingCutoffSeconds)
+        ? String(tour.bookingCutoffSeconds)
+        : "",
+    );
+    setGygConfigPriceOverApi(Boolean(tour?.gygPriceOverApi));
+  };
+
+  const handleSaveGygTourConfig = async () => {
+    if (!gygConfigTourId) {
+      setGygConfigMessage("Selecione um tour.");
+      return;
+    }
+
+    setGygConfigSaving(true);
+    setGygConfigMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveGygTourConfig");
+      fd.append("id", gygConfigTourId);
+      fd.append("gygActivityId", gygConfigActivityId);
+      fd.append("scheduleSlots", gygConfigSchedule);
+      fd.append("timezone", gygConfigTimezone);
+      fd.append("bookingCutoffSeconds", gygConfigCutoff);
+      fd.append("gygPriceOverApi", gygConfigPriceOverApi ? "true" : "false");
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setGygConfigMessage(result.error || "Não foi possível salvar a configuração.");
+        return;
+      }
+
+      setGygConfigMessage("Configuração do tour salva.");
+      window.location.reload();
+    } catch (error) {
+      setGygConfigMessage(error?.message || "Erro ao salvar configuração.");
+    } finally {
+      setGygConfigSaving(false);
+    }
+  };
+
   // HANDLERS DE PLATAFORMAS (NOVO)
-  const handleOpenConnect = (key) => { setConnectingPlatform(key); setApiKeyInput(""); setApiSecretInput(""); };
+  const handleOpenConnect = (key) => {
+    setConnectingPlatform(key);
+    setApiKeyInput("");
+    setApiSecretInput("");
+    if (key === "getyourguide") {
+      setGygConfigMessage("");
+    }
+  };
 
   const handleConfirmConnect = (key) => {
     if (apiKeyInput.trim()) {
@@ -1872,13 +2157,12 @@ export default function CentralDeReservas() {
     },
     getyourguide: {
       steps: [
-        "Acesse o Supplier Portal: supplier.getyourguide.com",
-        "Faça login e vá em Settings → API Access",
-        "Clique em Create Token e copie o Bearer Token gerado",
-        "Cole no campo abaixo",
+        "Acesse o GetYourGuide Integrator Portal",
+        "Cadastre o endpoint base da PMY e execute os testes oficiais",
+        "Copie as credenciais de teste diretamente para os Secrets do Northflank",
       ],
-      field1Label: "Bearer Token GetYourGuide",
-      field1Placeholder: "Ex: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+      field1Label: "Credenciais configuradas no servidor",
+      field1Placeholder: "Não cole segredos aqui",
       field2Label: null,
     },
     headout: {
@@ -1925,6 +2209,8 @@ export default function CentralDeReservas() {
     const conn    = platformConnections[connectingPlatform];
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
+    const isGyg = connectingPlatform === 'getyourguide';
+    const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
       <div className="pmy-modal-overlay" onClick={() => setConnectingPlatform(null)}>
@@ -1993,8 +2279,158 @@ export default function CentralDeReservas() {
               </div>
             )}
 
+            {/* ── GETYOURGUIDE: Supplier API v1 real ── */}
+            {isGyg && (
+              <div>
+                <div style={{
+                  background: gygIntegrationStatus?.credentialsReady ? '#f0fdf4' : '#fffbeb',
+                  border: `1px solid ${gygIntegrationStatus?.credentialsReady ? '#b8e6b8' : '#fcd34d'}`,
+                  borderRadius:'12px',
+                  padding:'18px',
+                  marginBottom:'16px'
+                }}>
+                  <div style={{ fontSize:'15px', fontWeight:'900', color:gygIntegrationStatus?.credentialsReady?'#006600':'#92400e', marginBottom:'10px' }}>
+                    {gygIntegrationStatus?.credentialsReady ? '✅ Backend GYG pronto para testes' : '🟡 Credenciais do Integrator Portal pendentes'}
+                  </div>
+                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.8' }}>
+                    <div>🔐 Entrada GYG → PMY: <strong>{gygIntegrationStatus?.incomingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>📤 PMY → GYG: <strong>{gygIntegrationStatus?.outgoingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>🌐 API GYG: <strong>{gygIntegrationStatus?.apiBaseConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>🧳 Tours mapeados: <strong>{gygIntegrationStatus?.mappedTours || 0}</strong></div>
+                    <div>🟢 Tours prontos: <strong>{gygIntegrationStatus?.readyTours || 0}</strong></div>
+                    <div>🕒 Sem horário real: <strong>{gygIntegrationStatus?.scheduleMissing || 0}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'15px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>🔌 Endpoints Supplier API v1</div>
+                  {[
+                    'get-availabilities',
+                    'reserve',
+                    'cancel-reservation',
+                    'book',
+                    'cancel-booking',
+                  ].map((endpoint) => (
+                    <div key={endpoint} style={{ fontFamily:'monospace', fontSize:'11px', color:'#555', padding:'3px 0', wordBreak:'break-all' }}>
+                      {gygIntegrationStatus?.endpointBase || '/1'}/{endpoint}
+                    </div>
+                  ))}
+                  <div style={{ marginTop:'9px', fontSize:'11px', color:'#888', lineHeight:'1.5' }}>
+                    As credenciais ficam somente no Northflank. Não cole usuário ou senha do GetYourGuide dentro da Central.
+                  </div>
+                </div>
+
+                <div style={{ background:'#fff', border:'1px solid #e5e5e5', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'13px', fontWeight:'900', color:'var(--primary-green)', marginBottom:'12px' }}>
+                    🧳 Mapear tour PMY ↔ GetYourGuide
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                    <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Tour mestre PMY</label>
+                    <select className="pmy-form-input" value={gygConfigTourId} onChange={(e) => handleGygTourSelection(e.target.value)}>
+                      <option value="">-- Selecione --</option>
+                      {(tours || [])
+                        .filter((tour) => tour.shopifyStatus !== 'INACTIVE')
+                        .map((tour) => (
+                          <option key={tour.id} value={tour.id}>
+                            {tour.title}{tour.gygActivityId ? ' ✓ GYG' : ''}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {selectedGygTour && (
+                    <>
+                      <div style={{ background:'#f7faf7', border:'1px solid #e0eee0', borderRadius:'8px', padding:'10px', marginBottom:'10px' }}>
+                        <div style={{ fontSize:'10px', color:'#888' }}>Supplier productId da PMY</div>
+                        <code style={{ fontSize:'11px', color:'#006600', wordBreak:'break-all' }}>{selectedGygTour.id}</code>
+                        <div style={{ fontSize:'10px', color:'#888', marginTop:'6px' }}>
+                          Capacidade central: <strong>{selectedGygTour.maxCapacity}</strong> · fonte: {selectedGygTour.capacitySource}
+                        </div>
+                      </div>
+
+                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>ID da atividade/opção no GetYourGuide</label>
+                        <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
+                          placeholder="Cole o ID do produto/opção correspondente no GYG" />
+                      </div>
+
+                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>
+                          Horários reais <span style={{ color:'#888', fontWeight:'400' }}>(HH:MM separados por vírgula)</span>
+                        </label>
+                        <input className="pmy-form-input" value={gygConfigSchedule} onChange={(e) => setGygConfigSchedule(e.target.value)}
+                          placeholder="Ex.: 09:30, 14:00" />
+                        <div style={{ fontSize:'10px', color:'#888', marginTop:'4px' }}>
+                          Fonte atual: {selectedGygTour.scheduleSource || 'UNCONFIGURED'}. Se preencher aqui, passa a ser MANUAL.
+                        </div>
+                      </div>
+
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                        <div className="pmy-form-group">
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Fuso horário</label>
+                          <input className="pmy-form-input" value={gygConfigTimezone} onChange={(e) => setGygConfigTimezone(e.target.value)}
+                            placeholder="Europe/Lisbon" />
+                        </div>
+                        <div className="pmy-form-group">
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Cutoff em segundos</label>
+                          <input type="number" min="0" max="604800" className="pmy-form-input" value={gygConfigCutoff} onChange={(e) => setGygConfigCutoff(e.target.value)}
+                            placeholder="Ex.: 3600" />
+                        </div>
+                      </div>
+
+                      <label style={{
+                        display:'flex',
+                        gap:'8px',
+                        alignItems:'flex-start',
+                        marginTop:'12px',
+                        padding:'10px',
+                        background:'#fff9e8',
+                        border:'1px solid #f2d77b',
+                        borderRadius:'8px',
+                        fontSize:'11px',
+                        color:'#6d5510',
+                        lineHeight:'1.45'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={gygConfigPriceOverApi}
+                          onChange={(e) => setGygConfigPriceOverApi(e.target.checked)}
+                          style={{ marginTop:'2px' }}
+                        />
+                        <span>
+                          <strong>Preço via API</strong>. Ative somente quando as categorias/preços deste produto estiverem idênticos aos configurados no GetYourGuide. Por padrão fica desligado.
+                        </span>
+                      </label>
+
+                      {gygConfigMessage && (
+                        <div style={{ fontSize:'11px', color:gygConfigMessage.includes('salva')?'#006600':'#a40000', marginTop:'10px' }}>
+                          {gygConfigMessage}
+                        </div>
+                      )}
+
+                      <button type="button" className="pmy-btn-submit" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}
+                        style={{ marginTop:'12px', opacity:gygConfigSaving?0.6:1 }}>
+                        {gygConfigSaving ? 'Salvando...' : '💾 Salvar configuração GYG'}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" onClick={() => window.open('https://integrator.getyourguide.com/', '_blank')}
+                    style={{ flex:1, background:'#ffdd00', border:'1px solid #e4c400', color:'#222', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    Abrir Integrator Portal ↗
+                  </button>
+                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
-            {!isShopify && conn.connected && (
+            {!isShopify && !isGyg && conn.connected && (
               <div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
@@ -2018,7 +2454,7 @@ export default function CentralDeReservas() {
             )}
 
             {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !conn.connected && guide && (
+            {!isShopify && !isGyg && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
