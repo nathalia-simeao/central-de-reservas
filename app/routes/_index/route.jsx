@@ -1048,7 +1048,7 @@ const translations = {
     int_subtitle: "Connect your sales channels to fetch bookings automatically.",
     int_connected: "Connected", int_configure: "Configure Connection", int_connect: "Link Account",
     int_desc_viator: "Sync schedules, availability, and travelers.", int_desc_gyg: "Fetch bookings and update availability.",
-    int_desc_ta: "Import your reviews and sync widgets.", int_desc_shopify: "Website orders appear here instantly.",
+    int_desc_ta: "Reviews, ratings, photos and reputation content.", int_desc_shopify: "Website orders appear here instantly.",
     int_custom_title: "🔗 Connect New Platform via API", int_custom_name: "Platform Name:",
     int_custom_url: "API Endpoint (URL):", int_custom_key: "API Key / Access Token:",
     int_custom_btn: "Activate Custom Integration",
@@ -3817,6 +3817,10 @@ export default function CentralDeReservas() {
                         </div>
                       );
                     })}
+                    <div style={{ gridColumn:'1 / -1', marginTop:'4px', paddingTop:'18px', borderTop:'1px solid #eee' }}>
+                      <div style={{ fontSize:'13px', fontWeight:'900', color:'#3949ab', marginBottom:'4px' }}>🦉 Conteúdo & reputação</div>
+                      <div style={{ fontSize:'12px', color:'#888' }}>Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.</div>
+                    </div>
                     {contentPlatforms.map(platform => {
                       const conn = platformConnections[platform.key];
                       return (
