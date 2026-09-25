@@ -2,6 +2,7 @@ import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
   AppDistribution,
+  DeliveryMethod,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
@@ -16,6 +17,35 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  webhooks: {
+    ORDERS_CREATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_UPDATED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_PAID: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_CANCELLED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+  },
+  hooks: {
+    afterAuth: async ({ session }) => {
+      try {
+        const response = await shopify.registerWebhooks({ session });
+        console.log("[SHOPIFY] Order webhooks registered", response);
+      } catch (error) {
+        // Most commonly happens before read_orders has been granted.
+        console.error("[SHOPIFY] Unable to register order webhooks", error);
+      }
+    },
+  },
   future: {
     expiringOfflineAccessTokens: true,
   },
