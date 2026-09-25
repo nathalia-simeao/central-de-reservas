@@ -395,6 +395,31 @@ export const loader = async ({ request }) => {
     scheduleMissing: gygScheduleMissing.length,
   };
 
+  const viatorEligibleTours = (tours || []).filter(
+    (tour) =>
+      tour.shopifyStatus !== "INACTIVE" &&
+      Array.isArray(tour.scheduleSlots) &&
+      tour.scheduleSlots.length > 0 &&
+      (tour.variants || []).some(
+        (variant) =>
+          variant.active !== false &&
+          ["ADULT", "CHILD", "YOUTH", "SENIOR"].includes(
+            String(variant.passengerCategory || "").toUpperCase(),
+          ),
+      ),
+  );
+
+  const viatorIntegrationStatus = {
+    backendImplemented: true,
+    apiKeyConfigured: Boolean(process.env.VIATOR_API_KEY),
+    supplierIdConfigured: Boolean(process.env.VIATOR_SUPPLIER_ID),
+    credentialsReady: Boolean(
+      process.env.VIATOR_API_KEY && process.env.VIATOR_SUPPLIER_ID,
+    ),
+    endpointBase: String(process.env.SHOPIFY_APP_URL || "").replace(/\/+$/, ""),
+    eligibleTours: viatorEligibleTours.length,
+  };
+
   return json({
     tours,
     bookings,
@@ -407,6 +432,7 @@ export const loader = async ({ request }) => {
     dbGuides,
     shopifyWebhookStatus,
     gygIntegrationStatus,
+    viatorIntegrationStatus,
   });
 };
 
@@ -1063,9 +1089,9 @@ const allPlatforms = [
     authType: "oauth", oauthLabel: "Entrar com Shopify", oauthUrl: "https://accounts.shopify.com/",
     docsUrl: "https://shopify.dev/docs/api/admin-rest" },
   { key: "viator", logo: "🧡", name: "Viator",
-    desc: { pt: "Sincronize horários, vagas e passageiros automaticamente.", en: "Sync schedules, availability and travelers automatically." },
-    authType: "api", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
-    docsUrl: "https://docs.viator.com/partner-api/" },
+    desc: { pt: "Supplier API real para catálogo, disponibilidade, reservas, alterações e cancelamentos.", en: "Real Supplier API for catalog, availability, bookings, amendments and cancellations." },
+    authType: "inbound", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
+    docsUrl: "https://docs.viator.com/supplier-api/technical/" },
   { key: "getyourguide", logo: "💛", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
@@ -1202,7 +1228,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, viatorIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, viatorIntegrationStatus: null };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -2146,13 +2172,13 @@ export default function CentralDeReservas() {
     shopify: null, // Shopify não precisa de token — já conectado via app
     viator: {
       steps: [
-        "Acesse o portal de fornecedores: supplier.viator.com",
-        "Faça login com sua conta de operador",
-        "Vá em Account → API Settings → Generate API Key",
-        "Copie a chave e cole no campo abaixo",
+        "A integração precisa passar pela avaliação técnica e aprovação da Viator",
+        "Após o kick-off, a Viator fornece o Supplier ID e uma API Key para testes",
+        "As credenciais devem ser salvas nos Secrets do Northflank, nunca coladas nesta tela",
+        "Depois configuramos os endpoints da PMY no processo de contract testing e mapeamento",
       ],
-      field1Label: "API Key do Fornecedor Viator",
-      field1Placeholder: "Ex: PARTNER-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      field1Label: null,
+      field1Placeholder: null,
       field2Label: null,
     },
     getyourguide: {
@@ -2210,6 +2236,7 @@ export default function CentralDeReservas() {
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
+    const isViator = connectingPlatform === 'viator';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
@@ -2224,7 +2251,13 @@ export default function CentralDeReservas() {
               <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'18px' }}>
                 {conn.connected
                   ? `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`
-                  : isShopify ? "Já conectado automaticamente via Shopify App" : "Siga as instruções abaixo para conectar"}
+                  : isShopify
+                    ? "Já conectado automaticamente via Shopify App"
+                    : isViator
+                      ? (viatorIntegrationStatus?.credentialsReady
+                          ? "Backend pronto · credenciais técnicas configuradas"
+                          : "Backend pronto · aguardando credenciais do onboarding Viator")
+                      : "Siga as instruções abaixo para conectar"}
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
@@ -2429,8 +2462,74 @@ export default function CentralDeReservas() {
               </div>
             )}
 
+            {/* ── VIATOR: Supplier API real, credenciais somente no servidor ── */}
+            {isViator && (
+              <div>
+                <div style={{
+                  background: viatorIntegrationStatus?.credentialsReady ? '#f0fdf4' : '#fffbeb',
+                  border: `1px solid ${viatorIntegrationStatus?.credentialsReady ? '#b8e6b8' : '#fcd34d'}`,
+                  borderRadius:'12px',
+                  padding:'18px',
+                  marginBottom:'16px'
+                }}>
+                  <div style={{ fontSize:'15px', fontWeight:'900', color:viatorIntegrationStatus?.credentialsReady?'#006600':'#92400e', marginBottom:'10px' }}>
+                    {viatorIntegrationStatus?.credentialsReady
+                      ? '✅ Backend Viator pronto para contract testing'
+                      : '🟠 Backend pronto · acesso técnico da Viator pendente'}
+                  </div>
+                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.8' }}>
+                    <div>🧩 Supplier API backend: <strong>implementado</strong></div>
+                    <div>🔐 API Key no servidor: <strong>{viatorIntegrationStatus?.apiKeyConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>🏷️ Supplier ID: <strong>{viatorIntegrationStatus?.supplierIdConfigured ? 'configurado' : 'pendente'}</strong></div>
+                    <div>🧳 Tours elegíveis na Central: <strong>{viatorIntegrationStatus?.eligibleTours || 0}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'15px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>🔌 Endpoints que a Viator chamará na PMY</div>
+                  {[
+                    '/v2/availability/check',
+                    '/v2/availability/calendar',
+                    '/v2/reserve',
+                    '/tourlist',
+                    '/booking',
+                    '/booking-amendment',
+                    '/booking-cancellation',
+                  ].map((endpoint) => (
+                    <div key={endpoint} style={{ fontFamily:'monospace', fontSize:'11px', color:'#555', padding:'3px 0', wordBreak:'break-all' }}>
+                      {viatorIntegrationStatus?.endpointBase || ''}{endpoint}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background:'#fff', border:'1px solid #e5e5e5', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'13px', fontWeight:'900', color:'var(--primary-green)', marginBottom:'10px' }}>
+                    📋 Próxima etapa com a Viator
+                  </div>
+                  <ol style={{ paddingLeft:'18px', margin:'0 0 12px', display:'flex', flexDirection:'column', gap:'7px' }}>
+                    {guide?.steps?.map((step, i) => (
+                      <li key={i} style={{ fontSize:'12px', color:'#444', lineHeight:'1.5' }}>{step}</li>
+                    ))}
+                  </ol>
+                  <div style={{ fontSize:'11px', color:'#7a5b00', background:'#fff9e8', border:'1px solid #f0d98f', borderRadius:'8px', padding:'10px', lineHeight:'1.5' }}>
+                    <strong>Não cole API Key aqui.</strong> A Viator fornece Supplier ID e API Key na preparação para testes/Go Live. Esses valores ficam somente nos Secrets do Northflank.
+                  </div>
+                </div>
+
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" onClick={() => window.open('https://docs.viator.com/supplier-api/technical/', '_blank')}
+                    style={{ flex:1, background:'#ff6b35', border:'1px solid #e15827', color:'#fff', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    Abrir documentação Viator ↗
+                  </button>
+                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
-            {!isShopify && !isGyg && conn.connected && (
+            {!isShopify && !isGyg && !isViator && conn.connected && (
               <div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
@@ -2454,7 +2553,7 @@ export default function CentralDeReservas() {
             )}
 
             {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !isGyg && !conn.connected && guide && (
+            {!isShopify && !isGyg && !isViator && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
