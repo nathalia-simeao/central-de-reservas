@@ -22,7 +22,7 @@ import {
   parseOptionalDate,
 } from "../utils/gyg.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
-import { blockMatchesSlot, findBlockingRule, getActiveAvailabilityBlocks } from "../utils/availability.server";
+import { blockMatchesCalendarSlot, findBlockingRule, getActiveAvailabilityBlocks } from "../utils/availability.server";
 
 const prisma = db;
 
@@ -117,9 +117,10 @@ async function handleGetAvailabilities(url) {
         slotStart.setHours(hh, mm, 0, 0);
 
         const blocked = availabilityBlocks.some((block) =>
-          blockMatchesSlot(block, {
+          blockMatchesCalendarSlot(block, {
             tourId: tour.id,
-            startTime: slotStart,
+            dateKey: dateStr,
+            timeKey: time,
             platform: "getyourguide",
           }),
         );
