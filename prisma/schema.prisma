@@ -33,6 +33,8 @@ model Tour {
   title                  String
   productType            String?
   shopifyStatus          String?
+  maxCapacity            Int           @default(20)
+  capacitySource         String        @default("DEFAULT")
 
   // IDs do mesmo passeio em cada canal.
   shopifyProductId       String?       @unique
