@@ -6,6 +6,7 @@ import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToM
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
+import { localSlotToInstant, notifyGygSlotAvailability } from "../../utils/gyg-v1.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -474,6 +475,31 @@ export const action = async ({ request }) => {
         created.push(block);
       }
 
+      if (specificDate && tour.gygActivityId) {
+        const slotsToNotify =
+          timeSlot === "ALL"
+            ? tour.scheduleSlots || []
+            : [timeSlot];
+
+        await Promise.allSettled(
+          slotsToNotify
+            .map((slot) =>
+              localSlotToInstant(
+                specificDate,
+                slot,
+                tour.timezone || "Europe/Lisbon",
+              ),
+            )
+            .filter(Boolean)
+            .map((startTime) =>
+              notifyGygSlotAvailability({
+                tourId: tour.id,
+                startTime,
+              }),
+            ),
+        );
+      }
+
       return json({
         success: true,
         created: created.length,
@@ -493,6 +519,11 @@ export const action = async ({ request }) => {
       const id = formData.get("id");
       if (!id) return json({ success: false, error: "Block ID is required" }, { status: 400 });
 
+      const existingBlock = await prisma.blockedDate.findUnique({
+        where: { id },
+        include: { tour: true },
+      });
+
       await prisma.blockedDate.update({
         where: { id },
         data: {
@@ -500,6 +531,32 @@ export const action = async ({ request }) => {
           syncStatus: "PENDING_RELEASE",
         },
       });
+
+      if (existingBlock?.tour?.gygActivityId && existingBlock.date) {
+        const dateKey = new Date(existingBlock.date).toISOString().slice(0, 10);
+        const slotsToNotify =
+          !existingBlock.timeSlot || existingBlock.timeSlot === "ALL"
+            ? existingBlock.tour.scheduleSlots || []
+            : [existingBlock.timeSlot];
+
+        await Promise.allSettled(
+          slotsToNotify
+            .map((slot) =>
+              localSlotToInstant(
+                dateKey,
+                slot,
+                existingBlock.tour.timezone || "Europe/Lisbon",
+              ),
+            )
+            .filter(Boolean)
+            .map((startTime) =>
+              notifyGygSlotAvailability({
+                tourId: existingBlock.tour.id,
+                startTime,
+              }),
+            ),
+        );
+      }
 
       return json({ success: true });
     } catch (e) {
@@ -571,6 +628,11 @@ export const action = async ({ request }) => {
           availability: guarded.availability || null,
         }, { status: 409 });
       }
+
+      await notifyGygSlotAvailability({
+        tourId,
+        startTime,
+      });
 
       return json({
         success: true,
