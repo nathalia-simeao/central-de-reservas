@@ -357,7 +357,57 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
-  return json({ tours, bookings, blockedDates, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides, shopifyWebhookStatus });
+  const gygMappedTours = (tours || []).filter((tour) => Boolean(tour.gygActivityId));
+  const gygReadyTours = gygMappedTours.filter(
+    (tour) =>
+      Array.isArray(tour.scheduleSlots) &&
+      tour.scheduleSlots.length > 0 &&
+      (tour.variants || []).some(
+        (variant) =>
+          variant.active !== false &&
+          ["ADULT", "CHILD", "YOUTH", "SENIOR"].includes(
+            String(variant.passengerCategory || "").toUpperCase(),
+          ),
+      ),
+  );
+  const gygScheduleMissing = gygMappedTours.filter(
+    (tour) => !Array.isArray(tour.scheduleSlots) || tour.scheduleSlots.length === 0,
+  );
+
+  const gygIntegrationStatus = {
+    incomingAuthConfigured: Boolean(
+      process.env.GYG_INCOMING_USER && process.env.GYG_INCOMING_PASS,
+    ),
+    outgoingAuthConfigured: Boolean(
+      process.env.GYG_OUTGOING_USER && process.env.GYG_OUTGOING_PASS,
+    ),
+    apiBaseConfigured: Boolean(process.env.GYG_API_BASE),
+    credentialsReady: Boolean(
+      process.env.GYG_INCOMING_USER &&
+        process.env.GYG_INCOMING_PASS &&
+        process.env.GYG_OUTGOING_USER &&
+        process.env.GYG_OUTGOING_PASS &&
+        process.env.GYG_API_BASE,
+    ),
+    endpointBase: `${String(process.env.SHOPIFY_APP_URL || "").replace(/\/+$/, "")}/1`,
+    mappedTours: gygMappedTours.length,
+    readyTours: gygReadyTours.length,
+    scheduleMissing: gygScheduleMissing.length,
+  };
+
+  return json({
+    tours,
+    bookings,
+    blockedDates,
+    shopifyProducts,
+    shopName,
+    shopifyStaff,
+    mediaFiles,
+    shopifyImages,
+    dbGuides,
+    shopifyWebhookStatus,
+    gygIntegrationStatus,
+  });
 };
 
 export const action = async ({ request }) => {
@@ -386,6 +436,84 @@ export const action = async ({ request }) => {
       return json({ success: true, tour });
     } catch (e) {
       return json({ success: false, error: e.message });
+    }
+  }
+
+  if (_action === "saveGygTourConfig") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      if (!id) {
+        return json({ success: false, error: "Tour ID is required." }, { status: 400 });
+      }
+
+      const gygActivityId = String(formData.get("gygActivityId") || "").trim() || null;
+      const timezone = String(formData.get("timezone") || "Europe/Lisbon").trim();
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: timezone }).format(new Date());
+      } catch {
+        return json({ success: false, error: "Fuso horário inválido." }, { status: 400 });
+      }
+
+      const cutoffRaw = String(formData.get("bookingCutoffSeconds") || "").trim();
+      let bookingCutoffSeconds = null;
+      if (cutoffRaw) {
+        bookingCutoffSeconds = Number.parseInt(cutoffRaw, 10);
+        if (
+          !Number.isInteger(bookingCutoffSeconds) ||
+          bookingCutoffSeconds < 0 ||
+          bookingCutoffSeconds > 604800
+        ) {
+          return json(
+            { success: false, error: "Cutoff deve ficar entre 0 e 604800 segundos." },
+            { status: 400 },
+          );
+        }
+      }
+
+      const scheduleRaw = String(formData.get("scheduleSlots") || "").trim();
+      const update = {
+        gygActivityId,
+        timezone,
+        bookingCutoffSeconds,
+      };
+
+      if (scheduleRaw) {
+        const scheduleSlots = [
+          ...new Set(
+            scheduleRaw
+              .split(/[,;|\s]+/)
+              .map((slot) => slot.trim())
+              .filter(Boolean)
+              .map((slot) => {
+                const match = slot.match(/^([01]?\d|2[0-3])[:hH](\d{2})$/);
+                return match
+                  ? `${match[1].padStart(2, "0")}:${match[2]}`
+                  : null;
+              }),
+          ),
+        ].filter(Boolean).sort();
+
+        if (scheduleSlots.length === 0) {
+          return json(
+            { success: false, error: "Informe horários válidos no formato HH:MM." },
+            { status: 400 },
+          );
+        }
+
+        update.scheduleSlots = scheduleSlots;
+        update.scheduleSource = "MANUAL";
+      }
+
+      const tour = await prisma.tour.update({
+        where: { id },
+        data: update,
+        include: { variants: true },
+      });
+
+      return json({ success: true, tour });
+    } catch (e) {
+      console.error("[PMY] saveGygTourConfig error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
     }
   }
 
@@ -921,7 +1049,7 @@ const allPlatforms = [
   { key: "getyourguide", logo: "💛", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
-    docsUrl: "https://api.getyourguide.com/" },
+    docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
   { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
     desc: { pt: "Importe avaliações e sincronize seus widgets de reserva.", en: "Import your reviews and sync booking widgets." },
     authType: "api", oauthLabel: "Acessar TripAdvisor Owners", oauthUrl: "https://www.tripadvisor.com/Owners",
@@ -958,10 +1086,10 @@ const defaultMappings = {
     price: "totalPrice.amount", currency: "totalPrice.currency", bookingRef: "bookingRef", language: "languageGuide.language",
   },
   getyourguide: {
-    customerName: "traveler.firstName + traveler.lastName", tourId: "activity.activityId",
-    startTime: "bookingDate + timeslot.startTime", status: "status",
-    email: "customer.email", phone: "customer.phone", quantity: "participants.adults + participants.children",
-    price: "price.amount", currency: "price.currency", bookingRef: "bookingId", language: "languageCode",
+    customerName: "travelers[0].firstName + travelers[0].lastName", tourId: "productId",
+    startTime: "dateTime", status: "reserve → book → cancel",
+    email: "travelers[0].email", phone: "travelers[0].phoneNumber", quantity: "bookingItems[].count",
+    price: "bookingItems[].retailPrice", currency: "currency", bookingRef: "gygBookingReference", language: "supplier option",
   },
   headout: {
     customerName: "firstName + lastName", tourId: "experienceId",
@@ -1054,7 +1182,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
