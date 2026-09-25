@@ -171,6 +171,14 @@ function categoriesForTour(tour) {
   );
 }
 
+function isGroupOnlyTour(tour) {
+  const categories = categoriesForTour(tour);
+  return (
+    categories.has("GROUP") &&
+    !INDIVIDUAL_CATEGORIES.some((category) => categories.has(category))
+  );
+}
+
 function pricingForSlot(tour, timeKey) {
   const matching = (tour?.variants || []).filter((variant) => {
     if (variant.active === false || !variant.passengerCategory || variant.price == null) {
@@ -294,6 +302,13 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
     const timeZone = tour.timezone || "Europe/Lisbon";
     const scheduleSlots = [...new Set(tour.scheduleSlots || [])].sort();
 
+    // Group/private inventory has different vacancy semantics in GYG (groups,
+    // not individual seats). Keep those options offline until that model is
+    // explicitly configured instead of accidentally overselling.
+    if (isGroupOnlyTour(tour)) {
+      return gygV1Success({ availabilities: [] });
+    }
+
     // Never invent availability. Products without a configured PMY schedule
     // return an empty list until the schedule is supplied by the source catalog.
     if (scheduleSlots.length === 0) {
@@ -383,7 +398,6 @@ export async function reserveGyg(data) {
     return gygV1Error(
       "INVALID_TICKET_CATEGORY",
       `The ticket category ${counts.invalidCategory} is not supported.`,
-      { ticketCategory: counts.invalidCategory },
     );
   }
   if (counts.totalParticipants < 1) {
@@ -420,6 +434,28 @@ export async function reserveGyg(data) {
     const tour = await resolveTourByPlatformId(prisma, GYG_PLATFORM, productId);
     if (!tour) return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
 
+    if (isGroupOnlyTour(tour)) {
+      return gygV1Error(
+        "INVALID_TICKET_CATEGORY",
+        "This PMY product uses group/private pricing and is not enabled for GYG individual inventory yet.",
+      );
+    }
+
+    const now = new Date();
+    const cutoffSeconds = Number.isInteger(tour.bookingCutoffSeconds)
+      ? Math.max(0, tour.bookingCutoffSeconds)
+      : 0;
+
+    if (
+      startTime <= now ||
+      startTime.getTime() - now.getTime() < cutoffSeconds * 1000
+    ) {
+      return gygV1Error(
+        "NO_AVAILABILITY",
+        "The requested timeslot is inside the booking cutoff or already in the past.",
+      );
+    }
+
     const slot = getDatePartsInTimeZone(
       startTime,
       tour.timezone || "Europe/Lisbon",
@@ -431,7 +467,6 @@ export async function reserveGyg(data) {
         return gygV1Error(
           "INVALID_TICKET_CATEGORY",
           `The ticket category ${category} is not configured for this product.`,
-          { ticketCategory: category },
         );
       }
     }
@@ -582,6 +617,52 @@ export async function bookGyg(data) {
       );
     }
 
+    const requestedTour = data?.productId
+      ? await resolveTourByPlatformId(prisma, GYG_PLATFORM, data.productId)
+      : null;
+
+    if (!requestedTour || requestedTour.id !== booking.tourId) {
+      return gygV1Error(
+        "INVALID_RESERVATION",
+        "productId does not match the reserved PMY tour.",
+      );
+    }
+
+    const requestedStartTime = safeInstant(data?.dateTime);
+    if (
+      !requestedStartTime ||
+      requestedStartTime.getTime() !== new Date(booking.startTime).getTime()
+    ) {
+      return gygV1Error(
+        "INVALID_RESERVATION",
+        "dateTime does not match the reserved timeslot.",
+      );
+    }
+
+    const confirmedCounts = participantCounts(data?.bookingItems || []);
+    if (confirmedCounts.error) {
+      return gygV1Error("VALIDATION_FAILURE", confirmedCounts.error);
+    }
+    if (confirmedCounts.invalidCategory) {
+      return gygV1Error(
+        "INVALID_TICKET_CATEGORY",
+        `The ticket category ${confirmedCounts.invalidCategory} is not supported.`,
+      );
+    }
+    if (
+      confirmedCounts.totalParticipants < 1 ||
+      confirmedCounts.totalParticipants !== booking.totalParticipants ||
+      confirmedCounts.adults !== booking.adults ||
+      confirmedCounts.children !== booking.children ||
+      confirmedCounts.youths !== booking.youths ||
+      confirmedCounts.seniors !== booking.seniors
+    ) {
+      return gygV1Error(
+        "VALIDATION_FAILURE",
+        "bookingItems do not match the quantities held by the reservation.",
+      );
+    }
+
     if (booking.status === "CONFIRMED") {
       return gygV1Success({
         bookingReference: responseBookingReference(booking),
@@ -599,15 +680,7 @@ export async function bookGyg(data) {
       );
     }
 
-    const counts = participantCounts(data?.bookingItems || []);
-    if (counts.error) return gygV1Error("VALIDATION_FAILURE", counts.error);
-    if (counts.invalidCategory) {
-      return gygV1Error(
-        "INVALID_TICKET_CATEGORY",
-        `The ticket category ${counts.invalidCategory} is not supported.`,
-        { ticketCategory: counts.invalidCategory },
-      );
-    }
+    const counts = confirmedCounts;
 
     const traveler = Array.isArray(data?.travelers) ? data.travelers[0] : null;
     const customerName =
@@ -690,6 +763,20 @@ export async function cancelGygBooking(data) {
         "INVALID_BOOKING",
         "The booking does not exist.",
       );
+    }
+
+    if (data?.productId) {
+      const requestedTour = await resolveTourByPlatformId(
+        prisma,
+        GYG_PLATFORM,
+        data.productId,
+      );
+      if (!requestedTour || requestedTour.id !== booking.tourId) {
+        return gygV1Error(
+          "INVALID_BOOKING",
+          "productId does not match the confirmed PMY booking.",
+        );
+      }
     }
 
     if (booking.status === "CANCELED") {
@@ -847,7 +934,11 @@ export async function notifyGygTourAvailabilityWindow({
   }
 }
 
-export async function notifyGygSlotAvailability({ tourId, startTime }) {
+export async function notifyGygSlotAvailability({
+  tourId,
+  startTime,
+  force = false,
+}) {
   try {
     const tour = await prisma.tour.findUnique({
       where: { id: tourId },
@@ -873,6 +964,14 @@ export async function notifyGygSlotAvailability({ tourId, startTime }) {
       startTime,
       platform: "getyourguide",
     });
+
+    if (!force && availability.remainingSeats > 0) {
+      return {
+        sent: false,
+        reason: "PUSH_NOT_REQUIRED",
+        remainingSeats: availability.remainingSeats,
+      };
+    }
 
     const dateTime = slotIso(
       parts.dateKey,
