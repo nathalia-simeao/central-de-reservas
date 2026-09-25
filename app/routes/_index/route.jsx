@@ -685,6 +685,7 @@ export const action = async ({ request }) => {
               notifyGygSlotAvailability({
                 tourId: existingBlock.tour.id,
                 startTime,
+                force: true,
               }),
             ),
         );
