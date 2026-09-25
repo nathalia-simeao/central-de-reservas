@@ -208,14 +208,15 @@ export async function getCentralAvailability(
   });
 }
 
-async function lockCapacitySlot(tx, tourId, startTime) {
-  const parts = slotParts(startTime);
-  const lockKey = `PMY_CAPACITY|${tourId}|${parts.dateKey}|${parts.timeKey}`;
-
-  // Transaction-scoped PostgreSQL advisory lock. Two channels trying to sell
-  // the last seats of the same tour/slot must pass through this lock one by one.
+async function lockTourCapacity(tx, tourId) {
+  // Row lock: reservations from different channels for the same Tour are
+  // serialized before checking capacity. This closes the classic race where
+  // two channels both see the last seats and sell them at the same instant.
   await tx.$queryRaw`
-    SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
+    SELECT "id"
+    FROM "Tour"
+    WHERE "id" = ${tourId}
+    FOR UPDATE
   `;
 }
 
@@ -241,7 +242,7 @@ export async function createBookingWithCapacityGuard(
 
   return prisma.$transaction(
     async (tx) => {
-      await lockCapacitySlot(tx, tourId, startTime);
+      await lockTourCapacity(tx, tourId);
 
       if (externalBookingId) {
         const existing = await tx.booking.findFirst({
