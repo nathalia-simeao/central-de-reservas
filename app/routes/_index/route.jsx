@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useLoaderData, useFetcher, data } from "react-router";
-import { authenticate } from "../../shopify.server";
+import { authenticate, registerWebhooks } from "../../shopify.server";
 import db from "../../db.server";
 import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
@@ -17,6 +17,17 @@ const ExpandIcon = () => (
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
+
+  // Keep Shopify order webhooks in sync with the installed shop.
+  // registerWebhooks is idempotent: it creates missing subscriptions and
+  // updates callbacks when needed.
+  if (session) {
+    try {
+      await registerWebhooks({ session });
+    } catch (webhookError) {
+      console.error("[SHOPIFY] registerWebhooks on app load failed:", webhookError);
+    }
+  }
 
   let tours      = await prisma.tour.findMany({ include: { bookings: true, variants: true } });
   const bookings = await prisma.booking.findMany({ orderBy: { startTime: "asc" } });
