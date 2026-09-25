@@ -1,66 +1,114 @@
 /**
  * POST /api/gyg/reserve
- * GYG solicita pré-reserva (hold de vagas por 60 min)
+ * GYG solicita pré-reserva (hold de vagas por 60 min).
  */
 import db from "../db.server";
+import {
+  checkGygBasicAuth,
+  getMoneyFields,
+  getParticipantCounts,
+  gygResponse,
+  parseOptionalDate,
+} from "../utils/gyg.server";
 
 const prisma = db;
 
-function checkBasicAuth(request) {
-  const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Basic ")) return false;
-  const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
-  const [user, pass] = decoded.split(":");
-  return user === (process.env.GYG_INCOMING_USER || "pmy-api") &&
-         pass === (process.env.GYG_INCOMING_PASS || "");
-}
-
-function gygResponse(body) {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 export const action = async ({ request }) => {
-  if (!checkBasicAuth(request)) {
+  if (!checkGygBasicAuth(request)) {
     return gygResponse({ error: "Unauthorized" });
   }
 
   let body;
-  try { body = await request.json(); }
-  catch { return gygResponse({ error: "Invalid JSON" }); }
+  try {
+    body = await request.json();
+  } catch {
+    return gygResponse({ error: "Invalid JSON" });
+  }
 
-  const { bookingId, activityId, timeslot, participants, customer } = body;
+  const {
+    bookingId,
+    activityId,
+    timeslot,
+    participants,
+    customer,
+    languageCode,
+  } = body;
 
   if (!bookingId || !activityId || !timeslot?.startTime) {
-    return gygResponse({ success: false, error: "Missing required fields" });
+    return gygResponse({
+      success: false,
+      error: "Missing required fields: bookingId, activityId, timeslot.startTime",
+    });
+  }
+
+  const startTime = new Date(timeslot.startTime);
+  if (Number.isNaN(startTime.getTime())) {
+    return gygResponse({ success: false, error: "Invalid timeslot.startTime" });
   }
 
   try {
-    const existing = await prisma.booking.findFirst({ where: { bookingRef: bookingId } });
+    const existing = await prisma.booking.findFirst({
+      where: {
+        platform: "GETYOURGUIDE",
+        OR: [
+          { externalBookingId: bookingId },
+          { bookingRef: bookingId },
+        ],
+      },
+    });
+
     if (existing) {
-      return gygResponse({ success: true, reservationId: existing.id });
+      return gygResponse({
+        success: true,
+        reservationId: existing.id,
+        holdUntil: existing.holdExpiresAt
+          ? existing.holdExpiresAt.toISOString().replace("Z", "+00:00")
+          : undefined,
+        message: "Already reserved",
+      });
     }
 
     const tour = await prisma.tour.findFirst({ where: { id: activityId } });
-    if (!tour) return gygResponse({ success: false, error: "Tour not found" });
+    if (!tour) {
+      return gygResponse({ success: false, error: "Tour not found" });
+    }
+
+    const counts = getParticipantCounts(participants);
+    const money = getMoneyFields(body);
+    const holdExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const now = new Date();
 
     const reservation = await prisma.booking.create({
       data: {
-        tourId:       tour.id,
-        customerName: `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "GYG Customer",
-        startTime:    new Date(timeslot.startTime),
-        platform:     "GETYOURGUIDE",
-        status:       "PENDING",
-        bookingRef:   bookingId,
+        tourId: tour.id,
+        customerName:
+          `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() ||
+          "GYG Customer",
+        customerEmail: customer?.email || null,
+        customerPhone: customer?.phone || null,
+        language: languageCode || null,
+        startTime,
+        platform: "GETYOURGUIDE",
+        status: "PENDING",
+        bookingRef: bookingId,
+        externalBookingId: bookingId,
+        externalProductId: activityId,
+        externalVariantId: timeslot?.id || body?.variantId || null,
+        ...counts,
+        ...money,
+        syncStatus: "RECEIVED",
+        lastSyncedAt: now,
+        externalCreatedAt: parseOptionalDate(body?.createdAt || body?.bookingDate),
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt),
+        holdExpiresAt,
+        rawPayload: body,
       },
     });
 
     return gygResponse({
-      success:       true,
+      success: true,
       reservationId: reservation.id,
-      holdUntil:     new Date(Date.now() + 60 * 60 * 1000).toISOString().replace("Z", "+00:00"),
+      holdUntil: holdExpiresAt.toISOString().replace("Z", "+00:00"),
     });
   } catch (err) {
     console.error("[GYG] reserve error:", err);
