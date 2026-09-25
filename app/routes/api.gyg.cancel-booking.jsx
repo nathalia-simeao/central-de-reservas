@@ -1,44 +1,71 @@
 /**
  * POST /api/gyg/cancel-booking
- * GYG cancela uma reserva confirmada
+ * GYG cancela uma reserva confirmada.
  */
 import db from "../db.server";
+import {
+  checkGygBasicAuth,
+  gygResponse,
+  parseOptionalDate,
+} from "../utils/gyg.server";
 
 const prisma = db;
 
-function checkBasicAuth(request) {
-  const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Basic ")) return false;
-  const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
-  const [user, pass] = decoded.split(":");
-  return user === (process.env.GYG_INCOMING_USER || "pmy-api") &&
-         pass === (process.env.GYG_INCOMING_PASS || "");
-}
-
-function gygResponse(body) {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 export const action = async ({ request }) => {
-  if (!checkBasicAuth(request)) {
+  if (!checkGygBasicAuth(request)) {
     return gygResponse({ error: "Unauthorized" });
   }
 
   let body;
-  try { body = await request.json(); }
-  catch { return gygResponse({ error: "Invalid JSON" }); }
+  try {
+    body = await request.json();
+  } catch {
+    return gygResponse({ error: "Invalid JSON" });
+  }
 
-  const { bookingId } = body;
+  const { bookingId, reason } = body;
+
+  if (!bookingId) {
+    return gygResponse({ success: false, error: "bookingId is required" });
+  }
 
   try {
-    const booking = await prisma.booking.findFirst({ where: { bookingRef: bookingId } });
+    const booking = await prisma.booking.findFirst({
+      where: {
+        platform: "GETYOURGUIDE",
+        OR: [
+          { externalBookingId: bookingId },
+          { bookingRef: bookingId },
+        ],
+      },
+    });
 
-    if (!booking) return gygResponse({ success: true, message: "Already canceled" });
+    if (!booking) {
+      return gygResponse({
+        success: true,
+        message: "Booking not found — treated as already canceled",
+      });
+    }
 
-    await prisma.booking.update({ where: { id: booking.id }, data: { status: "CANCELED" } });
+    if (booking.status === "CANCELED") {
+      return gygResponse({ success: true, message: "Already canceled" });
+    }
+
+    const now = new Date();
+
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CANCELED",
+        cancelReason: reason || "booking_cancelled",
+        syncStatus: "SYNCED",
+        lastSyncedAt: now,
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt) || now,
+        holdExpiresAt: null,
+        rawPayload: body,
+      },
+    });
+
     return gygResponse({ success: true });
   } catch (err) {
     console.error("[GYG] cancel-booking error:", err);

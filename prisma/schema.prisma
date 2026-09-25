@@ -28,45 +28,80 @@ model Session {
 }
 
 model Tour {
-  id          String    @id @default(uuid())
-  shopifyId   String?
-  title       String
-  bookings    Booking[]
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  shopifyId String?
+  title     String
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
 }
 
 model Booking {
-  id            String   @id @default(uuid())
-  tourId        String
-  tour          Tour     @relation(fields: [tourId], references: [id])
-  customerName  String
-  customerEmail String?
-  customerPhone String?
-  language      String?
-  startTime     DateTime
-  platform      String
-  status        String   @default("CONFIRMED")
-  createdAt     DateTime @default(now())
+  id                  String    @id @default(uuid())
+  tourId              String
+  tour                Tour      @relation(fields: [tourId], references: [id])
+  customerName        String
+  customerEmail       String?
+  customerPhone       String?
+  language            String?
+  startTime           DateTime
+  platform            String
+  status              String    @default("CONFIRMED")
+
+  // Referências externas e idempotência multicanal
+  bookingRef          String?
+  externalBookingId   String?
+  externalProductId   String?
+  externalVariantId   String?
+
+  // Composição de passageiros
+  adults              Int       @default(0)
+  children            Int       @default(0)
+  youths              Int       @default(0)
+  seniors             Int       @default(0)
+  totalParticipants   Int       @default(0)
+
+  // Dados financeiros e voucher
+  totalPrice          Decimal?  @db.Decimal(12, 2)
+  currency            String?   @db.VarChar(3)
+  voucherCode         String?
+  voucherFormat       String?
+
+  // Sincronização / auditoria
+  syncStatus          String    @default("PENDING")
+  lastSyncedAt        DateTime?
+  externalCreatedAt   DateTime?
+  externalUpdatedAt   DateTime?
+  holdExpiresAt       DateTime?
+  cancelReason        String?
+  rawPayload          Json?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  @@unique([platform, externalBookingId], map: "Booking_platform_externalBookingId_key")
+  @@index([bookingRef])
+  @@index([tourId, startTime])
+  @@index([platform, status])
 }
 
 model Guide {
-  id            String   @id @default(uuid())
-  name          String
-  email         String?
-  whatsapp      String
-  photoUrl      String?
-  utmId         String?  // ID da campanha UTM (ex: 21d91c)
-  referralLink  String?  // Link completo com parâmetros UTM
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  whatsapp     String
+  photoUrl     String?
+  utmId        String?  // ID da campanha UTM (ex: 21d91c)
+  referralLink String?  // Link completo com parâmetros UTM
+  createdAt    DateTime @default(now())
 }
 
 model BlockedDate {
-  id          String    @id @default(uuid())
-  tourId      String?
-  date        DateTime?
-  dayOfWeek   String?
-  timeSlot    String?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  tourId    String?
+  date      DateTime?
+  dayOfWeek String?
+  timeSlot  String?
+  createdAt DateTime  @default(now())
 }
 
 model Media {
