@@ -87,7 +87,7 @@ export const loader = async ({ request }) => {
   try {
     const gqlResponse = await admin.graphql(`
       query {
-        shop { name myshopifyDomain }
+        shop { name myshopifyDomain currencyCode }
         products(first: 100) {
           edges {
             node {
@@ -112,7 +112,7 @@ export const loader = async ({ request }) => {
                   }
                 }
               }
-              metafields(first: 10, namespace: "custom") {
+              metafields(first: 30, namespace: "custom") {
                 edges {
                   node { key value }
                 }
@@ -124,6 +124,7 @@ export const loader = async ({ request }) => {
     `);
     const gqlData = await gqlResponse.json();
     shopName = gqlData?.data?.shop?.name || shopName;
+    const shopCurrency = gqlData?.data?.shop?.currencyCode || "EUR";
 
     shopifyProducts = (gqlData?.data?.products?.edges || []).map(({ node }) => {
       // Pega todas as variantes (preços, categorias de passageiro, horários)
@@ -174,6 +175,7 @@ export const loader = async ({ request }) => {
         collections,
         scheduleSlots, // horários reais do produto
         metafields,
+        currency: shopCurrency,
       };
     });
 
