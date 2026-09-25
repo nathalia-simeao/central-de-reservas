@@ -232,6 +232,8 @@ export async function createBookingWithCapacityGuard(
   },
 ) {
   const seats = positiveInt(requestedSeats, 0);
+  const bookingPlatform = String(platform || "CENTRAL").trim().toUpperCase();
+
   if (seats < 1) {
     return {
       accepted: false,
@@ -247,7 +249,7 @@ export async function createBookingWithCapacityGuard(
       if (externalBookingId) {
         const existing = await tx.booking.findFirst({
           where: {
-            platform,
+            platform: bookingPlatform,
             externalBookingId,
           },
         });
@@ -256,7 +258,7 @@ export async function createBookingWithCapacityGuard(
           const availability = await getCentralAvailability(tx, {
             tourId,
             startTime,
-            platform,
+            platform: bookingPlatform,
             excludeBookingId: existing.id,
           });
 
@@ -282,7 +284,7 @@ export async function createBookingWithCapacityGuard(
       const availability = await getCentralAvailability(tx, {
         tourId,
         startTime,
-        platform,
+        platform: bookingPlatform,
         requestedSeats: seats,
       });
 
@@ -304,7 +306,7 @@ export async function createBookingWithCapacityGuard(
           ...bookingData,
           tourId,
           startTime,
-          platform,
+          platform: bookingPlatform,
           totalParticipants: seats,
         },
       });
