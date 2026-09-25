@@ -202,3 +202,25 @@ model IntegrationEvent {
   @@index([provider, topic])
   @@index([status])
 }
+
+
+model IntegrationSecret {
+  id                   String   @id @default(uuid())
+  provider             String   @unique
+  status               String   @default("CONFIGURED")
+  environment          String?
+  credentialCiphertext String   @db.Text
+  credentialIv         String
+  credentialTag        String
+  credentialKeyVersion String   @default("v1")
+  credentialFingerprint String?
+  metadata             Json?
+  lastValidatedAt      DateTime?
+  lastValidationStatus String?
+  lastValidationMessage String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([environment])
+}
