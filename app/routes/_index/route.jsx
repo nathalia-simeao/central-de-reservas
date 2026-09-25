@@ -1151,6 +1151,10 @@ const allPlatforms = [
     docsUrl: "https://connectivity.civitatis.com/pt/supply" },
 ];
 
+const reservationChannelPlatforms = allPlatforms.filter(
+  (platform) => platform.key !== "tripadvisor",
+);
+
 const internalFields = [
   { key: "customerName",  label: "Nome do Cliente",        required: true,  desc: "Nome completo do passageiro" },
   { key: "tourId",        label: "ID do Tour / Produto",   required: true,  desc: "Identificador do passeio no sistema PMY" },
@@ -3665,10 +3669,11 @@ export default function CentralDeReservas() {
                               type="button"
                               className={`pmy-platform-pill${sel ? ' selected' : ''}${!conn.connected ? ' disconnected' : ''}`}
                               onClick={() => conn.connected && handleTogglePlatformSelection(p.key, bookingPlatforms, setBookingPlatforms)}
-                              title={!conn.connected ? `${p.name} não conectado` : ''}
+                              title={!conn.connected ? `${p.name}: regra será guardada na Central, mas o canal ainda não está conectado` : ''}
                             >
                               <span className="pmy-platform-pill-logo">{p.logo}</span>
                               {p.name}
+                              {!conn.connected && <span style={{ fontSize:'9px', opacity:0.65 }}>pendente</span>}
                               {sel && <span className="pmy-platform-pill-check">✓</span>}
                             </button>
                           );
@@ -3784,7 +3789,7 @@ export default function CentralDeReservas() {
                         <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>Selecione uma ou mais</span>
                       </label>
                       <div className="pmy-platform-pills">
-                        {allPlatforms.map(p => {
+                        {reservationChannelPlatforms.map(p => {
                           const conn = platformConnections[p.key];
                           const sel  = blockPlatforms.includes(p.key);
                           return (
@@ -3806,9 +3811,9 @@ export default function CentralDeReservas() {
                         <div style={{ fontSize:'12px', color:'#555', marginTop:'7px', display:'flex', alignItems:'center', gap:'6px' }}>
                           <span style={{ background:'#2b2b2b', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 8px', borderRadius:'10px' }}>{blockPlatforms.length}</span>
                           plataforma{blockPlatforms.length>1?'s':''}  será{blockPlatforms.length>1?'ão':''} bloqueada{blockPlatforms.length>1?'s':''}
-                          {allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length > 0 && (
+                          {reservationChannelPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length > 0 && (
                             <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>
-                              · {allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length} continuará{allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'ão':''} aberta{allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'s':''}
+                              · {reservationChannelPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length} continuará{reservationChannelPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'ão':''} aberta{reservationChannelPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'s':''}
                             </span>
                           )}
                         </div>
