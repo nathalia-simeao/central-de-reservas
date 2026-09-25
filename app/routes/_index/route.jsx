@@ -10,6 +10,26 @@ import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server"
 const prisma = db;
 const json = (body, init) => data(body, init);
 
+const getLisbonToday = () => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Lisbon",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date())
+      .filter(part => part.type !== "literal")
+      .map(part => [part.type, part.value]),
+  );
+
+  return {
+    year: Number(parts.year),
+    monthIndex: Number(parts.month) - 1,
+    day: Number(parts.day),
+  };
+};
+
 const ExpandIcon = () => (
   <svg className="pmy-card-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7 17l9.2-9.2M17 17V7H7"/>
@@ -1047,10 +1067,11 @@ export default function CentralDeReservas() {
   const [isFormAllocating, setIsFormAllocating] = useState(false);
 
   // F. NAVEGAÇÃO DO CALENDÁRIO
-  const [currentMonth, setCurrentMonth] = useState(4);
-  const [currentYear, setCurrentYear] = useState(2026);
+  // A Agenda abre sempre no mês/dia atual de Portugal, nunca em uma data fixa.
+  const [currentMonth, setCurrentMonth] = useState(() => getLisbonToday().monthIndex);
+  const [currentYear, setCurrentYear] = useState(() => getLisbonToday().year);
   const [calendarView, setCalendarView] = useState("month");
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(26);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(() => getLisbonToday().day);
 
   // G. GUIAS E CAPACIDADE
   const [tourCapacities, setTourCapacities] = useState(() =>
@@ -1737,6 +1758,17 @@ export default function CentralDeReservas() {
       setTourCapacities(prev => ({ ...prev, [id]: cur }));
       alert(err?.message || "Erro ao salvar a capacidade.");
     }
+  };
+
+  const handleOpenAgenda = () => {
+    const today = getLisbonToday();
+    setCurrentMonth(today.monthIndex);
+    setCurrentYear(today.year);
+    setSelectedCalendarDay(today.day);
+    setActiveModal(null);
+    setModalSelectedTour("");
+    setIsFormAllocating(false);
+    setActiveTab("agenda");
   };
 
   const handlePrevMonth = () => {
@@ -2767,7 +2799,7 @@ export default function CentralDeReservas() {
           </div>
           <nav className="pmy-menu">
             <div className={`pmy-menu-item ${activeTab==='dashboard'?'active':''}`} onClick={() => setActiveTab('dashboard')}>{t.menu_dashboard}</div>
-            <div className={`pmy-menu-item ${activeTab==='agenda'?'active':''}`} onClick={() => setActiveTab('agenda')}>{t.menu_agenda}</div>
+            <div className={`pmy-menu-item ${activeTab==='agenda'?'active':''}`} onClick={handleOpenAgenda}>{t.menu_agenda}</div>
             <div className={`pmy-menu-item ${activeTab==='integracoes'?'active':''}`} onClick={() => setActiveTab('integracoes')}>{t.menu_integrations}</div>
             <div className={`pmy-menu-item ${activeTab==='guias'?'active':''}`} onClick={() => setActiveTab('guias')}>{t.menu_guides}</div>
             <div className={`pmy-menu-item ${activeTab==='automacoes'?'active':''}`} onClick={() => setActiveTab('automacoes')}>{t.menu_automations}</div>
