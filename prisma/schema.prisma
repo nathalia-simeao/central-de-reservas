@@ -92,6 +92,8 @@ model Booking {
   // Referências externas e idempotência multicanal
   bookingRef          String?
   externalBookingId   String?
+  externalOrderId     String?
+  externalLineItemIds String[]  @default([])
   externalProductId   String?
   externalVariantId   String?
 
@@ -122,8 +124,10 @@ model Booking {
 
   @@unique([platform, externalBookingId], map: "Booking_platform_externalBookingId_key")
   @@index([bookingRef])
+  @@index([externalOrderId])
   @@index([tourId, startTime])
   @@index([platform, status])
+  @@index([platform, externalOrderId])
 }
 
 model Guide {
@@ -166,4 +170,24 @@ model Media {
   category  String   @default("general")
   label     String?
   createdAt DateTime @default(now())
+}
+
+
+model IntegrationEvent {
+  id              String   @id @default(uuid())
+  provider        String
+  externalEventId String
+  topic           String
+  shop            String?
+  status          String   @default("RECEIVED")
+  payload         Json?
+  result          Json?
+  error           String?
+  receivedAt      DateTime @default(now())
+  processedAt     DateTime?
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@unique([provider, externalEventId], map: "IntegrationEvent_provider_externalEventId_key")
+  @@index([provider, topic])
+  @@index([status])
 }
