@@ -7,6 +7,7 @@ import {
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
+import { startSyncQueueWorker } from "./utils/sync-queue.server";
 
 const configuredScopes = [
   ...new Set([
@@ -63,6 +64,8 @@ const shopify = shopifyApp({
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
 });
+
+startSyncQueueWorker(prisma);
 
 export default shopify;
 export const apiVersion = ApiVersion.October25;
