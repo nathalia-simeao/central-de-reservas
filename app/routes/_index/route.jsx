@@ -1071,9 +1071,9 @@ const allPlatforms = [
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
     docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
   { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
-    desc: { pt: "Importe avaliações e sincronize seus widgets de reserva.", en: "Import your reviews and sync booking widgets." },
-    authType: "api", oauthLabel: "Acessar TripAdvisor Owners", oauthUrl: "https://www.tripadvisor.com/Owners",
-    docsUrl: "https://developer-tripadvisor.com/" },
+    desc: { pt: "Conteúdo e reputação: reviews, ratings, fotos e dados de localização. As reservas de experiências são distribuídas pela Viator.", en: "Content and reputation: reviews, ratings, photos and location data. Experience bookings are distributed through Viator." },
+    authType: "content", oauthLabel: "Acessar Tripadvisor", oauthUrl: "https://www.tripadvisor.com/Owners",
+    docsUrl: "https://docs.terra.tripadvisor.com/docs/overview" },
   { key: "headout", logo: "🌍", name: "Headout",
     desc: { pt: "Distribua seus tours para milhões de viajantes globais.", en: "Distribute your tours to millions of global travelers." },
     authType: "api", oauthLabel: "Acessar Portal Headout", oauthUrl: "https://www.headout.com/partner/login",
@@ -1083,6 +1083,9 @@ const allPlatforms = [
     authType: "api", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
     docsUrl: "https://www.civitatis.com/en/partners/" },
 ];
+
+const reservationPlatforms = allPlatforms.filter((platform) => platform.key !== "tripadvisor");
+const contentPlatforms = allPlatforms.filter((platform) => platform.key === "tripadvisor");
 
 const internalFields = [
   { key: "customerName",  label: "Nome do Cliente",        required: true,  desc: "Nome completo do passageiro" },
@@ -1122,12 +1125,6 @@ const defaultMappings = {
     startTime: "fecha_salida + hora_salida", status: "estado_reserva",
     email: "email_cliente", phone: "telefono_cliente", quantity: "adultos + ninos + bebes",
     price: "importe_total", currency: "divisa", bookingRef: "localizador", language: "idioma_tour",
-  },
-  tripadvisor: {
-    customerName: "travelerFirstName + travelerLastName", tourId: "productCode",
-    startTime: "travelDate", status: "reservationStatus",
-    email: "travelerEmail", phone: "travelerPhone", quantity: "numberOfTravelers",
-    price: "orderPrice.amount", currency: "orderPrice.currencyCode", bookingRef: "itineraryId", language: "lang",
   },
   shopify: {
     customerName: "customer.first_name + customer.last_name", tourId: "line_items[0].product_id",
@@ -1262,7 +1259,7 @@ export default function CentralDeReservas() {
   const [activeTourLanguages, setActiveTourLanguages] = useState(["Português", "English"]);
   const [generatedLink, setGeneratedLink] = useState("");
   const [bookingPlatforms, setBookingPlatforms] = useState(["shopify"]);  // plataformas da reserva
-  const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis", "tripadvisor"]); // bloqueio default = todas
+  const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis"]); // apenas canais reais de reserva
 
   // D. BLOQUEIOS MANUAIS
   const [blockTourId, setBlockTourId] = useState("");
@@ -1349,7 +1346,6 @@ export default function CentralDeReservas() {
     getyourguide: [],               // preenchido após conectar GYG API
     headout:      [],               // preenchido após conectar Headout API
     civitatis:    [],               // preenchido após conectar Civitatis API
-    tripadvisor:  [],               // preenchido após conectar TripAdvisor API
   });
 
   // I. CONEXÕES DE PLATAFORMAS (NOVO)
@@ -1361,7 +1357,7 @@ export default function CentralDeReservas() {
       accountName: "PMY Supplier API v1",
       lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
     },
-    tripadvisor:  { connected: false },
+    tripadvisor:  { connected: false, contentOnly: true, accountName: "Tripadvisor Terra", lastSync: "Não é canal de reservas" },
     headout:      { connected: false },
     civitatis:    { connected: false },
   });
@@ -2191,13 +2187,12 @@ export default function CentralDeReservas() {
     },
     tripadvisor: {
       steps: [
-        "Acesse: developer-tripadvisor.com/register",
-        "Registe-se como parceiro e aguarde aprovação (1-3 dias úteis)",
-        "Após aprovado, vá em Dashboard → My Apps → API Key",
-        "Copie a chave e cole abaixo",
+        "Para tours e atividades, a distribuição de reservas da PMY acontece pela Viator, inclusive no Tripadvisor",
+        "O Tripadvisor Terra API é uma integração separada para conteúdo, reviews, ratings, fotos e dados de localização",
+        "Se ativarmos o Terra, a chave ficará somente nos Secrets do servidor e nunca será colada nesta tela",
       ],
-      field1Label: "API Key TripAdvisor",
-      field1Placeholder: "Ex: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      field1Label: null,
+      field1Placeholder: null,
       field2Label: null,
     },
   };
@@ -2210,6 +2205,7 @@ export default function CentralDeReservas() {
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
+    const isTripadvisor = connectingPlatform === 'tripadvisor';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
@@ -2222,9 +2218,11 @@ export default function CentralDeReservas() {
               <span style={{ fontSize:'50px', display:'block', marginBottom:'8px' }}>{platform.logo}</span>
               <div style={{ fontSize:'21px', fontWeight:'900', color:'var(--text-dark)', marginBottom:'5px' }}>{platform.name}</div>
               <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'18px' }}>
-                {conn.connected
-                  ? `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`
-                  : isShopify ? "Já conectado automaticamente via Shopify App" : "Siga as instruções abaixo para conectar"}
+                {isTripadvisor
+                  ? "Conteúdo e reputação · não é canal de reservas"
+                  : conn.connected
+                    ? `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`
+                    : isShopify ? "Já conectado automaticamente via Shopify App" : "Siga as instruções abaixo para conectar"}
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
@@ -2429,8 +2427,49 @@ export default function CentralDeReservas() {
               </div>
             )}
 
+            {/* ── TRIPADVISOR: conteúdo/reputação, não canal de reservas ── */}
+            {isTripadvisor && (
+              <div>
+                <div style={{ background:'#f5f7ff', border:'1px solid #d9def8', borderRadius:'12px', padding:'18px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'15px', fontWeight:'900', color:'#3949ab', marginBottom:'10px' }}>
+                    🦉 Tripadvisor = Conteúdo & Reputação
+                  </div>
+                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.75' }}>
+                    <div>⭐ Reviews e ratings: <strong>Tripadvisor Terra API</strong></div>
+                    <div>📷 Fotos e dados da localização: <strong>Tripadvisor Terra API</strong></div>
+                    <div>🎟️ Reservas de tours/atividades: <strong>geridas pela integração Viator</strong></div>
+                    <div>🚫 Agenda, vagas, bloqueios e overbooking: <strong>Tripadvisor não entra como canal separado</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px', fontSize:'12px', color:'#92400e', lineHeight:'1.6' }}>
+                  <strong>Sem duplicar reservas.</strong> Quando uma experiência da PMY aparece no Tripadvisor, o inventário e as reservas são distribuídos pela Viator. A Central deve contabilizar essa venda como Viator, não como um segundo canal Tripadvisor.
+                </div>
+
+                <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'10px' }}>O que poderemos integrar separadamente</div>
+                  <ul style={{ margin:0, paddingLeft:'18px', fontSize:'12px', color:'#555', lineHeight:'1.7' }}>
+                    <li>reviews recentes da empresa/localização</li>
+                    <li>nota média e quantidade de avaliações</li>
+                    <li>fotos e dados públicos da localização</li>
+                    <li>widgets/links de reputação no site e na Central, quando permitido pelo plano Terra</li>
+                  </ul>
+                </div>
+
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" onClick={() => window.open('https://docs.terra.tripadvisor.com/docs/overview', '_blank')}
+                    style={{ flex:1, background:'#34e0a1', border:'1px solid #22bd84', color:'#111', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    Abrir documentação Terra ↗
+                  </button>
+                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
-            {!isShopify && !isGyg && conn.connected && (
+            {!isShopify && !isGyg && !isTripadvisor && conn.connected && (
               <div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
@@ -2454,7 +2493,7 @@ export default function CentralDeReservas() {
             )}
 
             {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !isGyg && !conn.connected && guide && (
+            {!isShopify && !isGyg && !isTripadvisor && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
@@ -3446,7 +3485,7 @@ export default function CentralDeReservas() {
                         <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>Selecione uma ou mais</span>
                       </label>
                       <div className="pmy-platform-pills">
-                        {allPlatforms.map(p => {
+                        {reservationPlatforms.map(p => {
                           const conn = platformConnections[p.key];
                           const sel  = bookingPlatforms.includes(p.key);
                           return (
@@ -3574,7 +3613,7 @@ export default function CentralDeReservas() {
                         <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>Selecione uma ou mais</span>
                       </label>
                       <div className="pmy-platform-pills">
-                        {allPlatforms.map(p => {
+                        {reservationPlatforms.map(p => {
                           const conn = platformConnections[p.key];
                           const sel  = blockPlatforms.includes(p.key);
                           return (
@@ -3596,9 +3635,9 @@ export default function CentralDeReservas() {
                         <div style={{ fontSize:'12px', color:'#555', marginTop:'7px', display:'flex', alignItems:'center', gap:'6px' }}>
                           <span style={{ background:'#2b2b2b', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 8px', borderRadius:'10px' }}>{blockPlatforms.length}</span>
                           plataforma{blockPlatforms.length>1?'s':''}  será{blockPlatforms.length>1?'ão':''} bloqueada{blockPlatforms.length>1?'s':''}
-                          {allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length > 0 && (
+                          {reservationPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length > 0 && (
                             <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>
-                              · {allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length} continuará{allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'ão':''} aberta{allPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'s':''}
+                              · {reservationPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length} continuará{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'ão':''} aberta{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected && !blockPlatforms.includes(p.key)).length>1?'s':''}
                             </span>
                           )}
                         </div>
@@ -3728,26 +3767,26 @@ export default function CentralDeReservas() {
               {intSubTab==='conexoes' && (
                 <div>
                   <p style={{ color:'var(--text-muted)', marginBottom:'25px', fontSize:'15px' }}>
-                    {lang==='pt' ? 'Conecte seus canais de venda para sincronizar reservas automaticamente.' : 'Connect your sales channels to sync bookings automatically.'}
+                    {lang==='pt' ? 'Canais de reserva sincronizam vendas e disponibilidade. Integrações de conteúdo, como Tripadvisor, ficam separadas.' : 'Booking channels sync sales and availability. Content integrations, such as Tripadvisor, are kept separate.'}
                   </p>
                   <div style={{ display:'flex', gap:'12px', marginBottom:'30px', flexWrap:'wrap' }}>
                     <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'14px 20px', display:'flex', alignItems:'center', gap:'10px' }}>
                       <span style={{ fontSize:'22px' }}>🟢</span>
                       <div>
-                        <div style={{ fontWeight:'800', fontSize:'20px', color:'var(--primary-green)' }}>{Object.values(platformConnections).filter(c=>c.connected).length}</div>
+                        <div style={{ fontWeight:'800', fontSize:'20px', color:'var(--primary-green)' }}>{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected).length}</div>
                         <div style={{ fontSize:'12px', color:'#888' }}>Conectadas</div>
                       </div>
                     </div>
                     <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'14px 20px', display:'flex', alignItems:'center', gap:'10px' }}>
                       <span style={{ fontSize:'22px' }}>⚫</span>
                       <div>
-                        <div style={{ fontWeight:'800', fontSize:'20px', color:'#888' }}>{Object.values(platformConnections).filter(c=>!c.connected).length}</div>
+                        <div style={{ fontWeight:'800', fontSize:'20px', color:'#888' }}>{reservationPlatforms.filter(p=>!platformConnections[p.key]?.connected).length}</div>
                         <div style={{ fontSize:'12px', color:'#888' }}>Pendentes</div>
                       </div>
                     </div>
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:'20px', marginBottom:'40px' }}>
-                    {allPlatforms.map(platform => {
+                    {reservationPlatforms.map(platform => {
                       const conn = platformConnections[platform.key];
                       return (
                         <div key={platform.key} className={`pmy-int-card-v2 ${conn.connected?'connected':''}`} style={{ display:'flex', flexDirection:'column' }}>
@@ -3778,6 +3817,30 @@ export default function CentralDeReservas() {
                         </div>
                       );
                     })}
+                    {contentPlatforms.map(platform => {
+                      const conn = platformConnections[platform.key];
+                      return (
+                        <div key={platform.key} className="pmy-int-card-v2" style={{ display:'flex', flexDirection:'column', borderColor:'#d9def8' }}>
+                          <div className="pmy-int-top">
+                            <span className="pmy-int-logo-v2">{platform.logo}</span>
+                            <span className="pmy-int-sync-info">Conteúdo</span>
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'6px' }}>
+                            <span className="pmy-int-status-dot" style={{ background:'#3949ab' }}></span>
+                            <span style={{ fontSize:'11px', fontWeight:'700', color:'#3949ab' }}>
+                              CONTEÚDO / REVIEWS
+                            </span>
+                          </div>
+                          <div className="pmy-int-name-v2">{platform.name}</div>
+                          <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
+                          <div className="pmy-int-actions">
+                            <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>
+                              🦉 Ver integração de conteúdo
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {customIntegrations.map(c => (
                       <div className="pmy-int-card-v2 connected" key={c.id} style={{ display:'flex', flexDirection:'column' }}>
                         <div className="pmy-int-top"><span className="pmy-int-logo-v2">⚙️</span><span className="pmy-int-sync-info">Custom API</span></div>
@@ -3802,12 +3865,12 @@ export default function CentralDeReservas() {
               {intSubTab==='produtos' && (
                 <div>
                   <p style={{ color:'var(--text-muted)', marginBottom:'22px', fontSize:'15px' }}>
-                    Visualize e gerencie quais produtos (tours) estão ativos em cada canal de venda. Ative ou desative um produto diretamente aqui.
+                    Visualize e gerencie os produtos dos canais de venda e reserva. Tripadvisor não aparece aqui porque reviews/conteúdo não constituem inventário de reservas separado.
                   </p>
 
                   {/* Tabs de plataformas */}
                   <div className="pmy-prod-platform-tabs">
-                    {allPlatforms.map(p => {
+                    {reservationPlatforms.map(p => {
                       const conn = platformConnections[p.key];
                       const prods = platformProducts[p.key] || [];
                       const activeCount = prods.filter(x=>x.active).length;
@@ -4321,7 +4384,7 @@ export default function CentralDeReservas() {
                 </p>
 
                 <div className="pmy-mapping-platform-tabs">
-                  {allPlatforms.map(p => (
+                  {reservationPlatforms.map(p => (
                     <button key={p.key} className={`pmy-mapping-tab ${activeMappingPlatform===p.key?'active':''}`} onClick={() => setActiveMappingPlatform(p.key)}>
                       <span>{p.logo}</span>{p.name}
                       {platformConnections[p.key]?.connected && (
