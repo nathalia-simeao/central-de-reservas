@@ -1,97 +1,49 @@
 /**
- * app/routes/api.gyg.jsx
+ * Legacy compatibility route for GetYourGuide Supplier API.
  *
- * Endpoints obrigatórios da GetYourGuide Supplier API
- * Documentação: https://integrator.getyourguide.com/documentation/overview
- *
- * A GYG chama ESTE servidor (supplier-side):
+ * Preferred endpoints:
  *   GET  /api/gyg/get-availabilities
  *   POST /api/gyg/reserve
  *   POST /api/gyg/cancel-reservation
  *   POST /api/gyg/book
  *   POST /api/gyg/cancel-booking
  *
- * Seu servidor chama A GYG (gyg-side) — ver helper notifyGYG() no final.
- *
- * Autenticação: HTTP Basic Auth em AMBAS as direções.
- * Configure as variáveis de ambiente:
- *   GYG_INCOMING_USER=usuario_que_gyg_usa_para_chamar_voce
- *   GYG_INCOMING_PASS=senha_que_gyg_usa_para_chamar_voce
- *   GYG_OUTGOING_USER=usuario_que_voce_usa_para_chamar_gyg
- *   GYG_OUTGOING_PASS=senha_que_voce_usa_para_chamar_gyg
- *   GYG_API_BASE=https://api.getyourguide.com  (ou URL do sandbox)
+ * This route keeps the older /api/gyg?action=... contract working while
+ * sharing the same multichannel Booking schema.
  */
-
 import db from "../db.server";
+import {
+  bookingLookupWhere,
+  bookingOccupancy,
+  checkGygBasicAuth,
+  getMoneyFields,
+  getParticipantCounts,
+  gygResponse,
+  parseOptionalDate,
+} from "../utils/gyg.server";
 
 const prisma = db;
 
-// ─────────────────────────────────────────────
-// AUTENTICAÇÃO BASIC AUTH (GYG → seu sistema)
-// ─────────────────────────────────────────────
-
-function checkBasicAuth(request) {
-  const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Basic ")) return false;
-
-  const base64 = authHeader.slice(6);
-  const decoded = Buffer.from(base64, "base64").toString("utf-8");
-  const [user, pass] = decoded.split(":");
-
-  const expectedUser = process.env.GYG_INCOMING_USER || "gyg_user";
-  const expectedPass = process.env.GYG_INCOMING_PASS || "gyg_pass";
-
-  return user === expectedUser && pass === expectedPass;
-}
-
-// Resposta padrão GYG: sempre HTTP 200, mesmo para erros
-function gygResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-// ─────────────────────────────────────────────
-// ROTEADOR PRINCIPAL
-// A GYG vai chamar /api/gyg com query param ?action=
-// ou você pode criar routes separados — veja comentário abaixo.
-// ─────────────────────────────────────────────
-
-/**
- * OPÇÃO RECOMENDADA: criar um arquivo por endpoint.
- * Ex: app/routes/api.gyg.get-availabilities.jsx
- *     app/routes/api.gyg.reserve.jsx
- *     etc.
- *
- * Este arquivo usa um único route com switch no action param
- * para simplificar. Adapte conforme sua estrutura de pastas.
- */
-
 export const loader = async ({ request }) => {
-  // GET /api/gyg?action=get-availabilities
+  if (!checkGygBasicAuth(request)) {
+    return gygResponse({ error: "Unauthorized" });
+  }
+
   const url = new URL(request.url);
-  const action = url.searchParams.get("action");
-
-  if (!checkBasicAuth(request)) {
-    return gygResponse({ error: "Unauthorized" }, 200); // GYG exige 200 mesmo em erro
+  if (url.searchParams.get("action") !== "get-availabilities") {
+    return gygResponse({ error: "Unknown action" });
   }
 
-  if (action === "get-availabilities") {
-    return handleGetAvailabilities(request, url);
-  }
-
-  return gygResponse({ error: "Unknown action" });
+  return handleGetAvailabilities(url);
 };
 
 export const action = async ({ request }) => {
-  // POST /api/gyg?action=reserve|book|cancel-reservation|cancel-booking
-  const url = new URL(request.url);
-  const action = url.searchParams.get("action");
-
-  if (!checkBasicAuth(request)) {
-    return gygResponse({ error: "Unauthorized" }, 200);
+  if (!checkGygBasicAuth(request)) {
+    return gygResponse({ error: "Unauthorized" });
   }
+
+  const url = new URL(request.url);
+  const actionName = url.searchParams.get("action");
 
   let body;
   try {
@@ -100,73 +52,57 @@ export const action = async ({ request }) => {
     return gygResponse({ error: "Invalid JSON body" });
   }
 
-  switch (action) {
-    case "reserve":            return handleReserve(body);
-    case "cancel-reservation": return handleCancelReservation(body);
-    case "book":               return handleBook(body);
-    case "cancel-booking":     return handleCancelBooking(body);
+  switch (actionName) {
+    case "reserve":
+      return handleReserve(body);
+    case "cancel-reservation":
+      return handleCancelReservation(body);
+    case "book":
+      return handleBook(body);
+    case "cancel-booking":
+      return handleCancelBooking(body);
     default:
       return gygResponse({ error: "Unknown action" });
   }
 };
 
-// ─────────────────────────────────────────────
-// GET /api/gyg?action=get-availabilities
-//
-// GYG pergunta: "Quais horários e vagas este tour tem?"
-// Você responde com os slots disponíveis.
-// ─────────────────────────────────────────────
-
-async function handleGetAvailabilities(request, url) {
+async function handleGetAvailabilities(url) {
   try {
     const activityId = url.searchParams.get("activity_id");
-    const dateFrom   = url.searchParams.get("date_from"); // YYYY-MM-DD
-    const dateTo     = url.searchParams.get("date_to");   // YYYY-MM-DD
+    const dateFrom = url.searchParams.get("date_from");
+    const dateTo = url.searchParams.get("date_to");
 
     if (!activityId) {
-      return gygResponse({ error: "activity_id is required" });
+      return gygResponse({ error: "activity_id is required", availabilities: [] });
     }
 
-    // Busca o tour no banco pelo SKU ou ID externo GYG
-    // Adapte este campo conforme você mapeia activityId → seu tourId
-    const tour = await prisma.tour.findFirst({
-      where: {
-        // Ajuste o campo abaixo conforme seu schema:
-        // Ex: gygActivityId: activityId  (se tiver esse campo)
-        // Ex: title: activityId          (fallback simples)
-        id: activityId,
-      },
-      include: { bookings: true },
-    });
-
+    const tour = await prisma.tour.findFirst({ where: { id: activityId } });
     if (!tour) {
-      return gygResponse({
-        availabilities: [],
-        message: "Tour not found",
-      });
+      return gygResponse({ availabilities: [], message: "Tour not found" });
     }
 
-    // Busca reservas confirmadas no período para calcular vagas ocupadas
     const from = dateFrom ? new Date(dateFrom) : new Date();
-    const to   = dateTo   ? new Date(dateTo + "T23:59:59") : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const to = dateTo
+      ? new Date(dateTo + "T23:59:59")
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const confirmedBookings = await prisma.booking.findMany({
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      return gygResponse({ error: "Invalid date range", availabilities: [] });
+    }
+
+    const bookings = await prisma.booking.findMany({
       where: {
         tourId: tour.id,
-        status: "CONFIRMED",
+        status: { in: ["CONFIRMED", "PENDING"] },
         startTime: { gte: from, lte: to },
       },
     });
 
-    // Capacidade máxima por slot (ajuste conforme sua lógica)
     const MAX_CAPACITY = 20;
-
-    // Gera slots de disponibilidade para cada dia do período
-    // Horários padrão — idealmente viriam do metafield do produto Shopify
     const DEFAULT_TIMES = ["09:00", "14:00"];
-
     const availabilities = [];
     const cursor = new Date(from);
+    const now = new Date();
 
     while (cursor <= to) {
       const dateStr = cursor.toISOString().split("T")[0];
@@ -176,43 +112,24 @@ async function handleGetAvailabilities(request, url) {
         const slotStart = new Date(cursor);
         slotStart.setHours(hh, mm, 0, 0);
 
-        // Conta reservas neste slot específico
-        const occupied = confirmedBookings.filter(b => {
-          const bt = new Date(b.startTime);
-          return bt.toISOString().startsWith(dateStr) &&
-                 bt.getHours() === hh &&
-                 bt.getMinutes() === mm;
-        }).length;
+        const occupied = bookings.reduce((total, booking) => {
+          const bookingTime = new Date(booking.startTime);
+          const sameSlot =
+            bookingTime.toISOString().startsWith(dateStr) &&
+            bookingTime.getHours() === hh &&
+            bookingTime.getMinutes() === mm;
 
-        const available = MAX_CAPACITY - occupied;
+          return sameSlot ? total + bookingOccupancy(booking, now) : total;
+        }, 0);
 
+        const available = Math.max(0, MAX_CAPACITY - occupied);
         if (available > 0) {
           availabilities.push({
-            // Formato ISO 8601 com offset — obrigatório pela GYG
             datetime: slotStart.toISOString().replace("Z", "+00:00"),
             vacancies: available,
             pricing: [
-              {
-                category: "ADULT",
-                price: {
-                  amount:   tour.priceAdult || 50,
-                  currency: "EUR",
-                },
-              },
-              {
-                category: "YOUTH",
-                price: {
-                  amount:   tour.priceYouth || 35,
-                  currency: "EUR",
-                },
-              },
-              {
-                category: "CHILD",
-                price: {
-                  amount:   tour.priceChild || 25,
-                  currency: "EUR",
-                },
-              },
+              { category: "ADULT", price: { amount: 50, currency: "EUR" } },
+              { category: "YOUTH", price: { amount: 35, currency: "EUR" } },
             ],
           });
         }
@@ -228,28 +145,8 @@ async function handleGetAvailabilities(request, url) {
   }
 }
 
-// ─────────────────────────────────────────────
-// POST /api/gyg?action=reserve
-//
-// GYG solicita uma PRÉ-RESERVA (hold de vagas).
-// Você deve segurar as vagas por 60 min (mín. 15 min).
-// Responder com um reservationId único seu.
-// ─────────────────────────────────────────────
-
 async function handleReserve(body) {
   try {
-    /*
-      Payload esperado da GYG (simplificado):
-      {
-        bookingId: "GYG-12345",
-        activityId: "seu-tour-id",
-        timeslot: { startTime: "2025-06-10T09:00:00+00:00" },
-        participants: { adults: 2, youths: 1, children: 0 },
-        customer: { firstName: "Maria", lastName: "Silva", email: "...", phone: "..." },
-        languageCode: "pt"
-      }
-    */
-
     const {
       bookingId,
       activityId,
@@ -266,55 +163,73 @@ async function handleReserve(body) {
       });
     }
 
-    // Verifica se já existe reserva com esse bookingId (idempotência)
+    const startTime = new Date(timeslot.startTime);
+    if (Number.isNaN(startTime.getTime())) {
+      return gygResponse({ success: false, error: "Invalid timeslot.startTime" });
+    }
+
     const existing = await prisma.booking.findFirst({
-      where: { bookingRef: bookingId },
+      where: {
+        platform: "GETYOURGUIDE",
+        OR: [
+          { externalBookingId: bookingId },
+          { bookingRef: bookingId },
+        ],
+      },
     });
+
     if (existing) {
       return gygResponse({
         success: true,
         reservationId: existing.id,
+        holdUntil: existing.holdExpiresAt
+          ? existing.holdExpiresAt.toISOString().replace("Z", "+00:00")
+          : undefined,
         message: "Already reserved",
       });
     }
 
-    // Verifica se o tour existe
-    const tour = await prisma.tour.findFirst({
-      where: { id: activityId },
-    });
+    const tour = await prisma.tour.findFirst({ where: { id: activityId } });
     if (!tour) {
       return gygResponse({ success: false, error: "Tour not found" });
     }
 
-    const totalPax =
-      (participants?.adults  || 0) +
-      (participants?.youths  || 0) +
-      (participants?.children || 0);
+    const counts = getParticipantCounts(participants);
+    const money = getMoneyFields(body);
+    const holdExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const now = new Date();
 
-    // Cria a reserva com status PENDING (pré-reserva / hold)
-    // Hold expira em 60 minutos — implemente um job de limpeza se necessário
     const reservation = await prisma.booking.create({
       data: {
-        tourId:       tour.id,
-        customerName: `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "GYG Customer",
-        startTime:    new Date(timeslot.startTime),
-        platform:     "GETYOURGUIDE",
-        status:       "PENDING",
-        bookingRef:   bookingId,
-        // Campos opcionais — adicione ao seu schema Prisma se necessário:
-        // email:        customer?.email,
-        // phone:        customer?.phone,
-        // quantity:     totalPax,
-        // language:     languageCode,
-        // holdExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        tourId: tour.id,
+        customerName:
+          `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() ||
+          "GYG Customer",
+        customerEmail: customer?.email || null,
+        customerPhone: customer?.phone || null,
+        language: languageCode || null,
+        startTime,
+        platform: "GETYOURGUIDE",
+        status: "PENDING",
+        bookingRef: bookingId,
+        externalBookingId: bookingId,
+        externalProductId: activityId,
+        externalVariantId: timeslot?.id || body?.variantId || null,
+        ...counts,
+        ...money,
+        syncStatus: "RECEIVED",
+        lastSyncedAt: now,
+        externalCreatedAt: parseOptionalDate(body?.createdAt || body?.bookingDate),
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt),
+        holdExpiresAt,
+        rawPayload: body,
       },
     });
 
     return gygResponse({
       success: true,
       reservationId: reservation.id,
-      // GYG exige o hold time informado
-      holdUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString().replace("Z", "+00:00"),
+      holdUntil: holdExpiresAt.toISOString().replace("Z", "+00:00"),
     });
   } catch (err) {
     console.error("[GYG] reserve error:", err);
@@ -322,37 +237,24 @@ async function handleReserve(body) {
   }
 }
 
-// ─────────────────────────────────────────────
-// POST /api/gyg?action=cancel-reservation
-//
-// GYG cancela uma PRÉ-RESERVA antes de confirmar.
-// Libera as vagas seguradas.
-// ─────────────────────────────────────────────
-
 async function handleCancelReservation(body) {
+  const { reservationId, bookingId, reason } = body;
+  const lookup = bookingLookupWhere({ reservationId, bookingId });
+
+  if (!lookup) {
+    return gygResponse({
+      success: false,
+      error: "reservationId or bookingId is required",
+    });
+  }
+
   try {
-    /*
-      Payload esperado:
-      {
-        reservationId: "seu-id-interno",
-        bookingId: "GYG-12345"
-      }
-    */
-
-    const { reservationId, bookingId } = body;
-
     const booking = await prisma.booking.findFirst({
-      where: {
-        OR: [
-          { id: reservationId },
-          { bookingRef: bookingId },
-        ],
-      },
+      where: { platform: "GETYOURGUIDE", ...lookup },
     });
 
-    if (!booking) {
-      // GYG aceita "not found" como sucesso (idempotência)
-      return gygResponse({ success: true, message: "Reservation not found — already released" });
+    if (!booking || booking.status === "CANCELED") {
+      return gygResponse({ success: true, message: "Already released" });
     }
 
     if (booking.status !== "PENDING") {
@@ -362,9 +264,18 @@ async function handleCancelReservation(body) {
       });
     }
 
+    const now = new Date();
     await prisma.booking.update({
       where: { id: booking.id },
-      data:  { status: "CANCELED" },
+      data: {
+        status: "CANCELED",
+        cancelReason: reason || "reservation_cancelled",
+        syncStatus: "SYNCED",
+        lastSyncedAt: now,
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt) || now,
+        holdExpiresAt: null,
+        rawPayload: body,
+      },
     });
 
     return gygResponse({ success: true });
@@ -374,107 +285,88 @@ async function handleCancelReservation(body) {
   }
 }
 
-// ─────────────────────────────────────────────
-// POST /api/gyg?action=book
-//
-// GYG CONFIRMA a reserva (transforma PENDING → CONFIRMED).
-// Pagamento já foi processado pelo lado da GYG.
-// ─────────────────────────────────────────────
-
 async function handleBook(body) {
+  const { reservationId, bookingId, voucher } = body;
+  const lookup = bookingLookupWhere({ reservationId, bookingId });
+
+  if (!lookup) {
+    return gygResponse({
+      success: false,
+      error: "reservationId or bookingId is required",
+    });
+  }
+
   try {
-    /*
-      Payload esperado:
-      {
-        reservationId: "seu-id-interno",
-        bookingId:     "GYG-12345",
-        voucher: {
-          barcode: "ABC123",
-          barcodeFormat: "QR_CODE"
-        }
-      }
-    */
-
-    const { reservationId, bookingId, voucher } = body;
-
     const booking = await prisma.booking.findFirst({
-      where: {
-        OR: [
-          { id: reservationId },
-          { bookingRef: bookingId },
-        ],
-      },
+      where: { platform: "GETYOURGUIDE", ...lookup },
     });
 
     if (!booking) {
       return gygResponse({ success: false, error: "Reservation not found" });
     }
 
-    if (booking.status === "CONFIRMED") {
-      return gygResponse({ success: true, message: "Already confirmed" });
-    }
-
+    const now = new Date();
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: "CONFIRMED",
-        // Salve o voucher se seu schema tiver campo para isso:
-        // voucherBarcode: voucher?.barcode,
+        bookingRef: booking.bookingRef || bookingId || null,
+        externalBookingId: booking.externalBookingId || bookingId || null,
+        voucherCode: voucher?.barcode || booking.voucherCode || null,
+        voucherFormat: voucher?.barcodeFormat || booking.voucherFormat || null,
+        syncStatus: "SYNCED",
+        lastSyncedAt: now,
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt) || now,
+        holdExpiresAt: null,
+        rawPayload: body,
       },
     });
 
-    // ✅ Aqui você pode disparar:
-    // - Notificação WhatsApp para o guia
-    // - Email de confirmação para o cliente
-    // - Atualizar dashboard em tempo real
-
-    return gygResponse({ success: true });
+    return gygResponse({
+      success: true,
+      message: booking.status === "CONFIRMED" ? "Already confirmed" : "Confirmed",
+    });
   } catch (err) {
     console.error("[GYG] book error:", err);
     return gygResponse({ success: false, error: err.message });
   }
 }
 
-// ─────────────────────────────────────────────
-// POST /api/gyg?action=cancel-booking
-//
-// GYG cancela uma reserva JÁ CONFIRMADA.
-// Libera a vaga e registra o cancelamento.
-// ─────────────────────────────────────────────
-
 async function handleCancelBooking(body) {
+  const { bookingId, reason } = body;
+
+  if (!bookingId) {
+    return gygResponse({ success: false, error: "bookingId is required" });
+  }
+
   try {
-    /*
-      Payload esperado:
-      {
-        bookingId: "GYG-12345",
-        reason:    "customer_request" | "supplier_request" | "no_show"
-      }
-    */
-
-    const { bookingId, reason } = body;
-
     const booking = await prisma.booking.findFirst({
-      where: { bookingRef: bookingId },
+      where: {
+        platform: "GETYOURGUIDE",
+        OR: [
+          { externalBookingId: bookingId },
+          { bookingRef: bookingId },
+        ],
+      },
     });
 
-    if (!booking) {
-      return gygResponse({ success: true, message: "Booking not found — treated as already canceled" });
+    if (!booking || booking.status === "CANCELED") {
+      return gygResponse({ success: true, message: "Already canceled" });
     }
 
+    const now = new Date();
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: "CANCELED",
-        // Se quiser salvar o motivo:
-        // cancelReason: reason,
+        cancelReason: reason || "booking_cancelled",
+        syncStatus: "SYNCED",
+        lastSyncedAt: now,
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt) || now,
+        holdExpiresAt: null,
+        rawPayload: body,
       },
     });
-
-    // ✅ Aqui você pode:
-    // - Notificar o guia do cancelamento
-    // - Disparar lógica de reembolso interno
-    // - Atualizar o calendário
 
     return gygResponse({ success: true });
   } catch (err) {
@@ -483,31 +375,24 @@ async function handleCancelBooking(body) {
   }
 }
 
-// ─────────────────────────────────────────────
-// HELPER: Notificar GYG sobre mudança de disponibilidade
-//
-// Você chama esta função quando:
-//   - Um tour é criado/alterado/cancelado manualmente
-//   - Um bloqueio manual é feito na Agenda Central
-//   - A capacidade de um tour muda
-//
-// Uso no seu route principal:
-//   import { notifyGYGAvailabilityUpdate } from "./api.gyg";
-//   await notifyGYGAvailabilityUpdate("seu-activity-id");
-// ─────────────────────────────────────────────
-
 export async function notifyGYGAvailabilityUpdate(activityId) {
-  const baseUrl  = process.env.GYG_API_BASE || "https://api.getyourguide.com";
-  const user     = process.env.GYG_OUTGOING_USER || "";
-  const pass     = process.env.GYG_OUTGOING_PASS || "";
+  const baseUrl = process.env.GYG_API_BASE || "https://api.getyourguide.com";
+  const user = process.env.GYG_OUTGOING_USER;
+  const pass = process.env.GYG_OUTGOING_PASS;
+
+  if (!user || !pass) {
+    console.warn("[GYG] outgoing credentials are not configured");
+    return null;
+  }
+
   const basicAuth = Buffer.from(`${user}:${pass}`).toString("base64");
 
   try {
     const res = await fetch(`${baseUrl}/1/notify-availability-update`, {
       method: "POST",
       headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Basic ${basicAuth}`,
+        "Content-Type": "application/json",
+        Authorization: `Basic ${basicAuth}`,
       },
       body: JSON.stringify({ activityId }),
     });
