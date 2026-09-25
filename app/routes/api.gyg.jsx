@@ -21,6 +21,7 @@ import {
   gygResponse,
   parseOptionalDate,
 } from "../utils/gyg.server";
+import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 
 const prisma = db;
 
@@ -76,7 +77,7 @@ async function handleGetAvailabilities(url) {
       return gygResponse({ error: "activity_id is required", availabilities: [] });
     }
 
-    const tour = await prisma.tour.findFirst({ where: { id: activityId } });
+    const tour = await resolveTourByPlatformId(prisma, "GETYOURGUIDE", activityId);
     if (!tour) {
       return gygResponse({ availabilities: [], message: "Tour not found" });
     }
