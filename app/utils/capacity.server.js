@@ -104,6 +104,65 @@ export function calculateAvailabilityFromLoaded({
   };
 }
 
+export function calculateAvailabilityForCalendarSlotFromLoaded({
+  tour,
+  bookings = [],
+  blocks = [],
+  dateKey,
+  timeKey,
+  platform,
+  requestedSeats = 0,
+  now = new Date(),
+}) {
+  if (!tour) throw new Error("Tour not found");
+
+  const normalizedPlatform = normalizePlatform(platform || "central");
+  const dayOfWeek = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
+
+  const blockingRule =
+    blocks.find((block) =>
+      blockMatchesCalendarSlot(block, {
+        tourId: tour.id,
+        dateKey,
+        timeKey,
+        dayOfWeek,
+        platform: normalizedPlatform,
+      }),
+    ) || null;
+
+  const capacity = Math.max(0, Number(tour.maxCapacity ?? 20));
+  const occupiedSeats = bookings.reduce((total, booking) => {
+    const parts = getLisbonDateParts(booking.startTime);
+    if (!parts || parts.dateKey !== dateKey || parts.timeKey !== timeKey) {
+      return total;
+    }
+    return total + bookingSeatCount(booking, now);
+  }, 0);
+
+  const remainingSeats = blockingRule
+    ? 0
+    : Math.max(0, capacity - occupiedSeats);
+
+  const requested = Math.max(0, positiveInt(requestedSeats, 0));
+
+  return {
+    tourId: tour.id,
+    platform: normalizedPlatform,
+    date: dateKey,
+    time: timeKey,
+    capacity,
+    occupiedSeats,
+    remainingSeats,
+    requestedSeats: requested,
+    available: !blockingRule && remainingSeats > 0,
+    canAccept:
+      !blockingRule &&
+      (requested === 0 ? remainingSeats > 0 : requested <= remainingSeats),
+    blocked: Boolean(blockingRule),
+    blockingRule,
+  };
+}
+
 function queryWindow(startTime) {
   const center = new Date(startTime);
   return {
