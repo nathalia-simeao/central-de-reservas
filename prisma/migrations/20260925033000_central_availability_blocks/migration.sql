@@ -18,6 +18,14 @@ ON "BlockedDate"("dayOfWeek");
 CREATE INDEX "BlockedDate_active_idx"
 ON "BlockedDate"("active");
 
+-- Any legacy/test row pointing to a non-existing Tour must not break deployment.
+UPDATE "BlockedDate" AS b
+SET "tourId" = NULL
+WHERE b."tourId" IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM "Tour" AS t WHERE t."id" = b."tourId"
+  );
+
 ALTER TABLE "BlockedDate"
 ADD CONSTRAINT "BlockedDate_tourId_fkey"
 FOREIGN KEY ("tourId") REFERENCES "Tour"("id")
