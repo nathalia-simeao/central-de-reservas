@@ -1,5 +1,8 @@
 import { createBookingWithCapacityGuard, getCentralAvailability } from "./capacity.server";
-import { notifyGygSlotAvailability } from "./gyg-v1.server";
+import {
+  enqueueBookingSync,
+  SYNC_EVENT_TYPES,
+} from "./sync-queue.server";
 
 const SHOPIFY_PLATFORM = "SHOPIFY";
 
@@ -595,7 +598,10 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
   return { booking, syncStatus, updated: false };
 }
 
-export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
+export async function processShopifyOrderWebhook(
+  prisma,
+  { payload, topic, sourceEventId = null },
+) {
   const status = orderStatus(payload, topic);
   const orderId = externalOrderId(payload);
   const orderName = asString(payload?.name) || orderId;
@@ -614,7 +620,13 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
         ],
         status: { not: "CANCELED" },
       },
-      select: { tourId: true, startTime: true },
+      select: {
+        id: true,
+        tourId: true,
+        startTime: true,
+        platform: true,
+        status: true,
+      },
     });
 
     const result = await prisma.booking.updateMany({
@@ -636,12 +648,21 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
       },
     });
 
-    await Promise.allSettled(
+    await Promise.all(
       affectedBookings.map((booking) =>
-        notifyGygSlotAvailability({
-          tourId: booking.tourId,
-          startTime: booking.startTime,
+        enqueueBookingSync(prisma, {
+          eventId: sourceEventId
+            ? `${sourceEventId}:cancel:${booking.id}`
+            : undefined,
+          eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+          booking: {
+            ...booking,
+            platform: SHOPIFY_PLATFORM,
+            status: "CANCELED",
+          },
+          sourcePlatform: SHOPIFY_PLATFORM,
           force: true,
+          payload: { reason: "shopify_order_cancelled" },
         }),
       ),
     );
@@ -659,7 +680,6 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
   const built = await buildShopifyBookingGroups(prisma, payload);
   const expectedBookingIds = new Set();
   const bookings = [];
-  const changedSlots = [];
 
   for (const group of built.groups) {
     expectedBookingIds.add(group.externalBookingId);
@@ -672,10 +692,20 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
       syncStatus: result.syncStatus,
       totalParticipants: group.totalParticipants,
     });
-    changedSlots.push({
-      tourId: group.tour.id,
-      startTime: group.startTime,
+    await enqueueBookingSync(prisma, {
+      eventId: sourceEventId
+        ? `${sourceEventId}:${result.updated ? "updated" : "created"}:${result.booking.id}`
+        : undefined,
+      eventType: result.updated
+        ? SYNC_EVENT_TYPES.BOOKING_UPDATED
+        : SYNC_EVENT_TYPES.BOOKING_CREATED,
+      booking: result.booking,
+      sourcePlatform: SHOPIFY_PLATFORM,
       force: false,
+      payload: {
+        orderId,
+        syncStatus: result.syncStatus,
+      },
     });
   }
 
@@ -686,7 +716,14 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
       externalOrderId: orderId,
       status: { not: "CANCELED" },
     },
-    select: { id: true, externalBookingId: true, tourId: true, startTime: true },
+    select: {
+      id: true,
+      externalBookingId: true,
+      tourId: true,
+      startTime: true,
+      platform: true,
+      status: true,
+    },
   });
 
   // Only release disappeared lines when every relevant tour line was parsed.
@@ -713,33 +750,25 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
       },
     });
 
-    changedSlots.push(
-      ...removed.map((booking) => ({
-        tourId: booking.tourId,
-        startTime: booking.startTime,
-        force: true,
-      })),
+    await Promise.all(
+      removed.map((booking) =>
+        enqueueBookingSync(prisma, {
+          eventId: sourceEventId
+            ? `${sourceEventId}:removed:${booking.id}`
+            : undefined,
+          eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+          booking: {
+            ...booking,
+            platform: SHOPIFY_PLATFORM,
+            status: "CANCELED",
+          },
+          sourcePlatform: SHOPIFY_PLATFORM,
+          force: true,
+          payload: { reason: "shopify_order_line_removed" },
+        }),
+      ),
     );
   }
-
-  const uniqueSlots = [
-    ...new Map(
-      changedSlots.map((slot) => [
-        `${slot.tourId}|${new Date(slot.startTime).toISOString()}`,
-        slot,
-      ]),
-    ).values(),
-  ];
-
-  await Promise.allSettled(
-    uniqueSlots.map((slot) =>
-      notifyGygSlotAvailability({
-        tourId: slot.tourId,
-        startTime: slot.startTime,
-        force: Boolean(slot.force),
-      }),
-    ),
-  );
 
   return {
     orderId,
@@ -797,7 +826,11 @@ export async function processShopifyWebhookEvent(
   });
 
   try {
-    const result = await processShopifyOrderWebhook(prisma, { payload, topic });
+    const result = await processShopifyOrderWebhook(prisma, {
+      payload,
+      topic,
+      sourceEventId: eventId,
+    });
     const status = result.issues?.length ? "NEEDS_REVIEW" : "PROCESSED";
 
     await prisma.integrationEvent.update({
