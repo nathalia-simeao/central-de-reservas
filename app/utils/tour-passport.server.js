@@ -69,6 +69,116 @@ function deriveSchedule(product) {
   return { slots: [], source: "UNCONFIGURED" };
 }
 
+function parseBlockedWeekdays(value) {
+  return [
+    ...new Set(
+      String(value || "")
+        .split(/[,;|\s]+/)
+        .map((item) => Number.parseInt(item, 10))
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
+    ),
+  ];
+}
+
+function parseBlockedSpecificDates(value) {
+  const currentYear = new Date().getUTCFullYear();
+
+  return [
+    ...new Set(
+      String(value || "")
+        .split(/[,;|\s]+/)
+        .map((item) => item.trim())
+        .filter((item) => /^20\d{2}-\d{2}-\d{2}$/.test(item))
+        .filter((item) => {
+          const date = new Date(`${item}T00:00:00.000Z`);
+          if (Number.isNaN(date.getTime())) return false;
+          const year = date.getUTCFullYear();
+          return year >= currentYear - 1 && year <= currentYear + 5;
+        }),
+    ),
+  ];
+}
+
+async function syncCatalogAvailabilityBlocks(prisma, tour, product) {
+  const weekdays = parseBlockedWeekdays(product?.metafields?.blocked_days);
+  const dates = parseBlockedSpecificDates(product?.metafields?.blocked_specific_dates);
+
+  const desired = [
+    ...weekdays.map((day) => ({
+      key: `weekday:${day}`,
+      dayOfWeek: String(day),
+      date: null,
+      reason: "Shopify catalog: blocked weekday",
+    })),
+    ...dates.map((dateKey) => ({
+      key: `date:${dateKey}`,
+      dayOfWeek: null,
+      date: new Date(`${dateKey}T00:00:00.000Z`),
+      reason: "Shopify catalog: blocked date",
+    })),
+  ];
+
+  const existing = await prisma.blockedDate.findMany({
+    where: {
+      tourId: tour.id,
+      source: "SHOPIFY_CATALOG",
+    },
+  });
+
+  const existingByKey = new Map(
+    existing.map((block) => {
+      const key = block.dayOfWeek != null
+        ? `weekday:${block.dayOfWeek}`
+        : block.date
+          ? `date:${new Date(block.date).toISOString().slice(0, 10)}`
+          : `unknown:${block.id}`;
+      return [key, block];
+    }),
+  );
+
+  const keepIds = [];
+
+  for (const rule of desired) {
+    const current = existingByKey.get(rule.key);
+    if (current) {
+      keepIds.push(current.id);
+      if (!current.active) {
+        await prisma.blockedDate.update({
+          where: { id: current.id },
+          data: { active: true, syncStatus: "CENTRAL_ACTIVE" },
+        });
+      }
+      continue;
+    }
+
+    const created = await prisma.blockedDate.create({
+      data: {
+        tourId: tour.id,
+        date: rule.date,
+        dayOfWeek: rule.dayOfWeek,
+        timeSlot: "ALL",
+        platforms: [],
+        reason: rule.reason,
+        source: "SHOPIFY_CATALOG",
+        active: true,
+        syncStatus: "CENTRAL_ACTIVE",
+      },
+    });
+    keepIds.push(created.id);
+  }
+
+  const staleIds = existing
+    .filter((block) => !keepIds.includes(block.id) && block.active)
+    .map((block) => block.id);
+
+  if (staleIds.length) {
+    await prisma.blockedDate.updateMany({
+      where: { id: { in: staleIds } },
+      data: { active: false, syncStatus: "CATALOG_RELEASED" },
+    });
+  }
+}
+
 export function isOperationalShopifyProduct(product) {
   const type = String(product?.productType || "").toLowerCase();
   const title = String(product?.name || product?.title || "").toLowerCase();
@@ -147,6 +257,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       created += 1;
       variantsCreated += tour.variants.length;
       byProductId.set(product.id, tour);
+      await syncCatalogAvailabilityBlocks(prisma, tour, product);
       continue;
     }
 
@@ -243,6 +354,8 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
         variantsUpdated += 1;
       }
     }
+
+    await syncCatalogAvailabilityBlocks(prisma, tour, product);
   }
 
   return { created, updated, variantsCreated, variantsUpdated };
