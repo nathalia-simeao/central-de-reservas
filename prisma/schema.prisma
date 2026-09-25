@@ -76,7 +76,7 @@ model Booking {
   rawPayload          Json?
 
   createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  updatedAt           DateTime  @default(now()) @updatedAt
 
   @@unique([platform, externalBookingId], map: "Booking_platform_externalBookingId_key")
   @@index([bookingRef])
