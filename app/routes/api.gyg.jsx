@@ -22,6 +22,7 @@ import {
   parseOptionalDate,
 } from "../utils/gyg.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
+import { blockMatchesCalendarSlot, findBlockingRule, getActiveAvailabilityBlocks } from "../utils/availability.server";
 
 const prisma = db;
 
@@ -99,6 +100,8 @@ async function handleGetAvailabilities(url) {
       },
     });
 
+    const availabilityBlocks = await getActiveAvailabilityBlocks(prisma, tour.id);
+
     const MAX_CAPACITY = 20;
     const DEFAULT_TIMES = ["09:00", "14:00"];
     const availabilities = [];
@@ -112,6 +115,17 @@ async function handleGetAvailabilities(url) {
         const [hh, mm] = time.split(":").map(Number);
         const slotStart = new Date(cursor);
         slotStart.setHours(hh, mm, 0, 0);
+
+        const blocked = availabilityBlocks.some((block) =>
+          blockMatchesCalendarSlot(block, {
+            tourId: tour.id,
+            dateKey: dateStr,
+            timeKey: time,
+            platform: "getyourguide",
+          }),
+        );
+
+        if (blocked) continue;
 
         const occupied = bookings.reduce((total, booking) => {
           const bookingTime = new Date(booking.startTime);
@@ -193,6 +207,20 @@ async function handleReserve(body) {
     const tour = await prisma.tour.findFirst({ where: { id: activityId } });
     if (!tour) {
       return gygResponse({ success: false, error: "Tour not found" });
+    }
+
+    const blockingRule = await findBlockingRule(prisma, {
+      tourId: tour.id,
+      startTime,
+      platform: "getyourguide",
+    });
+
+    if (blockingRule) {
+      return gygResponse({
+        success: false,
+        error: "Timeslot unavailable",
+        reason: "Blocked by PMY Central Agenda",
+      });
     }
 
     const counts = getParticipantCounts(participants);
