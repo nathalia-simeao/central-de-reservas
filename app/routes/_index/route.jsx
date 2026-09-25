@@ -6,7 +6,7 @@ import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToM
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
-import { localSlotToInstant, notifyGygSlotAvailability } from "../../utils/gyg-v1.server";
+import { localSlotToInstant, notifyGygSlotAvailability, notifyGygTourAvailabilityWindow } from "../../utils/gyg-v1.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -628,6 +628,10 @@ export const action = async ({ request }) => {
         );
       }
 
+      if (recurringDays.length > 0 && tour.gygActivityId) {
+        await notifyGygTourAvailabilityWindow({ tourId: tour.id, days: 30 });
+      }
+
       return json({
         success: true,
         created: created.length,
@@ -686,6 +690,13 @@ export const action = async ({ request }) => {
         );
       }
 
+      if (existingBlock?.tour?.gygActivityId && existingBlock.dayOfWeek != null) {
+        await notifyGygTourAvailabilityWindow({
+          tourId: existingBlock.tour.id,
+          days: 30,
+        });
+      }
+
       return json({ success: true });
     } catch (e) {
       console.error("[PMY] removeBlock error:", e);
@@ -714,6 +725,13 @@ export const action = async ({ request }) => {
           capacitySource: "MANUAL",
         },
       });
+
+      if (updated.gygActivityId) {
+        await notifyGygTourAvailabilityWindow({
+          tourId: updated.id,
+          days: 30,
+        });
+      }
 
       return json({ success: true, maxCapacity: updated.maxCapacity });
     } catch (e) {
