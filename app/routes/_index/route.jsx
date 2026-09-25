@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { useLoaderData, useFetcher, data } from "react-router";
 import { authenticate } from "../../shopify.server";
 import db from "../../db.server";
+import { buildTourPassportUpdate, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -15,7 +16,7 @@ const ExpandIcon = () => (
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
-  const tours    = await prisma.tour.findMany({ include: { bookings: true } });
+  let tours      = await prisma.tour.findMany({ include: { bookings: true, variants: true } });
   const bookings = await prisma.booking.findMany({ orderBy: { startTime: "asc" } });
 
   // Busca nome real da loja + produtos via GraphQL
@@ -30,6 +31,7 @@ export const loader = async ({ request }) => {
             node {
               id
               title
+              productType
               status
               description
               featuredImage { url altText }
@@ -97,6 +99,7 @@ export const loader = async ({ request }) => {
       return {
         id:          node.id,
         name:        node.title,
+        productType: node.productType || null,
         description: node.description || "",
         sku:         baseVariant?.sku || "—",
         price:       minPrice > 0 ? "€" + minPrice.toFixed(0) : "—",
@@ -111,6 +114,18 @@ export const loader = async ({ request }) => {
         metafields,
       };
     });
+
+    // Sincroniza o catálogo reservável da Shopify com o registro mestre Tour.
+    // Produtos operacionais (ex.: taxa de reagendamento) não viram passeios.
+    try {
+      await syncShopifyCatalogToMasterTours(prisma, shopifyProducts);
+      tours = await prisma.tour.findMany({
+        include: { bookings: true, variants: true },
+        orderBy: { title: "asc" },
+      });
+    } catch (syncError) {
+      console.error("[PMY] tour passport sync error:", syncError);
+    }
   } catch (e) {
     shopifyProducts = [];
   }
@@ -289,6 +304,24 @@ export const action = async ({ request }) => {
     const title = formData.get("title");
     await prisma.tour.create({ data: { title } });
     return json({ success: true });
+  }
+
+  if (_action === "saveTourPassport") {
+    try {
+      const id = formData.get("id");
+      if (!id) return json({ success: false, error: "Tour ID is required" });
+
+      const data = buildTourPassportUpdate(formData);
+      const tour = await prisma.tour.update({
+        where: { id },
+        data,
+        include: { variants: true },
+      });
+
+      return json({ success: true, tour });
+    } catch (e) {
+      return json({ success: false, error: e.message });
+    }
   }
 
   if (_action === "createBooking") {
