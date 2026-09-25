@@ -4,10 +4,11 @@
  * This is the single read endpoint that storefront/channel adapters can consult
  * before offering a PMY tour slot.
  *
- * GET /api/availability?platform=shopify&product_id=<external-id>&datetime=<ISO-8601>
+ * GET /api/availability?platform=shopify&product_id=<external-id>&date=YYYY-MM-DD&time=HH:MM&quantity=4
  */
 import db from "../db.server";
-import { findBlockingRule, findBlockingRuleForCalendarSlot, normalizePlatform } from "../utils/availability.server";
+import { getActiveAvailabilityBlocks, normalizePlatform } from "../utils/availability.server";
+import { calculateAvailabilityForCalendarSlotFromLoaded, getCentralAvailability } from "../utils/capacity.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 
 const prisma = db;
@@ -58,27 +59,63 @@ export const loader = async ({ request }) => {
       return response({ available: false, error: "Tour not found" }, 404);
     }
 
-    const blockingRule = startTime
-      ? await findBlockingRule(prisma, {
+    const requestedSeats = Math.max(
+      0,
+      Number.parseInt(url.searchParams.get("quantity") || "0", 10) || 0,
+    );
+
+    let availability;
+    if (startTime) {
+      availability = await getCentralAvailability(prisma, {
+        tourId: tour.id,
+        startTime,
+        platform,
+        requestedSeats,
+      });
+    } else {
+      const dayStart = new Date(`${dateKey}T00:00:00.000Z`);
+      if (Number.isNaN(dayStart.getTime()) || !/^\d{1,2}:\d{2}$/.test(timeKey || "")) {
+        return response({ available: false, error: "Invalid date or time" }, 400);
+      }
+
+      const bookings = await prisma.booking.findMany({
+        where: {
           tourId: tour.id,
-          startTime,
-          platform,
-        })
-      : await findBlockingRuleForCalendarSlot(prisma, {
-          tourId: tour.id,
-          dateKey,
-          timeKey,
-          platform,
-        });
+          status: { in: ["CONFIRMED", "PENDING"] },
+          startTime: {
+            gte: new Date(dayStart.getTime() - 3 * 60 * 60 * 1000),
+            lte: new Date(dayStart.getTime() + 27 * 60 * 60 * 1000),
+          },
+        },
+      });
+      const blocks = await getActiveAvailabilityBlocks(prisma, tour.id);
+
+      availability = calculateAvailabilityForCalendarSlotFromLoaded({
+        tour,
+        bookings,
+        blocks,
+        dateKey,
+        timeKey,
+        platform,
+        requestedSeats,
+      });
+    }
+
+    const blockingRule = availability.blockingRule;
 
     return response({
-      available: !blockingRule,
-      blocked: Boolean(blockingRule),
+      available: availability.available,
+      canAccept: availability.canAccept,
+      blocked: availability.blocked,
       tourId: tour.id,
       platform,
       datetime: startTime ? startTime.toISOString() : null,
-      date: dateKey || null,
-      time: timeKey || null,
+      date: availability.date,
+      time: availability.time,
+      capacity: availability.capacity,
+      occupiedSeats: availability.occupiedSeats,
+      remainingSeats: availability.remainingSeats,
+      requestedSeats: availability.requestedSeats,
       block: blockingRule
         ? {
             id: blockingRule.id,

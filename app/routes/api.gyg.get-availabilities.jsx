@@ -4,12 +4,12 @@
  */
 import db from "../db.server";
 import {
-  bookingOccupancy,
   checkGygBasicAuth,
   gygResponse,
 } from "../utils/gyg.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
-import { blockMatchesCalendarSlot, getActiveAvailabilityBlocks } from "../utils/availability.server";
+import { getActiveAvailabilityBlocks } from "../utils/availability.server";
+import { calculateAvailabilityForCalendarSlotFromLoaded } from "../utils/capacity.server";
 
 const prisma = db;
 
@@ -53,7 +53,6 @@ export const loader = async ({ request }) => {
 
     const availabilityBlocks = await getActiveAvailabilityBlocks(prisma, tour.id);
 
-    const MAX_CAPACITY = 20;
     const DEFAULT_TIMES = ["09:00", "14:00"];
     const availabilities = [];
     const cursor = new Date(from);
@@ -67,33 +66,20 @@ export const loader = async ({ request }) => {
         const slotStart = new Date(cursor);
         slotStart.setHours(hh, mm, 0, 0);
 
-        const blocked = availabilityBlocks.some((block) =>
-          blockMatchesCalendarSlot(block, {
-            tourId: tour.id,
-            dateKey: dateStr,
-            timeKey: time,
-            platform: "getyourguide",
-          }),
-        );
+        const availability = calculateAvailabilityForCalendarSlotFromLoaded({
+          tour,
+          bookings,
+          blocks: availabilityBlocks,
+          dateKey: dateStr,
+          timeKey: time,
+          platform: "getyourguide",
+          now,
+        });
 
-        if (blocked) continue;
-
-        const occupied = bookings.reduce((total, booking) => {
-          const bookingTime = new Date(booking.startTime);
-          const sameSlot =
-            bookingTime.toISOString().startsWith(dateStr) &&
-            bookingTime.getHours() === hh &&
-            bookingTime.getMinutes() === mm;
-
-          return sameSlot ? total + bookingOccupancy(booking, now) : total;
-        }, 0);
-
-        const available = Math.max(0, MAX_CAPACITY - occupied);
-
-        if (available > 0) {
+        if (availability.remainingSeats > 0) {
           availabilities.push({
             datetime: slotStart.toISOString().replace("Z", "+00:00"),
-            vacancies: available,
+            vacancies: availability.remainingSeats,
             pricing: [
               { category: "ADULT", price: { amount: 50, currency: "EUR" } },
               { category: "YOUTH", price: { amount: 35, currency: "EUR" } },
