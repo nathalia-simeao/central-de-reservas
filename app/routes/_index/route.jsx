@@ -349,6 +349,10 @@ export const action = async ({ request }) => {
         return json({ success: false, error: "Selecione um tour." }, { status: 400 });
       }
 
+      if (platforms.length === 0) {
+        return json({ success: false, error: "Selecione pelo menos uma plataforma." }, { status: 400 });
+      }
+
       const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
       if (!tour) {
         return json({ success: false, error: "Tour mestre não encontrado para este produto Shopify." }, { status: 404 });
