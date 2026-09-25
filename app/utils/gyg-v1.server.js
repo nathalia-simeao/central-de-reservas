@@ -2,8 +2,9 @@ import db from "../db.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
   createBookingWithCapacityGuard,
+  getCentralAvailability,
 } from "./capacity.server";
-import { getActiveAvailabilityBlocks, getLisbonDateParts } from "./availability.server";
+import { getActiveAvailabilityBlocks, getDatePartsInTimeZone } from "./availability.server";
 import { checkGygBasicAuth } from "./gyg.server";
 import { resolveTourByPlatformId } from "./tour-passport.server";
 
@@ -396,7 +397,10 @@ export async function reserveGyg(data) {
     const tour = await resolveTourByPlatformId(prisma, GYG_PLATFORM, productId);
     if (!tour) return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
 
-    const slot = getLisbonDateParts(startTime);
+    const slot = getDatePartsInTimeZone(
+      startTime,
+      tour.timezone || "Europe/Lisbon",
+    );
     const supported = categoriesForTour(tour);
     for (const item of data.bookingItems || []) {
       const category = normalizeCategory(item?.category);
@@ -730,4 +734,61 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
     status: response.status,
     payload,
   };
+}
+
+
+export async function notifyGygSlotAvailability({ tourId, startTime }) {
+  try {
+    const tour = await prisma.tour.findUnique({
+      where: { id: tourId },
+      include: { variants: true },
+    });
+
+    // gygActivityId acts as the marker that this PMY Tour has been mapped
+    // to a GetYourGuide option. The supplier productId remains the PMY Tour ID.
+    if (!tour?.gygActivityId) {
+      return { sent: false, reason: "TOUR_NOT_MAPPED_TO_GYG" };
+    }
+
+    const parts = getDatePartsInTimeZone(
+      startTime,
+      tour.timezone || "Europe/Lisbon",
+    );
+    if (!parts) {
+      return { sent: false, reason: "INVALID_START_TIME" };
+    }
+
+    const availability = await getCentralAvailability(prisma, {
+      tourId: tour.id,
+      startTime,
+      platform: "getyourguide",
+    });
+
+    const dateTime = slotIso(
+      parts.dateKey,
+      parts.timeKey,
+      tour.timezone || "Europe/Lisbon",
+    );
+
+    if (!dateTime) {
+      return { sent: false, reason: "INVALID_SLOT" };
+    }
+
+    return notifyGygAvailabilityUpdate({
+      productId: tour.id,
+      availabilities: [
+        {
+          dateTime,
+          vacancies: availability.remainingSeats,
+        },
+      ],
+    });
+  } catch (error) {
+    console.error("[GYG v1] notify slot availability failed", error);
+    return {
+      sent: false,
+      reason: "NOTIFY_FAILED",
+      error: error?.message || String(error),
+    };
+  }
 }
