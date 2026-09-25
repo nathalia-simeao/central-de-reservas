@@ -28,11 +28,50 @@ model Session {
 }
 
 model Tour {
-  id        String    @id @default(uuid())
-  shopifyId String?
-  title     String
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
+  // ID interno canônico da PMY. Este é o "passaporte" mestre do passeio.
+  id                     String        @id @default(uuid())
+  title                  String
+  productType            String?
+  shopifyStatus          String?
+
+  // IDs do mesmo passeio em cada canal.
+  shopifyProductId       String?       @unique
+  gygActivityId          String?       @unique
+  viatorProductCode      String?       @unique
+  headoutId              String?       @unique
+  civitatisId            String?       @unique
+  tripadvisorProductCode String?       @unique
+  airbnbExperienceId     String?       @unique
+
+  variants               TourVariant[]
+  bookings               Booking[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @default(now()) @updatedAt
+
+  @@index([title])
+  @@index([productType])
+}
+
+model TourVariant {
+  // Variante interna ligada ao Tour mestre. Mantém IDs de opções/variantes por canal.
+  id                String   @id @default(uuid())
+  tourId            String
+  tour              Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  shopifyVariantId  String?  @unique
+  gygOptionId       String?  @unique
+  viatorOptionCode  String?  @unique
+  headoutVariantId  String?  @unique
+  civitatisOptionId String?  @unique
+
+  title             String?
+  sku               String?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+
+  @@index([tourId])
+  @@index([sku])
 }
 
 model Booking {
