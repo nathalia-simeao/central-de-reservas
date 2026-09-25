@@ -228,9 +228,31 @@ model IntegrationSecret {
 }
 
 
+model SyncEvent {
+  id              String    @id @default(uuid())
+  eventType       String
+  sourcePlatform  String?
+  aggregateType   String?
+  aggregateId     String?
+  tourId          String?
+  bookingId       String?
+  startTime       DateTime?
+  scope           String    @default("SLOT")
+  force           Boolean   @default(false)
+  payload         Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+  jobs            SyncJob[]
+
+  @@index([eventType, aggregateId])
+  @@index([tourId, startTime])
+  @@index([bookingId])
+}
+
 model SyncJob {
   id              String   @id @default(uuid())
   eventId         String
+  event           SyncEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventType       String
   provider        String
   sourcePlatform  String?
