@@ -632,7 +632,7 @@ function detailedBookingResponse(booking) {
       booking.status === "CONFIRMED"
         ? new Date(booking.externalUpdatedAt || booking.updatedAt).toISOString()
         : null,
-    cancellable: booking.status !== "CANCELED",
+    cancellable: !["CANCELLED", "EXPIRED"].includes(bookingStatus(booking)),
     productId: booking.tourId,
     optionId: OPTION_ID,
     availabilityId: rawCivitatisRequest(booking)?.availabilityId || null,
