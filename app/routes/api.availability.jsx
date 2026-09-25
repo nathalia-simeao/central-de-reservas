@@ -7,7 +7,7 @@
  * GET /api/availability?platform=shopify&product_id=<external-id>&datetime=<ISO-8601>
  */
 import db from "../db.server";
-import { findBlockingRule, normalizePlatform } from "../utils/availability.server";
+import { findBlockingRule, findBlockingRuleForCalendarSlot, normalizePlatform } from "../utils/availability.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 
 const prisma = db;
@@ -31,20 +31,25 @@ export const loader = async ({ request }) => {
     url.searchParams.get("activity_id") ||
     url.searchParams.get("tour_id");
   const datetime = url.searchParams.get("datetime");
+  const dateKey = url.searchParams.get("date");
+  const timeKey = url.searchParams.get("time");
 
-  if (!productId || !datetime) {
+  if (!productId || (!datetime && !(dateKey && timeKey))) {
     return response(
       {
         available: false,
-        error: "product_id/tour_id and datetime are required",
+        error: "product_id/tour_id plus datetime or date+time are required",
       },
       400,
     );
   }
 
-  const startTime = new Date(datetime);
-  if (Number.isNaN(startTime.getTime())) {
-    return response({ available: false, error: "Invalid datetime" }, 400);
+  let startTime = null;
+  if (datetime) {
+    startTime = new Date(datetime);
+    if (Number.isNaN(startTime.getTime())) {
+      return response({ available: false, error: "Invalid datetime" }, 400);
+    }
   }
 
   try {
@@ -53,18 +58,27 @@ export const loader = async ({ request }) => {
       return response({ available: false, error: "Tour not found" }, 404);
     }
 
-    const blockingRule = await findBlockingRule(prisma, {
-      tourId: tour.id,
-      startTime,
-      platform,
-    });
+    const blockingRule = startTime
+      ? await findBlockingRule(prisma, {
+          tourId: tour.id,
+          startTime,
+          platform,
+        })
+      : await findBlockingRuleForCalendarSlot(prisma, {
+          tourId: tour.id,
+          dateKey,
+          timeKey,
+          platform,
+        });
 
     return response({
       available: !blockingRule,
       blocked: Boolean(blockingRule),
       tourId: tour.id,
       platform,
-      datetime: startTime.toISOString(),
+      datetime: startTime ? startTime.toISOString() : null,
+      date: dateKey || null,
+      time: timeKey || null,
       block: blockingRule
         ? {
             id: blockingRule.id,
