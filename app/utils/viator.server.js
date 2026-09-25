@@ -5,10 +5,7 @@ import {
   createBookingWithCapacityGuard,
   getCentralAvailability,
 } from "./capacity.server";
-import {
-  getActiveAvailabilityBlocks,
-  getDatePartsInTimeZone,
-} from "./availability.server";
+import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
 
 const prisma = db;
@@ -124,11 +121,6 @@ export function validateViatorSupplierId(value, version = "v2", requestData = nu
 function clean(value) {
   const result = String(value ?? "").trim();
   return result || null;
-}
-
-function positiveInt(value, fallback = 0) {
-  const parsed = Number.parseInt(value ?? fallback, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function normalizeTime(value) {
@@ -372,8 +364,17 @@ function bookingCutoffIso(tour, startTime) {
 }
 
 function eventForAvailability(tour, timeKey, startTime, availability) {
+  const now = Date.now();
+  const cutoffSeconds = Number.isInteger(tour?.bookingCutoffSeconds)
+    ? Math.max(0, tour.bookingCutoffSeconds)
+    : 0;
+  const beforeCutoff =
+    startTime.getTime() > now &&
+    startTime.getTime() - now >= cutoffSeconds * 1000;
+  const sellable = Boolean(availability.canAccept) && beforeCutoff;
+
   const event = {
-    status: availability.remainingSeats > 0 ? "AVAILABLE" : "UNAVAILABLE",
+    status: sellable ? "AVAILABLE" : "UNAVAILABLE",
     startTime: timeKey,
     capacity: {
       type: "LIMITED",
@@ -845,7 +846,7 @@ export async function viatorReserve(body) {
       return json({
         status: "NOT_RESERVED",
         expiration: holdExpiresAt.toISOString(),
-        reference: "",
+        reference: `NOT-RESERVED-${crypto.randomUUID()}`,
         currency: currencyForTour(tour),
         price: unsupportedPrice(),
       });
