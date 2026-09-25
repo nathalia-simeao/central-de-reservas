@@ -641,6 +641,7 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
         notifyGygSlotAvailability({
           tourId: booking.tourId,
           startTime: booking.startTime,
+          force: true,
         }),
       ),
     );
@@ -674,6 +675,7 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
     changedSlots.push({
       tourId: group.tour.id,
       startTime: group.startTime,
+      force: false,
     });
   }
 
@@ -715,6 +717,7 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
       ...removed.map((booking) => ({
         tourId: booking.tourId,
         startTime: booking.startTime,
+        force: true,
       })),
     );
   }
@@ -729,7 +732,13 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
   ];
 
   await Promise.allSettled(
-    uniqueSlots.map((slot) => notifyGygSlotAvailability(slot)),
+    uniqueSlots.map((slot) =>
+      notifyGygSlotAvailability({
+        tourId: slot.tourId,
+        startTime: slot.startTime,
+        force: Boolean(slot.force),
+      }),
+    ),
   );
 
   return {
