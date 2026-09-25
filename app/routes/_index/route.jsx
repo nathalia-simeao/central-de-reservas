@@ -5,6 +5,7 @@ import db from "../../db.server";
 import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
+import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -27,6 +28,29 @@ export const loader = async ({ request }) => {
     } catch (webhookError) {
       console.error("[SHOPIFY] registerWebhooks on app load failed:", webhookError);
     }
+  }
+
+  // Verificação/autocorreção adicional usando o token do próprio app.
+  // Isso cobre instalações em que o hook da biblioteca não criou as subscriptions.
+  let shopifyWebhookStatus = {
+    ok: false,
+    callbackUrl: null,
+    subscriptions: [],
+    error: "Ainda não verificado",
+  };
+  try {
+    shopifyWebhookStatus = await ensureShopifyOrderWebhooks(
+      admin,
+      process.env.SHOPIFY_APP_URL,
+    );
+  } catch (webhookEnsureError) {
+    console.error("[SHOPIFY] ensureShopifyOrderWebhooks failed:", webhookEnsureError);
+    shopifyWebhookStatus = {
+      ok: false,
+      callbackUrl: null,
+      subscriptions: [],
+      error: webhookEnsureError?.message || String(webhookEnsureError),
+    };
   }
 
   let tours      = await prisma.tour.findMany({ include: { bookings: true, variants: true } });
@@ -310,7 +334,7 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
-  return json({ tours, bookings, blockedDates, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides });
+  return json({ tours, bookings, blockedDates, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides, shopifyWebhookStatus });
 };
 
 export const action = async ({ request }) => {
@@ -946,7 +970,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -1791,6 +1815,22 @@ export default function CentralDeReservas() {
                     <div>🏢 Loja: <strong>{conn.accountName}</strong></div>
                     <div>🔄 Último sync: <strong>{conn.lastSync}</strong></div>
                     <div>⚙️ Método: <strong>Shopify Admin API (OAuth interno do app)</strong></div>
+                    <div style={{ marginTop:'6px' }}>
+                      📡 Pedidos em tempo real:{' '}
+                      <strong style={{ color: shopifyWebhookStatus?.ok ? '#006600' : '#b45309' }}>
+                        {shopifyWebhookStatus?.ok ? 'Webhooks ativos' : 'Configuração pendente'}
+                      </strong>
+                    </div>
+                    {shopifyWebhookStatus?.subscriptions?.length > 0 && (
+                      <div style={{ fontSize:'11px', color:'#666', marginTop:'4px' }}>
+                        {shopifyWebhookStatus.subscriptions.map(s => s.topic).join(' · ')}
+                      </div>
+                    )}
+                    {!shopifyWebhookStatus?.ok && shopifyWebhookStatus?.error && (
+                      <div style={{ fontSize:'11px', color:'#a40000', marginTop:'4px' }}>
+                        {shopifyWebhookStatus.error}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'18px', fontSize:'13px', color:'#92400e', lineHeight:'1.6' }}>
