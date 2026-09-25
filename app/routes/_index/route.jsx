@@ -7,6 +7,12 @@ import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
 import { localSlotToInstant, notifyGygSlotAvailability, notifyGygTourAvailabilityWindow } from "../../utils/gyg-v1.server";
+import {
+  connectCustomPlatform,
+  connectPlatform,
+  disconnectPlatform,
+  loadSafeIntegrationConnections,
+} from "../../utils/platform-connections.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -395,6 +401,12 @@ export const loader = async ({ request }) => {
     scheduleMissing: gygScheduleMissing.length,
   };
 
+  const integrationConnections = await loadSafeIntegrationConnections(prisma, {
+    shopName,
+    shopifyConnected: Boolean(session),
+    gygIntegrationStatus,
+  });
+
   return json({
     tours,
     bookings,
@@ -407,6 +419,7 @@ export const loader = async ({ request }) => {
     dbGuides,
     shopifyWebhookStatus,
     gygIntegrationStatus,
+    integrationConnections,
   });
 };
 
@@ -414,6 +427,60 @@ export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
+  if (_action === "connectPlatform") {
+    try {
+      const result = await connectPlatform(prisma, {
+        provider: formData.get("provider"),
+        apiKey: formData.get("apiKey"),
+        apiSecret: formData.get("apiSecret"),
+        displayName: formData.get("displayName"),
+        endpoint: formData.get("endpoint"),
+      });
+
+      return json(result, { status: result.success ? 200 : 400 });
+    } catch (e) {
+      console.error("[PMY] connectPlatform error:", e);
+      return json(
+        { success: false, error: e?.message || "Falha ao validar a integração." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (_action === "connectCustomPlatform") {
+    try {
+      const result = await connectCustomPlatform(prisma, {
+        displayName: formData.get("displayName"),
+        endpoint: formData.get("endpoint"),
+        token: formData.get("token"),
+      });
+
+      return json(result, { status: result.success ? 200 : 400 });
+    } catch (e) {
+      console.error("[PMY] connectCustomPlatform error:", e);
+      return json(
+        { success: false, error: e?.message || "Falha ao validar a integração customizada." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (_action === "disconnectPlatform") {
+    try {
+      const result = await disconnectPlatform(
+        prisma,
+        String(formData.get("provider") || ""),
+      );
+      return json(result, { status: result.success ? 200 : 400 });
+    } catch (e) {
+      console.error("[PMY] disconnectPlatform error:", e);
+      return json(
+        { success: false, error: e?.message || "Falha ao desconectar a plataforma." },
+        { status: 500 },
+      );
+    }
+  }
 
   if (_action === "createTour") {
     const title = formData.get("title");
@@ -1063,25 +1130,25 @@ const allPlatforms = [
     authType: "oauth", oauthLabel: "Entrar com Shopify", oauthUrl: "https://accounts.shopify.com/",
     docsUrl: "https://shopify.dev/docs/api/admin-rest" },
   { key: "viator", logo: "🧡", name: "Viator",
-    desc: { pt: "Sincronize horários, vagas e passageiros automaticamente.", en: "Sync schedules, availability and travelers automatically." },
-    authType: "api", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
-    docsUrl: "https://docs.viator.com/partner-api/" },
+    desc: { pt: "Integração de fornecedor: a Viator chama a Central para consultar disponibilidade e criar reservas.", en: "Supplier integration: Viator calls the Central to check availability and create bookings." },
+    authType: "inbound", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
+    docsUrl: "https://docs.viator.com/supplier-api/technical/" },
   { key: "getyourguide", logo: "💛", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
     docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
   { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
-    desc: { pt: "Importe avaliações e sincronize seus widgets de reserva.", en: "Import your reviews and sync booking widgets." },
-    authType: "api", oauthLabel: "Acessar TripAdvisor Owners", oauthUrl: "https://www.tripadvisor.com/Owners",
+    desc: { pt: "Conteúdo e avaliações. Não é tratado como canal de reservas dentro desta Central.", en: "Content and reviews. It is not treated as a booking channel in this Central." },
+    authType: "content", oauthLabel: "Acessar TripAdvisor", oauthUrl: "https://www.tripadvisor.com/Owners",
     docsUrl: "https://developer-tripadvisor.com/" },
   { key: "headout", logo: "🌍", name: "Headout",
-    desc: { pt: "Distribua seus tours para milhões de viajantes globais.", en: "Distribute your tours to millions of global travelers." },
+    desc: { pt: "Conexão server-to-server por API Key, validada diretamente na API oficial da Headout.", en: "Server-to-server API Key connection validated directly against Headout's official API." },
     authType: "api", oauthLabel: "Acessar Portal Headout", oauthUrl: "https://www.headout.com/partner/login",
-    docsUrl: "https://developer.headout.com/" },
+    docsUrl: "https://developers.headout.com/docs/api/" },
   { key: "civitatis", logo: "🏛️", name: "Civitatis",
-    desc: { pt: "Alcance viajantes de língua hispânica. Sincronize atividades e reservas.", en: "Reach Spanish-speaking travelers. Sync activities and bookings." },
-    authType: "api", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
-    docsUrl: "https://www.civitatis.com/en/partners/" },
+    desc: { pt: "Integração de operador via onboarding técnico e padrão Octo. Não basta colar um token.", en: "Operator integration through technical onboarding and the Octo standard. Pasting a token is not enough." },
+    authType: "inbound", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
+    docsUrl: "https://connectivity.civitatis.com/pt/supply" },
 ];
 
 const internalFields = [
@@ -1202,7 +1269,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationConnections = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationConnections: null };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -1262,7 +1329,7 @@ export default function CentralDeReservas() {
   const [activeTourLanguages, setActiveTourLanguages] = useState(["Português", "English"]);
   const [generatedLink, setGeneratedLink] = useState("");
   const [bookingPlatforms, setBookingPlatforms] = useState(["shopify"]);  // plataformas da reserva
-  const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis", "tripadvisor"]); // bloqueio default = todas
+  const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis"]); // canais reais de reserva; TripAdvisor é conteúdo/reviews
 
   // D. BLOQUEIOS MANUAIS
   const [blockTourId, setBlockTourId] = useState("");
@@ -1338,7 +1405,9 @@ export default function CentralDeReservas() {
   const mediaUploadRef = useRef(null);
   const [customUrl, setCustomUrl] = useState("");
   const [customKey, setCustomKey] = useState("");
-  const [customIntegrations, setCustomIntegrations] = useState([]);
+  const [customIntegrations, setCustomIntegrations] = useState(
+    integrationConnections?.custom || [],
+  );
   const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos"
   const [activeProdPlatform, setActiveProdPlatform] = useState("shopify");
   // platformProducts: Shopify vem do loader (dados reais).
@@ -1353,21 +1422,21 @@ export default function CentralDeReservas() {
   });
 
   // I. CONEXÕES DE PLATAFORMAS (NOVO)
-  const [platformConnections, setPlatformConnections] = useState({
-    shopify:      { connected: true,  accountName: shopName, lastSync: new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"}) },
-    viator:       { connected: false },
-    getyourguide: {
-      connected: Boolean(gygIntegrationStatus?.credentialsReady),
-      accountName: "PMY Supplier API v1",
-      lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
+  const [platformConnections, setPlatformConnections] = useState(
+    integrationConnections?.standard || {
+      shopify: { connected: true, status: "CONNECTED", statusLabel: "CONECTADO", accountName: shopName, lastSync: "OAuth ativo" },
+      viator: { connected: false, status: "ONBOARDING_REQUIRED", statusLabel: "ONBOARDING NECESSÁRIO" },
+      getyourguide: { connected: false, status: "PENDING_EXTERNAL", statusLabel: "AGUARDANDO GYG" },
+      tripadvisor: { connected: false, status: "CONTENT_ONLY", statusLabel: "CONTEÚDO / REVIEWS" },
+      headout: { connected: false, status: "DISCONNECTED", statusLabel: "NÃO CONECTADO" },
+      civitatis: { connected: false, status: "ONBOARDING_REQUIRED", statusLabel: "ONBOARDING NECESSÁRIO" },
     },
-    tripadvisor:  { connected: false },
-    headout:      { connected: false },
-    civitatis:    { connected: false },
-  });
+  );
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [apiSecretInput, setApiSecretInput] = useState("");
+  const [connectionSaving, setConnectionSaving] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState("");
 
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
@@ -1660,11 +1729,37 @@ export default function CentralDeReservas() {
     }));
   };
 
-  const handleAddCustomIntegration = (e) => {
+  const handleAddCustomIntegration = async (e) => {
     e.preventDefault();
-    if (customName && customUrl) {
-      setCustomIntegrations([...customIntegrations, { id: Date.now(), name: customName, url: customUrl, key: customKey }]);
-      setCustomName(""); setCustomUrl(""); setCustomKey("");
+    if (!customName || !customUrl) return;
+
+    setConnectionSaving(true);
+    setConnectionMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "connectCustomPlatform");
+      fd.append("displayName", customName);
+      fd.append("endpoint", customUrl);
+      fd.append("token", customKey);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setConnectionMessage(result.error || "Não foi possível validar a API customizada.");
+        return;
+      }
+
+      setConnectionMessage(result.message || "Integração validada.");
+      setCustomName("");
+      setCustomUrl("");
+      setCustomKey("");
+      window.location.reload();
+    } catch (error) {
+      setConnectionMessage(error?.message || "Falha ao validar a API customizada.");
+    } finally {
+      setConnectionSaving(false);
     }
   };
 
@@ -2056,26 +2151,73 @@ export default function CentralDeReservas() {
     }
   };
 
-  // HANDLERS DE PLATAFORMAS (NOVO)
+  // HANDLERS DE PLATAFORMAS
   const handleOpenConnect = (key) => {
     setConnectingPlatform(key);
     setApiKeyInput("");
     setApiSecretInput("");
+    setConnectionMessage("");
     if (key === "getyourguide") {
       setGygConfigMessage("");
     }
   };
 
-  const handleConfirmConnect = (key) => {
-    if (apiKeyInput.trim()) {
-      setPlatformConnections(p => ({ ...p, [key]: { connected: true, accountName: `Conta ${allPlatforms.find(pl=>pl.key===key)?.name}`, lastSync: "Agora mesmo" } }));
-      setConnectingPlatform(null); setApiKeyInput(""); setApiSecretInput("");
+  const handleConfirmConnect = async (key) => {
+    setConnectionSaving(true);
+    setConnectionMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "connectPlatform");
+      fd.append("provider", key);
+      fd.append("apiKey", apiKeyInput);
+      fd.append("apiSecret", apiSecretInput);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setConnectionMessage(result.error || "Não foi possível validar a conexão.");
+        return;
+      }
+
+      setConnectionMessage(result.message || "Credencial validada.");
+      setApiKeyInput("");
+      setApiSecretInput("");
+      window.location.reload();
+    } catch (error) {
+      setConnectionMessage(error?.message || "Falha ao validar a plataforma.");
+    } finally {
+      setConnectionSaving(false);
     }
   };
 
-  const handleDisconnect = (key) => {
-    if (window.confirm(`Desconectar ${allPlatforms.find(p=>p.key===key)?.name}?`))
-      setPlatformConnections(p => ({ ...p, [key]: { connected: false } }));
+  const handleDisconnect = async (key) => {
+    const platform = allPlatforms.find(p => p.key === key);
+    if (!window.confirm(`Desconectar ${platform?.name || key}?`)) return;
+
+    setConnectionSaving(true);
+    setConnectionMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "disconnectPlatform");
+      fd.append("provider", key);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setConnectionMessage(result.error || "Não foi possível desconectar.");
+        return;
+      }
+
+      window.location.reload();
+    } catch (error) {
+      setConnectionMessage(error?.message || "Falha ao desconectar.");
+    } finally {
+      setConnectionSaving(false);
+    }
   };
 
   const handleUpdateFieldMapping = (platform, field, value) => {
@@ -2146,14 +2288,15 @@ export default function CentralDeReservas() {
     shopify: null, // Shopify não precisa de token — já conectado via app
     viator: {
       steps: [
-        "Acesse o portal de fornecedores: supplier.viator.com",
-        "Faça login com sua conta de operador",
-        "Vá em Account → API Settings → Generate API Key",
-        "Copie a chave e cole no campo abaixo",
+        "A integração precisa ser aprovada pela equipe técnica da Viator",
+        "Durante o onboarding/testes, a Viator fornece Supplier ID e API Key",
+        "Cadastre esses dados aqui somente quando forem oficialmente fornecidos",
+        "A Central ficará como 'Aguardando teste externo' até receber uma chamada real da Viator",
       ],
-      field1Label: "API Key do Fornecedor Viator",
-      field1Placeholder: "Ex: PARTNER-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      field2Label: null,
+      field1Label: "API Key fornecida pela Viator",
+      field1Placeholder: "Cole somente a chave recebida no onboarding",
+      field2Label: "Supplier ID fornecido pela Viator",
+      field2Placeholder: "Ex.: 12345",
     },
     getyourguide: {
       steps: [
@@ -2167,37 +2310,32 @@ export default function CentralDeReservas() {
     },
     headout: {
       steps: [
-        "Acesse: www.headout.com/partner/login",
-        "Faça login com sua conta de parceiro Headout",
-        "Vá em Settings → Developer → API Keys",
-        "Gere uma nova chave e copie o token",
+        "Obtenha uma API Key de parceiro Headout",
+        "Use uma chave tk_ para sandbox ou pk_ para produção",
+        "A Central validará a chave server-to-server antes de salvar",
       ],
       field1Label: "API Key Headout",
-      field1Placeholder: "Ex: hdo_live_xxxxxxxxxxxxxxxxxxxxxxxx",
-      field2Label: "Partner ID (obrigatório)",
-      field2Placeholder: "Ex: 4821",
+      field1Placeholder: "tk_... (sandbox) ou pk_... (produção)",
+      field2Label: null,
     },
     civitatis: {
       steps: [
-        "Acesse o portal de operadores: operadores.civitatis.com",
-        "Faça login com sua conta de operador Civitatis",
-        "Vá em Mi Cuenta → Configuración → Acceso API",
-        "Copie o Token de Acceso e cole abaixo",
+        "A integração de operador é feita via onboarding técnico",
+        "A Civitatis utiliza o padrão Octo para conectar sistemas de reserva",
+        "Depois da aprovação, a equipe de Product Operations executa um fluxo de teste completo",
       ],
-      field1Label: "Token de Acceso Civitatis",
-      field1Placeholder: "Ex: civ_live_xxxxxxxxxxxxxxxxxxxx",
-      field2Label: "Operator ID",
-      field2Placeholder: "Ex: OP-2204",
+      field1Label: null,
+      field1Placeholder: null,
+      field2Label: null,
     },
     tripadvisor: {
       steps: [
-        "Acesse: developer-tripadvisor.com/register",
-        "Registe-se como parceiro e aguarde aprovação (1-3 dias úteis)",
-        "Após aprovado, vá em Dashboard → My Apps → API Key",
-        "Copie a chave e cole abaixo",
+        "Tripadvisor será tratado separadamente como fonte de conteúdo e avaliações",
+        "Ele não entra na disponibilidade nem no motor de overbooking da Central",
+        "A conexão de reviews/conteúdo será feita com a API apropriada, sem fingir uma conexão de reservas",
       ],
-      field1Label: "API Key TripAdvisor",
-      field1Placeholder: "Ex: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      field1Label: null,
+      field1Placeholder: null,
       field2Label: null,
     },
   };
