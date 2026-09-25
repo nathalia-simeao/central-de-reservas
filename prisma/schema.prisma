@@ -226,3 +226,40 @@ model IntegrationSecret {
   @@index([status])
   @@index([environment])
 }
+
+
+model SyncJob {
+  id              String   @id @default(uuid())
+  eventId         String
+  eventType       String
+  provider        String
+  sourcePlatform  String?
+  aggregateType   String?
+  aggregateId     String?
+  tourId          String?
+  bookingId       String?
+  startTime       DateTime?
+  scope           String   @default("SLOT")
+  force           Boolean  @default(false)
+  payload         Json?
+
+  status          String   @default("PENDING")
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(8)
+  nextAttemptAt   DateTime @default(now())
+  lockedAt        DateTime?
+  lockedBy        String?
+  lastAttemptAt   DateTime?
+  processedAt     DateTime?
+  result          Json?
+  error           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@unique([provider, eventId], map: "SyncJob_provider_eventId_key")
+  @@index([status, nextAttemptAt])
+  @@index([eventType, aggregateId])
+  @@index([tourId, startTime])
+  @@index([bookingId])
+}
