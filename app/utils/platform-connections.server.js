@@ -65,11 +65,16 @@ export async function validateHeadoutApiKey(apiKey) {
     return { ok: false, message: "Informe a API Key da Headout." };
   }
 
-  const environment = key.startsWith("tk_")
-    ? "sandbox"
-    : key.startsWith("pk_")
-      ? "production"
-      : "unknown";
+  if (!key.startsWith("tk_") && !key.startsWith("pk_")) {
+    return {
+      ok: false,
+      environment: "unknown",
+      message:
+        "A API Key da Headout deve começar com tk_ (sandbox) ou pk_ (produção).",
+    };
+  }
+
+  const environment = key.startsWith("tk_") ? "sandbox" : "production";
 
   const baseUrl =
     environment === "sandbox" ? HEADOUT_SANDBOX : HEADOUT_PRODUCTION;
@@ -536,6 +541,8 @@ export async function connectPlatform(prisma, {
 
   if (normalized === "VIATOR") {
     const key = String(apiKey || "").trim();
+    const supplierId = String(apiSecret || "").trim();
+
     if (!key) {
       return {
         success: false,
@@ -543,6 +550,15 @@ export async function connectPlatform(prisma, {
         status: "ERROR",
         error:
           "A chave da Viator só deve ser cadastrada quando for fornecida durante o onboarding técnico.",
+      };
+    }
+
+    if (!supplierId || !/^\d+$/.test(supplierId)) {
+      return {
+        success: false,
+        provider: normalized,
+        status: "ERROR",
+        error: "Informe o Supplier ID numérico fornecido pela Viator.",
       };
     }
 
@@ -554,7 +570,7 @@ export async function connectPlatform(prisma, {
       environment: "test",
       credentials: {
         apiKey: key,
-        supplierId: String(apiSecret || "").trim() || null,
+        supplierId,
       },
       config: {
         validationMode: "INBOUND_REQUEST",
@@ -698,6 +714,13 @@ export async function disconnectPlatform(prisma, provider) {
   });
 
   if (!record) {
+    return { success: true };
+  }
+
+  if (record.provider.startsWith("CUSTOM:")) {
+    await prisma.integrationConnection.delete({
+      where: { id: record.id },
+    });
     return { success: true };
   }
 
