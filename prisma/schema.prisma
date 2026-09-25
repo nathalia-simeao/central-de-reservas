@@ -39,6 +39,7 @@ model Tour {
   scheduleSource         String        @default("UNCONFIGURED")
   timezone               String        @default("Europe/Lisbon")
   bookingCutoffSeconds   Int?
+  gygPriceOverApi        Boolean       @default(false)
 
   // IDs do mesmo passeio em cada canal.
   shopifyProductId       String?       @unique
