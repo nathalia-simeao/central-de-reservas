@@ -39,6 +39,8 @@ model Tour {
   scheduleSource         String        @default("UNCONFIGURED")
   timezone               String        @default("Europe/Lisbon")
   bookingCutoffSeconds   Int?
+  durationMinutes        Int?
+  durationSource         String        @default("UNCONFIGURED")
   gygPriceOverApi        Boolean       @default(false)
 
   // IDs do mesmo passeio em cada canal.

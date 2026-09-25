@@ -40,6 +40,37 @@ function parseCapacity(value) {
   return Number.isInteger(parsed) && parsed > 0 && parsed <= 999 ? parsed : null;
 }
 
+function parseDurationMinutes(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return null;
+
+  // Ambiguous ranges/alternatives are intentionally not guessed.
+  if (
+    /\bto\b|\bup to\b|\boption\b|\boptional\b|\/|\bor\b/.test(raw)
+  ) {
+    return null;
+  }
+
+  const hourMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\b/);
+  if (hourMatch) {
+    const hours = Number(hourMatch[1].replace(",", "."));
+    const minutes = Math.round(hours * 60);
+    return Number.isInteger(minutes) && minutes > 0 && minutes <= 1440
+      ? minutes
+      : null;
+  }
+
+  const minuteMatch = raw.match(/(\d{1,4})\s*(?:minutes?|mins?|min)\b/);
+  if (minuteMatch) {
+    const minutes = Number.parseInt(minuteMatch[1], 10);
+    return Number.isInteger(minutes) && minutes > 0 && minutes <= 1440
+      ? minutes
+      : null;
+  }
+
+  return null;
+}
+
 function deriveSchedule(product) {
   const configured = Array.isArray(product?.scheduleSlots)
     ? product.scheduleSlots
@@ -219,6 +250,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
     const productType = clean(product.productType);
     const derivedSchedule = deriveSchedule(product);
     const parsedCapacity = parseCapacity(product?.metafields?.group_size);
+    const parsedDuration = parseDurationMinutes(product?.metafields?.duration_info);
     const productCurrency = clean(product?.currency || "EUR")?.toUpperCase()?.slice(0, 3) || "EUR";
     let tour = byProductId.get(product.id);
 
@@ -231,6 +263,9 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
           shopifyProductId: product.id,
           ...(parsedCapacity
             ? { maxCapacity: parsedCapacity, capacitySource: "SHOPIFY_GROUP_SIZE" }
+            : {}),
+          ...(parsedDuration
+            ? { durationMinutes: parsedDuration, durationSource: "SHOPIFY_DURATION_INFO" }
             : {}),
           scheduleSlots: derivedSchedule.slots,
           scheduleSource: derivedSchedule.source,
@@ -272,6 +307,18 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       if (tour.maxCapacity !== parsedCapacity) tourChanges.maxCapacity = parsedCapacity;
       if (tour.capacitySource !== "SHOPIFY_GROUP_SIZE") {
         tourChanges.capacitySource = "SHOPIFY_GROUP_SIZE";
+      }
+    }
+
+    if (tour.durationSource !== "MANUAL") {
+      if ((tour.durationMinutes || null) !== (parsedDuration || null)) {
+        tourChanges.durationMinutes = parsedDuration;
+      }
+      const nextDurationSource = parsedDuration
+        ? "SHOPIFY_DURATION_INFO"
+        : "UNCONFIGURED";
+      if ((tour.durationSource || "UNCONFIGURED") !== nextDurationSource) {
+        tourChanges.durationSource = nextDurationSource;
       }
     }
 
