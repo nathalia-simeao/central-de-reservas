@@ -2348,6 +2348,8 @@ export default function CentralDeReservas() {
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
+    const isCivitatis = connectingPlatform === 'civitatis';
+    const isTripadvisor = connectingPlatform === 'tripadvisor';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
@@ -2361,8 +2363,10 @@ export default function CentralDeReservas() {
               <div style={{ fontSize:'21px', fontWeight:'900', color:'var(--text-dark)', marginBottom:'5px' }}>{platform.name}</div>
               <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'18px' }}>
                 {conn.connected
-                  ? `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`
-                  : isShopify ? "Já conectado automaticamente via Shopify App" : "Siga as instruções abaixo para conectar"}
+                  ? `Conexão validada: ${conn.accountName}${conn.lastSync ? ` · ${conn.lastSync}` : ''}`
+                  : isShopify
+                    ? "Já conectado automaticamente via Shopify App"
+                    : conn?.message || "Configure e valide a conexão abaixo"}
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
@@ -2567,32 +2571,81 @@ export default function CentralDeReservas() {
               </div>
             )}
 
-            {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
+            {/* ── OUTRAS PLATAFORMAS: conexão realmente validada ── */}
             {!isShopify && !isGyg && conn.connected && (
               <div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
                     <span style={{ fontSize:'22px' }}>✅</span>
-                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>Integração Ativa</strong>
+                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>Conexão validada no servidor</strong>
                   </div>
                   <div style={{ fontSize:'13px', color:'#444', lineHeight:'1.8' }}>
-                    <div>🏢 Conta: <strong>{conn.accountName}</strong></div>
-                    <div>🔄 Último sync: <strong>{conn.lastSync}</strong></div>
-                    <div>📋 Campos mapeados: <strong>11 / 11</strong></div>
+                    <div>🏢 Plataforma: <strong>{conn.accountName || platform.name}</strong></div>
+                    {conn.environment && <div>🧪 Ambiente: <strong>{conn.environment}</strong></div>}
+                    {conn.lastSync && <div>🔎 Última validação: <strong>{conn.lastSync}</strong></div>}
+                    <div>🔐 Credencial: <strong>{conn.hasStoredCredential ? 'armazenada criptografada' : 'gerenciada externamente'}</strong></div>
+                    {conn.message && <div style={{ marginTop:'5px', color:'#666' }}>{conn.message}</div>}
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>Fechar</button>
-                  <button onClick={() => { handleDisconnect(connectingPlatform); setConnectingPlatform(null); }}
-                    style={{ flex:1, background:'#fff0f0', border:'1px solid #fcc', color:'#cc0000', borderRadius:'8px', padding:'12px', fontWeight:'700', fontSize:'13px', cursor:'pointer' }}>
-                    Desconectar
+                  <button onClick={() => handleDisconnect(connectingPlatform)} disabled={connectionSaving}
+                    style={{ flex:1, background:'#fff0f0', border:'1px solid #fcc', color:'#cc0000', borderRadius:'8px', padding:'12px', fontWeight:'700', fontSize:'13px', cursor:'pointer', opacity:connectionSaving?0.6:1 }}>
+                    {connectionSaving ? 'Removendo...' : 'Desconectar'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !isGyg && !conn.connected && guide && (
+            {/* ── CIVITATIS: onboarding técnico real, não token fake ── */}
+            {isCivitatis && (
+              <div>
+                <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontWeight:'900', color:'#92400e', marginBottom:'8px' }}>🟡 Onboarding técnico necessário</div>
+                  <div style={{ fontSize:'12px', color:'#6d5510', lineHeight:'1.65' }}>
+                    A conexão de operador da Civitatis segue o padrão Octo e passa por validação da equipe deles.
+                    Por isso a Central não aceita um token solto e não marca esta plataforma como conectada antes do teste externo.
+                  </div>
+                </div>
+                <ol style={{ paddingLeft:'18px', display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
+                  {guide?.steps?.map((step, i) => <li key={i} style={{ fontSize:'13px', color:'#444' }}>{step}</li>)}
+                </ol>
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" className="pmy-btn-submit" onClick={() => window.open(platform.docsUrl, '_blank')} style={{ flex:1 }}>
+                    Abrir conectividade Civitatis ↗
+                  </button>
+                  <button type="button" onClick={() => setConnectingPlatform(null)}
+                    style={{ flex:1, background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'8px', padding:'12px', fontWeight:'700', cursor:'pointer' }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── TRIPADVISOR: conteúdo/reviews, fora do motor de reservas ── */}
+            {isTripadvisor && (
+              <div>
+                <div style={{ background:'#f5f7ff', border:'1px solid #d9def8', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontWeight:'900', color:'#3949ab', marginBottom:'8px' }}>🦉 Integração de conteúdo, não de reservas</div>
+                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.65' }}>
+                    O Tripadvisor não será contabilizado como canal de reservas nem receberá bloqueios de vagas nesta Central.
+                    Reviews e conteúdo ficam em uma integração separada, com status próprio.
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" className="pmy-btn-submit" onClick={() => window.open(platform.docsUrl, '_blank')} style={{ flex:1 }}>
+                    Abrir documentação Tripadvisor ↗
+                  </button>
+                  <button type="button" onClick={() => setConnectingPlatform(null)}
+                    style={{ flex:1, background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'8px', padding:'12px', fontWeight:'700', cursor:'pointer' }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── OUTRAS PLATAFORMAS: credenciais validadas no servidor ── */}
+            {!isShopify && !isGyg && !isCivitatis && !isTripadvisor && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
@@ -2639,12 +2692,31 @@ export default function CentralDeReservas() {
                   )}
                 </div>
 
+                {connectionMessage && (
+                  <div style={{
+                    marginBottom:'12px',
+                    padding:'10px 12px',
+                    borderRadius:'8px',
+                    background:'#fff4f4',
+                    border:'1px solid #f3caca',
+                    color:'#a40000',
+                    fontSize:'12px',
+                    lineHeight:'1.45'
+                  }}>
+                    {connectionMessage}
+                  </div>
+                )}
+
                 <button className="pmy-btn-submit"
                   onClick={() => handleConfirmConnect(connectingPlatform)}
-                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}
-                  style={{ opacity: (!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())) ? 0.5 : 1 }}>
-                  ✓ Ativar Integração com {platform.name}
+                  disabled={connectionSaving || !apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}
+                  style={{ opacity: (connectionSaving || !apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())) ? 0.5 : 1 }}>
+                  {connectionSaving ? 'Validando com a API...' : `✓ Validar e conectar ${platform.name}`}
                 </button>
+
+                <div style={{ marginTop:'10px', fontSize:'11px', color:'#888', lineHeight:'1.5', textAlign:'center' }}>
+                  A credencial é enviada ao servidor e nunca é gravada no navegador. Só aparece como conectada após validação real.
+                </div>
 
                 <div style={{ marginTop:'14px', textAlign:'center' }}>
                   <a href={platform.docsUrl} target="_blank" rel="noreferrer"
@@ -3886,51 +3958,100 @@ export default function CentralDeReservas() {
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:'20px', marginBottom:'40px' }}>
                     {allPlatforms.map(platform => {
-                      const conn = platformConnections[platform.key];
+                      const conn = platformConnections[platform.key] || {};
+                      const isPending = [
+                        'PENDING_EXTERNAL',
+                        'PENDING_EXTERNAL_TEST',
+                        'ONBOARDING_REQUIRED',
+                      ].includes(conn.status);
+                      const isInfo = conn.status === 'CONTENT_ONLY';
+                      const statusColor = conn.connected
+                        ? '#22c55e'
+                        : isPending
+                          ? '#b45309'
+                          : isInfo
+                            ? '#3949ab'
+                            : conn.status === 'ERROR'
+                              ? '#cc0000'
+                              : '#aaa';
+                      const canDisconnect =
+                        conn.connected &&
+                        !['shopify', 'getyourguide'].includes(platform.key);
+
                       return (
                         <div key={platform.key} className={`pmy-int-card-v2 ${conn.connected?'connected':''}`} style={{ display:'flex', flexDirection:'column' }}>
                           <div className="pmy-int-top">
                             <span className="pmy-int-logo-v2">{platform.logo}</span>
-                            {conn.connected && <span className="pmy-int-sync-info">🔄 {conn.lastSync}</span>}
+                            {conn.connected && conn.lastSync && <span className="pmy-int-sync-info">✓ {conn.lastSync}</span>}
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'6px' }}>
-                            <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`}></span>
-                            <span style={{ fontSize:'11px', fontWeight:'700', color:conn.connected?'#22c55e':'#aaa' }}>
-                              {conn.connected ? 'CONECTADO' : 'NÃO CONECTADO'}
+                            <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`} style={!conn.connected ? { background:statusColor } : undefined}></span>
+                            <span style={{ fontSize:'11px', fontWeight:'700', color:statusColor }}>
+                              {conn.statusLabel || (conn.connected ? 'CONECTADO' : 'NÃO CONECTADO')}
                             </span>
                           </div>
                           <div className="pmy-int-name-v2">{platform.name}</div>
                           <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
+                          {conn.message && (
+                            <div style={{ fontSize:'10px', color:'#888', lineHeight:'1.4', marginBottom:'12px' }}>
+                              {conn.message}
+                            </div>
+                          )}
                           <div className="pmy-int-actions">
-                            {conn.connected ? (
-                              <>
-                                <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>⚙️ Gerenciar</button>
-                                <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>Desconectar</button>
-                              </>
-                            ) : (
-                              <button className="pmy-int-btn-connect" onClick={()=>handleOpenConnect(platform.key)}>
-                                🔗 Conectar {platform.name}
-                              </button>
+                            <button className={conn.connected ? "pmy-int-btn-settings" : "pmy-int-btn-connect"} onClick={()=>handleOpenConnect(platform.key)}>
+                              {conn.connected ? '⚙️ Gerenciar' : isPending || isInfo ? 'Ver detalhes' : `🔗 Conectar ${platform.name}`}
+                            </button>
+                            {canDisconnect && (
+                              <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>Desconectar</button>
                             )}
                           </div>
                         </div>
                       );
                     })}
-                    {customIntegrations.map(c => (
-                      <div className="pmy-int-card-v2 connected" key={c.id} style={{ display:'flex', flexDirection:'column' }}>
-                        <div className="pmy-int-top"><span className="pmy-int-logo-v2">⚙️</span><span className="pmy-int-sync-info">Custom API</span></div>
-                        <div className="pmy-int-name-v2">{c.name}</div>
-                        <div className="pmy-int-desc-v2" style={{ wordBreak:'break-all' }}>Endpoint: {c.url}</div>
+                    {customIntegrations.map(conn => (
+                      <div className={`pmy-int-card-v2 ${conn.connected?'connected':''}`} key={conn.id} style={{ display:'flex', flexDirection:'column' }}>
+                        <div className="pmy-int-top">
+                          <span className="pmy-int-logo-v2">⚙️</span>
+                          <span className="pmy-int-sync-info">{conn.connected ? '✓ API validada' : conn.statusLabel}</span>
+                        </div>
+                        <div className="pmy-int-name-v2">{conn.displayName || 'API Customizada'}</div>
+                        <div className="pmy-int-desc-v2" style={{ wordBreak:'break-all' }}>
+                          Endpoint: {conn.config?.endpoint || '—'}
+                        </div>
+                        {conn.lastValidationMessage && (
+                          <div style={{ fontSize:'10px', color:'#888', marginBottom:'12px' }}>{conn.lastValidationMessage}</div>
+                        )}
+                        <button className="pmy-int-btn-disconnect" onClick={async () => {
+                          if (!window.confirm(`Remover ${conn.displayName || 'esta integração'}?`)) return;
+                          const fd = new FormData();
+                          fd.append("_action", "disconnectPlatform");
+                          fd.append("provider", conn.provider);
+                          const res = await fetch(window.location.href, { method:'POST', body:fd });
+                          const result = await res.json();
+                          if (!res.ok || !result.success) {
+                            alert(result.error || 'Não foi possível remover a integração.');
+                            return;
+                          }
+                          window.location.reload();
+                        }}>Desconectar</button>
                       </div>
                     ))}
                   </div>
                   <div className="pmy-form-box" style={{ maxWidth:'600px' }}>
-                    <h3>🔗 Conectar Nova Plataforma via API</h3>
+                    <h3>🔗 Conectar API customizada com validação</h3>
+                    <div style={{ fontSize:'12px', color:'#777', lineHeight:'1.55', marginBottom:'15px' }}>
+                      Informe um endpoint HTTPS de verificação. A Central fará um GET server-to-server e só salvará a conexão se receber uma resposta 2xx. Tokens são criptografados no banco e nunca retornam ao navegador.
+                    </div>
                     <form onSubmit={handleAddCustomIntegration}>
                       <div className="pmy-form-group"><label>Nome da Plataforma:</label><input type="text" className="pmy-form-input" placeholder="Ex: Agência Parceira LX" value={customName} onChange={e=>setCustomName(e.target.value)} required /></div>
                       <div className="pmy-form-group"><label>Endpoint da API (URL):</label><input type="url" className="pmy-form-input" placeholder="https://api.parceiro.com/v1/bookings" value={customUrl} onChange={e=>setCustomUrl(e.target.value)} required /></div>
                       <div className="pmy-form-group"><label>Chave da API / Token:</label><input type="password" className="pmy-form-input" placeholder="pmy_live_key_..." value={customKey} onChange={e=>setCustomKey(e.target.value)} /></div>
-                      <button type="submit" className="pmy-btn-submit" style={{ background:'#ff6600' }}>Ativar Integração Customizada</button>
+                      {connectionMessage && (
+                        <div style={{ marginBottom:'10px', fontSize:'12px', color:'#a40000' }}>{connectionMessage}</div>
+                      )}
+                      <button type="submit" className="pmy-btn-submit" disabled={connectionSaving} style={{ background:'#ff6600', opacity:connectionSaving?0.6:1 }}>
+                        {connectionSaving ? 'Validando endpoint...' : 'Validar e conectar API'}
+                      </button>
                     </form>
                   </div>
                 </div>
@@ -3999,15 +4120,9 @@ export default function CentralDeReservas() {
                         <div style={{ fontSize:'13px', color:'#888', lineHeight:'1.6', maxWidth:'380px', margin:'0 auto 20px' }}>
                           {platform?.key === 'shopify'
                             ? 'Sua loja Shopify não tem produtos cadastrados ainda, ou nenhum foi retornado pela API. Cadastre produtos no painel Shopify e recarregue esta página.'
-                            : `A integração com ${platform?.name} está conectada, mas os produtos ainda não foram importados. A sincronização automática ocorre a cada 24h, ou clique em Sincronizar Agora.`
+                            : `A conexão com ${platform?.name} foi validada, mas a importação de catálogo desse canal ainda não está implementada. A Central não vai simular uma sincronização.`
                           }
                         </div>
-                        {platform?.key !== 'shopify' && (
-                          <button className="pmy-btn-submit" style={{ width:'auto', padding:'10px 24px', fontSize:'13px' }}
-                            onClick={() => alert(`Sincronização manual com ${platform?.name} iniciada. Os produtos aparecerão aqui em instantes.`)}>
-                            🔄 Sincronizar Agora
-                          </button>
-                        )}
                         {platform?.key === 'shopify' && (
                           <a href="/admin/products/new" target="_blank" rel="noreferrer"
                             style={{ display:'inline-block', background:'var(--primary-green)', color:'#fff', padding:'10px 24px', borderRadius:'8px', fontSize:'13px', fontWeight:'700', textDecoration:'none' }}>
