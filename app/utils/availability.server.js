@@ -65,27 +65,46 @@ export function blockTargetsPlatform(block, platform) {
   return platforms.length === 0 || platforms.includes(target);
 }
 
-export function blockMatchesSlot(block, { tourId, startTime, platform }) {
+export function blockMatchesCalendarSlot(
+  block,
+  { tourId, dateKey, timeKey, dayOfWeek = null, platform },
+) {
   if (!block?.active) return false;
   if (block.tourId && block.tourId !== tourId) return false;
   if (!blockTargetsPlatform(block, platform)) return false;
 
-  const parts = getLisbonDateParts(startTime);
-  if (!parts) return false;
-
   const specificDate = getStoredDateKey(block.date);
   const recurringDay = block.dayOfWeek == null ? null : String(block.dayOfWeek);
 
-  const dateMatches = specificDate ? specificDate === parts.dateKey : true;
-  const weekdayMatches = recurringDay ? recurringDay === String(parts.dayOfWeek) : true;
+  // Old/empty rows must never become accidental "block everything" rules.
+  if (!specificDate && !recurringDay) return false;
 
-  if (specificDate && !dateMatches) return false;
-  if (recurringDay && !weekdayMatches) return false;
+  const resolvedDay =
+    dayOfWeek == null
+      ? new Date(`${dateKey}T12:00:00Z`).getUTCDay()
+      : Number(dayOfWeek);
+
+  if (specificDate && specificDate !== dateKey) return false;
+  if (recurringDay && recurringDay !== String(resolvedDay)) return false;
 
   const ruleTime = normalizeTimeSlot(block.timeSlot);
-  if (ruleTime !== "ALL" && ruleTime !== parts.timeKey) return false;
+  const normalizedSlot = normalizeTimeSlot(timeKey);
+  if (ruleTime !== "ALL" && ruleTime !== normalizedSlot) return false;
 
   return true;
+}
+
+export function blockMatchesSlot(block, { tourId, startTime, platform }) {
+  const parts = getLisbonDateParts(startTime);
+  if (!parts) return false;
+
+  return blockMatchesCalendarSlot(block, {
+    tourId,
+    dateKey: parts.dateKey,
+    timeKey: parts.timeKey,
+    dayOfWeek: parts.dayOfWeek,
+    platform,
+  });
 }
 
 export async function getActiveAvailabilityBlocks(prisma, tourId) {
@@ -107,6 +126,25 @@ export async function findBlockingRule(
   return (
     blocks.find((block) =>
       blockMatchesSlot(block, { tourId, startTime, platform }),
+    ) || null
+  );
+}
+
+export async function findBlockingRuleForCalendarSlot(
+  prisma,
+  { tourId, dateKey, timeKey, dayOfWeek = null, platform, preloadedBlocks = null },
+) {
+  const blocks = preloadedBlocks || (await getActiveAvailabilityBlocks(prisma, tourId));
+
+  return (
+    blocks.find((block) =>
+      blockMatchesCalendarSlot(block, {
+        tourId,
+        dateKey,
+        timeKey,
+        dayOfWeek,
+        platform,
+      }),
     ) || null
   );
 }
