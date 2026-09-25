@@ -10,6 +10,7 @@ import {
   gygResponse,
   parseOptionalDate,
 } from "../utils/gyg.server";
+import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 
 const prisma = db;
 
@@ -68,7 +69,7 @@ export const action = async ({ request }) => {
       });
     }
 
-    const tour = await prisma.tour.findFirst({ where: { id: activityId } });
+    const tour = await resolveTourByPlatformId(prisma, "GETYOURGUIDE", activityId);
     if (!tour) {
       return gygResponse({ success: false, error: "Tour not found" });
     }
