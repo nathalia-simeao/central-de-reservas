@@ -14,7 +14,6 @@
 import db from "../db.server";
 import {
   bookingLookupWhere,
-  bookingOccupancy,
   checkGygBasicAuth,
   getMoneyFields,
   getParticipantCounts,
@@ -22,7 +21,8 @@ import {
   parseOptionalDate,
 } from "../utils/gyg.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
-import { blockMatchesCalendarSlot, findBlockingRule, getActiveAvailabilityBlocks } from "../utils/availability.server";
+import { getActiveAvailabilityBlocks } from "../utils/availability.server";
+import { calculateAvailabilityForCalendarSlotFromLoaded, createBookingWithCapacityGuard } from "../utils/capacity.server";
 
 const prisma = db;
 
@@ -102,7 +102,6 @@ async function handleGetAvailabilities(url) {
 
     const availabilityBlocks = await getActiveAvailabilityBlocks(prisma, tour.id);
 
-    const MAX_CAPACITY = 20;
     const DEFAULT_TIMES = ["09:00", "14:00"];
     const availabilities = [];
     const cursor = new Date(from);
@@ -116,32 +115,20 @@ async function handleGetAvailabilities(url) {
         const slotStart = new Date(cursor);
         slotStart.setHours(hh, mm, 0, 0);
 
-        const blocked = availabilityBlocks.some((block) =>
-          blockMatchesCalendarSlot(block, {
-            tourId: tour.id,
-            dateKey: dateStr,
-            timeKey: time,
-            platform: "getyourguide",
-          }),
-        );
+        const availability = calculateAvailabilityForCalendarSlotFromLoaded({
+          tour,
+          bookings,
+          blocks: availabilityBlocks,
+          dateKey: dateStr,
+          timeKey: time,
+          platform: "getyourguide",
+          now,
+        });
 
-        if (blocked) continue;
-
-        const occupied = bookings.reduce((total, booking) => {
-          const bookingTime = new Date(booking.startTime);
-          const sameSlot =
-            bookingTime.toISOString().startsWith(dateStr) &&
-            bookingTime.getHours() === hh &&
-            bookingTime.getMinutes() === mm;
-
-          return sameSlot ? total + bookingOccupancy(booking, now) : total;
-        }, 0);
-
-        const available = Math.max(0, MAX_CAPACITY - occupied);
-        if (available > 0) {
+        if (availability.remainingSeats > 0) {
           availabilities.push({
             datetime: slotStart.toISOString().replace("Z", "+00:00"),
-            vacancies: available,
+            vacancies: availability.remainingSeats,
             pricing: [
               { category: "ADULT", price: { amount: 50, currency: "EUR" } },
               { category: "YOUTH", price: { amount: 35, currency: "EUR" } },
@@ -204,23 +191,9 @@ async function handleReserve(body) {
       });
     }
 
-    const tour = await prisma.tour.findFirst({ where: { id: activityId } });
+    const tour = await resolveTourByPlatformId(prisma, "GETYOURGUIDE", activityId);
     if (!tour) {
       return gygResponse({ success: false, error: "Tour not found" });
-    }
-
-    const blockingRule = await findBlockingRule(prisma, {
-      tourId: tour.id,
-      startTime,
-      platform: "getyourguide",
-    });
-
-    if (blockingRule) {
-      return gygResponse({
-        success: false,
-        error: "Timeslot unavailable",
-        reason: "Blocked by PMY Central Agenda",
-      });
     }
 
     const counts = getParticipantCounts(participants);
@@ -228,23 +201,36 @@ async function handleReserve(body) {
     const holdExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
     const now = new Date();
 
-    const reservation = await prisma.booking.create({
-      data: {
-        tourId: tour.id,
+    if (counts.totalParticipants < 1) {
+      return gygResponse({
+        success: false,
+        error: "Invalid participants",
+        reason: "At least one participant is required",
+      });
+    }
+
+    const guardedReservation = await createBookingWithCapacityGuard(prisma, {
+      tourId: tour.id,
+      startTime,
+      platform: "GETYOURGUIDE",
+      externalBookingId: bookingId,
+      requestedSeats: counts.totalParticipants,
+      bookingData: {
         customerName:
           `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() ||
           "GYG Customer",
         customerEmail: customer?.email || null,
         customerPhone: customer?.phone || null,
         language: languageCode || null,
-        startTime,
-        platform: "GETYOURGUIDE",
         status: "PENDING",
         bookingRef: bookingId,
         externalBookingId: bookingId,
         externalProductId: activityId,
         externalVariantId: timeslot?.id || body?.variantId || null,
-        ...counts,
+        adults: counts.adults,
+        children: counts.children,
+        youths: counts.youths,
+        seniors: counts.seniors,
         ...money,
         syncStatus: "RECEIVED",
         lastSyncedAt: now,
@@ -255,10 +241,25 @@ async function handleReserve(body) {
       },
     });
 
+    if (!guardedReservation.accepted) {
+      return gygResponse({
+        success: false,
+        error: "Timeslot unavailable",
+        reason: guardedReservation.reason,
+        vacancies: guardedReservation.availability?.remainingSeats ?? 0,
+      });
+    }
+
     return gygResponse({
       success: true,
-      reservationId: reservation.id,
-      holdUntil: holdExpiresAt.toISOString().replace("Z", "+00:00"),
+      reservationId: guardedReservation.booking.id,
+      holdUntil: guardedReservation.booking.holdExpiresAt
+        ? guardedReservation.booking.holdExpiresAt
+            .toISOString()
+            .replace("Z", "+00:00")
+        : holdExpiresAt.toISOString().replace("Z", "+00:00"),
+      vacancies: guardedReservation.availabilityAfter?.remainingSeats ?? null,
+      message: guardedReservation.idempotent ? "Already reserved" : undefined,
     });
   } catch (err) {
     console.error("[GYG] reserve error:", err);
