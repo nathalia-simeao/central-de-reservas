@@ -394,6 +394,29 @@ export async function reserveGyg(data) {
   }
 
   try {
+    const existingBooking = await prisma.booking.findFirst({
+      where: {
+        platform: GYG_PLATFORM,
+        externalBookingId: gygBookingReference,
+      },
+    });
+
+    if (existingBooking) {
+      if (existingBooking.status === "CANCELED") {
+        return gygV1Error(
+          "INVALID_RESERVATION",
+          "This GetYourGuide booking reference was already cancelled.",
+        );
+      }
+
+      return gygV1Success({
+        reservationReference: responseBookingReference(existingBooking),
+        reservationExpiration: existingBooking.holdExpiresAt
+          ? new Date(existingBooking.holdExpiresAt).toISOString()
+          : new Date(Date.now() + HOLD_MINUTES * 60 * 1000).toISOString(),
+      });
+    }
+
     const tour = await resolveTourByPlatformId(prisma, GYG_PLATFORM, productId);
     if (!tour) return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
 
@@ -544,8 +567,8 @@ export async function bookGyg(data) {
     const booking = await prisma.booking.findFirst({
       where: {
         platform: GYG_PLATFORM,
+        id: reservationReference,
         OR: [
-          { id: reservationReference },
           { externalBookingId: gygBookingReference },
           { bookingRef: gygBookingReference },
         ],
@@ -708,7 +731,11 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
     };
   }
 
-  const response = await fetch(`${baseUrl}/1/notify-availability-update`, {
+  const notifyUrl = /\/1$/i.test(baseUrl)
+    ? `${baseUrl}/notify-availability-update`
+    : `${baseUrl}/1/notify-availability-update`;
+
+  const response = await fetch(notifyUrl, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`,
@@ -736,6 +763,89 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
   };
 }
 
+
+export async function notifyGygTourAvailabilityWindow({
+  tourId,
+  days = 30,
+}) {
+  try {
+    const tour = await prisma.tour.findUnique({
+      where: { id: tourId },
+      include: { variants: true },
+    });
+
+    if (!tour?.gygActivityId) {
+      return { sent: false, reason: "TOUR_NOT_MAPPED_TO_GYG" };
+    }
+
+    const scheduleSlots = [...new Set(tour.scheduleSlots || [])].sort();
+    if (scheduleSlots.length === 0) {
+      return { sent: false, reason: "TOUR_SCHEDULE_NOT_CONFIGURED" };
+    }
+
+    const timeZone = tour.timezone || "Europe/Lisbon";
+    const from = new Date();
+    const to = new Date(from.getTime() + Math.max(1, days) * 24 * 60 * 60 * 1000);
+    const queryWindowStart = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+    const queryWindowEnd = new Date(to.getTime() + 24 * 60 * 60 * 1000);
+
+    const [bookings, blocks] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          tourId: tour.id,
+          status: { in: ["CONFIRMED", "PENDING"] },
+          startTime: { gte: queryWindowStart, lte: queryWindowEnd },
+        },
+      }),
+      getActiveAvailabilityBlocks(prisma, tour.id),
+    ]);
+
+    const updates = [];
+    let dateKey = dateKeyFromInstant(from, timeZone);
+    const endDateKey = dateKeyFromInstant(to, timeZone);
+    const now = new Date();
+
+    while (dateKey && endDateKey && dateKey <= endDateKey) {
+      for (const timeKey of scheduleSlots) {
+        const instant = localSlotToInstant(dateKey, timeKey, timeZone);
+        if (!instant || instant < from || instant > to) continue;
+
+        const availability = calculateAvailabilityForCalendarSlotFromLoaded({
+          tour,
+          bookings,
+          blocks,
+          dateKey,
+          timeKey,
+          platform: "getyourguide",
+          now,
+        });
+
+        updates.push({
+          dateTime: slotIso(dateKey, timeKey, timeZone),
+          vacancies: availability.remainingSeats,
+        });
+      }
+
+      dateKey = nextDateKey(dateKey);
+    }
+
+    if (updates.length === 0) {
+      return { sent: false, reason: "NO_FUTURE_SLOTS" };
+    }
+
+    return notifyGygAvailabilityUpdate({
+      productId: tour.id,
+      availabilities: updates,
+    });
+  } catch (error) {
+    console.error("[GYG v1] notify tour availability window failed", error);
+    return {
+      sent: false,
+      reason: "NOTIFY_FAILED",
+      error: error?.message || String(error),
+    };
+  }
+}
 
 export async function notifyGygSlotAvailability({ tourId, startTime }) {
   try {
