@@ -1,47 +1,77 @@
 /**
  * POST /api/gyg/cancel-reservation
- * GYG cancela uma pré-reserva (PENDING)
+ * GYG cancela uma pré-reserva (PENDING).
  */
 import db from "../db.server";
+import {
+  bookingLookupWhere,
+  checkGygBasicAuth,
+  gygResponse,
+  parseOptionalDate,
+} from "../utils/gyg.server";
 
 const prisma = db;
 
-function checkBasicAuth(request) {
-  const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Basic ")) return false;
-  const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
-  const [user, pass] = decoded.split(":");
-  return user === (process.env.GYG_INCOMING_USER || "pmy-api") &&
-         pass === (process.env.GYG_INCOMING_PASS || "");
-}
-
-function gygResponse(body) {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 export const action = async ({ request }) => {
-  if (!checkBasicAuth(request)) {
+  if (!checkGygBasicAuth(request)) {
     return gygResponse({ error: "Unauthorized" });
   }
 
   let body;
-  try { body = await request.json(); }
-  catch { return gygResponse({ error: "Invalid JSON" }); }
+  try {
+    body = await request.json();
+  } catch {
+    return gygResponse({ error: "Invalid JSON" });
+  }
 
-  const { reservationId, bookingId } = body;
+  const { reservationId, bookingId, reason } = body;
+  const lookup = bookingLookupWhere({ reservationId, bookingId });
+
+  if (!lookup) {
+    return gygResponse({
+      success: false,
+      error: "reservationId or bookingId is required",
+    });
+  }
 
   try {
     const booking = await prisma.booking.findFirst({
-      where: { OR: [{ id: reservationId }, { bookingRef: bookingId }] },
+      where: {
+        platform: "GETYOURGUIDE",
+        ...lookup,
+      },
     });
 
-    if (!booking) return gygResponse({ success: true, message: "Already released" });
-    if (booking.status !== "PENDING") return gygResponse({ success: false, error: `Status: ${booking.status}` });
+    if (!booking) {
+      return gygResponse({ success: true, message: "Already released" });
+    }
 
-    await prisma.booking.update({ where: { id: booking.id }, data: { status: "CANCELED" } });
+    if (booking.status === "CANCELED") {
+      return gygResponse({ success: true, message: "Already released" });
+    }
+
+    if (booking.status !== "PENDING") {
+      return gygResponse({
+        success: false,
+        error: `Cannot cancel reservation with status: ${booking.status}`,
+      });
+    }
+
+    const now = new Date();
+
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CANCELED",
+        cancelReason: reason || "reservation_cancelled",
+        syncStatus: "SYNCED",
+        lastSyncedAt: now,
+        externalUpdatedAt: parseOptionalDate(body?.updatedAt) || now,
+        holdExpiresAt: null,
+        rawPayload: body,
+      },
+    });
+
     return gygResponse({ success: true });
   } catch (err) {
     console.error("[GYG] cancel-reservation error:", err);
