@@ -214,7 +214,7 @@ async function lockCapacitySlot(tx, tourId, startTime) {
 
   // Transaction-scoped PostgreSQL advisory lock. Two channels trying to sell
   // the last seats of the same tour/slot must pass through this lock one by one.
-  await tx.$executeRaw`
+  await tx.$queryRaw`
     SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
   `;
 }
