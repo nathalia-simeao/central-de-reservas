@@ -206,6 +206,8 @@ function eligibleTour(tour) {
       tour.shopifyStatus !== "INACTIVE" &&
       Array.isArray(tour.scheduleSlots) &&
       tour.scheduleSlots.length > 0 &&
+      Number.isInteger(tour.durationMinutes) &&
+      tour.durationMinutes > 0 &&
       !isGroupOnlyTour(tour) &&
       categoriesForTour(tour).length > 0,
   );
@@ -439,16 +441,6 @@ function holdMinutes() {
     : DEFAULT_HOLD_MINUTES;
 }
 
-function durationMinutes() {
-  const parsed = Number.parseInt(
-    process.env.CIVITATIS_DEFAULT_DURATION_MINUTES || "",
-    10,
-  );
-  return Number.isInteger(parsed) && parsed > 0 && parsed <= 1440
-    ? parsed
-    : 0;
-}
-
 function availabilityId({ productId, dateKey, timeKey }) {
   return Buffer.from(
     JSON.stringify({ p: productId, d: dateKey, t: timeKey }),
@@ -497,8 +489,9 @@ function availabilityResponse({
   units,
   includePricing,
 }) {
-  const duration = durationMinutes();
-  const end = new Date(instant.getTime() + duration * 60 * 1000);
+  const end = new Date(
+    instant.getTime() + Number(tour.durationMinutes) * 60 * 1000,
+  );
   const status = availabilityStatus(availability);
   const item = {
     id: availabilityId({
