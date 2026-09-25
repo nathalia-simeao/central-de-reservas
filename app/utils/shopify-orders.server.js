@@ -660,11 +660,17 @@ export async function processShopifyOrderWebhook(prisma, { payload, topic }) {
     select: { id: true, externalBookingId: true },
   });
 
-  const removed = previous.filter(
-    (booking) =>
-      booking.externalBookingId &&
-      !expectedBookingIds.has(booking.externalBookingId),
-  );
+  // Only release disappeared lines when every relevant tour line was parsed.
+  // If Shopify sends an order missing Date/Time, keep any prior valid booking
+  // and flag the event for review instead of accidentally freeing its seats.
+  const removed =
+    built.issues.length === 0
+      ? previous.filter(
+          (booking) =>
+            booking.externalBookingId &&
+            !expectedBookingIds.has(booking.externalBookingId),
+        )
+      : [];
 
   if (removed.length) {
     await prisma.booking.updateMany({
