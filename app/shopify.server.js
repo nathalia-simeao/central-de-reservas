@@ -2,20 +2,60 @@ import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
   AppDistribution,
+  DeliveryMethod,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
+const configuredScopes = [
+  ...new Set([
+    ...(process.env.SCOPES || "")
+      .split(",")
+      .map((scope) => scope.trim())
+      .filter(Boolean),
+    "read_orders",
+  ]),
+];
+
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.October25,
-  scopes: process.env.SCOPES?.split(","),
+  scopes: configuredScopes,
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  webhooks: {
+    ORDERS_CREATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_UPDATED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_PAID: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+    ORDERS_CANCELLED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
+  },
+  hooks: {
+    afterAuth: async ({ session }) => {
+      try {
+        const response = await shopify.registerWebhooks({ session });
+        console.log("[SHOPIFY] Order webhooks registered", response);
+      } catch (error) {
+        // Most commonly happens before read_orders has been granted.
+        console.error("[SHOPIFY] Unable to register order webhooks", error);
+      }
+    },
+  },
   future: {
     expiringOfflineAccessTokens: true,
   },
