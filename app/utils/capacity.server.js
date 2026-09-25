@@ -1,7 +1,7 @@
 import {
   blockMatchesCalendarSlot,
   getActiveAvailabilityBlocks,
-  getLisbonDateParts,
+  getDatePartsInTimeZone,
   normalizePlatform,
 } from "./availability.server";
 
@@ -34,14 +34,14 @@ export function bookingSeatCount(booking, now = new Date()) {
   return fallback > 0 ? fallback : 1;
 }
 
-export function slotParts(startTime) {
-  const parts = getLisbonDateParts(startTime);
+export function slotParts(startTime, timeZone = "Europe/Lisbon") {
+  const parts = getDatePartsInTimeZone(startTime, timeZone);
   if (!parts) throw new Error("Invalid startTime");
   return parts;
 }
 
-export function bookingMatchesSlot(booking, parts) {
-  const bookingParts = getLisbonDateParts(booking.startTime);
+export function bookingMatchesSlot(booking, parts, timeZone = "Europe/Lisbon") {
+  const bookingParts = getDatePartsInTimeZone(booking.startTime, timeZone);
   return (
     bookingParts &&
     bookingParts.dateKey === parts.dateKey &&
@@ -60,7 +60,8 @@ export function calculateAvailabilityFromLoaded({
 }) {
   if (!tour) throw new Error("Tour not found");
 
-  const parts = slotParts(startTime);
+  const timeZone = tour.timezone || "Europe/Lisbon";
+  const parts = slotParts(startTime, timeZone);
   const normalizedPlatform = normalizePlatform(platform || "central");
 
   const blockingRule =
@@ -76,7 +77,7 @@ export function calculateAvailabilityFromLoaded({
 
   const capacity = Math.max(0, Number(tour.maxCapacity ?? 20));
   const occupiedSeats = bookings.reduce((total, booking) => {
-    if (!bookingMatchesSlot(booking, parts)) return total;
+    if (!bookingMatchesSlot(booking, parts, timeZone)) return total;
     return total + bookingSeatCount(booking, now);
   }, 0);
 
@@ -132,7 +133,10 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
 
   const capacity = Math.max(0, Number(tour.maxCapacity ?? 20));
   const occupiedSeats = bookings.reduce((total, booking) => {
-    const parts = getLisbonDateParts(booking.startTime);
+    const parts = getDatePartsInTimeZone(
+      booking.startTime,
+      tour.timezone || "Europe/Lisbon",
+    );
     if (!parts || parts.dateKey !== dateKey || parts.timeKey !== timeKey) {
       return total;
     }
