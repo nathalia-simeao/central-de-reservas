@@ -4,6 +4,7 @@ import { authenticate } from "../../shopify.server";
 import db from "../../db.server";
 import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
+import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -450,13 +451,79 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "saveCapacity") {
+    try {
+      const shopifyProductId = formData.get("tourId");
+      const parsed = Number.parseInt(formData.get("maxCapacity") || "", 10);
+
+      if (!shopifyProductId || !Number.isInteger(parsed) || parsed < 0 || parsed > 999) {
+        return json({ success: false, error: "Capacidade inválida." }, { status: 400 });
+      }
+
+      const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
+      if (!tour) {
+        return json({ success: false, error: "Tour mestre não encontrado." }, { status: 404 });
+      }
+
+      const updated = await prisma.tour.update({
+        where: { id: tour.id },
+        data: {
+          maxCapacity: parsed,
+          capacitySource: "MANUAL",
+        },
+      });
+
+      return json({ success: true, maxCapacity: updated.maxCapacity });
+    } catch (e) {
+      console.error("[PMY] saveCapacity error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
+    }
+  }
+
   if (_action === "createBooking") {
-    const tourId = formData.get("tourId");
-    const customerName = formData.get("customerName");
-    const startTime = new Date(formData.get("startTime"));
-    const platform = formData.get("platform");
-    await prisma.booking.create({ data: { tourId, customerName, startTime, platform, status: "CONFIRMED" } });
-    return json({ success: true });
+    try {
+      const tourId = formData.get("tourId");
+      const customerName = formData.get("customerName");
+      const startTime = new Date(formData.get("startTime"));
+      const platform = String(formData.get("platform") || "MANUAL").toUpperCase();
+      const requestedSeats = Math.max(
+        1,
+        Number.parseInt(formData.get("totalParticipants") || formData.get("quantity") || "1", 10) || 1,
+      );
+
+      if (!tourId || Number.isNaN(startTime.getTime())) {
+        return json({ success: false, error: "Tour ou horário inválido." }, { status: 400 });
+      }
+
+      const guarded = await createBookingWithCapacityGuard(prisma, {
+        tourId,
+        startTime,
+        platform,
+        requestedSeats,
+        bookingData: {
+          customerName: customerName || "Reserva manual",
+          status: "CONFIRMED",
+          syncStatus: "CENTRAL",
+        },
+      });
+
+      if (!guarded.accepted) {
+        return json({
+          success: false,
+          error: guarded.message || "Sem disponibilidade.",
+          availability: guarded.availability || null,
+        }, { status: 409 });
+      }
+
+      return json({
+        success: true,
+        booking: guarded.booking,
+        availabilityAfter: guarded.availabilityAfter,
+      });
+    } catch (e) {
+      console.error("[PMY] createBooking error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
+    }
   }
 
   // Upload de mídia via Shopify Files API (staged upload)
@@ -951,7 +1018,14 @@ export default function CentralDeReservas() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(26);
 
   // G. GUIAS E CAPACIDADE
-  const [tourCapacities, setTourCapacities] = useState({});
+  const [tourCapacities, setTourCapacities] = useState(() =>
+    Object.fromEntries(
+      (tours || []).map(tour => [
+        tour.shopifyProductId || tour.id,
+        Number(tour.maxCapacity ?? 20),
+      ]),
+    ),
+  );
   const [guideName, setGuideName] = useState("");
   const [guideEmail, setGuideEmail] = useState("");
   const [guideDdi, setGuideDdi] = useState("+351");
@@ -1069,6 +1143,8 @@ export default function CentralDeReservas() {
         })
         .map(p => ({
         id: p.id, title: p.name, price: p.price, priceRaw: p.priceRaw,
+        masterTourId: (tours || []).find(mt => mt.shopifyProductId === p.id)?.id || null,
+        maxCapacity: Number((tours || []).find(mt => mt.shopifyProductId === p.id)?.maxCapacity ?? 20),
         sku: p.sku, image: p.image, imageAlt: p.imageAlt,
         active: p.active, variants: p.variants, collections: p.collections,
         scheduleSlots: p.scheduleSlots, description: p.description,
@@ -1505,9 +1581,28 @@ export default function CentralDeReservas() {
     setTourAvailableHours([]);
   };
 
-  const handleCapacityChange = (id, change) => {
+  const handleCapacityChange = async (id, change) => {
     const cur = tourCapacities[id] !== undefined ? tourCapacities[id] : 20;
-    setTourCapacities({ ...tourCapacities, [id]: Math.min(20, Math.max(0, cur + change)) });
+    const next = Math.min(999, Math.max(0, cur + change));
+
+    setTourCapacities(prev => ({ ...prev, [id]: next }));
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveCapacity");
+      fd.append("tourId", id);
+      fd.append("maxCapacity", String(next));
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setTourCapacities(prev => ({ ...prev, [id]: cur }));
+        alert(result.error || "Não foi possível salvar a capacidade.");
+      }
+    } catch (err) {
+      setTourCapacities(prev => ({ ...prev, [id]: cur }));
+      alert(err?.message || "Erro ao salvar a capacidade.");
+    }
   };
 
   const handlePrevMonth = () => {
@@ -2892,7 +2987,8 @@ export default function CentralDeReservas() {
                 <div className={`pmy-calendar-grid ${calendarView==='month'?'month-view':''}`}>{renderCalendarDays()}</div>
 
                 <div style={{ borderTop:'1px solid #eee', paddingTop:'20px' }}>
-                  <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'15px' }}>📊 Controle Manual de Vagas por Tour</h4>
+                  <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'6px' }}>📊 Capacidade Máxima por Tour e Horário</h4>
+                  <div style={{ fontSize:'12px', color:'#888', marginBottom:'15px' }}>A Central desconta automaticamente desta capacidade todas as reservas confirmadas e pré-reservas ativas, independentemente do canal de venda.</div>
                   {tourOptions.map(tour => {
                     const cap = tourCapacities[tour.id] !== undefined ? tourCapacities[tour.id] : 20;
                     return (
@@ -2903,8 +2999,8 @@ export default function CentralDeReservas() {
                             <strong style={{ fontSize:'15px' }}>{tour.title}</strong>
                             <div style={{ fontSize:'12px', color:'#888', marginTop:'4px' }}>
                               {tour.price && <span style={{ color:'var(--primary-green)', fontWeight:'700', marginRight:'8px' }}>{tour.price}</span>}
-                              Vagas: {cap} / 20
-                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>🔒 LOTADO</span>}
+                              Capacidade: {cap} pessoa{cap===1?'':'s'} por horário
+                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>🔒 VENDAS SUSPENSAS</span>}
                             </div>
                           </div>
                         </div>
