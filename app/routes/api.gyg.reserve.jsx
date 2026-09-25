@@ -11,6 +11,7 @@ import {
   parseOptionalDate,
 } from "../utils/gyg.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
+import { findBlockingRule } from "../utils/availability.server";
 
 const prisma = db;
 
@@ -72,6 +73,20 @@ export const action = async ({ request }) => {
     const tour = await resolveTourByPlatformId(prisma, "GETYOURGUIDE", activityId);
     if (!tour) {
       return gygResponse({ success: false, error: "Tour not found" });
+    }
+
+    const blockingRule = await findBlockingRule(prisma, {
+      tourId: tour.id,
+      startTime,
+      platform: "getyourguide",
+    });
+
+    if (blockingRule) {
+      return gygResponse({
+        success: false,
+        error: "Timeslot unavailable",
+        reason: "Blocked by PMY Central Agenda",
+      });
     }
 
     const counts = getParticipantCounts(participants);
