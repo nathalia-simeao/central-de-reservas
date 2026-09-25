@@ -2,7 +2,8 @@ ALTER TABLE "Tour"
 ADD COLUMN "scheduleSlots" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
 ADD COLUMN "scheduleSource" TEXT NOT NULL DEFAULT 'UNCONFIGURED',
 ADD COLUMN "timezone" TEXT NOT NULL DEFAULT 'Europe/Lisbon',
-ADD COLUMN "bookingCutoffSeconds" INTEGER;
+ADD COLUMN "bookingCutoffSeconds" INTEGER,
+ADD COLUMN "gygPriceOverApi" BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE "TourVariant"
 ADD COLUMN "passengerCategory" TEXT,
