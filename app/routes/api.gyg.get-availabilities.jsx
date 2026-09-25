@@ -8,6 +8,7 @@ import {
   checkGygBasicAuth,
   gygResponse,
 } from "../utils/gyg.server";
+import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 
 const prisma = db;
 
@@ -26,9 +27,7 @@ export const loader = async ({ request }) => {
   }
 
   try {
-    const tour = await prisma.tour.findFirst({
-      where: { id: activityId },
-    });
+    const tour = await resolveTourByPlatformId(prisma, "GETYOURGUIDE", activityId);
 
     if (!tour) {
       return gygResponse({ availabilities: [] });
