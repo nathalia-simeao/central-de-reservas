@@ -338,7 +338,15 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       if ((current.startTimeSlot || null) !== startTimeSlot) {
         variantChanges.startTimeSlot = startTimeSlot;
       }
-      if (String(current.price ?? "") !== String(price ?? "")) {
+      const currentPrice =
+        current.price == null || current.price === ""
+          ? null
+          : Number(current.price);
+      const nextPrice = price == null || price === "" ? null : Number(price);
+      if (
+        currentPrice !== nextPrice &&
+        !(Number.isNaN(currentPrice) && Number.isNaN(nextPrice))
+      ) {
         variantChanges.price = price;
       }
       if ((current.currency || null) !== productCurrency) {
