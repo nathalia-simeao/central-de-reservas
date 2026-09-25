@@ -475,6 +475,7 @@ export const action = async ({ request }) => {
         gygActivityId,
         timezone,
         bookingCutoffSeconds,
+        gygPriceOverApi: String(formData.get("gygPriceOverApi") || "") === "true",
       };
 
       if (scheduleRaw) {
@@ -1374,6 +1375,7 @@ export default function CentralDeReservas() {
   const [gygConfigSchedule, setGygConfigSchedule] = useState("");
   const [gygConfigTimezone, setGygConfigTimezone] = useState("Europe/Lisbon");
   const [gygConfigCutoff, setGygConfigCutoff] = useState("");
+  const [gygConfigPriceOverApi, setGygConfigPriceOverApi] = useState(false);
   const [gygConfigMessage, setGygConfigMessage] = useState("");
   const [gygConfigSaving, setGygConfigSaving] = useState(false);
 
@@ -2015,6 +2017,7 @@ export default function CentralDeReservas() {
         ? String(tour.bookingCutoffSeconds)
         : "",
     );
+    setGygConfigPriceOverApi(Boolean(tour?.gygPriceOverApi));
   };
 
   const handleSaveGygTourConfig = async () => {
@@ -2034,6 +2037,7 @@ export default function CentralDeReservas() {
       fd.append("scheduleSlots", gygConfigSchedule);
       fd.append("timezone", gygConfigTimezone);
       fd.append("bookingCutoffSeconds", gygConfigCutoff);
+      fd.append("gygPriceOverApi", gygConfigPriceOverApi ? "true" : "false");
 
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const result = await res.json();
@@ -2374,6 +2378,30 @@ export default function CentralDeReservas() {
                             placeholder="Ex.: 3600" />
                         </div>
                       </div>
+
+                      <label style={{
+                        display:'flex',
+                        gap:'8px',
+                        alignItems:'flex-start',
+                        marginTop:'12px',
+                        padding:'10px',
+                        background:'#fff9e8',
+                        border:'1px solid #f2d77b',
+                        borderRadius:'8px',
+                        fontSize:'11px',
+                        color:'#6d5510',
+                        lineHeight:'1.45'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={gygConfigPriceOverApi}
+                          onChange={(e) => setGygConfigPriceOverApi(e.target.checked)}
+                          style={{ marginTop:'2px' }}
+                        />
+                        <span>
+                          <strong>Preço via API</strong>. Ative somente quando as categorias/preços deste produto estiverem idênticos aos configurados no GetYourGuide. Por padrão fica desligado.
+                        </span>
+                      </label>
 
                       {gygConfigMessage && (
                         <div style={{ fontSize:'11px', color:gygConfigMessage.includes('salva')?'#006600':'#a40000', marginTop:'10px' }}>
