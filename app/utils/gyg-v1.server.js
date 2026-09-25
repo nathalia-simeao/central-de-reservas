@@ -349,7 +349,9 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
           now,
         });
 
-        const price = pricingForSlot(tour, timeKey);
+        const price = tour.gygPriceOverApi
+          ? pricingForSlot(tour, timeKey)
+          : { currency: null, retailPrices: null, ambiguous: false };
         const entry = {
           dateTime: slotIso(dateKey, timeKey, timeZone),
           productId: String(productId),
