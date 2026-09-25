@@ -1578,6 +1578,105 @@ export default function CentralDeReservas() {
     });
   };
 
+  const getLisbonBookingParts = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Lisbon",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      })
+        .formatToParts(date)
+        .filter(part => part.type !== "literal")
+        .map(part => [part.type, part.value]),
+    );
+
+    return {
+      dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+      timeKey: `${parts.hour}:${parts.minute}`,
+    };
+  };
+
+  const getBookingPassengers = (booking) => {
+    const explicit = Number(booking?.totalParticipants || 0);
+    if (explicit > 0) return explicit;
+
+    const fallback =
+      Number(booking?.adults || 0) +
+      Number(booking?.children || 0) +
+      Number(booking?.youths || 0) +
+      Number(booking?.seniors || 0);
+
+    return fallback > 0 ? fallback : 1;
+  };
+
+  const isBookingActiveForCapacity = (booking) => {
+    if (!booking || booking.status === "CANCELED") return false;
+    if (!["CONFIRMED", "PENDING"].includes(booking.status)) return false;
+
+    if (booking.status === "PENDING" && booking.holdExpiresAt) {
+      const expires = new Date(booking.holdExpiresAt);
+      if (!Number.isNaN(expires.getTime()) && expires <= new Date()) return false;
+    }
+
+    return true;
+  };
+
+  const getCalendarDayBookings = (day) => {
+    const month = String(currentMonth + 1).padStart(2, "0");
+    const date = String(day).padStart(2, "0");
+    const dateKey = `${currentYear}-${month}-${date}`;
+
+    return (bookings || [])
+      .filter(isBookingActiveForCapacity)
+      .filter(booking => getLisbonBookingParts(booking.startTime)?.dateKey === dateKey)
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  };
+
+  const getCalendarDayStats = (day) => {
+    const dayBookings = getCalendarDayBookings(day);
+    const slots = new Map();
+
+    for (const booking of dayBookings) {
+      const parts = getLisbonBookingParts(booking.startTime);
+      if (!parts) continue;
+
+      const tour = (tours || []).find(item => item.id === booking.tourId);
+      const capacity = Math.max(0, Number(tour?.maxCapacity ?? 20));
+      const key = `${booking.tourId}|${parts.timeKey}`;
+
+      if (!slots.has(key)) {
+        slots.set(key, {
+          tourId: booking.tourId,
+          timeKey: parts.timeKey,
+          capacity,
+          occupied: 0,
+        });
+      }
+
+      slots.get(key).occupied += getBookingPassengers(booking);
+    }
+
+    const occupied = [...slots.values()].reduce((sum, slot) => sum + slot.occupied, 0);
+    const capacity = [...slots.values()].reduce((sum, slot) => sum + slot.capacity, 0);
+    const remaining = Math.max(0, capacity - occupied);
+
+    return {
+      bookings: dayBookings,
+      bookingCount: dayBookings.length,
+      tourCount: new Set(dayBookings.map(booking => booking.tourId)).size,
+      passengers: occupied,
+      capacity,
+      remaining,
+    };
+  };
+
   const handleBlockTourSelectionChange = (id) => {
     setBlockTourId(id);
     const tour = tourOptions.find(t => t.id === id);
@@ -1673,22 +1772,43 @@ export default function CentralDeReservas() {
     const enWeekdays = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
     const weekdays = lang === 'pt' ? ptWeekdays : enWeekdays;
 
-    if (calendarView !== "month") {
-      let shortDays = [];
-      if (calendarView === "1d") shortDays = [26];
-      else if (calendarView === "3d") shortDays = [25,26,27];
-      else if (calendarView === "7d") shortDays = [24,25,26,27,28,29,30];
-      return shortDays.map(day => {
-        const wi = (day+3)%7;
-        return (
-          <div key={day} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
-            onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
-            <div className="pmy-cal-date-line">{day} - {weekdays[wi]}</div>
-            <div className="pmy-cal-info-line">🏰 2 Tours Ativos</div>
-            <div className="pmy-cal-info-line">👥 Vagas: 14/20</div>
-            {getCalendarDayBlocks(day).length > 0 && <div className="pmy-calendar-dot"></div>}
+    const renderDayCell = (day, weekdayLabel, key) => {
+      const stats = getCalendarDayStats(day);
+      const hasBookings = stats.bookingCount > 0;
+      const hasBlocks = getCalendarDayBlocks(day).length > 0;
+
+      return (
+        <div key={key} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
+          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
+          <div className="pmy-cal-date-line">{day} - {weekdayLabel}</div>
+          <div className="pmy-cal-info-line">
+            🏰 {stats.tourCount} {stats.tourCount===1 ? 'Tour com reserva' : 'Tours com reserva'}
           </div>
-        );
+          <div className="pmy-cal-info-line">
+            {hasBookings
+              ? `👥 Vagas: ${stats.remaining}/${stats.capacity} · ${stats.passengers} pax`
+              : '👥 Nenhuma reserva'}
+          </div>
+          {(hasBookings || hasBlocks) && <div className="pmy-calendar-dot"></div>}
+        </div>
+      );
+    };
+
+    if (calendarView !== "month") {
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const today = new Date();
+      const anchorDay =
+        today.getFullYear() === currentYear && today.getMonth() === currentMonth
+          ? today.getDate()
+          : 1;
+      const count = calendarView === "1d" ? 1 : calendarView === "3d" ? 3 : 7;
+      const shortDays = Array.from({ length: count }, (_, index) => anchorDay + index)
+        .filter(day => day <= totalDays);
+
+      return shortDays.map(day => {
+        const nativeDay = new Date(currentYear, currentMonth, day, 12, 0, 0).getDay();
+        const mondayIndex = nativeDay === 0 ? 6 : nativeDay - 1;
+        return renderDayCell(day, weekdays[mondayIndex], `short-${day}`);
       });
     }
 
@@ -1699,15 +1819,7 @@ export default function CentralDeReservas() {
     for (let p=0; p<pad; p++) cells.push(<div key={`e-${p}`} className="pmy-calendar-day empty" style={{opacity:0.15,cursor:'default',background:'none',border:'none'}}></div>);
     for (let day=1; day<=totalDays; day++) {
       const wn = weekdays[(day+pad-1)%7]||weekdays[0];
-      cells.push(
-        <div key={`d-${day}`} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
-          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
-          <div className="pmy-cal-date-line">{day} - {wn.split('-')[0]}</div>
-          <div className="pmy-cal-info-line">🏰 2 Tours Ativos</div>
-          <div className="pmy-cal-info-line">👥 Vagas: 14/20</div>
-          {getCalendarDayBlocks(day).length > 0 && <div className="pmy-calendar-dot"></div>}
-        </div>
-      );
+      cells.push(renderDayCell(day, wn.split('-')[0], `d-${day}`));
     }
     return cells;
   };
@@ -1950,22 +2062,88 @@ export default function CentralDeReservas() {
     if (activeModal === 'calendarDay') {
       title = `📅 Grade do Dia ${selectedCalendarDay} de ${currentMonthLabel} de ${currentYear}`;
       const dayBlocks = getCalendarDayBlocks(selectedCalendarDay);
+      const dayBookings = getCalendarDayBookings(selectedCalendarDay);
+      const dayStats = getCalendarDayStats(selectedCalendarDay);
       const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
       content = (
         <div>
-          <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>Eventos Ativos Agendados:</h4>
+          <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>Reservas confirmadas e pré-reservas ativas:</h4>
           <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'20px' }}>
-            {selectedCalendarDay === 26 ? (
-              tours?.map((tour, i) => (
-                <div key={tour.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom: i===tours.length-1?'none':'1px solid #eee' }}>
-                  <span style={{ fontWeight:'bold', fontSize:'14px' }}>{tour.title}</span>
-                  <div className="pmy-guide-mini-tag">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=50&q=80" alt="Renan" className="pmy-guide-mini-img" />
-                    <span>Renan (09:00)</span>
+            {dayBookings.length > 0 ? (
+              <>
+                <div style={{
+                  display:'grid',
+                  gridTemplateColumns:'repeat(3,1fr)',
+                  gap:'8px',
+                  marginBottom:'12px'
+                }}>
+                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
+                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.bookingCount}</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>reservas</div>
+                  </div>
+                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
+                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.passengers}</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>passageiros</div>
+                  </div>
+                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
+                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.remaining}/{dayStats.capacity}</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>vagas restantes</div>
                   </div>
                 </div>
-              ))
-            ) : <p style={{ color:'#999', fontSize:'14px', textAlign:'center', padding:'10px 0' }}>Nenhum tour escalado para este dia.</p>}
+
+                {dayBookings.map((booking, i) => {
+                  const tour = (tours || []).find(item => item.id === booking.tourId);
+                  const parts = getLisbonBookingParts(booking.startTime);
+                  const pax = getBookingPassengers(booking);
+                  const platformLabel =
+                    booking.platform === 'SHOPIFY' ? 'Shopify' :
+                    booking.platform === 'GETYOURGUIDE' ? 'GetYourGuide' :
+                    booking.platform === 'VIATOR' ? 'Viator' :
+                    booking.platform || 'Central';
+
+                  return (
+                    <div key={booking.id} style={{
+                      display:'grid',
+                      gridTemplateColumns:'1fr auto',
+                      gap:'12px',
+                      alignItems:'center',
+                      padding:'11px 0',
+                      borderBottom:i===dayBookings.length-1?'none':'1px solid #eee'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight:'800', fontSize:'14px', color:'#333' }}>
+                          {tour?.title || 'Tour'}
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#777', marginTop:'4px', lineHeight:'1.6' }}>
+                          🕒 {parts?.timeKey || '—'} · 👥 {pax} pax · 🛒 {platformLabel}
+                          {booking.bookingRef ? ` · ${booking.bookingRef}` : ''}
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#777' }}>
+                          {booking.adults > 0 ? `Adult ${booking.adults}  ` : ''}
+                          {booking.children > 0 ? `Child ${booking.children}  ` : ''}
+                          {booking.youths > 0 ? `Youth ${booking.youths}  ` : ''}
+                          {booking.seniors > 0 ? `Senior ${booking.seniors}` : ''}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize:'10px',
+                        fontWeight:'800',
+                        padding:'5px 8px',
+                        borderRadius:'12px',
+                        background:booking.status==='CONFIRMED'?'#eaf8ea':'#fff4d6',
+                        color:booking.status==='CONFIRMED'?'#087a08':'#9a6700'
+                      }}>
+                        {booking.status==='CONFIRMED'?'CONFIRMADA':'PENDENTE'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <p style={{ color:'#999', fontSize:'14px', textAlign:'center', padding:'10px 0' }}>
+                Nenhuma reserva para este dia.
+              </p>
+            )}
           </div>
           <hr style={{ border:'none', borderTop:'1px solid #eee', margin:'20px 0' }} />
           {dayBlocks.length > 0 && (
