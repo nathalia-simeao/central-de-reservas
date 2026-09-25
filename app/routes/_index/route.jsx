@@ -2,7 +2,8 @@ import { useState, useRef, useCallback } from "react";
 import { useLoaderData, useFetcher, data } from "react-router";
 import { authenticate } from "../../shopify.server";
 import db from "../../db.server";
-import { buildTourPassportUpdate, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
+import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
+import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -18,6 +19,11 @@ export const loader = async ({ request }) => {
 
   let tours      = await prisma.tour.findMany({ include: { bookings: true, variants: true } });
   const bookings = await prisma.booking.findMany({ orderBy: { startTime: "asc" } });
+  const blockedDates = await prisma.blockedDate.findMany({
+    where: { active: true },
+    include: { tour: { select: { id: true, title: true, shopifyProductId: true } } },
+    orderBy: { createdAt: "desc" },
+  });
 
   // Busca nome real da loja + produtos via GraphQL
   let shopifyProducts = [];
@@ -292,7 +298,7 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
-  return json({ tours, bookings, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides });
+  return json({ tours, bookings, blockedDates, shopifyProducts, shopName, shopifyStaff, mediaFiles, shopifyImages, dbGuides });
 };
 
 export const action = async ({ request }) => {
@@ -321,6 +327,122 @@ export const action = async ({ request }) => {
       return json({ success: true, tour });
     } catch (e) {
       return json({ success: false, error: e.message });
+    }
+  }
+
+  if (_action === "createBlock") {
+    try {
+      const shopifyProductId = formData.get("tourId");
+      const specificDate = formData.get("date");
+      const recurringDays = parseRecurringDays(formData.get("recurringDays"));
+      const timeSlot = String(formData.get("timeSlot") || "ALL").trim() || "ALL";
+      const reason = String(formData.get("reason") || "Bloqueio manual na Agenda Central").trim();
+
+      let platforms = [];
+      try {
+        platforms = normalizePlatforms(JSON.parse(formData.get("platforms") || "[]"));
+      } catch {
+        platforms = [];
+      }
+
+      if (!shopifyProductId) {
+        return json({ success: false, error: "Selecione um tour." }, { status: 400 });
+      }
+
+      const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
+      if (!tour) {
+        return json({ success: false, error: "Tour mestre não encontrado para este produto Shopify." }, { status: 404 });
+      }
+
+      const date = specificDate ? dateInputToUtcMidnight(specificDate) : null;
+      if (specificDate && !date) {
+        return json({ success: false, error: "Data de bloqueio inválida." }, { status: 400 });
+      }
+
+      if (!date && recurringDays.length === 0) {
+        return json({ success: false, error: "Informe uma data específica ou ao menos um dia recorrente." }, { status: 400 });
+      }
+
+      const rules = [];
+      if (date) {
+        rules.push({ date, dayOfWeek: null });
+      }
+      for (const day of recurringDays) {
+        rules.push({ date: null, dayOfWeek: String(day) });
+      }
+
+      const created = [];
+      const reused = [];
+
+      for (const rule of rules) {
+        const candidates = await prisma.blockedDate.findMany({
+          where: {
+            active: true,
+            tourId: tour.id,
+            date: rule.date,
+            dayOfWeek: rule.dayOfWeek,
+            timeSlot,
+          },
+        });
+
+        const samePlatforms = candidates.find((candidate) => {
+          const left = [...(candidate.platforms || [])].sort().join("|");
+          const right = [...platforms].sort().join("|");
+          return left === right;
+        });
+
+        if (samePlatforms) {
+          reused.push(samePlatforms);
+          continue;
+        }
+
+        const block = await prisma.blockedDate.create({
+          data: {
+            tourId: tour.id,
+            date: rule.date,
+            dayOfWeek: rule.dayOfWeek,
+            timeSlot,
+            platforms,
+            reason,
+            source: "MANUAL",
+            active: true,
+            syncStatus: "CENTRAL_ACTIVE",
+          },
+        });
+        created.push(block);
+      }
+
+      return json({
+        success: true,
+        created: created.length,
+        reused: reused.length,
+        message: created.length
+          ? `${created.length} regra(s) de disponibilidade criada(s).`
+          : "Esse bloqueio já estava ativo.",
+      });
+    } catch (e) {
+      console.error("[PMY] createBlock error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
+    }
+  }
+
+  if (_action === "removeBlock") {
+    try {
+      const id = formData.get("id");
+      if (!id) return json({ success: false, error: "Block ID is required" }, { status: 400 });
+
+      await prisma.blockedDate.update({
+        where: { id },
+        data: {
+          active: false,
+          syncStatus: "PENDING_RELEASE",
+        },
+      });
+
+      return json({ success: true });
+    } catch (e) {
+      console.error("[PMY] removeBlock error:", e);
+      return json({ success: false, error: e.message }, { status: 500 });
     }
   }
 
@@ -742,7 +864,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [] };
   const fetcher = useFetcher();
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -810,6 +932,8 @@ export default function CentralDeReservas() {
   const [blockRecurringDays, setBlockRecurringDays] = useState("");
   const [blockSelectedHour, setBlockSelectedHour] = useState("ALL");
   const [tourAvailableHours, setTourAvailableHours] = useState(["09:00", "14:00"]);
+  const [blockSaving, setBlockSaving] = useState(false);
+  const [blockMessage, setBlockMessage] = useState("");
 
   // E. MODAL DO CALENDÁRIO
   const [modalSelectedTour, setModalSelectedTour] = useState("");
@@ -933,7 +1057,13 @@ export default function CentralDeReservas() {
 
   // tourOptions: usa produtos do Shopify (reais) com todos os dados
   const tourOptions = shopifyProducts.length > 0
-    ? shopifyProducts.map(p => ({
+    ? shopifyProducts
+        .filter(p => {
+          const type = String(p.productType || "").toLowerCase();
+          const title = String(p.name || "").toLowerCase();
+          return !type.includes("internal") && !type.includes("operational") && !title.includes("rescheduling fee");
+        })
+        .map(p => ({
         id: p.id, title: p.name, price: p.price, priceRaw: p.priceRaw,
         sku: p.sku, image: p.image, imageAlt: p.imageAlt,
         active: p.active, variants: p.variants, collections: p.collections,
@@ -1256,6 +1386,83 @@ export default function CentralDeReservas() {
     setModalAvailableHours(["09:00", "14:00"]);
   };
 
+  const handleCreateBlock = async (e) => {
+    e.preventDefault();
+    setBlockMessage("");
+
+    if (!blockTourId) {
+      setBlockMessage("Selecione um tour para bloquear.");
+      return;
+    }
+    if (!blockDateTime && !blockRecurringDays.trim()) {
+      setBlockMessage("Informe uma data específica ou dias recorrentes.");
+      return;
+    }
+    if (blockPlatforms.length === 0) {
+      setBlockMessage("Selecione pelo menos uma plataforma.");
+      return;
+    }
+
+    setBlockSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("_action", "createBlock");
+      fd.append("tourId", blockTourId);
+      fd.append("date", blockDateTime || "");
+      fd.append("recurringDays", blockRecurringDays || "");
+      fd.append("timeSlot", blockSelectedHour || "ALL");
+      fd.append("platforms", JSON.stringify(blockPlatforms));
+      fd.append("reason", "Bloqueio manual na Agenda Central");
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setBlockMessage(result.error || "Não foi possível salvar o bloqueio.");
+        return;
+      }
+
+      setBlockMessage(result.message || "Bloqueio salvo na Agenda Central.");
+      window.location.reload();
+    } catch (err) {
+      setBlockMessage(err?.message || "Erro ao salvar bloqueio.");
+    } finally {
+      setBlockSaving(false);
+    }
+  };
+
+  const handleRemoveBlock = async (id) => {
+    if (!window.confirm("Remover este bloqueio da disponibilidade central?")) return;
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "removeBlock");
+      fd.append("id", id);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        alert(result.error || "Não foi possível remover o bloqueio.");
+        return;
+      }
+      window.location.reload();
+    } catch (err) {
+      alert(err?.message || "Erro ao remover bloqueio.");
+    }
+  };
+
+  const getCalendarDayBlocks = (day) => {
+    const month = String(currentMonth + 1).padStart(2, "0");
+    const date = String(day).padStart(2, "0");
+    const dateKey = `${currentYear}-${month}-${date}`;
+    const weekday = String(new Date(currentYear, currentMonth, day, 12, 0, 0).getDay());
+
+    return (blockedDates || []).filter((block) => {
+      if (!block?.active) return false;
+      const storedDate = block.date ? String(block.date).slice(0, 10) : null;
+      return (storedDate && storedDate === dateKey) || (block.dayOfWeek && String(block.dayOfWeek) === weekday);
+    });
+  };
+
   const handleBlockTourSelectionChange = (id) => {
     setBlockTourId(id);
     const tour = tourOptions.find(t => t.id === id);
@@ -1345,7 +1552,7 @@ export default function CentralDeReservas() {
             <div className="pmy-cal-date-line">{day} - {weekdays[wi]}</div>
             <div className="pmy-cal-info-line">🏰 2 Tours Ativos</div>
             <div className="pmy-cal-info-line">👥 Vagas: 14/20</div>
-            {(day===26||day===28) && <div className="pmy-calendar-dot"></div>}
+            {getCalendarDayBlocks(day).length > 0 && <div className="pmy-calendar-dot"></div>}
           </div>
         );
       });
@@ -1364,7 +1571,7 @@ export default function CentralDeReservas() {
           <div className="pmy-cal-date-line">{day} - {wn.split('-')[0]}</div>
           <div className="pmy-cal-info-line">🏰 2 Tours Ativos</div>
           <div className="pmy-cal-info-line">👥 Vagas: 14/20</div>
-          {(day===26||day===12||day===18) && <div className="pmy-calendar-dot"></div>}
+          {getCalendarDayBlocks(day).length > 0 && <div className="pmy-calendar-dot"></div>}
         </div>
       );
     }
@@ -1592,12 +1799,8 @@ export default function CentralDeReservas() {
 
     if (activeModal === 'calendarDay') {
       title = `📅 Grade do Dia ${selectedCalendarDay} de ${currentMonthLabel} de ${currentYear}`;
-      const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
-      const pad = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
-      const dowIndex = (selectedCalendarDay + pad - 1) % 7;
-      const isDOWBlocked = blockRecurringDays && blockRecurringDays.replace(/\s/g,'').split(',').includes(String(dowIndex));
-      const isDateBlocked = blockDateTime && new Date(blockDateTime+"T00:00:00").getDate()===selectedCalendarDay && new Date(blockDateTime+"T00:00:00").getMonth()===currentMonth;
-      const isBlocked = isDOWBlocked || isDateBlocked;
+      const dayBlocks = getCalendarDayBlocks(selectedCalendarDay);
+      const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
       content = (
         <div>
           <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>Eventos Ativos Agendados:</h4>
@@ -1615,9 +1818,15 @@ export default function CentralDeReservas() {
             ) : <p style={{ color:'#999', fontSize:'14px', textAlign:'center', padding:'10px 0' }}>Nenhum tour escalado para este dia.</p>}
           </div>
           <hr style={{ border:'none', borderTop:'1px solid #eee', margin:'20px 0' }} />
-          {isBlocked ? (
+          {dayBlocks.length > 0 && (
+            <div style={{ padding:'12px 14px', background:'#fff8e8', border:'1px solid #e7c565', color:'#6d5510', borderRadius:'8px', fontSize:'12px', lineHeight:'1.5', marginBottom:'14px' }}>
+              🔒 {dayBlocks.length} regra{dayBlocks.length===1?'':'s'} de disponibilidade ativa{dayBlocks.length===1?'':'s'} neste dia.
+              {isGloballyBlocked ? ' O dia inteiro está bloqueado.' : ' Os bloqueios são aplicados apenas aos tours/horários configurados.'}
+            </div>
+          )}
+          {isGloballyBlocked ? (
             <div style={{ padding:'15px', background:'#ffe6e6', border:'1px solid #cc0000', color:'#cc0000', borderRadius:'8px', fontWeight:'bold', fontSize:'13px', lineHeight:'1.4' }}>
-              🔒 Alocação Suspensa: Este dia está bloqueado nas configurações centrais do sistema.
+              🔒 Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.
             </div>
           ) : (
             <div>
@@ -2482,7 +2691,7 @@ export default function CentralDeReservas() {
                 {/* ── FORMULÁRIO: BLOQUEIO MANUAL ── */}
                 <div className="pmy-form-box">
                   <h3>{t.form_new_block}</h3>
-                  <form onSubmit={e => e.preventDefault()}>
+                  <form onSubmit={handleCreateBlock}>
                     <div className="pmy-form-group">
                       <label>{t.form_select_tour}</label>
                       <select className="pmy-form-input" value={blockTourId} onChange={e=>handleBlockTourSelectionChange(e.target.value)}>
@@ -2577,7 +2786,7 @@ export default function CentralDeReservas() {
                               key={p.key}
                               type="button"
                               className={`pmy-platform-pill${sel ? ' selected-block' : ''}${!conn.connected ? ' disconnected' : ''}`}
-                              onClick={() => conn.connected && handleTogglePlatformSelection(p.key, blockPlatforms, setBlockPlatforms)}
+                              onClick={() => handleTogglePlatformSelection(p.key, blockPlatforms, setBlockPlatforms)}
                               title={!conn.connected ? `${p.name} não conectado` : ''}
                             >
                               <span className="pmy-platform-pill-logo">{p.logo}</span>
@@ -2605,11 +2814,56 @@ export default function CentralDeReservas() {
                       )}
                     </div>
 
-                    <button type="submit" className="pmy-btn-submit" style={{ background:'#2b2b2b', opacity: blockPlatforms.length===0 ? 0.5 : 1 }} disabled={blockPlatforms.length===0}>
-                      {t.form_btn_block}
-                      {blockPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.7 }}>em {blockPlatforms.length} plataforma{blockPlatforms.length>1?'s':''}</span>}
+                    {blockMessage && (
+                      <div style={{
+                        fontSize:'12px',
+                        marginBottom:'10px',
+                        padding:'9px 11px',
+                        borderRadius:'7px',
+                        background: blockMessage.toLowerCase().includes("erro") || blockMessage.toLowerCase().includes("selecione") || blockMessage.toLowerCase().includes("informe") ? '#fff2f2' : '#eef8ee',
+                        color: blockMessage.toLowerCase().includes("erro") || blockMessage.toLowerCase().includes("selecione") || blockMessage.toLowerCase().includes("informe") ? '#a40000' : '#006600',
+                      }}>
+                        {blockMessage}
+                      </div>
+                    )}
+                    <button type="submit" className="pmy-btn-submit"
+                      style={{ background:'#2b2b2b', opacity: (blockPlatforms.length===0 || blockSaving) ? 0.5 : 1 }}
+                      disabled={blockPlatforms.length===0 || blockSaving}>
+                      {blockSaving ? "Salvando bloqueio..." : t.form_btn_block}
+                      {!blockSaving && blockPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.7 }}>em {blockPlatforms.length} plataforma{blockPlatforms.length>1?'s':''}</span>}
                     </button>
                   </form>
+
+                  <div style={{ marginTop:'18px', borderTop:'1px solid #eee', paddingTop:'15px' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+                      <strong style={{ fontSize:'13px', color:'#444' }}>🔒 Bloqueios ativos no banco</strong>
+                      <span style={{ fontSize:'11px', color:'#888' }}>{blockedDates.length} regra{blockedDates.length===1?'':'s'}</span>
+                    </div>
+                    {blockedDates.length === 0 ? (
+                      <div style={{ fontSize:'12px', color:'#999', padding:'10px 0' }}>Nenhum bloqueio ativo.</div>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'7px', maxHeight:'260px', overflowY:'auto' }}>
+                        {blockedDates.slice(0, 30).map(block => (
+                          <div key={block.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'10px', alignItems:'center', background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'9px 10px' }}>
+                            <div>
+                              <div style={{ fontSize:'12px', fontWeight:'800', color:'#333' }}>{block.tour?.title || 'Todos os tours'}</div>
+                              <div style={{ fontSize:'11px', color:'#777', marginTop:'3px' }}>
+                                {block.date ? `📅 ${String(block.date).slice(0,10)}` : `🔁 dia da semana ${block.dayOfWeek}`}
+                                {' · '}
+                                {block.timeSlot === 'ALL' || !block.timeSlot ? 'todos os horários' : block.timeSlot}
+                                {' · '}
+                                {(block.platforms || []).length ? block.platforms.join(', ') : 'todas as plataformas'}
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => handleRemoveBlock(block.id)}
+                              style={{ border:'none', background:'#ffe7e7', color:'#a40000', borderRadius:'6px', padding:'6px 9px', cursor:'pointer', fontSize:'11px', fontWeight:'800' }}>
+                              Remover
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
