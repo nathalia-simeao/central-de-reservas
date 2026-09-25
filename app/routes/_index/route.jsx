@@ -1336,7 +1336,11 @@ export default function CentralDeReservas() {
   const [platformConnections, setPlatformConnections] = useState({
     shopify:      { connected: true,  accountName: shopName, lastSync: new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"}) },
     viator:       { connected: false },
-    getyourguide: { connected: false },
+    getyourguide: {
+      connected: Boolean(gygIntegrationStatus?.credentialsReady),
+      accountName: "PMY Supplier API v1",
+      lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
+    },
     tripadvisor:  { connected: false },
     headout:      { connected: false },
     civitatis:    { connected: false },
@@ -1344,6 +1348,15 @@ export default function CentralDeReservas() {
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [apiSecretInput, setApiSecretInput] = useState("");
+
+  // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
+  const [gygConfigTourId, setGygConfigTourId] = useState("");
+  const [gygConfigActivityId, setGygConfigActivityId] = useState("");
+  const [gygConfigSchedule, setGygConfigSchedule] = useState("");
+  const [gygConfigTimezone, setGygConfigTimezone] = useState("Europe/Lisbon");
+  const [gygConfigCutoff, setGygConfigCutoff] = useState("");
+  const [gygConfigMessage, setGygConfigMessage] = useState("");
+  const [gygConfigSaving, setGygConfigSaving] = useState(false);
 
   // J. MAPEAMENTO DE CAMPOS (NOVO)
   const [fieldMappings, setFieldMappings] = useState(defaultMappings);
@@ -1970,8 +1983,65 @@ export default function CentralDeReservas() {
     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y=>y+1); } else setCurrentMonth(m=>m+1);
   };
 
+  const handleGygTourSelection = (id) => {
+    setGygConfigTourId(id);
+    setGygConfigMessage("");
+    const tour = (tours || []).find((item) => item.id === id);
+
+    setGygConfigActivityId(tour?.gygActivityId || "");
+    setGygConfigSchedule((tour?.scheduleSlots || []).join(", "));
+    setGygConfigTimezone(tour?.timezone || "Europe/Lisbon");
+    setGygConfigCutoff(
+      Number.isInteger(tour?.bookingCutoffSeconds)
+        ? String(tour.bookingCutoffSeconds)
+        : "",
+    );
+  };
+
+  const handleSaveGygTourConfig = async () => {
+    if (!gygConfigTourId) {
+      setGygConfigMessage("Selecione um tour.");
+      return;
+    }
+
+    setGygConfigSaving(true);
+    setGygConfigMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveGygTourConfig");
+      fd.append("id", gygConfigTourId);
+      fd.append("gygActivityId", gygConfigActivityId);
+      fd.append("scheduleSlots", gygConfigSchedule);
+      fd.append("timezone", gygConfigTimezone);
+      fd.append("bookingCutoffSeconds", gygConfigCutoff);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setGygConfigMessage(result.error || "Não foi possível salvar a configuração.");
+        return;
+      }
+
+      setGygConfigMessage("Configuração do tour salva.");
+      window.location.reload();
+    } catch (error) {
+      setGygConfigMessage(error?.message || "Erro ao salvar configuração.");
+    } finally {
+      setGygConfigSaving(false);
+    }
+  };
+
   // HANDLERS DE PLATAFORMAS (NOVO)
-  const handleOpenConnect = (key) => { setConnectingPlatform(key); setApiKeyInput(""); setApiSecretInput(""); };
+  const handleOpenConnect = (key) => {
+    setConnectingPlatform(key);
+    setApiKeyInput("");
+    setApiSecretInput("");
+    if (key === "getyourguide") {
+      setGygConfigMessage("");
+    }
+  };
 
   const handleConfirmConnect = (key) => {
     if (apiKeyInput.trim()) {
@@ -2064,13 +2134,12 @@ export default function CentralDeReservas() {
     },
     getyourguide: {
       steps: [
-        "Acesse o Supplier Portal: supplier.getyourguide.com",
-        "Faça login e vá em Settings → API Access",
-        "Clique em Create Token e copie o Bearer Token gerado",
-        "Cole no campo abaixo",
+        "Acesse o GetYourGuide Integrator Portal",
+        "Cadastre o endpoint base da PMY e execute os testes oficiais",
+        "Copie as credenciais de teste diretamente para os Secrets do Northflank",
       ],
-      field1Label: "Bearer Token GetYourGuide",
-      field1Placeholder: "Ex: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+      field1Label: "Credenciais configuradas no servidor",
+      field1Placeholder: "Não cole segredos aqui",
       field2Label: null,
     },
     headout: {
@@ -2117,6 +2186,8 @@ export default function CentralDeReservas() {
     const conn    = platformConnections[connectingPlatform];
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
+    const isGyg = connectingPlatform === 'getyourguide';
+    const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
       <div className="pmy-modal-overlay" onClick={() => setConnectingPlatform(null)}>
@@ -2185,8 +2256,134 @@ export default function CentralDeReservas() {
               </div>
             )}
 
+            {/* ── GETYOURGUIDE: Supplier API v1 real ── */}
+            {isGyg && (
+              <div>
+                <div style={{
+                  background: gygIntegrationStatus?.credentialsReady ? '#f0fdf4' : '#fffbeb',
+                  border: `1px solid ${gygIntegrationStatus?.credentialsReady ? '#b8e6b8' : '#fcd34d'}`,
+                  borderRadius:'12px',
+                  padding:'18px',
+                  marginBottom:'16px'
+                }}>
+                  <div style={{ fontSize:'15px', fontWeight:'900', color:gygIntegrationStatus?.credentialsReady?'#006600':'#92400e', marginBottom:'10px' }}>
+                    {gygIntegrationStatus?.credentialsReady ? '✅ Backend GYG pronto para testes' : '🟡 Credenciais do Integrator Portal pendentes'}
+                  </div>
+                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.8' }}>
+                    <div>🔐 Entrada GYG → PMY: <strong>{gygIntegrationStatus?.incomingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>📤 PMY → GYG: <strong>{gygIntegrationStatus?.outgoingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>🌐 API GYG: <strong>{gygIntegrationStatus?.apiBaseConfigured ? 'configurada' : 'pendente'}</strong></div>
+                    <div>🧳 Tours mapeados: <strong>{gygIntegrationStatus?.mappedTours || 0}</strong></div>
+                    <div>🟢 Tours prontos: <strong>{gygIntegrationStatus?.readyTours || 0}</strong></div>
+                    <div>🕒 Sem horário real: <strong>{gygIntegrationStatus?.scheduleMissing || 0}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'15px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>🔌 Endpoints Supplier API v1</div>
+                  {[
+                    'get-availabilities',
+                    'reserve',
+                    'cancel-reservation',
+                    'book',
+                    'cancel-booking',
+                  ].map((endpoint) => (
+                    <div key={endpoint} style={{ fontFamily:'monospace', fontSize:'11px', color:'#555', padding:'3px 0', wordBreak:'break-all' }}>
+                      {gygIntegrationStatus?.endpointBase || '/1'}/{endpoint}
+                    </div>
+                  ))}
+                  <div style={{ marginTop:'9px', fontSize:'11px', color:'#888', lineHeight:'1.5' }}>
+                    As credenciais ficam somente no Northflank. Não cole usuário ou senha do GetYourGuide dentro da Central.
+                  </div>
+                </div>
+
+                <div style={{ background:'#fff', border:'1px solid #e5e5e5', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+                  <div style={{ fontSize:'13px', fontWeight:'900', color:'var(--primary-green)', marginBottom:'12px' }}>
+                    🧳 Mapear tour PMY ↔ GetYourGuide
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                    <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Tour mestre PMY</label>
+                    <select className="pmy-form-input" value={gygConfigTourId} onChange={(e) => handleGygTourSelection(e.target.value)}>
+                      <option value="">-- Selecione --</option>
+                      {(tours || [])
+                        .filter((tour) => tour.shopifyStatus !== 'INACTIVE')
+                        .map((tour) => (
+                          <option key={tour.id} value={tour.id}>
+                            {tour.title}{tour.gygActivityId ? ' ✓ GYG' : ''}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {selectedGygTour && (
+                    <>
+                      <div style={{ background:'#f7faf7', border:'1px solid #e0eee0', borderRadius:'8px', padding:'10px', marginBottom:'10px' }}>
+                        <div style={{ fontSize:'10px', color:'#888' }}>Supplier productId da PMY</div>
+                        <code style={{ fontSize:'11px', color:'#006600', wordBreak:'break-all' }}>{selectedGygTour.id}</code>
+                        <div style={{ fontSize:'10px', color:'#888', marginTop:'6px' }}>
+                          Capacidade central: <strong>{selectedGygTour.maxCapacity}</strong> · fonte: {selectedGygTour.capacitySource}
+                        </div>
+                      </div>
+
+                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>ID da atividade/opção no GetYourGuide</label>
+                        <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
+                          placeholder="Cole o ID do produto/opção correspondente no GYG" />
+                      </div>
+
+                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
+                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>
+                          Horários reais <span style={{ color:'#888', fontWeight:'400' }}>(HH:MM separados por vírgula)</span>
+                        </label>
+                        <input className="pmy-form-input" value={gygConfigSchedule} onChange={(e) => setGygConfigSchedule(e.target.value)}
+                          placeholder="Ex.: 09:30, 14:00" />
+                        <div style={{ fontSize:'10px', color:'#888', marginTop:'4px' }}>
+                          Fonte atual: {selectedGygTour.scheduleSource || 'UNCONFIGURED'}. Se preencher aqui, passa a ser MANUAL.
+                        </div>
+                      </div>
+
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                        <div className="pmy-form-group">
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Fuso horário</label>
+                          <input className="pmy-form-input" value={gygConfigTimezone} onChange={(e) => setGygConfigTimezone(e.target.value)}
+                            placeholder="Europe/Lisbon" />
+                        </div>
+                        <div className="pmy-form-group">
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Cutoff em segundos</label>
+                          <input type="number" min="0" max="604800" className="pmy-form-input" value={gygConfigCutoff} onChange={(e) => setGygConfigCutoff(e.target.value)}
+                            placeholder="Ex.: 3600" />
+                        </div>
+                      </div>
+
+                      {gygConfigMessage && (
+                        <div style={{ fontSize:'11px', color:gygConfigMessage.includes('salva')?'#006600':'#a40000', marginTop:'10px' }}>
+                          {gygConfigMessage}
+                        </div>
+                      )}
+
+                      <button type="button" className="pmy-btn-submit" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}
+                        style={{ marginTop:'12px', opacity:gygConfigSaving?0.6:1 }}>
+                        {gygConfigSaving ? 'Salvando...' : '💾 Salvar configuração GYG'}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button type="button" onClick={() => window.open('https://integrator.getyourguide.com/', '_blank')}
+                    style={{ flex:1, background:'#ffdd00', border:'1px solid #e4c400', color:'#222', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    Abrir Integrator Portal ↗
+                  </button>
+                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
-            {!isShopify && conn.connected && (
+            {!isShopify && !isGyg && conn.connected && (
               <div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
@@ -2210,7 +2407,7 @@ export default function CentralDeReservas() {
             )}
 
             {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !conn.connected && guide && (
+            {!isShopify && !isGyg && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
