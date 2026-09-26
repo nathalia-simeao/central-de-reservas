@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useLoaderData, useFetcher, data } from "react-router";
 import { authenticate, registerWebhooks } from "../../shopify.server";
 import db from "../../db.server";
@@ -1345,8 +1345,13 @@ export default function CentralDeReservas() {
   const [customUrl, setCustomUrl] = useState("");
   const [customKey, setCustomKey] = useState("");
   const [customIntegrations, setCustomIntegrations] = useState([]);
-  const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos"
+  const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos" | "logs"
   const [activeProdPlatform, setActiveProdPlatform] = useState("shopify");
+  const [syncQueueData, setSyncQueueData] = useState({ stats: null, jobs: [] });
+  const [syncQueueLoading, setSyncQueueLoading] = useState(false);
+  const [syncQueueError, setSyncQueueError] = useState("");
+  const [syncQueueActionId, setSyncQueueActionId] = useState(null);
+  const [syncQueueLastLoaded, setSyncQueueLastLoaded] = useState(null);
   // platformProducts: Shopify vem do loader (dados reais).
   // Demais plataformas ficam vazias até que a integração via API seja configurada.
   const [platformProducts, setPlatformProducts] = useState({
@@ -1455,6 +1460,134 @@ export default function CentralDeReservas() {
       ];
 
     // ---- HANDLERS ----
+  const loadSyncQueue = useCallback(async () => {
+    setSyncQueueLoading(true);
+    try {
+      const response = await fetch("/api/sync-queue", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível carregar o log de sincronização.");
+      }
+      setSyncQueueData({
+        stats: payload.stats || null,
+        jobs: Array.isArray(payload.jobs) ? payload.jobs : [],
+      });
+      setSyncQueueError("");
+      setSyncQueueLastLoaded(new Date());
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao carregar o log de sincronização.");
+    } finally {
+      setSyncQueueLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
+
+    loadSyncQueue();
+    const timer = window.setInterval(loadSyncQueue, 15000);
+    return () => window.clearInterval(timer);
+  }, [activeTab, intSubTab, loadSyncQueue]);
+
+  const runSyncQueueNow = async () => {
+    setSyncQueueActionId("run");
+    try {
+      const formData = new FormData();
+      formData.append("_action", "run");
+      formData.append("limit", "30");
+      const response = await fetch("/api/sync-queue", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível processar a fila.");
+      }
+      setSyncQueueError("");
+      await loadSyncQueue();
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao processar a fila.");
+    } finally {
+      setSyncQueueActionId(null);
+    }
+  };
+
+  const handleRequeueSyncJob = async (jobId) => {
+    setSyncQueueActionId(jobId);
+    try {
+      const formData = new FormData();
+      formData.append("_action", "requeue");
+      formData.append("jobId", jobId);
+      const response = await fetch("/api/sync-queue", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível reenviar esta sincronização.");
+      }
+
+      const runData = new FormData();
+      runData.append("_action", "run");
+      runData.append("limit", "10");
+      await fetch("/api/sync-queue", { method: "POST", body: runData });
+
+      setSyncQueueError("");
+      await loadSyncQueue();
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao reenviar a sincronização.");
+    } finally {
+      setSyncQueueActionId(null);
+    }
+  };
+
+  const syncProviderMeta = {
+    SHOPIFY: { label: "Shopify", icon: "🛍️" },
+    GETYOURGUIDE: { label: "GetYourGuide", icon: "🎟️" },
+    VIATOR: { label: "Viator", icon: "🟢" },
+    CIVITATIS: { label: "Civitatis", icon: "🔴" },
+    HEADOUT: { label: "Headout", icon: "🌍" },
+    CENTRAL: { label: "Central PMY", icon: "🧭" },
+    MANUAL: { label: "Manual", icon: "✍️" },
+  };
+
+  const syncStatusMeta = {
+    COMPLETED: { icon: "✅", label: "Sincronizado", bg: "#ecfdf3", color: "#166534" },
+    SKIPPED: { icon: "↪️", label: "Ignorado", bg: "#eff6ff", color: "#1d4ed8" },
+    PENDING: { icon: "⏳", label: "Pendente", bg: "#fff7ed", color: "#9a3412" },
+    PROCESSING: { icon: "🔄", label: "Processando", bg: "#eff6ff", color: "#1d4ed8" },
+    RETRY: { icon: "🟠", label: "Nova tentativa", bg: "#fff7ed", color: "#c2410c" },
+    BLOCKED: { icon: "⚠️", label: "Bloqueado", bg: "#fffbeb", color: "#92400e" },
+    DEAD: { icon: "❌", label: "Falhou", bg: "#fef2f2", color: "#b91c1c" },
+  };
+
+  const formatSyncTime = (value) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "—";
+    return parsed.toLocaleString("pt-PT", {
+      timeZone: "Europe/Lisbon",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const syncEventLabel = (eventType) => ({
+    BOOKING_CREATED: "Reserva criada",
+    BOOKING_UPDATED: "Reserva atualizada",
+    BOOKING_CANCELLED: "Reserva cancelada",
+    AVAILABILITY_CHANGED: "Disponibilidade alterada",
+    BLOCK_CREATED: "Bloqueio criado",
+    BLOCK_REMOVED: "Bloqueio removido",
+    CAPACITY_CHANGED: "Capacidade alterada",
+  }[eventType] || eventType || "Evento");
+
   const handleGeneratePaymentLink = (e) => {
     e.preventDefault();
     if (custName && selectedTour) {
@@ -3770,6 +3903,7 @@ export default function CentralDeReservas() {
               <div className="pmy-int-subtab-bar">
                 <button className={`pmy-int-subtab ${intSubTab==='conexoes'?'active':''}`} onClick={()=>setIntSubTab('conexoes')}>🔗 Conexões</button>
                 <button className={`pmy-int-subtab ${intSubTab==='produtos'?'active':''}`} onClick={()=>setIntSubTab('produtos')}>📦 Produtos por Plataforma</button>
+                <button className={`pmy-int-subtab ${intSubTab==='logs'?'active':''}`} onClick={()=>setIntSubTab('logs')}>📡 Log de Sincronização</button>
               </div>
 
               {/* ── SUB-TAB: CONEXÕES ── */}
@@ -3870,6 +4004,135 @@ export default function CentralDeReservas() {
                       <div className="pmy-form-group"><label>Chave da API / Token:</label><input type="password" className="pmy-form-input" placeholder="pmy_live_key_..." value={customKey} onChange={e=>setCustomKey(e.target.value)} /></div>
                       <button type="submit" className="pmy-btn-submit" style={{ background:'#ff6600' }}>Ativar Integração Customizada</button>
                     </form>
+                  </div>
+                </div>
+              )}
+
+              {/* ── SUB-TAB: LOG DE SINCRONIZAÇÃO ── */}
+              {intSubTab==='logs' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'20px' }}>
+                    <div>
+                      <h3 style={{ margin:'0 0 6px', color:'var(--text-dark)' }}>📡 Log de Sincronização</h3>
+                      <p style={{ color:'var(--text-muted)', margin:0, fontSize:'14px', lineHeight:'1.6' }}>
+                        Acompanhe cada envio por canal, identifique divergências e reenvie falhas sem alterar a reserva original.
+                        A tela atualiza automaticamente a cada 15 segundos.
+                      </p>
+                    </div>
+                    <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
+                      {syncQueueLastLoaded && (
+                        <span style={{ fontSize:'11px', color:'#999' }}>
+                          Atualizado {syncQueueLastLoaded.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}
+                        </span>
+                      )}
+                      <button type="button" onClick={loadSyncQueue} disabled={syncQueueLoading}
+                        style={{ border:'1px solid #ddd', background:'#fff', borderRadius:'8px', padding:'9px 13px', cursor:syncQueueLoading?'wait':'pointer', fontWeight:'700', fontSize:'12px', color:'#555' }}>
+                        {syncQueueLoading ? '⏳ Atualizando...' : '🔄 Atualizar'}
+                      </button>
+                      <button type="button" onClick={runSyncQueueNow} disabled={syncQueueActionId==='run'}
+                        className="pmy-btn-submit" style={{ width:'auto', padding:'9px 15px', fontSize:'12px' }}>
+                        {syncQueueActionId==='run' ? '⏳ Processando...' : '▶ Processar fila agora'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {syncQueueError && (
+                    <div style={{ background:'#fef2f2', border:'1px solid #fecaca', color:'#b91c1c', borderRadius:'10px', padding:'12px 15px', marginBottom:'16px', fontSize:'13px' }}>
+                      ❌ {syncQueueError}
+                    </div>
+                  )}
+
+                  {(() => {
+                    const stats = syncQueueData.stats || {};
+                    const divergent = Number(stats.retry || 0) + Number(stats.blocked || 0) + Number(stats.dead || 0);
+                    const cards = [
+                      ['✅', 'Concluídos', stats.completed || 0, '#166534', '#ecfdf3'],
+                      ['⏳', 'Pendentes', (stats.pending || 0) + (stats.processing || 0), '#9a3412', '#fff7ed'],
+                      ['🟠', 'Em nova tentativa', stats.retry || 0, '#c2410c', '#fff7ed'],
+                      ['⚠️', 'Divergências', divergent, divergent > 0 ? '#b91c1c' : '#166534', divergent > 0 ? '#fef2f2' : '#ecfdf3'],
+                    ];
+                    return (
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'12px', marginBottom:'20px' }}>
+                        {cards.map(([icon,label,value,color,bg]) => (
+                          <div key={label} style={{ background:bg, border:'1px solid rgba(0,0,0,0.06)', borderRadius:'12px', padding:'14px 16px' }}>
+                            <div style={{ fontSize:'11px', color:'#777', fontWeight:'700', marginBottom:'5px' }}>{icon} {label}</div>
+                            <div style={{ fontSize:'24px', fontWeight:'900', color }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pmy-form-box" style={{ padding:0, overflow:'hidden' }}>
+                    {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
+                      <div style={{ padding:'42px', textAlign:'center', color:'#888' }}>⏳ Carregando histórico de sincronização...</div>
+                    ) : syncQueueData.jobs.length === 0 ? (
+                      <div style={{ padding:'42px', textAlign:'center', color:'#888' }}>
+                        <div style={{ fontSize:'32px', marginBottom:'8px' }}>📭</div>
+                        <strong style={{ display:'block', color:'#555', marginBottom:'5px' }}>Nenhum evento de sincronização registrado ainda</strong>
+                        Os próximos bloqueios, reservas, cancelamentos e alterações de capacidade aparecerão aqui.
+                      </div>
+                    ) : (
+                      <div style={{ overflowX:'auto' }}>
+                        <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'980px' }}>
+                          <thead>
+                            <tr style={{ background:'#fafafa', borderBottom:'1px solid #eee' }}>
+                              {['Horário', 'Evento', 'Origem', 'Canal', 'Status', 'Tentativas', 'Detalhe', 'Ação'].map(header => (
+                                <th key={header} style={{ textAlign:'left', padding:'12px 14px', fontSize:'11px', color:'#777', textTransform:'uppercase', letterSpacing:'0.3px' }}>{header}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {syncQueueData.jobs.map(job => {
+                              const status = syncStatusMeta[job.status] || { icon:'•', label:job.status || '—', bg:'#f5f5f5', color:'#555' };
+                              const provider = syncProviderMeta[job.provider] || { label:job.provider || '—', icon:'🔌' };
+                              const source = syncProviderMeta[job.sourcePlatform] || { label:job.sourcePlatform || 'Central', icon:'🧭' };
+                              const detail = job.error || job.result?.reason || job.result?.detail || (job.status === 'COMPLETED' ? 'Sincronização concluída' : '—');
+                              const canRetry = ['RETRY','BLOCKED','DEAD'].includes(job.status);
+                              return (
+                                <tr key={job.id} style={{ borderBottom:'1px solid #f1f1f1', background:['RETRY','BLOCKED','DEAD'].includes(job.status) ? '#fffdfd' : '#fff' }}>
+                                  <td style={{ padding:'12px 14px', fontSize:'12px', color:'#555', whiteSpace:'nowrap' }}>
+                                    {formatSyncTime(job.lastAttemptAt || job.updatedAt || job.createdAt)}
+                                  </td>
+                                  <td style={{ padding:'12px 14px', fontSize:'12px' }}>
+                                    <div style={{ fontWeight:'800', color:'#333' }}>{syncEventLabel(job.eventType)}</div>
+                                    <div style={{ color:'#aaa', fontSize:'10px', marginTop:'3px', fontFamily:'monospace' }}>{job.eventType}</div>
+                                  </td>
+                                  <td style={{ padding:'12px 14px', fontSize:'12px', whiteSpace:'nowrap' }}>{source.icon} {source.label}</td>
+                                  <td style={{ padding:'12px 14px', fontSize:'12px', fontWeight:'800', whiteSpace:'nowrap' }}>{provider.icon} {provider.label}</td>
+                                  <td style={{ padding:'12px 14px' }}>
+                                    <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:status.bg, color:status.color, padding:'5px 8px', borderRadius:'20px', fontSize:'11px', fontWeight:'800', whiteSpace:'nowrap' }}>
+                                      {status.icon} {status.label}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding:'12px 14px', fontSize:'12px', color:'#666', textAlign:'center' }}>
+                                    {job.attempts || 0}/{job.maxAttempts || 8}
+                                  </td>
+                                  <td style={{ padding:'12px 14px', fontSize:'11px', color:job.error?'#b91c1c':'#666', maxWidth:'290px' }}>
+                                    <div title={String(detail)} style={{ whiteSpace:'normal', lineHeight:'1.45' }}>{String(detail)}</div>
+                                  </td>
+                                  <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
+                                    {canRetry ? (
+                                      <button type="button" onClick={()=>handleRequeueSyncJob(job.id)} disabled={syncQueueActionId===job.id}
+                                        style={{ border:'1px solid #f59e0b', background:'#fff7ed', color:'#9a3412', borderRadius:'7px', padding:'7px 10px', fontSize:'11px', fontWeight:'800', cursor:syncQueueActionId===job.id?'wait':'pointer' }}>
+                                        {syncQueueActionId===job.id ? '⏳ Reenviando' : '↻ Reenviar'}
+                                      </button>
+                                    ) : (
+                                      <span style={{ fontSize:'11px', color:'#bbb' }}>—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop:'14px', background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'12px 14px', fontSize:'12px', color:'#64748b', lineHeight:'1.6' }}>
+                    <strong style={{ color:'#475569' }}>Como ler:</strong> cada linha representa o envio de um mesmo evento para um canal.
+                    Se um canal estiver ✅ e outro ❌/🟠, existe uma divergência. O botão <strong>Reenviar</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
                   </div>
                 </div>
               )}
