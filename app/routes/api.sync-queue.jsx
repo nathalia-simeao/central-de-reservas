@@ -4,6 +4,7 @@ import { authenticate } from "../shopify.server";
 import {
   getSyncQueueStats,
   processSyncQueue,
+  requeueProviderJobs,
   requeueSyncJob,
 } from "../utils/sync-queue.server";
 
@@ -59,6 +60,26 @@ export const action = async ({ request }) => {
     );
     const result = await processSyncQueue(db, { limit });
     return json({ success: true, result });
+  }
+
+  if (actionName === "requeueProvider") {
+    const provider = String(formData.get("provider") || "").trim();
+    if (!provider) {
+      return json(
+        { success: false, error: "provider is required." },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const result = await requeueProviderJobs(db, provider);
+      return json({ success: true, result });
+    } catch (error) {
+      return json(
+        { success: false, error: error?.message || String(error) },
+        { status: 400 },
+      );
+    }
   }
 
   if (actionName === "requeue") {
