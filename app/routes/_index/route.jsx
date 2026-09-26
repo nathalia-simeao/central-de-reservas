@@ -14,7 +14,6 @@ import {
   requeueSyncJob,
   SYNC_EVENT_TYPES,
 } from "../../utils/sync-queue.server";
-import { syncPlatformNow } from "../../utils/platform-sync.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -504,23 +503,6 @@ export const action = async ({ request }) => {
       console.error("[PMY] sync queue requeue failed:", error);
       return json(
         { success: false, error: error?.message || "Falha ao reenviar a sincronização." },
-        { status: 500 },
-      );
-    }
-  }
-
-  if (_action === "syncPlatformNow") {
-    try {
-      const platform = String(formData.get("platform") || "").trim();
-      if (!platform) {
-        return json({ success: false, error: "Plataforma é obrigatória." }, { status: 400 });
-      }
-      const result = await syncPlatformNow(prisma, admin, platform);
-      return json({ success: true, result });
-    } catch (error) {
-      console.error("[PMY] manual platform sync failed:", error);
-      return json(
-        { success: false, error: error?.message || "Falha ao sincronizar a plataforma." },
         { status: 500 },
       );
     }
