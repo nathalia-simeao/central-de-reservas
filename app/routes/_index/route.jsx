@@ -787,7 +787,7 @@ export const action = async ({ request }) => {
         eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
         booking: guarded.booking,
         sourcePlatform: platform,
-        force: false,
+        force: true,
         payload: { origin: "CENTRAL_MANUAL_BOOKING" },
       });
 
