@@ -7,6 +7,11 @@ import {
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
+import {
+  enqueueAvailabilitySync,
+  enqueueBookingSync,
+  SYNC_EVENT_TYPES,
+} from "./sync-queue.server";
 
 const prisma = db;
 const VIATOR_PLATFORM = "VIATOR";
@@ -852,6 +857,14 @@ export async function viatorReserve(body) {
       });
     }
 
+    await enqueueBookingSync(prisma, {
+      eventId: `viator-reserve:${guarded.booking.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
+      booking: guarded.booking,
+      sourcePlatform: VIATOR_PLATFORM,
+      payload: { origin: "VIATOR_RESERVE" },
+    });
+
     return json({
       status: "RESERVED",
       expiration: (guarded.booking.holdExpiresAt || holdExpiresAt).toISOString(),
@@ -991,6 +1004,14 @@ export async function viatorBooking(body) {
           },
         });
 
+        await enqueueBookingSync(prisma, {
+          eventId: `viator-book:${confirmed.id}:${bookingReference}`,
+          eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
+          booking: confirmed,
+          sourcePlatform: VIATOR_PLATFORM,
+          payload: { origin: "VIATOR_BOOK_FROM_HOLD" },
+        });
+
         return bookingSuccessResponse(data, confirmed);
       }
     }
@@ -1040,6 +1061,16 @@ export async function viatorBooking(body) {
         422,
       );
     }
+
+    await enqueueBookingSync(prisma, {
+      eventId: `viator-book:${guarded.booking.id}:${bookingReference}`,
+      eventType: guarded.idempotent
+        ? SYNC_EVENT_TYPES.BOOKING_UPDATED
+        : SYNC_EVENT_TYPES.BOOKING_CREATED,
+      booking: guarded.booking,
+      sourcePlatform: VIATOR_PLATFORM,
+      payload: { origin: "VIATOR_BOOK_DIRECT" },
+    });
 
     return bookingSuccessResponse(data, guarded.booking);
   } catch (error) {
@@ -1181,6 +1212,37 @@ export async function viatorBookingAmendment(body) {
       );
     }
 
+    if (
+      new Date(existing.startTime).getTime() !==
+      new Date(updated.booking.startTime).getTime()
+    ) {
+      await enqueueAvailabilitySync(prisma, {
+        eventId: `viator-amend-old-slot:${updated.booking.id}:${new Date(
+          existing.startTime,
+        ).toISOString()}`,
+        eventType: SYNC_EVENT_TYPES.AVAILABILITY_CHANGED,
+        tourId: existing.tourId,
+        startTime: existing.startTime,
+        scope: "SLOT",
+        sourcePlatform: VIATOR_PLATFORM,
+        force: true,
+        aggregateType: "BOOKING",
+        aggregateId: updated.booking.id,
+        payload: { reason: "VIATOR_BOOKING_MOVED_FROM_SLOT" },
+      });
+    }
+
+    await enqueueBookingSync(prisma, {
+      eventId: `viator-amend:${updated.booking.id}:${bookingReference}:${new Date(
+        updated.booking.updatedAt,
+      ).toISOString()}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
+      booking: updated.booking,
+      sourcePlatform: VIATOR_PLATFORM,
+      force: true,
+      payload: { origin: "VIATOR_BOOKING_AMENDMENT" },
+    });
+
     return bookingSuccessResponse(
       data,
       updated.booking,
@@ -1235,8 +1297,9 @@ export async function viatorBookingCancellation(body) {
       );
     }
 
+    let canceled = booking;
     if (booking.status !== "CANCELED") {
-      await prisma.booking.update({
+      canceled = await prisma.booking.update({
         where: { id: booking.id },
         data: {
           status: "CANCELED",
@@ -1253,6 +1316,15 @@ export async function viatorBookingCancellation(body) {
             request: safeRawPayload(data),
           },
         },
+      });
+
+      await enqueueBookingSync(prisma, {
+        eventId: `viator-cancel:${canceled.id}:${bookingReference}`,
+        eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+        booking: canceled,
+        sourcePlatform: VIATOR_PLATFORM,
+        force: true,
+        payload: { reason: canceled.cancelReason || "viator_booking_cancelled" },
       });
     }
 
