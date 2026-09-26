@@ -202,38 +202,10 @@ export const loader = async ({ request }) => {
     shopifyProducts = [];
   }
 
-  // Busca usuários da equipe (staff) da loja Shopify
-  let shopifyStaff = [];
-  try {
-    const staffResponse = await admin.graphql(`
-      query {
-        staffMembers(first: 50) {
-          edges {
-            node {
-              id
-              name
-              email
-              isOwner
-              active
-              avatar { url }
-            }
-          }
-        }
-      }
-    `);
-    const staffData = await staffResponse.json();
-    shopifyStaff = (staffData?.data?.staffMembers?.edges || []).map(({ node }) => ({
-      id: node.id,
-      name: node.name,
-      email: node.email,
-      isOwner: node.isOwner,
-      active: node.active,
-      avatar: node.avatar?.url || null,
-      role: node.isOwner ? "Admin (Proprietário)" : "Membro da Equipe",
-    }));
-  } catch (e) {
-    shopifyStaff = [];
-  }
+  // A Central não solicita read_users por padrão.
+  // Esse scope é restrito no Shopify e não é necessário para reservas,
+  // catálogo, Draft Orders, pedidos ou Banco de Mídia.
+  const shopifyStaff = [];
 
   // Busca guias do banco de dados
   let dbGuides = [];
@@ -5019,7 +4991,7 @@ export default function CentralDeReservas() {
 
                 {shopifyStaff.length === 0 ? (
                   <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'20px', textAlign:'center', color:'#888', fontSize:'13px' }}>
-                    Nenhum membro da equipe encontrado. Verifique as permissões do app no Shopify.
+                    A Central não solicita acesso à lista de funcionários do Shopify por padrão. Esse dado exige o scope restrito <code>read_users</code> e não é necessário para reservas, pedidos ou checkouts. Gerencie os acessos diretamente no Shopify.
                   </div>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
