@@ -1572,12 +1572,6 @@ export default function CentralDeReservas() {
       ];
 
     // ---- HANDLERS / sincronização ----
-  const indexActionUrl = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("index", "");
-    return `${url.pathname}${url.search}`;
-  }, []);
-
   useEffect(() => {
     if (queueReadFetcher.state !== "idle") return;
     const payload = queueReadFetcher.data;
@@ -1606,9 +1600,8 @@ export default function CentralDeReservas() {
     formData.append("_action", "syncQueueStats");
     queueReadFetcher.submit(formData, {
       method: "post",
-      action: indexActionUrl(),
     });
-  }, [queueReadFetcher.submit, indexActionUrl]);
+  }, [queueReadFetcher.submit]);
 
   useEffect(() => {
     if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
@@ -1641,7 +1634,6 @@ export default function CentralDeReservas() {
     formData.append("limit", "30");
     queueActionFetcher.submit(formData, {
       method: "post",
-      action: indexActionUrl(),
     });
   };
 
@@ -1652,7 +1644,6 @@ export default function CentralDeReservas() {
     formData.append("jobId", jobId);
     queueActionFetcher.submit(formData, {
       method: "post",
-      action: indexActionUrl(),
     });
   };
 
@@ -1704,7 +1695,6 @@ export default function CentralDeReservas() {
 
     manualSyncFetcher.submit(formData, {
       method: "post",
-      action: indexActionUrl(),
     });
   };
 
@@ -4409,6 +4399,7 @@ export default function CentralDeReservas() {
                               ...(products.missingInCentral || []),
                               ...(products.missingInChannel || []),
                               ...(products.changed || []),
+                              ...(reservations.differences || []),
                             ].length > 0 && (
                               <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', marginBottom:'9px' }}>
                                 <div style={{ fontSize:'11px', fontWeight:'900', color:'#555', marginBottom:'6px' }}>Diferenças encontradas</div>
@@ -4416,6 +4407,7 @@ export default function CentralDeReservas() {
                                   ...(products.missingInCentral || []),
                                   ...(products.missingInChannel || []),
                                   ...(products.changed || []),
+                                  ...(reservations.differences || []),
                                 ].slice(0, 12).map((item, index) => (
                                   <div key={`${item.id || item.name}-${index}`} style={{ fontSize:'11px', color:'#666', padding:'3px 0', lineHeight:'1.45' }}>
                                     • <strong>{item.name || item.id}</strong>: {item.reason}
