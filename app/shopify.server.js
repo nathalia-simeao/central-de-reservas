@@ -15,6 +15,7 @@ const configuredScopes = [
       .map((scope) => scope.trim())
       .filter(Boolean),
     "read_orders",
+    "write_draft_orders",
   ]),
 ];
 
