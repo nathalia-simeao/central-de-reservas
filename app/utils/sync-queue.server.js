@@ -238,7 +238,7 @@ export async function enqueueBookingSync(
     booking,
     sourcePlatform = null,
     targetProviders = null,
-    force = false,
+    force = true,
     payload = null,
   },
 ) {
