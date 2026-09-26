@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useLoaderData, useFetcher, data } from "react-router";
+import { useLoaderData, data } from "react-router";
 import { authenticate, registerWebhooks } from "../../shopify.server";
 import db from "../../db.server";
 import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToMasterTours } from "../../utils/tour-passport.server";
@@ -1316,9 +1316,6 @@ function PickerModalContent({ allImages, onSelect }) {
 
 export default function CentralDeReservas() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
-  const queueReadFetcher = useFetcher({ key: "pmy-sync-queue-read" });
-  const queueActionFetcher = useFetcher({ key: "pmy-sync-queue-action" });
-  const manualSyncFetcher = useFetcher({ key: "pmy-manual-platform-sync" });
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -1572,36 +1569,78 @@ export default function CentralDeReservas() {
       ];
 
     // ---- HANDLERS / sincronização ----
-  useEffect(() => {
-    if (queueReadFetcher.state !== "idle") return;
-    const payload = queueReadFetcher.data;
-    if (!payload) return;
+  const resourceUrl = useCallback((pathname) => {
+    const current = new URL(window.location.href);
+    const params = new URLSearchParams();
 
-    if (!payload?.success) {
-      setSyncQueueError(payload?.error || "Não foi possível carregar o log de sincronização.");
-      setSyncQueueLoading(false);
-      return;
+    for (const key of ["shop", "host", "embedded", "id_token", "session"]) {
+      const value = current.searchParams.get(key);
+      if (value) params.set(key, value);
     }
 
-    if (payload.stats || Array.isArray(payload.jobs)) {
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, []);
+
+  const requestResourceJson = useCallback(async (pathname, formData = null) => {
+    const response = await fetch(resourceUrl(pathname), {
+      method: formData ? "POST" : "GET",
+      body: formData || undefined,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    });
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const bodyText = await response.text();
+
+    if (!contentType.includes("application/json")) {
+      if (/<!doctype|<html/i.test(bodyText)) {
+        throw new Error(
+          "A sessão da integração não autenticou a chamada de API. Recarregue a Central e tente novamente.",
+        );
+      }
+      throw new Error(
+        bodyText?.slice(0, 220) ||
+        `Resposta inesperada da integração (HTTP ${response.status}).`,
+      );
+    }
+
+    let payload = {};
+    try {
+      payload = bodyText ? JSON.parse(bodyText) : {};
+    } catch {
+      throw new Error("A integração retornou JSON inválido.");
+    }
+
+    if (!response.ok || payload?.success === false) {
+      throw new Error(
+        payload?.error ||
+        `A integração respondeu com HTTP ${response.status}.`,
+      );
+    }
+
+    return payload;
+  }, [resourceUrl]);
+
+  const loadSyncQueue = useCallback(async () => {
+    setSyncQueueLoading(true);
+    try {
+      const payload = await requestResourceJson("/api/sync-queue");
       setSyncQueueData({
         stats: payload.stats || null,
         jobs: Array.isArray(payload.jobs) ? payload.jobs : [],
       });
       setSyncQueueError("");
       setSyncQueueLastLoaded(new Date());
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao carregar o log de sincronização.");
+    } finally {
       setSyncQueueLoading(false);
     }
-  }, [queueReadFetcher.state, queueReadFetcher.data]);
-
-  const loadSyncQueue = useCallback(() => {
-    setSyncQueueLoading(true);
-    const formData = new FormData();
-    formData.append("_action", "syncQueueStats");
-    queueReadFetcher.submit(formData, {
-      method: "post",
-    });
-  }, [queueReadFetcher.submit]);
+  }, [requestResourceJson]);
 
   useEffect(() => {
     if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
@@ -1611,91 +1650,79 @@ export default function CentralDeReservas() {
     return () => window.clearInterval(timer);
   }, [activeTab, intSubTab, loadSyncQueue]);
 
-  useEffect(() => {
-    if (queueActionFetcher.state !== "idle") return;
-    const payload = queueActionFetcher.data;
-    if (!payload) return;
-
-    if (!payload?.success) {
-      setSyncQueueError(payload?.error || "Não foi possível processar a fila.");
-      setSyncQueueActionId(null);
-      return;
-    }
-
-    setSyncQueueError("");
-    setSyncQueueActionId(null);
-    loadSyncQueue();
-  }, [queueActionFetcher.state, queueActionFetcher.data, loadSyncQueue]);
-
-  const runSyncQueueNow = () => {
+  const runSyncQueueNow = async () => {
     setSyncQueueActionId("run");
-    const formData = new FormData();
-    formData.append("_action", "syncQueueRun");
-    formData.append("limit", "30");
-    queueActionFetcher.submit(formData, {
-      method: "post",
-    });
+    try {
+      const formData = new FormData();
+      formData.append("_action", "run");
+      formData.append("limit", "30");
+      await requestResourceJson("/api/sync-queue", formData);
+      setSyncQueueError("");
+      await loadSyncQueue();
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao processar a fila.");
+    } finally {
+      setSyncQueueActionId(null);
+    }
   };
 
-  const handleRequeueSyncJob = (jobId) => {
+  const handleRequeueSyncJob = async (jobId) => {
     setSyncQueueActionId(jobId);
-    const formData = new FormData();
-    formData.append("_action", "syncQueueRequeue");
-    formData.append("jobId", jobId);
-    queueActionFetcher.submit(formData, {
-      method: "post",
-    });
+    try {
+      const formData = new FormData();
+      formData.append("_action", "requeue");
+      formData.append("jobId", jobId);
+      await requestResourceJson("/api/sync-queue", formData);
+
+      const runData = new FormData();
+      runData.append("_action", "run");
+      runData.append("limit", "10");
+      await requestResourceJson("/api/sync-queue", runData);
+
+      setSyncQueueError("");
+      await loadSyncQueue();
+    } catch (error) {
+      setSyncQueueError(error?.message || "Erro ao reenviar a sincronização.");
+    } finally {
+      setSyncQueueActionId(null);
+    }
   };
 
-  useEffect(() => {
-    if (manualSyncFetcher.state !== "idle") return;
-    const payload = manualSyncFetcher.data;
-    if (!payload || !manualSyncPlatform) return;
-
-    if (!payload?.success) {
-      setManualSyncError(payload?.error || "Não foi possível sincronizar este canal.");
-      setManualSyncPlatform(null);
-      return;
-    }
-
-    const result = payload.result || null;
-    const platformKey = manualSyncPlatform;
-    setManualSyncResult(result);
-    setManualSyncError("");
-
-    if (Array.isArray(result?.products?.items)) {
-      setPlatformProducts((previous) => ({
-        ...previous,
-        [platformKey]: result.products.items,
-      }));
-    }
-
-    setPlatformConnections((previous) => ({
-      ...previous,
-      [platformKey]: {
-        ...(previous[platformKey] || {}),
-        lastSync: new Date().toLocaleTimeString("pt-PT", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    }));
-
-    setManualSyncPlatform(null);
-  }, [manualSyncFetcher.state, manualSyncFetcher.data, manualSyncPlatform]);
-
-  const handleSyncPlatformNow = (platformKey) => {
+  const handleSyncPlatformNow = async (platformKey) => {
     setManualSyncPlatform(platformKey);
     setManualSyncError("");
     setManualSyncResult(null);
 
-    const formData = new FormData();
-    formData.append("_action", "syncPlatformNow");
-    formData.append("platform", platformKey);
+    try {
+      const formData = new FormData();
+      formData.append("platform", platformKey);
 
-    manualSyncFetcher.submit(formData, {
-      method: "post",
-    });
+      const payload = await requestResourceJson("/api/manual-sync", formData);
+      const result = payload.result || null;
+      setManualSyncResult(result);
+
+      if (Array.isArray(result?.products?.items)) {
+        setPlatformProducts((previous) => ({
+          ...previous,
+          [platformKey]: result.products.items,
+        }));
+      }
+
+      setPlatformConnections((previous) => ({
+        ...previous,
+        [platformKey]: {
+          ...(previous[platformKey] || {}),
+          lastSync: new Date().toLocaleTimeString("pt-PT", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      }));
+    } catch (error) {
+      setManualSyncError(error?.message || "Erro ao sincronizar a plataforma.");
+    } finally {
+      setManualSyncPlatform(null);
+    }
   };
 
   const syncProviderMeta = {
