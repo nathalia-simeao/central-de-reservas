@@ -1,8 +1,4 @@
 import crypto from "node:crypto";
-import {
-  notifyGygSlotAvailability,
-  notifyGygTourAvailabilityWindow,
-} from "./gyg-v1.server";
 
 export const SYNC_EVENT_TYPES = Object.freeze({
   BOOKING_CREATED: "BOOKING_CREATED",
@@ -410,6 +406,11 @@ async function dispatchToProvider(job) {
   const provider = normalizeProvider(job.provider);
 
   if (provider === "GETYOURGUIDE") {
+    const {
+      notifyGygSlotAvailability,
+      notifyGygTourAvailabilityWindow,
+    } = await import("./gyg-v1.server");
+
     if (!job.tourId) {
       return {
         status: "DEAD",
