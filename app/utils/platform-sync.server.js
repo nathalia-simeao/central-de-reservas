@@ -3,7 +3,7 @@ import {
   isOperationalShopifyProduct,
   syncShopifyCatalogToMasterTours,
 } from "./tour-passport.server";
-import { processShopifyOrderWebhook } from "./shopify-orders.server";
+import { buildShopifyBookingGroups } from "./shopify-orders.server";
 import { notifyGygTourAvailabilityWindow } from "./gyg-v1.server";
 
 function clean(value) {
@@ -163,38 +163,17 @@ function graphOrderToWebhookPayload(order) {
   return {
     admin_graphql_api_id: order.id,
     name: order.name,
-    email: order.email || null,
-    phone: order.phone || null,
+    email: null,
+    phone: null,
     created_at: order.createdAt,
     updated_at: order.updatedAt,
     cancelled_at: order.cancelledAt || null,
     cancel_reason: order.cancelledAt ? "cancelled" : null,
     financial_status: financial,
     currency: order.currencyCode || "EUR",
-    customer: order.customer
-      ? {
-          first_name: order.customer.firstName,
-          last_name: order.customer.lastName,
-          email: order.customer.email,
-          phone: order.customer.phone,
-        }
-      : null,
-    billing_address: order.billingAddress
-      ? {
-          first_name: order.billingAddress.firstName,
-          last_name: order.billingAddress.lastName,
-          name: order.billingAddress.name,
-          phone: order.billingAddress.phone,
-        }
-      : null,
-    shipping_address: order.shippingAddress
-      ? {
-          first_name: order.shippingAddress.firstName,
-          last_name: order.shippingAddress.lastName,
-          name: order.shippingAddress.name,
-          phone: order.shippingAddress.phone,
-        }
-      : null,
+    customer: null,
+    billing_address: null,
+    shipping_address: null,
     note_attributes: (order.customAttributes || []).map((item) => ({
       name: item.key,
       value: item.value,
@@ -224,31 +203,11 @@ async function fetchRecentShopifyOrders(admin, limit = 50) {
           node {
             id
             name
-            email
-            phone
             createdAt
             updatedAt
             cancelledAt
             currencyCode
             displayFinancialStatus
-            customer {
-              firstName
-              lastName
-              email
-              phone
-            }
-            billingAddress {
-              firstName
-              lastName
-              name
-              phone
-            }
-            shippingAddress {
-              firstName
-              lastName
-              name
-              phone
-            }
             customAttributes { key value }
             lineItems(first: 100) {
               edges {
@@ -365,6 +324,100 @@ async function writeManualSyncAudit(prisma, provider, result, status = "PROCESSE
   }
 }
 
+async function compareRecentShopifyOrders(prisma, orders) {
+  const prepared = [];
+  let structuralIssues = 0;
+  let ignoredLines = 0;
+
+  for (const order of orders) {
+    const built = await buildShopifyBookingGroups(prisma, order);
+    structuralIssues += Number(built?.issues?.length || 0);
+    ignoredLines += Number(built?.ignored?.length || 0);
+
+    const expectedStatus = order.cancelled_at
+      ? "CANCELED"
+      : ["paid", "partially_paid"].includes(
+          String(order.financial_status || "").toLowerCase(),
+        )
+        ? "CONFIRMED"
+        : "PENDING";
+
+    for (const group of built?.groups || []) {
+      prepared.push({
+        orderId: group.externalOrderId,
+        orderName: group.bookingRef,
+        externalBookingId: group.externalBookingId,
+        tourId: group.tour.id,
+        tourTitle: group.tour.title,
+        startTime: group.startTime,
+        totalParticipants: group.totalParticipants,
+        expectedStatus,
+      });
+    }
+  }
+
+  const orderIds = [...new Set(prepared.map((item) => item.orderId).filter(Boolean))];
+  const existing = orderIds.length
+    ? await prisma.booking.findMany({
+        where: {
+          platform: "SHOPIFY",
+          externalOrderId: { in: orderIds },
+        },
+      })
+    : [];
+
+  const byExternalBookingId = new Map(
+    existing
+      .filter((booking) => booking.externalBookingId)
+      .map((booking) => [booking.externalBookingId, booking]),
+  );
+
+  const differences = [];
+
+  for (const expected of prepared) {
+    const booking = byExternalBookingId.get(expected.externalBookingId);
+
+    if (!booking) {
+      differences.push({
+        id: expected.externalBookingId,
+        name: `${expected.orderName || "Pedido Shopify"} · ${expected.tourTitle}`,
+        reason: "Reserva existe no Shopify consultado, mas não foi encontrada na Central.",
+      });
+      continue;
+    }
+
+    const reasons = [];
+    if (booking.status !== expected.expectedStatus) reasons.push("status");
+    if (
+      Number(booking.totalParticipants || 0) !==
+      Number(expected.totalParticipants || 0)
+    ) {
+      reasons.push("quantidade de passageiros");
+    }
+    if (
+      new Date(booking.startTime).getTime() !==
+      new Date(expected.startTime).getTime()
+    ) {
+      reasons.push("data/horário");
+    }
+
+    if (reasons.length) {
+      differences.push({
+        id: expected.externalBookingId,
+        name: `${expected.orderName || "Pedido Shopify"} · ${expected.tourTitle}`,
+        reason: `Diferença em: ${reasons.join(", ")}.`,
+      });
+    }
+  }
+
+  return {
+    checkedBookings: prepared.length,
+    structuralIssues,
+    ignoredLines,
+    differences,
+  };
+}
+
 async function syncShopify(prisma, admin) {
   const checkedAt = new Date().toISOString();
   const [products, toursBefore, bookingsBefore] = await Promise.all([
@@ -381,23 +434,7 @@ async function syncShopify(prisma, admin) {
   const catalogSync = await syncShopifyCatalogToMasterTours(prisma, products);
 
   const orders = await fetchRecentShopifyOrders(admin, 50);
-  let bookingRowsTouched = 0;
-  let reservationIssues = 0;
-  let ignoredLines = 0;
-
-  for (const order of orders) {
-    const result = await processShopifyOrderWebhook(prisma, {
-      payload: order,
-      topic: order.cancelled_at ? "ORDERS_CANCELLED" : "ORDERS_UPDATED",
-      sourceEventId: `manual-sync:${order.admin_graphql_api_id}:${order.updated_at || "unknown"}`,
-    });
-    bookingRowsTouched +=
-      Number(result?.bookings?.length || 0) +
-      Number(result?.cancelledBookings || 0) +
-      Number(result?.cancelledRemovedBookings || 0);
-    reservationIssues += Number(result?.issues?.length || 0);
-    ignoredLines += Number(result?.ignored?.length || 0);
-  }
+  const reservationComparison = await compareRecentShopifyOrders(prisma, orders);
 
   const [toursAfter, bookingsAfter] = await Promise.all([
     prisma.tour.findMany({
@@ -412,13 +449,15 @@ async function syncShopify(prisma, admin) {
     comparison.missingInCentral.length +
     comparison.missingInChannel.length +
     comparison.changed.length +
-    reservationIssues;
+    reservationComparison.structuralIssues +
+    reservationComparison.differences.length;
 
   const result = {
     platform: "shopify",
     mode: "LIVE_API",
     checkedAt,
-    scopeNote: "Catálogo completo (até 100 produtos) e os 50 pedidos mais recentemente atualizados no Shopify.",
+    scopeNote:
+      "Catálogo completo (até 100 produtos) e os 50 pedidos mais recentemente atualizados no Shopify. A auditoria de pedidos não solicita dados pessoais protegidos do cliente.",
     differences,
     products: {
       remote: comparison.eligible.length,
@@ -437,9 +476,13 @@ async function syncShopify(prisma, admin) {
       remoteChecked: orders.length,
       centralBefore: bookingsBefore,
       centralAfter: bookingsAfter,
-      rowsTouched: bookingRowsTouched,
-      issues: reservationIssues,
-      ignoredLines,
+      rowsTouched: 0,
+      checkedBookings: reservationComparison.checkedBookings,
+      issues:
+        reservationComparison.structuralIssues +
+        reservationComparison.differences.length,
+      ignoredLines: reservationComparison.ignoredLines,
+      differences: reservationComparison.differences,
     },
     availability: {
       checked: comparison.eligible.length,
@@ -453,9 +496,13 @@ async function syncShopify(prisma, admin) {
       comparison.missingInChannel.length
         ? `${comparison.missingInChannel.length} tour(s) da Central apontam para produtos que não voltaram na consulta ao Shopify.`
         : "Nenhum produto mapeado ficou ausente da consulta ao Shopify.",
-      reservationIssues
-        ? `${reservationIssues} linha(s) de pedido precisam de revisão porque faltou data/horário utilizável.`
+      reservationComparison.structuralIssues
+        ? `${reservationComparison.structuralIssues} linha(s) de pedido precisam de revisão porque faltou data/horário utilizável.`
         : "Pedidos consultados sem divergências estruturais de data/horário.",
+      reservationComparison.differences.length
+        ? `${reservationComparison.differences.length} reserva(s) apresentam diferença entre Shopify e Central.`
+        : "Nenhuma divergência de reserva encontrada na amostra consultada.",
+      "A consulta manual evita customer/email/phone/endereço, portanto não depende do escopo read_customers.",
     ],
   };
 
