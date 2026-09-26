@@ -1322,7 +1322,7 @@ export default function CentralDeReservas() {
     // Armazena callback para usar quando usuário selecionar
     window.__pmyPickerCallback = onSelect;
     setActiveModal('pickPhotoForGuide');
-  }, [indexActionUrl, readJsonResponse]);
+  }, []);
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1621,7 +1621,7 @@ export default function CentralDeReservas() {
     } finally {
       setSyncQueueLoading(false);
     }
-  }, []);
+  }, [indexActionUrl, readJsonResponse]);
 
   useEffect(() => {
     if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
