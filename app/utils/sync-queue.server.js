@@ -656,6 +656,35 @@ export async function requeueSyncJob(prisma, jobId) {
   });
 }
 
+export async function requeueProviderJobs(
+  prisma,
+  provider,
+  { statuses = ["BLOCKED", "DEAD"] } = {},
+) {
+  const normalized = normalizeProvider(provider);
+  if (!RESERVATION_PROVIDERS.includes(normalized)) {
+    throw new Error("Unsupported reservation provider.");
+  }
+
+  const result = await prisma.syncJob.updateMany({
+    where: {
+      provider: normalized,
+      status: { in: statuses },
+    },
+    data: {
+      status: "PENDING",
+      attempts: 0,
+      nextAttemptAt: new Date(),
+      lockedAt: null,
+      lockedBy: null,
+      processedAt: null,
+      error: null,
+    },
+  });
+
+  return { provider: normalized, requeued: result.count };
+}
+
 const WORKER_GLOBAL_KEY = "__pmySyncQueueWorker";
 
 export function startSyncQueueWorker(
