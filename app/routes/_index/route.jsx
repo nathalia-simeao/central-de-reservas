@@ -9,6 +9,9 @@ import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server"
 import {
   enqueueAvailabilitySync,
   enqueueBookingSync,
+  getSyncQueueStats,
+  processSyncQueue,
+  requeueSyncJob,
   SYNC_EVENT_TYPES,
 } from "../../utils/sync-queue.server";
 import { syncPlatformNow } from "../../utils/platform-sync.server";
@@ -419,6 +422,92 @@ export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
+  if (_action === "syncQueueStats") {
+    try {
+      const [stats, jobs] = await Promise.all([
+        getSyncQueueStats(prisma),
+        prisma.syncJob.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: {
+            id: true,
+            eventId: true,
+            eventType: true,
+            provider: true,
+            sourcePlatform: true,
+            aggregateType: true,
+            aggregateId: true,
+            tourId: true,
+            bookingId: true,
+            startTime: true,
+            scope: true,
+            force: true,
+            status: true,
+            attempts: true,
+            maxAttempts: true,
+            nextAttemptAt: true,
+            lastAttemptAt: true,
+            processedAt: true,
+            result: true,
+            error: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+      ]);
+      return json({ success: true, stats, jobs });
+    } catch (error) {
+      console.error("[PMY] sync queue stats failed:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao consultar o log de sincronização." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (_action === "syncQueueRun") {
+    try {
+      const limit = Math.min(
+        100,
+        Math.max(1, Number.parseInt(formData.get("limit") || "20", 10) || 20),
+      );
+      const result = await processSyncQueue(prisma, { limit });
+      return json({ success: true, result });
+    } catch (error) {
+      console.error("[PMY] sync queue run failed:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao processar a fila." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (_action === "syncQueueRequeue") {
+    try {
+      const jobId = String(formData.get("jobId") || "").trim();
+      if (!jobId) {
+        return json({ success: false, error: "Job ID é obrigatório." }, { status: 400 });
+      }
+
+      const job = await prisma.syncJob.findUnique({
+        where: { id: jobId },
+        select: { id: true },
+      });
+      if (!job) {
+        return json({ success: false, error: "Sincronização não encontrada." }, { status: 404 });
+      }
+
+      await requeueSyncJob(prisma, jobId);
+      return json({ success: true, jobId });
+    } catch (error) {
+      console.error("[PMY] sync queue requeue failed:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao reenviar a sincronização." },
+        { status: 500 },
+      );
+    }
+  }
 
   if (_action === "syncPlatformNow") {
     try {
@@ -1233,7 +1322,7 @@ export default function CentralDeReservas() {
     // Armazena callback para usar quando usuário selecionar
     window.__pmyPickerCallback = onSelect;
     setActiveModal('pickPhotoForGuide');
-  }, []);
+  }, [indexActionUrl, readJsonResponse]);
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1481,14 +1570,43 @@ export default function CentralDeReservas() {
       ];
 
     // ---- HANDLERS ----
+  const indexActionUrl = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("index", "");
+    return `${url.pathname}${url.search}`;
+  }, []);
+
+  const readJsonResponse = useCallback(async (response) => {
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const text = await response.text();
+
+    if (!contentType.includes("application/json")) {
+      const looksLikeHtml = /<!doctype|<html/i.test(text);
+      if (looksLikeHtml) {
+        throw new Error(
+          "A Central recebeu uma página HTML em vez de dados. A rota de sincronização não foi acionada corretamente.",
+        );
+      }
+    }
+
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("A Central recebeu uma resposta inválida da sincronização.");
+    }
+  }, []);
+
   const loadSyncQueue = useCallback(async () => {
     setSyncQueueLoading(true);
     try {
-      const response = await fetch("/api/sync-queue", {
-        method: "GET",
+      const formData = new FormData();
+      formData.append("_action", "syncQueueStats");
+      const response = await fetch(indexActionUrl(), {
+        method: "POST",
+        body: formData,
         headers: { Accept: "application/json" },
       });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Não foi possível carregar o log de sincronização.");
       }
@@ -1517,13 +1635,14 @@ export default function CentralDeReservas() {
     setSyncQueueActionId("run");
     try {
       const formData = new FormData();
-      formData.append("_action", "run");
+      formData.append("_action", "syncQueueRun");
       formData.append("limit", "30");
-      const response = await fetch("/api/sync-queue", {
+      const response = await fetch(indexActionUrl(), {
         method: "POST",
         body: formData,
+        headers: { Accept: "application/json" },
       });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Não foi possível processar a fila.");
       }
@@ -1540,21 +1659,26 @@ export default function CentralDeReservas() {
     setSyncQueueActionId(jobId);
     try {
       const formData = new FormData();
-      formData.append("_action", "requeue");
+      formData.append("_action", "syncQueueRequeue");
       formData.append("jobId", jobId);
-      const response = await fetch("/api/sync-queue", {
+      const response = await fetch(indexActionUrl(), {
         method: "POST",
         body: formData,
+        headers: { Accept: "application/json" },
       });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Não foi possível reenviar esta sincronização.");
       }
 
       const runData = new FormData();
-      runData.append("_action", "run");
+      runData.append("_action", "syncQueueRun");
       runData.append("limit", "10");
-      await fetch("/api/sync-queue", { method: "POST", body: runData });
+      await fetch(indexActionUrl(), {
+        method: "POST",
+        body: runData,
+        headers: { Accept: "application/json" },
+      });
 
       setSyncQueueError("");
       await loadSyncQueue();
@@ -1573,11 +1697,12 @@ export default function CentralDeReservas() {
       formData.append("_action", "syncPlatformNow");
       formData.append("platform", platformKey);
 
-      const response = await fetch(window.location.href, {
+      const response = await fetch(indexActionUrl(), {
         method: "POST",
         body: formData,
+        headers: { Accept: "application/json" },
       });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
 
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Não foi possível sincronizar este canal.");
