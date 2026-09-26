@@ -169,65 +169,56 @@ async function createEventAndJobs(
     const jobs = [];
 
     for (const provider of filteredTargets) {
-      const job = await tx.syncJob.upsert({
-        where: {
-          provider_eventId: {
-            provider,
-            eventId,
-          },
-        },
-        create: {
-          eventId,
-          eventType,
+      const where = {
+        provider_eventId: {
           provider,
-          sourcePlatform: normalizedSource,
-          aggregateType,
-          aggregateId,
-          tourId,
-          bookingId,
-          startTime: normalizedStartTime,
-          scope,
-          force: Boolean(force),
-          payload: payload || undefined,
-          maxAttempts,
-          status: "PENDING",
-          nextAttemptAt: new Date(),
+          eventId,
         },
-        update: {
-          eventType,
-          sourcePlatform: normalizedSource,
-          aggregateType,
-          aggregateId,
-          tourId,
-          bookingId,
-          startTime: normalizedStartTime,
-          scope,
-          force: Boolean(force),
-          payload: payload || undefined,
-          maxAttempts,
-          ...(TERMINAL_STATUSES.has(
-            (
-              await tx.syncJob.findUnique({
-                where: {
-                  provider_eventId: {
-                    provider,
-                    eventId,
-                  },
-                },
-                select: { status: true },
-              })
-            )?.status,
-          )
-            ? {}
-            : {
-                status: "PENDING",
-                nextAttemptAt: new Date(),
-                error: null,
-                lockedAt: null,
-                lockedBy: null,
-              }),
-        },
-      });
+      };
+
+      const existing = await tx.syncJob.findUnique({ where });
+
+      if (existing && TERMINAL_STATUSES.has(existing.status)) {
+        jobs.push(existing);
+        continue;
+      }
+
+      const jobData = {
+        eventType,
+        provider,
+        sourcePlatform: normalizedSource,
+        aggregateType,
+        aggregateId,
+        tourId,
+        bookingId,
+        startTime: normalizedStartTime,
+        scope,
+        force: Boolean(force),
+        payload: payload || undefined,
+        maxAttempts,
+      };
+
+      const job = existing
+        ? await tx.syncJob.update({
+            where,
+            data: {
+              ...jobData,
+              status: "PENDING",
+              nextAttemptAt: new Date(),
+              error: null,
+              lockedAt: null,
+              lockedBy: null,
+            },
+          })
+        : await tx.syncJob.create({
+            data: {
+              eventId,
+              ...jobData,
+              status: "PENDING",
+              nextAttemptAt: new Date(),
+            },
+          });
+
       jobs.push(job);
     }
 
