@@ -701,7 +701,7 @@ export async function processShopifyOrderWebhook(
         : SYNC_EVENT_TYPES.BOOKING_CREATED,
       booking: result.booking,
       sourcePlatform: SHOPIFY_PLATFORM,
-      force: false,
+      force: true,
       payload: {
         orderId,
         syncStatus: result.syncStatus,
