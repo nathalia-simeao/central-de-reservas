@@ -1355,6 +1355,11 @@ export default function CentralDeReservas() {
   const [activeProductVariants, setActiveProductVariants] = useState(["adulto", "jovem", "crianca", "senior"]);
   const [activeTourLanguages, setActiveTourLanguages] = useState(["Português", "English"]);
   const [generatedLink, setGeneratedLink] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [draftOrderLoading, setDraftOrderLoading] = useState(false);
+  const [draftOrderError, setDraftOrderError] = useState("");
+  const [draftOrderInfo, setDraftOrderInfo] = useState(null);
   const [bookingPlatforms, setBookingPlatforms] = useState(["shopify"]);  // plataformas da reserva
   const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis"]); // apenas canais reais de reserva
 
@@ -1751,11 +1756,99 @@ export default function CentralDeReservas() {
     CAPACITY_CHANGED: "Capacidade alterada",
   }[eventType] || eventType || "Evento");
 
-  const handleGeneratePaymentLink = (e) => {
+  const getBookingTimesForTour = useCallback((tour) => {
+    const configured = Array.isArray(tour?.scheduleSlots)
+      ? tour.scheduleSlots.map(String).map((value) => value.trim()).filter(Boolean)
+      : [];
+
+    if (configured.length > 0) return [...new Set(configured)].sort();
+
+    const detected = new Set();
+    for (const variant of tour?.variants || []) {
+      const matches = String(variant?.title || "").matchAll(/\b([01]?\d|2[0-3])[:hH]([0-5]\d)\b/g);
+      for (const match of matches) {
+        detected.add(`${match[1].padStart(2, "0")}:${match[2]}`);
+      }
+    }
+
+    return [...detected].sort();
+  }, []);
+
+  const variantMatchesBookingTime = useCallback((variant, selectedTime) => {
+    if (!selectedTime) return true;
+    const match = String(variant?.title || "").match(/\b([01]?\d|2[0-3])[:hH]([0-5]\d)\b/);
+    if (!match) return true;
+    const variantTime = `${match[1].padStart(2, "0")}:${match[2]}`;
+    return variantTime === selectedTime;
+  }, []);
+
+  const handleGeneratePaymentLink = async (e) => {
     e.preventDefault();
-    if (custName && selectedTour) {
-      const total = Object.values(tourVariants).reduce((a,b) => a+b, 0);
-      setGeneratedLink(`https://portugalmeandyou.com/checkout/draft_order_pmy_${Date.now()}?qty=${total}`);
+    setDraftOrderError("");
+    setGeneratedLink("");
+    setDraftOrderInfo(null);
+
+    const tour = tourOptions.find((item) => item.id === selectedTour);
+    if (!custName || !tour) {
+      setDraftOrderError("Informe o cliente e selecione um tour.");
+      return;
+    }
+    if (!bookingDate) {
+      setDraftOrderError("Informe a data do tour.");
+      return;
+    }
+    if (!bookingTime) {
+      setDraftOrderError("Selecione o horário do tour.");
+      return;
+    }
+    if (!custLang) {
+      setDraftOrderError("Selecione o idioma do tour.");
+      return;
+    }
+    if (!bookingPlatforms.includes("shopify")) {
+      setDraftOrderError("Para gerar o checkout, mantenha Shopify selecionado como plataforma.");
+      return;
+    }
+
+    const realVariants = Array.isArray(tour.variants) ? tour.variants : [];
+    const lineItems = realVariants
+      .filter((variant) => variantMatchesBookingTime(variant, bookingTime))
+      .map((variant) => ({
+        variantId: variant.id,
+        quantity: Number(tourVariants[variant.id] || 0),
+      }))
+      .filter((item) => Number.isInteger(item.quantity) && item.quantity > 0);
+
+    if (lineItems.length === 0) {
+      setDraftOrderError("Selecione pelo menos um ingresso/variante do Shopify.");
+      return;
+    }
+
+    setDraftOrderLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("productId", tour.id);
+      formData.append("tourTitle", tour.title || "");
+      formData.append("customerName", custName);
+      formData.append("date", bookingDate);
+      formData.append("time", bookingTime);
+      formData.append("language", custLang);
+      formData.append("bookingPlatforms", bookingPlatforms.join(","));
+      formData.append("lineItems", JSON.stringify(lineItems));
+
+      const payload = await requestResourceJson("/api/draft-order", formData);
+      const draftOrder = payload?.draftOrder;
+
+      if (!draftOrder?.invoiceUrl) {
+        throw new Error("O Shopify não devolveu um link de checkout.");
+      }
+
+      setGeneratedLink(draftOrder.invoiceUrl);
+      setDraftOrderInfo(draftOrder);
+    } catch (error) {
+      setDraftOrderError(error?.message || "Erro ao criar o Draft Order no Shopify.");
+    } finally {
+      setDraftOrderLoading(false);
     }
   };
 
@@ -2002,8 +2095,13 @@ export default function CentralDeReservas() {
   const handleTourSelectionChange = (id) => {
     setSelectedTour(id);
     setTourVariants({ adulto:0, jovem:0, crianca:0, senior:0 });
-    // Detecta línguas disponíveis baseado no nome do tour
+    setGeneratedLink("");
+    setDraftOrderInfo(null);
+    setDraftOrderError("");
     const tour = tourOptions.find(t => t.id === id);
+    const availableTimes = getBookingTimesForTour(tour);
+    setBookingTime(availableTimes[0] || "");
+    // Detecta línguas disponíveis baseado no nome do tour
     const title = (tour?.title || "").toLowerCase();
     if (title.includes("español") || title.includes("spanish") || title.includes("espanhol")) {
       setActiveProductVariants(["adulto","jovem","senior"]);
@@ -3742,12 +3840,42 @@ export default function CentralDeReservas() {
                     {selectedTour && (() => {
                       const selTour = tourOptions.find(t => t.id === selectedTour);
                       const realVariants = selTour?.variants || [];
+                      const timeOptions = getBookingTimesForTour(selTour);
+                      const visibleVariants = realVariants.filter((variant) =>
+                        variantMatchesBookingTime(variant, bookingTime)
+                      );
+                      const today = getLisbonToday();
+                      const todayKey = `${today.year}-${String(today.monthIndex + 1).padStart(2,'0')}-${String(today.day).padStart(2,'0')}`;
                       return (
                         <div className="pmy-form-group" style={{ background:'#fefefe', padding:'15px', borderRadius:'8px', border:'1px solid #eee' }}>
-                          <label style={{ color:'var(--primary-green)', marginBottom:'10px', display:'block' }}>🛒 Ingressos por Variante:</label>
-                          {realVariants.length > 0 ? (
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'14px' }}>
+                            <div>
+                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>📅 Data do Tour:</label>
+                              <input type="date" className="pmy-form-input" min={todayKey} value={bookingDate} onChange={e=>setBookingDate(e.target.value)} required />
+                            </div>
+                            <div>
+                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>⏰ Horário do Tour:</label>
+                              {timeOptions.length > 0 ? (
+                                <select className="pmy-form-input" value={bookingTime}
+                                  onChange={e => {
+                                    setBookingTime(e.target.value);
+                                    setTourVariants({ adulto:0, jovem:0, crianca:0, senior:0 });
+                                    setGeneratedLink("");
+                                    setDraftOrderInfo(null);
+                                  }} required>
+                                  <option value="">-- Horário --</option>
+                                  {timeOptions.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                                </select>
+                              ) : (
+                                <input type="time" className="pmy-form-input" value={bookingTime} onChange={e=>setBookingTime(e.target.value)} required />
+                              )}
+                            </div>
+                          </div>
+
+                          <label style={{ color:'var(--primary-green)', marginBottom:'10px', display:'block' }}>🛒 Ingressos por Variante Shopify:</label>
+                          {visibleVariants.length > 0 ? (
                             <div className="pmy-variants-form-grid">
-                              {realVariants.map(v => (
+                              {visibleVariants.map(v => (
                                 <div key={v.id}>
                                   <label style={{ fontSize:'11px', fontWeight:'700' }}>
                                     {v.title === 'Default Title' ? 'Quantidade' : v.title}
@@ -3760,17 +3888,8 @@ export default function CentralDeReservas() {
                               ))}
                             </div>
                           ) : (
-                            <div className="pmy-variants-form-grid">
-                              <div><label style={{ fontSize:'11px' }}>Adulto</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.adulto||0} onChange={e=>setTourVariants({...tourVariants,adulto:parseInt(e.target.value)||0})} /></div>
-                              <div><label style={{ fontSize:'11px' }}>Jovem</label><input type="number" className="pmy-form-input" min="0" value={tourVariants.jovem||0} onChange={e=>setTourVariants({...tourVariants,jovem:parseInt(e.target.value)||0})} /></div>
-                            </div>
-                          )}
-                          {selTour?.scheduleSlots?.length > 0 && (
-                            <div style={{ marginTop:'12px' }}>
-                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>⏰ Horário do Tour:</label>
-                              <select className="pmy-form-input" value={custLang} onChange={e=>setCustLang(e.target.value)}>
-                                {selTour.scheduleSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-                              </select>
+                            <div style={{ fontSize:'12px', color:'#b45309', background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'7px', padding:'9px 10px' }}>
+                              ⚠️ Nenhuma variante Shopify real foi carregada para este horário. O checkout não será criado com item genérico.
                             </div>
                           )}
                           {selTour?.image && (
@@ -3815,15 +3934,30 @@ export default function CentralDeReservas() {
                       )}
                     </div>
 
-                    <button type="submit" className="pmy-btn-submit" disabled={bookingPlatforms.length===0} style={{ opacity: bookingPlatforms.length===0 ? 0.5 : 1 }}>
-                      {t.form_btn_link}
-                      {bookingPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.8 }}>→ {bookingPlatforms.length} plataforma{bookingPlatforms.length>1?'s':''}</span>}
+                    {draftOrderError && (
+                      <div style={{ fontSize:'12px', color:'#b91c1c', marginBottom:'10px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'9px 10px' }}>
+                        ❌ {draftOrderError}
+                      </div>
+                    )}
+                    <button type="submit" className="pmy-btn-submit"
+                      disabled={bookingPlatforms.length===0 || draftOrderLoading}
+                      style={{ opacity:(bookingPlatforms.length===0 || draftOrderLoading) ? 0.5 : 1 }}>
+                      {draftOrderLoading ? "Criando Draft Order no Shopify..." : "Criar checkout Shopify"}
+                      {!draftOrderLoading && bookingPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.8 }}>→ Draft Order real</span>}
                     </button>
                   </form>
                   {generatedLink && (
-                    <div style={{ marginTop:'15px', padding:'12px', background:'#e6f2e6', border:'1px solid var(--primary-green)', borderRadius:'8px', wordBreak:'break-all' }}>
-                      <strong style={{ fontSize:'13px', color:'var(--primary-green)', display:'block', marginBottom:'4px' }}>Link de Rascunho (Shopify Checkout):</strong>
-                      <a href={generatedLink} target="_blank" rel="noreferrer" style={{ fontSize:'13px', color:'#0055cc' }}>{generatedLink}</a>
+                    <div style={{ marginTop:'15px', padding:'14px', background:'#e6f2e6', border:'1px solid var(--primary-green)', borderRadius:'8px', wordBreak:'break-all' }}>
+                      <strong style={{ fontSize:'13px', color:'var(--primary-green)', display:'block', marginBottom:'5px' }}>✅ Draft Order criado no Shopify{draftOrderInfo?.name ? ` · ${draftOrderInfo.name}` : ''}</strong>
+                      {draftOrderInfo?.total && (
+                        <div style={{ fontSize:'12px', color:'#47634e', marginBottom:'7px' }}>
+                          Total: <strong>{draftOrderInfo.total} {draftOrderInfo.currency || ''}</strong> · {draftOrderInfo.date} · {draftOrderInfo.time} · {draftOrderInfo.language}
+                        </div>
+                      )}
+                      <a href={generatedLink} target="_blank" rel="noreferrer" style={{ fontSize:'13px', color:'#0055cc', fontWeight:'700' }}>Abrir checkout seguro do Shopify ↗</a>
+                      <div style={{ fontSize:'10px', color:'#6b7b70', marginTop:'6px' }}>
+                        O link acima é o invoiceUrl real devolvido pela API de Draft Orders do Shopify.
+                      </div>
                     </div>
                   )}
                 </div>
