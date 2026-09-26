@@ -1316,7 +1316,9 @@ function PickerModalContent({ allImages, onSelect }) {
 
 export default function CentralDeReservas() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
-  const fetcher = useFetcher();
+  const queueReadFetcher = useFetcher({ key: "pmy-sync-queue-read" });
+  const queueActionFetcher = useFetcher({ key: "pmy-sync-queue-action" });
+  const manualSyncFetcher = useFetcher({ key: "pmy-manual-platform-sync" });
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -1576,52 +1578,37 @@ export default function CentralDeReservas() {
     return `${url.pathname}${url.search}`;
   }, []);
 
-  const readJsonResponse = useCallback(async (response) => {
-    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    const text = await response.text();
+  useEffect(() => {
+    if (queueReadFetcher.state !== "idle") return;
+    const payload = queueReadFetcher.data;
+    if (!payload) return;
 
-    if (!contentType.includes("application/json")) {
-      const looksLikeHtml = /<!doctype|<html/i.test(text);
-      if (looksLikeHtml) {
-        throw new Error(
-          "A Central recebeu uma página HTML em vez de dados. A rota de sincronização não foi acionada corretamente.",
-        );
-      }
+    if (!payload?.success) {
+      setSyncQueueError(payload?.error || "Não foi possível carregar o log de sincronização.");
+      setSyncQueueLoading(false);
+      return;
     }
 
-    try {
-      return text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("A Central recebeu uma resposta inválida da sincronização.");
-    }
-  }, []);
-
-  const loadSyncQueue = useCallback(async () => {
-    setSyncQueueLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("_action", "syncQueueStats");
-      const response = await fetch(indexActionUrl(), {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Não foi possível carregar o log de sincronização.");
-      }
+    if (payload.stats || Array.isArray(payload.jobs)) {
       setSyncQueueData({
         stats: payload.stats || null,
         jobs: Array.isArray(payload.jobs) ? payload.jobs : [],
       });
       setSyncQueueError("");
       setSyncQueueLastLoaded(new Date());
-    } catch (error) {
-      setSyncQueueError(error?.message || "Erro ao carregar o log de sincronização.");
-    } finally {
       setSyncQueueLoading(false);
     }
-  }, [indexActionUrl, readJsonResponse]);
+  }, [queueReadFetcher.state, queueReadFetcher.data]);
+
+  const loadSyncQueue = useCallback(() => {
+    setSyncQueueLoading(true);
+    const formData = new FormData();
+    formData.append("_action", "syncQueueStats");
+    queueReadFetcher.submit(formData, {
+      method: "post",
+      action: indexActionUrl(),
+    });
+  }, [queueReadFetcher.submit, indexActionUrl]);
 
   useEffect(() => {
     if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
@@ -1631,108 +1618,94 @@ export default function CentralDeReservas() {
     return () => window.clearInterval(timer);
   }, [activeTab, intSubTab, loadSyncQueue]);
 
-  const runSyncQueueNow = async () => {
+  useEffect(() => {
+    if (queueActionFetcher.state !== "idle") return;
+    const payload = queueActionFetcher.data;
+    if (!payload) return;
+
+    if (!payload?.success) {
+      setSyncQueueError(payload?.error || "Não foi possível processar a fila.");
+      setSyncQueueActionId(null);
+      return;
+    }
+
+    setSyncQueueError("");
+    setSyncQueueActionId(null);
+    loadSyncQueue();
+  }, [queueActionFetcher.state, queueActionFetcher.data, loadSyncQueue]);
+
+  const runSyncQueueNow = () => {
     setSyncQueueActionId("run");
-    try {
-      const formData = new FormData();
-      formData.append("_action", "syncQueueRun");
-      formData.append("limit", "30");
-      const response = await fetch(indexActionUrl(), {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Não foi possível processar a fila.");
-      }
-      setSyncQueueError("");
-      await loadSyncQueue();
-    } catch (error) {
-      setSyncQueueError(error?.message || "Erro ao processar a fila.");
-    } finally {
-      setSyncQueueActionId(null);
-    }
+    const formData = new FormData();
+    formData.append("_action", "syncQueueRun");
+    formData.append("limit", "30");
+    queueActionFetcher.submit(formData, {
+      method: "post",
+      action: indexActionUrl(),
+    });
   };
 
-  const handleRequeueSyncJob = async (jobId) => {
+  const handleRequeueSyncJob = (jobId) => {
     setSyncQueueActionId(jobId);
-    try {
-      const formData = new FormData();
-      formData.append("_action", "syncQueueRequeue");
-      formData.append("jobId", jobId);
-      const response = await fetch(indexActionUrl(), {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Não foi possível reenviar esta sincronização.");
-      }
-
-      const runData = new FormData();
-      runData.append("_action", "syncQueueRun");
-      runData.append("limit", "10");
-      await fetch(indexActionUrl(), {
-        method: "POST",
-        body: runData,
-        headers: { Accept: "application/json" },
-      });
-
-      setSyncQueueError("");
-      await loadSyncQueue();
-    } catch (error) {
-      setSyncQueueError(error?.message || "Erro ao reenviar a sincronização.");
-    } finally {
-      setSyncQueueActionId(null);
-    }
+    const formData = new FormData();
+    formData.append("_action", "syncQueueRequeue");
+    formData.append("jobId", jobId);
+    queueActionFetcher.submit(formData, {
+      method: "post",
+      action: indexActionUrl(),
+    });
   };
 
-  const handleSyncPlatformNow = async (platformKey) => {
+  useEffect(() => {
+    if (manualSyncFetcher.state !== "idle") return;
+    const payload = manualSyncFetcher.data;
+    if (!payload || !manualSyncPlatform) return;
+
+    if (!payload?.success) {
+      setManualSyncError(payload?.error || "Não foi possível sincronizar este canal.");
+      setManualSyncPlatform(null);
+      return;
+    }
+
+    const result = payload.result || null;
+    const platformKey = manualSyncPlatform;
+    setManualSyncResult(result);
+    setManualSyncError("");
+
+    if (Array.isArray(result?.products?.items)) {
+      setPlatformProducts((previous) => ({
+        ...previous,
+        [platformKey]: result.products.items,
+      }));
+    }
+
+    setPlatformConnections((previous) => ({
+      ...previous,
+      [platformKey]: {
+        ...(previous[platformKey] || {}),
+        lastSync: new Date().toLocaleTimeString("pt-PT", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    }));
+
+    setManualSyncPlatform(null);
+  }, [manualSyncFetcher.state, manualSyncFetcher.data, manualSyncPlatform]);
+
+  const handleSyncPlatformNow = (platformKey) => {
     setManualSyncPlatform(platformKey);
     setManualSyncError("");
-    try {
-      const formData = new FormData();
-      formData.append("_action", "syncPlatformNow");
-      formData.append("platform", platformKey);
+    setManualSyncResult(null);
 
-      const response = await fetch(indexActionUrl(), {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-      const payload = await readJsonResponse(response);
+    const formData = new FormData();
+    formData.append("_action", "syncPlatformNow");
+    formData.append("platform", platformKey);
 
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Não foi possível sincronizar este canal.");
-      }
-
-      const result = payload.result || null;
-      setManualSyncResult(result);
-
-      if (Array.isArray(result?.products?.items)) {
-        setPlatformProducts((previous) => ({
-          ...previous,
-          [platformKey]: result.products.items,
-        }));
-      }
-
-      setPlatformConnections((previous) => ({
-        ...previous,
-        [platformKey]: {
-          ...(previous[platformKey] || {}),
-          lastSync: new Date().toLocaleTimeString("pt-PT", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      }));
-    } catch (error) {
-      setManualSyncError(error?.message || "Erro ao sincronizar a plataforma.");
-    } finally {
-      setManualSyncPlatform(null);
-    }
+    manualSyncFetcher.submit(formData, {
+      method: "post",
+      action: indexActionUrl(),
+    });
   };
 
   const syncProviderMeta = {
