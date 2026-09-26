@@ -6,7 +6,11 @@ import { buildTourPassportUpdate, resolveTourByPlatformId, syncShopifyCatalogToM
 import { dateInputToUtcMidnight, normalizePlatforms, parseRecurringDays } from "../../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../../utils/capacity.server";
 import { ensureShopifyOrderWebhooks } from "../../utils/shopify-webhooks.server";
-import { localSlotToInstant, notifyGygSlotAvailability, notifyGygTourAvailabilityWindow } from "../../utils/gyg-v1.server";
+import {
+  enqueueAvailabilitySync,
+  enqueueBookingSync,
+  SYNC_EVENT_TYPES,
+} from "../../utils/sync-queue.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -604,33 +608,23 @@ export const action = async ({ request }) => {
         created.push(block);
       }
 
-      if (specificDate && tour.gygActivityId) {
-        const slotsToNotify =
-          timeSlot === "ALL"
-            ? tour.scheduleSlots || []
-            : [timeSlot];
-
-        await Promise.allSettled(
-          slotsToNotify
-            .map((slot) =>
-              localSlotToInstant(
-                specificDate,
-                slot,
-                tour.timezone || "Europe/Lisbon",
-              ),
-            )
-            .filter(Boolean)
-            .map((startTime) =>
-              notifyGygSlotAvailability({
-                tourId: tour.id,
-                startTime,
-              }),
-            ),
-        );
-      }
-
-      if (recurringDays.length > 0 && tour.gygActivityId) {
-        await notifyGygTourAvailabilityWindow({ tourId: tour.id, days: 30 });
+      if (created.length > 0) {
+        await enqueueAvailabilitySync(prisma, {
+          eventType: SYNC_EVENT_TYPES.BLOCK_CREATED,
+          tourId: tour.id,
+          scope: "TOUR",
+          sourcePlatform: "CENTRAL",
+          targetProviders: platforms,
+          force: true,
+          aggregateType: "BLOCK",
+          aggregateId: created[0].id,
+          payload: {
+            blockIds: created.map((block) => block.id),
+            date: specificDate || null,
+            recurringDays,
+            timeSlot,
+          },
+        });
       }
 
       return json({
@@ -665,37 +659,23 @@ export const action = async ({ request }) => {
         },
       });
 
-      if (existingBlock?.tour?.gygActivityId && existingBlock.date) {
-        const dateKey = new Date(existingBlock.date).toISOString().slice(0, 10);
-        const slotsToNotify =
-          !existingBlock.timeSlot || existingBlock.timeSlot === "ALL"
-            ? existingBlock.tour.scheduleSlots || []
-            : [existingBlock.timeSlot];
-
-        await Promise.allSettled(
-          slotsToNotify
-            .map((slot) =>
-              localSlotToInstant(
-                dateKey,
-                slot,
-                existingBlock.tour.timezone || "Europe/Lisbon",
-              ),
-            )
-            .filter(Boolean)
-            .map((startTime) =>
-              notifyGygSlotAvailability({
-                tourId: existingBlock.tour.id,
-                startTime,
-                force: true,
-              }),
-            ),
-        );
-      }
-
-      if (existingBlock?.tour?.gygActivityId && existingBlock.dayOfWeek != null) {
-        await notifyGygTourAvailabilityWindow({
-          tourId: existingBlock.tour.id,
-          days: 30,
+      if (existingBlock?.tourId) {
+        await enqueueAvailabilitySync(prisma, {
+          eventType: SYNC_EVENT_TYPES.BLOCK_REMOVED,
+          tourId: existingBlock.tourId,
+          scope: "TOUR",
+          sourcePlatform: "CENTRAL",
+          targetProviders: existingBlock.platforms || [],
+          force: true,
+          aggregateType: "BLOCK",
+          aggregateId: existingBlock.id,
+          payload: {
+            date: existingBlock.date
+              ? new Date(existingBlock.date).toISOString().slice(0, 10)
+              : null,
+            dayOfWeek: existingBlock.dayOfWeek,
+            timeSlot: existingBlock.timeSlot,
+          },
         });
       }
 
@@ -728,12 +708,16 @@ export const action = async ({ request }) => {
         },
       });
 
-      if (updated.gygActivityId) {
-        await notifyGygTourAvailabilityWindow({
-          tourId: updated.id,
-          days: 30,
-        });
-      }
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
+        tourId: updated.id,
+        scope: "TOUR",
+        sourcePlatform: "CENTRAL",
+        force: true,
+        aggregateType: "TOUR",
+        aggregateId: updated.id,
+        payload: { maxCapacity: updated.maxCapacity },
+      });
 
       return json({ success: true, maxCapacity: updated.maxCapacity });
     } catch (e) {
@@ -777,9 +761,12 @@ export const action = async ({ request }) => {
         }, { status: 409 });
       }
 
-      await notifyGygSlotAvailability({
-        tourId,
-        startTime,
+      await enqueueBookingSync(prisma, {
+        eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
+        booking: guarded.booking,
+        sourcePlatform: platform,
+        force: false,
+        payload: { origin: "CENTRAL_MANUAL_BOOKING" },
       });
 
       return json({
