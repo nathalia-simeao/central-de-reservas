@@ -437,6 +437,17 @@ export const action = async ({ request }) => {
         include: { variants: true },
       });
 
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.AVAILABILITY_CHANGED,
+        tourId: tour.id,
+        scope: "TOUR",
+        sourcePlatform: "CENTRAL",
+        force: true,
+        aggregateType: "TOUR",
+        aggregateId: tour.id,
+        payload: { origin: "TOUR_PASSPORT_UPDATED" },
+      });
+
       return json({ success: true, tour });
     } catch (e) {
       return json({ success: false, error: e.message });
@@ -513,6 +524,17 @@ export const action = async ({ request }) => {
         where: { id },
         data: update,
         include: { variants: true },
+      });
+
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.AVAILABILITY_CHANGED,
+        tourId: tour.id,
+        scope: "TOUR",
+        sourcePlatform: "CENTRAL",
+        force: true,
+        aggregateType: "TOUR",
+        aggregateId: tour.id,
+        payload: { origin: "GYG_TOUR_CONFIG_UPDATED" },
       });
 
       return json({ success: true, tour });
