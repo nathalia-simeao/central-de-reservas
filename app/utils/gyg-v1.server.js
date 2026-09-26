@@ -7,6 +7,10 @@ import {
 import { getActiveAvailabilityBlocks, getDatePartsInTimeZone } from "./availability.server";
 import { checkGygBasicAuth } from "./gyg.server";
 import { resolveTourByPlatformId } from "./tour-passport.server";
+import {
+  enqueueBookingSync,
+  SYNC_EVENT_TYPES,
+} from "./sync-queue.server";
 
 const prisma = db;
 const GYG_PLATFORM = "GETYOURGUIDE";
@@ -516,6 +520,14 @@ export async function reserveGyg(data) {
     const booking = guarded.booking;
     const expiration = booking.holdExpiresAt || holdExpiresAt;
 
+    await enqueueBookingSync(prisma, {
+      eventId: `gyg-reserve:${booking.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
+      booking,
+      sourcePlatform: GYG_PLATFORM,
+      payload: { origin: "GYG_RESERVE" },
+    });
+
     return gygV1Success({
       reservationReference: responseBookingReference(booking),
       reservationExpiration: expiration.toISOString(),
@@ -567,7 +579,7 @@ export async function cancelGygReservation(data) {
       );
     }
 
-    await prisma.booking.update({
+    const canceled = await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: "CANCELED",
@@ -577,6 +589,15 @@ export async function cancelGygReservation(data) {
         holdExpiresAt: null,
         rawPayload: { data },
       },
+    });
+
+    await enqueueBookingSync(prisma, {
+      eventId: `gyg-cancel-reservation:${canceled.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+      booking: canceled,
+      sourcePlatform: GYG_PLATFORM,
+      force: true,
+      payload: { reason: "gyg_reservation_cancelled" },
     });
 
     return gygV1Success({});
@@ -720,6 +741,14 @@ export async function bookGyg(data) {
       },
     });
 
+    await enqueueBookingSync(prisma, {
+      eventId: `gyg-book:${update.id}:${gygBookingReference}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
+      booking: update,
+      sourcePlatform: GYG_PLATFORM,
+      payload: { origin: "GYG_BOOK" },
+    });
+
     return gygV1Success({
       bookingReference: responseBookingReference(update),
       tickets: ticketsForBooking(update),
@@ -785,7 +814,7 @@ export async function cancelGygBooking(data) {
       return gygV1Success({});
     }
 
-    await prisma.booking.update({
+    const canceled = await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: "CANCELED",
@@ -796,6 +825,15 @@ export async function cancelGygBooking(data) {
         externalUpdatedAt: new Date(),
         rawPayload: { data },
       },
+    });
+
+    await enqueueBookingSync(prisma, {
+      eventId: `gyg-cancel-booking:${canceled.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+      booking: canceled,
+      sourcePlatform: GYG_PLATFORM,
+      force: true,
+      payload: { reason: "gyg_booking_cancelled" },
     });
 
     return gygV1Success({});

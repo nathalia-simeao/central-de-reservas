@@ -7,6 +7,10 @@ import {
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
+import {
+  enqueueBookingSync,
+  SYNC_EVENT_TYPES,
+} from "./sync-queue.server";
 
 const prisma = db;
 const PLATFORM = "CIVITATIS";
@@ -885,6 +889,14 @@ export async function civitatisCreateBooking(request, body) {
       );
     }
 
+    await enqueueBookingSync(prisma, {
+      eventId: `civitatis-hold:${guarded.booking.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
+      booking: guarded.booking,
+      sourcePlatform: PLATFORM,
+      payload: { origin: "CIVITATIS_HOLD" },
+    });
+
     return json({
       uuid: guarded.booking.id,
       utcCreatedAt: new Date(guarded.booking.createdAt).toISOString(),
@@ -934,7 +946,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
 
     if (status === "EXPIRED") {
       if (booking.status === "PENDING") {
-        await prisma.booking.update({
+        const expired = await prisma.booking.update({
           where: { id: booking.id },
           data: {
             status: "CANCELED",
@@ -942,6 +954,15 @@ export async function civitatisConfirmBooking(request, uuid, body) {
             syncStatus: "EXPIRED",
             lastSyncedAt: new Date(),
           },
+        });
+
+        await enqueueBookingSync(prisma, {
+          eventId: `civitatis-expired:${expired.id}`,
+          eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+          booking: expired,
+          sourcePlatform: PLATFORM,
+          force: true,
+          payload: { reason: "civitatis_hold_expired" },
         });
       }
       return errorResponse(
@@ -1047,6 +1068,14 @@ export async function civitatisConfirmBooking(request, uuid, body) {
       },
     });
 
+    await enqueueBookingSync(prisma, {
+      eventId: `civitatis-confirm:${confirmed.id}:${resellerReference}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
+      booking: confirmed,
+      sourcePlatform: PLATFORM,
+      payload: { origin: "CIVITATIS_CONFIRM" },
+    });
+
     return json(detailedBookingResponse(confirmed));
   } catch (error) {
     console.error("[CIVITATIS] confirm booking failed", error);
@@ -1094,6 +1123,15 @@ export async function civitatisCancelBooking(uuid) {
         externalUpdatedAt: new Date(),
         holdExpiresAt: null,
       },
+    });
+
+    await enqueueBookingSync(prisma, {
+      eventId: `civitatis-cancel:${canceled.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+      booking: canceled,
+      sourcePlatform: PLATFORM,
+      force: true,
+      payload: { reason: "civitatis_booking_cancelled" },
     });
 
     return json(detailedBookingResponse(canceled));
