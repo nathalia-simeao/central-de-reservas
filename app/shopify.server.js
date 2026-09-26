@@ -9,14 +9,10 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import prisma from "./db.server";
 
 const configuredScopes = [
-  ...new Set([
-    ...(process.env.SCOPES || "")
-      .split(",")
-      .map((scope) => scope.trim())
-      .filter(Boolean),
-    "read_orders",
-    "write_draft_orders",
-  ]),
+  "read_products",
+  "read_orders",
+  "write_draft_orders",
+  "write_files",
 ];
 
 const shopify = shopifyApp({
