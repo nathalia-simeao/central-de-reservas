@@ -289,7 +289,7 @@ export async function enqueueAvailabilitySync(
     eventType,
     sourcePlatform,
     aggregateType,
-    aggregateId || tourId,
+    aggregateId: aggregateId || tourId,
     tourId,
     startTime,
     scope,
