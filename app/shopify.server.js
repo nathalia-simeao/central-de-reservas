@@ -8,6 +8,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
+// Minimal Shopify scopes audited for the PMY Central.
 const configuredScopes = [
   "read_products",
   "read_orders",
