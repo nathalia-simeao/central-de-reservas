@@ -513,6 +513,62 @@ async function failJob(prisma, job, error) {
   return dead ? "DEAD" : "RETRY";
 }
 
+export async function expireStaleBookingHolds(
+  prisma,
+  { limit = 50 } = {},
+) {
+  const now = new Date();
+  const expired = await prisma.booking.findMany({
+    where: {
+      status: "PENDING",
+      holdExpiresAt: { lte: now },
+    },
+    orderBy: { holdExpiresAt: "asc" },
+    take: Math.max(1, Number(limit) || 1),
+  });
+
+  let count = 0;
+
+  for (const booking of expired) {
+    const updated = await prisma.booking.updateMany({
+      where: {
+        id: booking.id,
+        status: "PENDING",
+        holdExpiresAt: { lte: now },
+      },
+      data: {
+        status: "CANCELED",
+        syncStatus: "EXPIRED",
+        cancelReason: booking.cancelReason || "reservation_hold_expired",
+        lastSyncedAt: now,
+      },
+    });
+
+    if (updated.count !== 1) continue;
+
+    const canceled = {
+      ...booking,
+      status: "CANCELED",
+      syncStatus: "EXPIRED",
+      cancelReason: booking.cancelReason || "reservation_hold_expired",
+      lastSyncedAt: now,
+    };
+
+    await enqueueBookingSync(prisma, {
+      eventId: `hold-expired:${booking.id}`,
+      eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
+      booking: canceled,
+      sourcePlatform: booking.platform,
+      force: true,
+      payload: { reason: "reservation_hold_expired" },
+    });
+
+    count += 1;
+  }
+
+  return count;
+}
+
 export async function processSyncQueue(
   prisma,
   { limit = 10, workerId = null } = {},
@@ -522,6 +578,7 @@ export async function processSyncQueue(
     `worker-${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
 
   const summary = {
+    expiredHolds: 0,
     claimed: 0,
     completed: 0,
     skipped: 0,
@@ -529,6 +586,10 @@ export async function processSyncQueue(
     retried: 0,
     dead: 0,
   };
+
+  summary.expiredHolds = await expireStaleBookingHolds(prisma, {
+    limit: Math.max(10, Number(limit) || 10),
+  });
 
   for (let i = 0; i < Math.max(1, Number(limit) || 1); i += 1) {
     const job = await claimNextJob(prisma, id);
