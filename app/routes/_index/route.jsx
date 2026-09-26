@@ -11,6 +11,7 @@ import {
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
 } from "../../utils/sync-queue.server";
+import { syncPlatformNow } from "../../utils/platform-sync.server";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -418,6 +419,23 @@ export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
+  if (_action === "syncPlatformNow") {
+    try {
+      const platform = String(formData.get("platform") || "").trim();
+      if (!platform) {
+        return json({ success: false, error: "Plataforma é obrigatória." }, { status: 400 });
+      }
+      const result = await syncPlatformNow(prisma, admin, platform);
+      return json({ success: true, result });
+    } catch (error) {
+      console.error("[PMY] manual platform sync failed:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao sincronizar a plataforma." },
+        { status: 500 },
+      );
+    }
+  }
 
   if (_action === "createTour") {
     const title = formData.get("title");
@@ -1347,6 +1365,9 @@ export default function CentralDeReservas() {
   const [customIntegrations, setCustomIntegrations] = useState([]);
   const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos" | "logs"
   const [activeProdPlatform, setActiveProdPlatform] = useState("shopify");
+  const [manualSyncPlatform, setManualSyncPlatform] = useState(null);
+  const [manualSyncResult, setManualSyncResult] = useState(null);
+  const [manualSyncError, setManualSyncError] = useState("");
   const [syncQueueData, setSyncQueueData] = useState({ stats: null, jobs: [] });
   const [syncQueueLoading, setSyncQueueLoading] = useState(false);
   const [syncQueueError, setSyncQueueError] = useState("");
@@ -1541,6 +1562,51 @@ export default function CentralDeReservas() {
       setSyncQueueError(error?.message || "Erro ao reenviar a sincronização.");
     } finally {
       setSyncQueueActionId(null);
+    }
+  };
+
+  const handleSyncPlatformNow = async (platformKey) => {
+    setManualSyncPlatform(platformKey);
+    setManualSyncError("");
+    try {
+      const formData = new FormData();
+      formData.append("_action", "syncPlatformNow");
+      formData.append("platform", platformKey);
+
+      const response = await fetch(window.location.href, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível sincronizar este canal.");
+      }
+
+      const result = payload.result || null;
+      setManualSyncResult(result);
+
+      if (Array.isArray(result?.products?.items)) {
+        setPlatformProducts((previous) => ({
+          ...previous,
+          [platformKey]: result.products.items,
+        }));
+      }
+
+      setPlatformConnections((previous) => ({
+        ...previous,
+        [platformKey]: {
+          ...(previous[platformKey] || {}),
+          lastSync: new Date().toLocaleTimeString("pt-PT", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      }));
+    } catch (error) {
+      setManualSyncError(error?.message || "Erro ao sincronizar a plataforma.");
+    } finally {
+      setManualSyncPlatform(null);
     }
   };
 
@@ -4174,6 +4240,101 @@ export default function CentralDeReservas() {
                     })}
                   </div>
 
+                  {(manualSyncError || (manualSyncResult?.platform === activeProdPlatform)) && (
+                    <div style={{
+                      marginBottom:'18px',
+                      border: manualSyncError ? '1px solid #fecaca' : '1px solid #d8e6dc',
+                      background: manualSyncError ? '#fef2f2' : '#f7fbf8',
+                      borderRadius:'12px',
+                      padding:'16px 18px'
+                    }}>
+                      {manualSyncError ? (
+                        <div style={{ color:'#b91c1c', fontSize:'13px', fontWeight:'700' }}>
+                          ❌ {manualSyncError}
+                        </div>
+                      ) : (() => {
+                        const result = manualSyncResult;
+                        const products = result?.products || {};
+                        const reservations = result?.reservations || {};
+                        const availability = result?.availability || {};
+                        const differences = Number(result?.differences || 0);
+                        return (
+                          <div>
+                            <div style={{ display:'flex', justifyContent:'space-between', gap:'12px', alignItems:'flex-start', flexWrap:'wrap', marginBottom:'13px' }}>
+                              <div>
+                                <div style={{ fontWeight:'900', color:'#243b2d', fontSize:'14px' }}>
+                                  {differences === 0 ? '✅ Canais consistentes nesta verificação' : `⚠️ ${differences} diferença${differences===1?'':'s'} encontrada${differences===1?'':'s'}`}
+                                </div>
+                                <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'4px', maxWidth:'760px', lineHeight:'1.5' }}>
+                                  {result?.scopeNote}
+                                </div>
+                              </div>
+                              <span style={{ fontSize:'10px', fontWeight:'800', color:'#60746a', background:'#edf5ef', borderRadius:'20px', padding:'5px 9px' }}>
+                                {result?.mode === 'LIVE_API' ? 'API AO VIVO' : result?.mode === 'PUSH_API' ? 'PUSH REAL' : 'SUPPLIER / PULL'}
+                              </span>
+                            </div>
+
+                            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'9px', marginBottom:'12px' }}>
+                              <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>📦 PRODUTOS</div>
+                                <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{products.remote ?? products.centralAfter ?? 0}</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>canal / cadastro verificado</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🎟️ RESERVAS</div>
+                                <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{reservations.remoteChecked ?? reservations.centralAfter ?? 0}</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>{reservations.remoteChecked != null ? 'pedidos consultados' : 'reservas recebidas na Central'}</div>
+                              </div>
+                              <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🕒 DISPONIBILIDADE</div>
+                                <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{availability.checked ?? 0}</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>tours verificados</div>
+                              </div>
+                              <div style={{ background:differences?'#fff7ed':'#ecfdf3', border:`1px solid ${differences?'#fed7aa':'#bbf7d0'}`, borderRadius:'9px', padding:'10px 12px' }}>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🔎 DIFERENÇAS</div>
+                                <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px', color:differences?'#c2410c':'#166534' }}>{differences}</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>itens que pedem atenção</div>
+                              </div>
+                            </div>
+
+                            {(products.created > 0 || products.updated > 0 || reservations.rowsTouched > 0 || availability.pushed > 0) && (
+                              <div style={{ fontSize:'11px', color:'#365a43', marginBottom:'10px', lineHeight:'1.55' }}>
+                                <strong>Ações executadas:</strong>
+                                {products.created > 0 ? ` ${products.created} produto(s) criado(s) na Central.` : ''}
+                                {products.updated > 0 ? ` ${products.updated} produto(s) atualizado(s).` : ''}
+                                {reservations.rowsTouched > 0 ? ` ${reservations.rowsTouched} reserva(s) reconciliada(s).` : ''}
+                                {availability.pushed > 0 ? ` Disponibilidade enviada para ${availability.pushed} tour(s).` : ''}
+                              </div>
+                            )}
+
+                            {[
+                              ...(products.missingInCentral || []),
+                              ...(products.missingInChannel || []),
+                              ...(products.changed || []),
+                            ].length > 0 && (
+                              <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', marginBottom:'9px' }}>
+                                <div style={{ fontSize:'11px', fontWeight:'900', color:'#555', marginBottom:'6px' }}>Diferenças encontradas</div>
+                                {[
+                                  ...(products.missingInCentral || []),
+                                  ...(products.missingInChannel || []),
+                                  ...(products.changed || []),
+                                ].slice(0, 12).map((item, index) => (
+                                  <div key={`${item.id || item.name}-${index}`} style={{ fontSize:'11px', color:'#666', padding:'3px 0', lineHeight:'1.45' }}>
+                                    • <strong>{item.name || item.id}</strong>: {item.reason}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {(result?.notes || []).map((note, index) => (
+                              <div key={index} style={{ fontSize:'10px', color:'#7b8580', lineHeight:'1.5' }}>• {note}</div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   {/* Tabela de produtos da plataforma ativa */}
                   {(() => {
                     const conn = platformConnections[activeProdPlatform];
@@ -4200,13 +4361,14 @@ export default function CentralDeReservas() {
                         <div style={{ fontSize:'13px', color:'#888', lineHeight:'1.6', maxWidth:'380px', margin:'0 auto 20px' }}>
                           {platform?.key === 'shopify'
                             ? 'Sua loja Shopify não tem produtos cadastrados ainda, ou nenhum foi retornado pela API. Cadastre produtos no painel Shopify e recarregue esta página.'
-                            : `A integração com ${platform?.name} está conectada, mas os produtos ainda não foram importados. A sincronização automática ocorre a cada 24h, ou clique em Sincronizar Agora.`
+                            : `A integração com ${platform?.name} está conectada, mas ainda não há produtos carregados nesta tela. Clique em Sincronizar Agora para consultar o canal e executar a comparação.`
                           }
                         </div>
                         {platform?.key !== 'shopify' && (
                           <button className="pmy-btn-submit" style={{ width:'auto', padding:'10px 24px', fontSize:'13px' }}
-                            onClick={() => alert(`Sincronização manual com ${platform?.name} iniciada. Os produtos aparecerão aqui em instantes.`)}>
-                            🔄 Sincronizar Agora
+                            disabled={manualSyncPlatform===platform?.key}
+                            onClick={() => handleSyncPlatformNow(platform?.key)}>
+                            {manualSyncPlatform===platform?.key ? '⏳ Consultando canal...' : '🔄 Sincronizar Agora'}
                           </button>
                         )}
                         {platform?.key === 'shopify' && (
@@ -4235,10 +4397,18 @@ export default function CentralDeReservas() {
                               </div>
                             </div>
                           </div>
-                          <button className="pmy-btn-submit" style={{ width:'auto', padding:'8px 18px', fontSize:'13px' }}
-                            onClick={()=>alert('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.')}>
-                            + Adicionar Produto
-                          </button>
+                          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', justifyContent:'flex-end' }}>
+                            <button type="button"
+                              onClick={() => handleSyncPlatformNow(platform?.key)}
+                              disabled={manualSyncPlatform===platform?.key}
+                              style={{ border:'1px solid #b9d2c0', background:'#f3faf5', color:'#245936', borderRadius:'8px', padding:'8px 13px', fontSize:'12px', fontWeight:'800', cursor:manualSyncPlatform===platform?.key?'wait':'pointer' }}>
+                              {manualSyncPlatform===platform?.key ? '⏳ Consultando...' : '🔄 Sincronizar agora'}
+                            </button>
+                            <button className="pmy-btn-submit" style={{ width:'auto', padding:'8px 18px', fontSize:'13px' }}
+                              onClick={()=>alert('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.')}>
+                              + Adicionar Produto
+                            </button>
+                          </div>
                         </div>
 
                         {/* Tabela */}
