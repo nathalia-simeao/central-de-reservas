@@ -1569,7 +1569,7 @@ export default function CentralDeReservas() {
         { name: "Walking Tours", toursList: tourOptions.filter(t =>  t.title.toLowerCase().includes("walking")) },
       ];
 
-    // ---- HANDLERS ----
+    // ---- HANDLERS / sincronização ----
   const indexActionUrl = useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("index", "");
