@@ -1,7 +1,6 @@
 import { data } from "react-router";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
-import { syncPlatformNow } from "../utils/platform-sync.server";
 
 const json = (body, init) => data(body, init);
 
@@ -18,6 +17,7 @@ export const action = async ({ request }) => {
   }
 
   try {
+    const { syncPlatformNow } = await import("../utils/platform-sync.server");
     const result = await syncPlatformNow(db, admin, platform);
     return json({ success: true, result });
   } catch (error) {
