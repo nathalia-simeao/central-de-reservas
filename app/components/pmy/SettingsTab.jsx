@@ -29,8 +29,11 @@ export default function SettingsTab(props) {
     settingsSaveMessage,
     shopifyStaff,
     t,
-    theme
+    theme,
+    lang
   } = props;
+
+  const tr = (pt, en) => lang === "en" ? en : pt;
 
   return (
     <>
@@ -42,9 +45,9 @@ export default function SettingsTab(props) {
               <div className="pmy-form-box">
                 <div style={{ display:'flex', justifyContent:'space-between', gap:'16px', alignItems:'flex-start', flexWrap:'wrap', marginBottom:'18px' }}>
                   <div>
-                    <h3 style={{ marginBottom:'6px' }}>🖼️ Identidade da Agência</h3>
+                    <h3 style={{ marginBottom:'6px' }}>{tr("🖼️ Identidade da Agência", "🖼️ Agency Identity")}</h3>
                     <p style={{ fontSize:'13px', color:'#666', margin:0, maxWidth:'720px', lineHeight:'1.55' }}>
-                      A logo agora fica salva no Shopify Files e no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.
+                      {tr("A logo agora fica salva no Shopify Files e no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.", "The logo is saved in Shopify Files and in the Central database. Configure one version for light backgrounds and another for dark backgrounds; the sidebar automatically chooses the correct one.")}
                     </p>
                   </div>
                   <div style={{
@@ -58,7 +61,9 @@ export default function SettingsTab(props) {
                     fontSize:'11px',
                     fontWeight:'800'
                   }}>
-                    {sidebarIsDark ? '🌙 Sidebar escura · logo clara' : '☀️ Sidebar clara · logo colorida'}
+                    {sidebarIsDark
+      ? tr('🌙 Sidebar escura · logo clara', '🌙 Dark sidebar · light logo')
+      : tr('☀️ Sidebar clara · logo colorida', '☀️ Light sidebar · colored logo')}
                   </div>
                 </div>
 
@@ -77,16 +82,16 @@ export default function SettingsTab(props) {
                   <div className="pmy-brand-logo-card">
                     <div className="pmy-brand-logo-card-head">
                       <div>
-                        <strong>Logo para fundo claro</strong>
-                        <span>Use a versão verde/colorida da marca.</span>
+                        <strong>{tr("Logo para fundo claro", "Logo for light backgrounds")}</strong>
+                        <span>{tr("Use a versão verde/colorida da marca.", "Use the green/colored version of the brand.")}</span>
                       </div>
-                      {logoOnLightUrl && <span className="pmy-brand-logo-status">Salva ✓</span>}
+                      {logoOnLightUrl && <span className="pmy-brand-logo-status">{tr("Salva ✓", "Saved ✓")}</span>}
                     </div>
 
                     <div className="pmy-brand-logo-preview is-light">
                       {logoOnLightUrl
                         ? <img src={logoOnLightUrl} alt="Logo para fundo claro" />
-                        : <span>Sem logo clara</span>}
+                        : <span>{tr("Sem logo clara", "No light-background logo")}</span>}
                     </div>
 
                     <input
@@ -104,7 +109,7 @@ export default function SettingsTab(props) {
                         disabled={logoUploadingVariant === 'light'}
                         onClick={() => logoLightInputRef.current?.click()}
                       >
-                        {logoUploadingVariant === 'light' ? '⏳ Salvando...' : '📤 Carregar versão clara'}
+                        {logoUploadingVariant === 'light' ? tr('⏳ Salvando...', '⏳ Saving...') : tr('📤 Carregar versão clara', '📤 Upload colored version')}
                       </button>
                       {logoOnLightUrl && (
                         <button
@@ -122,10 +127,10 @@ export default function SettingsTab(props) {
                   <div className="pmy-brand-logo-card">
                     <div className="pmy-brand-logo-card-head">
                       <div>
-                        <strong>Logo para fundo escuro</strong>
-                        <span>Use a versão branca/negativa da marca.</span>
+                        <strong>{tr("Logo para fundo escuro", "Logo for dark backgrounds")}</strong>
+                        <span>{tr("Use a versão branca/negativa da marca.", "Use the white/reversed version of the brand.")}</span>
                       </div>
-                      {logoOnDarkUrl && <span className="pmy-brand-logo-status">Salva ✓</span>}
+                      {logoOnDarkUrl && <span className="pmy-brand-logo-status">{tr("Salva ✓", "Saved ✓")}</span>}
                     </div>
 
                     <div className="pmy-brand-logo-preview is-dark">
@@ -133,7 +138,7 @@ export default function SettingsTab(props) {
                         ? <img src={logoOnDarkUrl} alt="Logo para fundo escuro" />
                         : logoOnLightUrl
                           ? <img src={logoOnLightUrl} alt="Prévia branca automática" className="is-auto-white" />
-                          : <span>Sem logo escura</span>}
+                          : <span>{tr("Sem logo escura", "No dark-background logo")}</span>}
                     </div>
 
                     <input
@@ -151,7 +156,7 @@ export default function SettingsTab(props) {
                         disabled={logoUploadingVariant === 'dark'}
                         onClick={() => logoDarkInputRef.current?.click()}
                       >
-                        {logoUploadingVariant === 'dark' ? '⏳ Salvando...' : '📤 Carregar versão branca'}
+                        {logoUploadingVariant === 'dark' ? tr('⏳ Salvando...', '⏳ Saving...') : tr('📤 Carregar versão branca', '📤 Upload white version')}
                       </button>
                       {logoOnDarkUrl && (
                         <button
@@ -167,14 +172,14 @@ export default function SettingsTab(props) {
 
                     {!logoOnDarkUrl && logoOnLightUrl && (
                       <div style={{ fontSize:'10px', color:'#777', lineHeight:'1.45', marginTop:'9px' }}>
-                        Sem versão branca enviada. A Central cria uma versão branca automaticamente enquanto isso.
+                        {tr("Sem versão branca enviada. A Central cria uma versão branca automaticamente enquanto isso.", "No white version has been uploaded. The Central automatically generates a white version in the meantime.")}
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="pmy-brand-logo-current">
-                  <span>Logo usada agora na sidebar</span>
+                  <span>{tr("Logo usada agora na sidebar", "Logo currently used in the sidebar")}</span>
                   <div style={{ background:theme.sidebarBg }}>
                     {activeSidebarLogoUrl
                       ? <img
@@ -189,46 +194,46 @@ export default function SettingsTab(props) {
 
               {/* PERSONALIZAÇÃO / THEME */}
               <div className="pmy-form-box">
-                <h3>🎨 Personalização Visual</h3>
-                <p style={{ fontSize:'13px', color:'#666', marginBottom:'25px' }}>Adapte o sistema às cores e tipografia da sua marca. As alterações são salvas automaticamente.</p>
+                <h3>{tr("🎨 Personalização Visual", "🎨 Visual Customization")}</h3>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'25px' }}>{tr("Adapte o sistema às cores e tipografia da sua marca. As alterações são salvas automaticamente.", "Adapt the system to your brand colors and typography. Changes are saved automatically.")}</p>
 
                 {/* Presets rápidos */}
                 <div className="pmy-form-group">
-                  <label>Esquemas Prontos (Presets):</label>
+                  <label>{tr("Esquemas Prontos (Presets):", "Ready-made schemes (Presets):")}</label>
                   <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginTop:'8px' }}>
                     {[
                       {
-                        name:'Verde PMY', bg:'#F4DCDC', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Verde PMY', 'PMY Green'), bg:'#F4DCDC', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#006600', sidebar:'#FFFFFF', title:'#006600', text:'#2B2B2B',
                         sidebarText:'#2B2B2B', sidebarMuted:'#777777', sidebarHover:'#F2F7F2',
                         sidebarActive:'#006600', sidebarActiveText:'#FFFFFF', sidebarBorder:'#E7ECE7'
                       },
                       {
-                        name:'Azul Oceano', bg:'#DCE8F4', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Azul Oceano', 'Ocean Blue'), bg:'#DCE8F4', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#004E9A', sidebar:'#F0F6FF', title:'#003377', text:'#1A2B3C',
                         sidebarText:'#17324A', sidebarMuted:'#60778D', sidebarHover:'#E3EFFB',
                         sidebarActive:'#004E9A', sidebarActiveText:'#FFFFFF', sidebarBorder:'#CADAEA'
                       },
                       {
-                        name:'Laranja Terra', bg:'#FDF0E6', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Laranja Terra', 'Earth Orange'), bg:'#FDF0E6', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#C45E00', sidebar:'#FFF8F2', title:'#A04A00', text:'#2B2010',
                         sidebarText:'#3A2918', sidebarMuted:'#806A56', sidebarHover:'#FCEBDD',
                         sidebarActive:'#C45E00', sidebarActiveText:'#FFFFFF', sidebarBorder:'#EED8C5'
                       },
                       {
-                        name:'Roxo Moderno', bg:'#F0ECF9', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Roxo Moderno', 'Modern Purple'), bg:'#F0ECF9', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#5E35B1', sidebar:'#FAF8FF', title:'#4527A0', text:'#1A0A3B',
                         sidebarText:'#291A45', sidebarMuted:'#74638D', sidebarHover:'#EEE8FA',
                         sidebarActive:'#5E35B1', sidebarActiveText:'#FFFFFF', sidebarBorder:'#DDD3EE'
                       },
                       {
-                        name:'Preto Elegante', bg:'#F5F5F2', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Preto Elegante', 'Elegant Black'), bg:'#F5F5F2', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#111111', sidebar:'#111111', title:'#111111', text:'#1F1F1F',
                         sidebarText:'#F5F5F2', sidebarMuted:'#B8B8B3', sidebarHover:'#2A2A2A',
                         sidebarActive:'#FFFFFF', sidebarActiveText:'#111111', sidebarBorder:'#343434'
                       },
                       {
-                        name:'Minimalista', bg:'#F8F8F6', surface:'#FFFFFF', input:'#FFFFFF',
+                        name:tr('Minimalista', 'Minimalist'), bg:'#F8F8F6', surface:'#FFFFFF', input:'#FFFFFF',
                         primary:'#333333', sidebar:'#FFFFFF', title:'#111111', text:'#444444',
                         sidebarText:'#333333', sidebarMuted:'#7A7A7A', sidebarHover:'#F1F1EF',
                         sidebarActive:'#333333', sidebarActiveText:'#FFFFFF', sidebarBorder:'#E8E8E5'
@@ -267,7 +272,7 @@ export default function SettingsTab(props) {
 
                 <div className="pmy-settings-color-grid">
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Cor de Fundo Principal:</label>
+                    <label>{tr("Cor de Fundo Principal:", "Main Background Color:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.bgColor} onChange={e=>handleThemeChange('bgColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -277,7 +282,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Cor Primária (botões, menu ativo):</label>
+                    <label>{tr("Cor Primária (botões, menu ativo):", "Primary Color (buttons, active menu):")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.primaryColor} onChange={e=>handleThemeChange('primaryColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -287,7 +292,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Cor de Fundo da Sidebar:</label>
+                    <label>{tr("Cor de Fundo da Sidebar:", "Sidebar Background Color:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.sidebarBg} onChange={e=>handleThemeChange('sidebarBg',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -297,7 +302,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Cor dos Títulos:</label>
+                    <label>{tr("Cor dos Títulos:", "Heading Color:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.titleColor} onChange={e=>handleThemeChange('titleColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -307,7 +312,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Cor do Texto Principal:</label>
+                    <label>{tr("Cor do Texto Principal:", "Main Text Color:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.textColor} onChange={e=>handleThemeChange('textColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -317,7 +322,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Texto da Sidebar:</label>
+                    <label>{tr("Texto da Sidebar:", "Sidebar Text:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.sidebarTextColor || '#2B2B2B'} onChange={e=>handleThemeChange('sidebarTextColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -327,7 +332,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Texto Secundário da Sidebar:</label>
+                    <label>{tr("Texto Secundário da Sidebar:", "Secondary Sidebar Text:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.sidebarMutedTextColor || '#777777'} onChange={e=>handleThemeChange('sidebarMutedTextColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -337,7 +342,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Fundo do Menu Ativo:</label>
+                    <label>{tr("Fundo do Menu Ativo:", "Active Menu Background:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.sidebarActiveBg || theme.primaryColor} onChange={e=>handleThemeChange('sidebarActiveBg',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -347,7 +352,7 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Texto do Menu Ativo:</label>
+                    <label>{tr("Texto do Menu Ativo:", "Active Menu Text:")}</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
                       <input type="color" value={theme.sidebarActiveTextColor || '#FFFFFF'} onChange={e=>handleThemeChange('sidebarActiveTextColor',e.target.value)}
                         style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
@@ -357,9 +362,9 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Tipo de Fonte:</label>
+                    <label>{tr("Tipo de Fonte:", "Font Family:")}</label>
                     <select className="pmy-form-input" style={{ marginTop:'6px' }} value={theme.fontFamily} onChange={e=>handleThemeChange('fontFamily',e.target.value)}>
-                      <option value="Assistant">Assistant (Padrão)</option>
+                      <option value="Assistant">{tr("Assistant (Padrão)", "Assistant (Default)")}</option>
                       <option value="Inter">Inter</option>
                       <option value="Roboto">Roboto</option>
                       <option value="Poppins">Poppins</option>
@@ -372,18 +377,18 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Tamanho da Fonte:</label>
+                    <label>{tr("Tamanho da Fonte:", "Font Size:")}</label>
                     <select className="pmy-form-input" style={{ marginTop:'6px' }} value={theme.fontSize} onChange={e=>handleThemeChange('fontSize',e.target.value)}>
-                      <option value="12px">Pequena (12px)</option>
-                      <option value="13px">Compacta (13px)</option>
-                      <option value="14px">Padrão (14px)</option>
-                      <option value="15px">Média (15px)</option>
-                      <option value="16px">Grande (16px)</option>
+                      <option value="12px">{tr("Pequena (12px)", "Small (12px)")}</option>
+                      <option value="13px">{tr("Compacta (13px)", "Compact (13px)")}</option>
+                      <option value="14px">{tr("Padrão (14px)", "Default (14px)")}</option>
+                      <option value="15px">{tr("Média (15px)", "Medium (15px)")}</option>
+                      <option value="16px">{tr("Grande (16px)", "Large (16px)")}</option>
                     </select>
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                    <label>Formato das Imagens de Perfil:</label>
+                    <label>{tr("Formato das Imagens de Perfil:", "Profile Image Shape:")}</label>
                     <div style={{ display:'flex', gap:'10px', marginTop:'8px' }}>
                       {[['circle','🔵 Redonda'],['rounded','⬜ Arredondada']].map(([v,l]) => (
                         <button key={v} type="button" className="pmy-format-btn"
@@ -401,13 +406,13 @@ export default function SettingsTab(props) {
                     <div style={{ width:'150px', background: theme.sidebarBg, borderRadius:'14px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', border:`1px solid ${theme.sidebarBorderColor || '#E7ECE7'}` }}>
                       <div style={{ color:theme.sidebarMutedTextColor || '#777777', fontSize:'9px', fontWeight:'800', marginBottom:'8px' }}>PMY</div>
                       <div style={{ color:theme.sidebarTextColor || theme.textColor, fontSize:'10px', fontWeight:'700', padding:'7px 8px', borderRadius:'20px', marginBottom:'5px' }}>Dashboard</div>
-                      <div style={{ background:theme.sidebarActiveBg || theme.primaryColor, color:theme.sidebarActiveTextColor || '#FFFFFF', fontSize:'10px', fontWeight:'800', padding:'7px 8px', borderRadius:'20px', marginBottom:'5px' }}>Configurações</div>
+                      <div style={{ background:theme.sidebarActiveBg || theme.primaryColor, color:theme.sidebarActiveTextColor || '#FFFFFF', fontSize:'10px', fontWeight:'800', padding:'7px 8px', borderRadius:'20px', marginBottom:'5px' }}>{tr("Configurações", "Settings")}</div>
                       <div style={{ color:theme.sidebarMutedTextColor || '#777777', fontSize:'8px', padding:'4px 8px' }}>Portugal Me & You</div>
                     </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:'18px', fontWeight:'800', color: theme.titleColor, fontFamily: theme.fontFamily, marginBottom:'8px' }}>Visão Geral</div>
-                      <div style={{ fontSize: theme.fontSize, color: theme.textColor, fontFamily: theme.fontFamily }}>Texto de exemplo com a fonte e cor selecionadas.</div>
-                      <div style={{ marginTop:'10px', display:'inline-block', background: theme.primaryColor, color:'#fff', padding:'6px 14px', borderRadius:'6px', fontSize:'12px', fontWeight:'700' }}>Botão Primário</div>
+                      <div style={{ fontSize:'18px', fontWeight:'800', color: theme.titleColor, fontFamily: theme.fontFamily, marginBottom:'8px' }}>{tr("Visão Geral", "Overview")}</div>
+                      <div style={{ fontSize: theme.fontSize, color: theme.textColor, fontFamily: theme.fontFamily }}>{tr("Texto de exemplo com a fonte e cor selecionadas.", "Sample text using the selected font and color.")}</div>
+                      <div style={{ marginTop:'10px', display:'inline-block', background: theme.primaryColor, color:'#fff', padding:'6px 14px', borderRadius:'6px', fontSize:'12px', fontWeight:'700' }}>{tr("Botão Primário", "Primary Button")}</div>
                     </div>
                   </div>
                 </div>
@@ -423,15 +428,15 @@ export default function SettingsTab(props) {
 
               {/* USUÁRIOS DA LOJA */}
               <div className="pmy-form-box">
-                <h3>👥 Equipe com Acesso ao App</h3>
+                <h3>{tr("👥 Equipe com Acesso ao App", "👥 Team with App Access")}</h3>
                 <p style={{ fontSize:'13px', color:'#666', marginBottom:'20px', lineHeight:'1.6' }}>
-                  Estes são os membros da sua equipe no Shopify que têm acesso ao app.
-                  Para adicionar ou remover pessoas, gerencie no <a href="https://admin.shopify.com/settings/account" target="_blank" rel="noreferrer" style={{ color:'var(--primary-green)', fontWeight:'700' }}>painel de conta do Shopify ↗</a>
+                  {tr("Estes são os membros da sua equipe no Shopify que têm acesso ao app.", "These are the members of your Shopify team who have access to the app.")}
+                  Para adicionar ou remover pessoas, gerencie no <a href="https://admin.shopify.com/settings/account" target="_blank" rel="noreferrer" style={{ color:'var(--primary-green)', fontWeight:'700' }}>{tr("painel de conta do Shopify ↗", "Shopify account panel ↗")}</a>
                 </p>
 
                 {shopifyStaff.length === 0 ? (
                   <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'20px', textAlign:'center', color:'#888', fontSize:'13px' }}>
-                    A Central não solicita acesso à lista de funcionários do Shopify por padrão. Esse dado exige o scope restrito <code>read_users</code> e não é necessário para reservas, pedidos ou checkouts. Gerencie os acessos diretamente no Shopify.
+                    {tr("A Central não solicita acesso à lista de funcionários do Shopify por padrão. Esse dado exige o scope restrito", "The Central does not request access to Shopify staff lists by default. This data requires the restricted scope")} <code>read_users</code> e não é necessário para reservas, pedidos ou checkouts. Gerencie os acessos diretamente no Shopify.
                   </div>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -446,15 +451,15 @@ export default function SettingsTab(props) {
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:'700', fontSize:'14px', color:'var(--text-dark)', display:'flex', alignItems:'center', gap:'8px' }}>
                             {staff.name}
-                            {staff.isOwner && <span style={{ fontSize:'10px', background:'#e6f2e6', color:'var(--primary-green)', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>Proprietário</span>}
-                            {!staff.active && <span style={{ fontSize:'10px', background:'#f5f5f5', color:'#aaa', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>Inativo</span>}
+                            {staff.isOwner && <span style={{ fontSize:'10px', background:'#e6f2e6', color:'var(--primary-green)', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>{tr("Proprietário", "Owner")}</span>}
+                            {!staff.active && <span style={{ fontSize:'10px', background:'#f5f5f5', color:'#aaa', padding:'2px 8px', borderRadius:'10px', fontWeight:'800' }}>{tr("Inativo", "Inactive")}</span>}
                           </div>
                           <div style={{ fontSize:'12px', color:'#888', marginTop:'2px' }}>{staff.email}</div>
                           <div style={{ fontSize:'11px', color:'#aaa', marginTop:'2px' }}>{staff.role}</div>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                           <span style={{ width:'8px', height:'8px', borderRadius:'50%', background: staff.active ? '#22c55e' : '#ddd', display:'inline-block' }}></span>
-                          <span style={{ fontSize:'11px', color: staff.active ? '#22c55e' : '#aaa', fontWeight:'700' }}>{staff.active ? 'Ativo' : 'Inativo'}</span>
+                          <span style={{ fontSize:'11px', color: staff.active ? '#22c55e' : '#aaa', fontWeight:'700' }}>{staff.active ? tr('Ativo', 'Active') : tr('Inativo', 'Inactive')}</span>
                         </div>
                       </div>
                     ))}
@@ -462,16 +467,16 @@ export default function SettingsTab(props) {
                 )}
 
                 <div style={{ marginTop:'20px', padding:'14px 16px', background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'8px', fontSize:'13px', color:'#92400e', lineHeight:'1.5' }}>
-                  💡 <strong>Para convidar novos membros:</strong> Vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe. Após adicionado, ele aparecerá automaticamente aqui.
+                  💡 <strong>{tr("Para convidar novos membros:", "To invite new members:")}</strong> Vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe. Após adicionado, ele aparecerá automaticamente aqui.
                 </div>
               </div>
 
               {/* MAPEAMENTO DE CAMPOS */}
               <div className="pmy-form-box">
-                <h3>🗺️ Mapeamento de Campos entre Plataformas</h3>
+                <h3>{tr("🗺️ Mapeamento de Campos entre Plataformas", "🗺️ Field Mapping Across Platforms")}</h3>
                 <p style={{ fontSize:'13px', color:'#666', marginBottom:'10px', lineHeight:'1.6' }}>
-                  Defina como os campos de cada plataforma externa correspondem aos campos internos do sistema PMY.
-                  Cada plataforma possui agora seu próprio mapeamento persistido no banco.
+                  {tr("Defina como os campos de cada plataforma externa correspondem aos campos internos do sistema PMY.", "Define how fields from each external platform map to PMY internal fields.")}
+                  {tr("Cada plataforma possui agora seu próprio mapeamento persistido no banco.", "Each platform now has its own mapping persisted in the database.")}
                 </p>
                 {mappingSaveState?.platform === activeMappingPlatform && mappingSaveState?.message && (
                   <div style={{
@@ -503,7 +508,7 @@ export default function SettingsTab(props) {
                 {!platformConnections[activeMappingPlatform]?.connected && (
                   <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'8px', padding:'12px 16px', marginBottom:'20px', fontSize:'13px', color:'#92400e', display:'flex', alignItems:'center', gap:'10px' }}>
                     <span>⚠️</span>
-                    <span>Esta plataforma não está conectada. Vá em <strong>Integrações</strong> para ativar. Você pode pré-configurar o mapeamento agora.</span>
+                    <span>Esta plataforma não está conectada. Vá em <strong>{tr("Integrações", "Integrations")}</strong> para ativar. Você pode pré-configurar o mapeamento agora.</span>
                   </div>
                 )}
 
@@ -516,18 +521,18 @@ export default function SettingsTab(props) {
                     <span style={{ fontFamily:'monospace', border:'1px solid #ddd', padding:'2px 8px', borderRadius:'4px', fontSize:'11px' }}>campo.api</span>
                     = campo da plataforma (editável)
                   </div>
-                  <span className="pmy-field-badge required">● Obrigatório</span>
-                  <span className="pmy-field-badge optional">○ Opcional</span>
+                  <span className="pmy-field-badge required">{tr("● Obrigatório", "● Required")}</span>
+                  <span className="pmy-field-badge optional">{tr("○ Opcional", "○ Optional")}</span>
                 </div>
 
                 <div style={{ overflowX:'auto' }}>
                   <table className="pmy-mapping-table">
                     <thead>
                       <tr>
-                        <th>Campo Interno PMY</th>
+                        <th>{tr("Campo Interno PMY", "PMY Internal Field")}</th>
                         <th style={{ width:'30px' }}></th>
                         <th>Campo na API {allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}</th>
-                        <th style={{ width:'100px' }}>Tipo</th>
+                        <th style={{ width:'100px' }}>{tr("Tipo", "Type")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -558,7 +563,7 @@ export default function SettingsTab(props) {
                 </div>
 
                 <div style={{ marginTop:'25px', background:'#fafafa', border:'1px solid #eee', borderRadius:'10px', padding:'20px' }}>
-                  <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--text-dark)', marginBottom:'15px' }}>⚙️ Transformações de Status Automáticas</h4>
+                  <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--text-dark)', marginBottom:'15px' }}>{tr("⚙️ Transformações de Status Automáticas", "⚙️ Automatic Status Transformations")}</h4>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px,1fr))', gap:'12px' }}>
                     {[
                       { label:"CONFIRMED", values:["confirmed","CONFIRMED","accepted","aceptada","booked"] },
@@ -591,7 +596,7 @@ export default function SettingsTab(props) {
                     }}
                   >
                     {mappingSaveState?.status === 'saving' && mappingSaveState?.platform === activeMappingPlatform
-                      ? '⏳ Salvando...'
+                      ? tr('⏳ Salvando...', '⏳ Saving...')
                       : `💾 Salvar — ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`}
                   </button>
                   <button
