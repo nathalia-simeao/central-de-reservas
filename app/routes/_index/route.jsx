@@ -1658,7 +1658,7 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO v2: persistência direta no banco da Central, sem depender do Shopify Files.
+  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
   const uploadBusinessLogo = useCallback(async (variant, file) => {
     if (!file) return;
 
@@ -1667,8 +1667,8 @@ function CentralDeReservasContent() {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setSettingsSaveMessage("Erro: a logo deve ter no máximo 2 MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      setSettingsSaveMessage("Erro: a logo deve ter no máximo 10 MB.");
       return;
     }
 
@@ -1676,25 +1676,53 @@ function CentralDeReservasContent() {
     setSettingsSaveMessage("Enviando logo...");
 
     try {
-      const fd = new FormData();
-      fd.append("_action", "saveLogo");
-      fd.append("variant", variant);
-      fd.append("file", file);
+      const prepareFd = new FormData();
+      prepareFd.append("_action", "prepareLogoUpload");
+      prepareFd.append("variant", variant);
+      prepareFd.append("filename", file.name);
+      prepareFd.append("mimetype", file.type || "image/png");
+      prepareFd.append("size", String(file.size));
 
-      const saved = await requestResourceJson("/api/brand-logo", fd);
-      const url = String(saved?.url || "").trim();
+      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
+
+      const uploadForm = new FormData();
+      for (const parameter of prepared.parameters || []) {
+        uploadForm.append(parameter.name, parameter.value);
+      }
+      uploadForm.append("file", file);
+
+      const uploadResponse = await fetch(prepared.uploadUrl, {
+        method: "POST",
+        body: uploadForm,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Falha ao enviar a logo para o Shopify Files.");
+      }
+
+      const finalizeFd = new FormData();
+      finalizeFd.append("_action", "finalizeLogoUpload");
+      finalizeFd.append("variant", variant);
+      finalizeFd.append("resourceUrl", prepared.resourceUrl);
+      finalizeFd.append("filename", file.name);
+      finalizeFd.append("mimetype", file.type || "image/png");
+
+      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
+      const url = String(finalized?.url || finalized?.media?.url || "").trim();
 
       if (!url) {
-        throw new Error("A Central não devolveu a imagem salva.");
+        throw new Error("O Shopify não devolveu a URL final da logo.");
       }
 
       if (variant === "dark") setLogoOnDarkUrl(url);
       else setLogoOnLightUrl(url);
 
-      setSettingsSaveMessage("Logo salva ✓");
+      setSettingsSaveMessage("Logo salva e sincronizada ✓");
     } catch (error) {
       console.error("[PMY] brand logo upload failed:", error);
-      setSettingsSaveMessage(error?.message || "Erro ao salvar a logo.");
+      setSettingsSaveMessage(
+        error?.message || "Erro ao salvar a logo.",
+      );
     } finally {
       setLogoUploadingVariant(null);
     }
