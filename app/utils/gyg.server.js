@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 function decodeBasicAuth(authHeader) {
   if (!authHeader?.startsWith("Basic ")) return null;
 
@@ -15,15 +17,43 @@ function decodeBasicAuth(authHeader) {
   }
 }
 
-export function checkGygBasicAuth(request) {
-  const expectedUser = process.env.GYG_INCOMING_USER;
-  const expectedPass = process.env.GYG_INCOMING_PASS;
+function configuredSecret(name) {
+  const value = String(process.env[name] || "").trim();
+  return value || null;
+}
 
-  // Fail closed: the GYG endpoints are disabled until both secrets exist.
+function safeEqual(left, right) {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+export function isGygIncomingAuthConfigured() {
+  return Boolean(
+    configuredSecret("GYG_INCOMING_USER") &&
+    configuredSecret("GYG_INCOMING_PASS"),
+  );
+}
+
+export function checkGygBasicAuth(request) {
+  const expectedUser = configuredSecret("GYG_INCOMING_USER");
+  const expectedPass = configuredSecret("GYG_INCOMING_PASS");
+
+  // Fail closed. There are intentionally no fallback/default credentials.
+  // If either environment variable is absent or blank, every GYG request is denied.
   if (!expectedUser || !expectedPass) return false;
 
   const credentials = decodeBasicAuth(request.headers.get("Authorization") || "");
-  return credentials?.user === expectedUser && credentials?.pass === expectedPass;
+  if (!credentials) return false;
+
+  return (
+    safeEqual(credentials.user, expectedUser) &&
+    safeEqual(credentials.pass, expectedPass)
+  );
 }
 
 export function gygResponse(body) {
