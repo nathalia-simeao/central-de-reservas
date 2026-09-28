@@ -43,7 +43,7 @@ export default function MediaTab(props) {
                 </div>
               )}
 
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'25px', alignItems:'start' }}>
+              <div className="pmy-media-layout">
                 {/* Área principal */}
                 <div>
                   {/* Header com filtros e toggle de fonte */}
@@ -157,7 +157,7 @@ export default function MediaTab(props) {
                 </div>
 
                 {/* Painel de upload */}
-                <div style={{ position:'sticky', top:'0' }}>
+                <div className="pmy-media-upload-panel">
                   <div className="pmy-form-box" style={{ marginBottom:0 }}>
                     <h3 style={{ marginBottom:'16px' }}>📤 Adicionar Mídia</h3>
 
