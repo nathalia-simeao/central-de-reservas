@@ -1,16 +1,3 @@
-import { data } from "react-router";
+import { civitatisHealthcheck } from "../utils/civitatis.server";
 
-export const loader = async () =>
-  data(
-    {
-      ok: true,
-      service: "central-de-reservas-pmy",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    },
-  );
+export const loader = async () => civitatisHealthcheck();
