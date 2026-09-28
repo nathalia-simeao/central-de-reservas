@@ -256,12 +256,20 @@ const defaultMappings = {
 
 const DEFAULT_THEME = {
   bgColor: "#F4DCDC",
+  surfaceColor: "#FFFFFF",
+  inputBgColor: "#FFFFFF",
   primaryColor: "#006600",
-  sidebarBg: "#ffffff",
+  sidebarBg: "#FFFFFF",
+  sidebarTextColor: "#2B2B2B",
+  sidebarMutedTextColor: "#777777",
+  sidebarHoverBg: "#F2F7F2",
+  sidebarActiveBg: "#006600",
+  sidebarActiveTextColor: "#FFFFFF",
+  sidebarBorderColor: "#E7ECE7",
   fontFamily: "Assistant",
   fontSize: "14px",
   titleColor: "#006600",
-  textColor: "#2b2b2b",
+  textColor: "#2B2B2B",
 };
 
 
@@ -2946,7 +2954,27 @@ export default function CentralDeReservas() {
   };
 
     const styles = `
-    :root { --bg-color:${theme.bgColor}; --primary-green:${theme.primaryColor}; --primary-hover:${theme.primaryColor}dd; --text-dark:${theme.textColor}; --text-muted:#666666; --card-bg:#ffffff; --border-radius:12px; --font-family:${theme.fontFamily},'sans-serif'; --font-size:${theme.fontSize}; --title-color:${theme.titleColor}; --sidebar-bg:${theme.sidebarBg}; }
+    :root {
+      --bg-color:${theme.bgColor};
+      --surface-color:${theme.surfaceColor || "#FFFFFF"};
+      --input-bg-color:${theme.inputBgColor || "#FFFFFF"};
+      --primary-green:${theme.primaryColor};
+      --primary-hover:${theme.primaryColor}dd;
+      --text-dark:${theme.textColor};
+      --text-muted:#666666;
+      --card-bg:${theme.surfaceColor || "#FFFFFF"};
+      --border-radius:12px;
+      --font-family:${theme.fontFamily},'sans-serif';
+      --font-size:${theme.fontSize};
+      --title-color:${theme.titleColor};
+      --sidebar-bg:${theme.sidebarBg};
+      --sidebar-text:${theme.sidebarTextColor || theme.textColor};
+      --sidebar-muted:${theme.sidebarMutedTextColor || "#777777"};
+      --sidebar-hover:${theme.sidebarHoverBg || "#F2F7F2"};
+      --sidebar-active-bg:${theme.sidebarActiveBg || theme.primaryColor};
+      --sidebar-active-text:${theme.sidebarActiveTextColor || "#FFFFFF"};
+      --sidebar-border:${theme.sidebarBorderColor || "#E7ECE7"};
+    }
     * { box-sizing:border-box; margin:0; padding:0; font-family:var(--font-family); font-size:var(--font-size); }
     body, html { overflow-x:hidden; background-color:var(--bg-color); }
     .Polaris-Page { padding:0 !important; max-width:100% !important; }
@@ -3285,7 +3313,7 @@ export default function CentralDeReservas() {
       padding:12px 14px;
       border-radius:var(--pmy-pill);
       background:transparent;
-      color:var(--text-dark);
+      color:var(--sidebar-text);
       font-weight:700;
       display:flex;
       align-items:center;
@@ -3295,21 +3323,35 @@ export default function CentralDeReservas() {
       transition:transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
     }
     .pmy-menu-item:hover {
-      background:var(--pmy-green-soft);
-      color:var(--primary-green);
+      background:var(--sidebar-hover);
+      color:var(--sidebar-text);
       transform:translateX(2px);
     }
     .pmy-menu-item.active {
-      background:var(--primary-green);
-      color:#fff;
-      box-shadow:0 10px 24px color-mix(in srgb, var(--primary-green) 22%, transparent);
+      background:var(--sidebar-active-bg);
+      color:var(--sidebar-active-text);
+      box-shadow:0 10px 24px color-mix(in srgb, var(--sidebar-active-bg) 18%, transparent);
+    }
+    .pmy-sidebar .pmy-menu-item svg { color:inherit; }
+    .pmy-sidebar .pmy-menu-item:not(.active) { color:var(--sidebar-text); }
+    .pmy-sidebar .pmy-menu-item:not(.active):hover { color:var(--sidebar-text); }
+    .pmy-logo-placeholder {
+      border-color:var(--sidebar-border);
+      color:var(--sidebar-muted);
+      background:color-mix(in srgb, var(--sidebar-text) 4%, transparent);
+    }
+    .pmy-lang-divider { background:var(--sidebar-border); }
+    .pmy-sidebar-collapse {
+      border-color:var(--sidebar-border);
+      background:var(--surface-color);
+      color:var(--primary-green);
     }
     .pmy-menu-icon { width:20px; height:20px; display:grid; place-items:center; flex:0 0 20px; }
     .pmy-menu-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .pmy-sidebar-footer { padding:16px 12px 18px; gap:12px; border-top:1px solid var(--pmy-border); }
+    .pmy-sidebar-footer { padding:16px 12px 18px; gap:12px; border-top:1px solid var(--sidebar-border); }
     .pmy-sidebar-footer .pmy-menu-item { width:100%; }
-    .pmy-lang-pill { border-color:var(--pmy-border); background:rgba(255,255,255,.62); }
-    .pmy-credit-text { font-size:11px; opacity:.82; }
+    .pmy-lang-pill { border-color:var(--sidebar-border); background:color-mix(in srgb, var(--sidebar-text) 9%, transparent); color:var(--sidebar-text); }
+    .pmy-credit-text { font-size:11px; color:var(--sidebar-muted); opacity:1; }
 
     .pmy-mobile-menu-btn {
       display:none;
@@ -3384,9 +3426,9 @@ export default function CentralDeReservas() {
       border:1px solid var(--pmy-border);
       box-shadow:var(--pmy-shadow);
     }
-    .pmy-card { border-radius:22px; padding:22px; }
+    .pmy-card { border-radius:22px; padding:22px; background:var(--surface-color); }
     .pmy-card.has-hover:hover { transform:translateY(-2px); box-shadow:0 22px 48px rgba(22,44,29,.11); }
-    .pmy-form-box { border-radius:22px; padding:24px; }
+    .pmy-form-box { border-radius:22px; padding:24px; background:var(--surface-color); }
     .pmy-form-box h3 {
       font-family:var(--pmy-heading-font);
       font-size:19px;
@@ -3411,7 +3453,7 @@ export default function CentralDeReservas() {
       min-height:44px;
       border-radius:14px;
       border-color:rgba(30,55,38,.14);
-      background:rgba(255,255,255,.92);
+      background:var(--input-bg-color);
       transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
     }
     .pmy-form-input:focus {
