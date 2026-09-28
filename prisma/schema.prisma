@@ -299,3 +299,17 @@ model BusinessSetting {
 
   @@index([shop])
 }
+
+
+model PlatformFieldMapping {
+  id        String   @id @default(uuid())
+  shop      String
+  platform  String
+  mappings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([shop, platform], map: "PlatformFieldMapping_shop_platform_key")
+  @@index([shop])
+  @@index([platform])
+}
