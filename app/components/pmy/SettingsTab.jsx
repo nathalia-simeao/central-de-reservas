@@ -34,6 +34,21 @@ export default function SettingsTab(props) {
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const fieldEnglish = {
+    customerName: { label: "Customer Name", desc: "Passenger full name" },
+    tourId: { label: "Tour / Product ID", desc: "Tour identifier in the PMY system" },
+    startTime: { label: "Start Date and Time", desc: "Tour departure date and time" },
+    status: { label: "Booking Status", desc: "State: CONFIRMED / CANCELED / PENDING" },
+    email: { label: "Customer Email", desc: "Passenger contact email" },
+    phone: { label: "Phone / WhatsApp", desc: "Number including country code" },
+    quantity: { label: "Ticket Quantity", desc: "Total tickets by variant" },
+    price: { label: "Total Amount Paid", desc: "Final booking amount" },
+    currency: { label: "Currency", desc: "EUR, USD, BRL, etc." },
+    bookingRef: { label: "Booking Reference", desc: "Unique booking ID from the platform" },
+    language: { label: "Language", desc: "Tour or booking language" },
+  };
+  const fieldLabel = (field) => lang === "en" ? (fieldEnglish[field.key]?.label || field.label) : field.label;
+  const fieldDesc = (field) => lang === "en" ? (fieldEnglish[field.key]?.desc || field.desc) : field.desc;
 
   return (
     <>
@@ -90,7 +105,7 @@ export default function SettingsTab(props) {
 
                     <div className="pmy-brand-logo-preview is-light">
                       {logoOnLightUrl
-                        ? <img src={logoOnLightUrl} alt="Logo para fundo claro" />
+                        ? <img src={logoOnLightUrl} alt={tr('Logo para fundo claro','Logo for light backgrounds')} />
                         : <span>{tr("Sem logo clara", "No light-background logo")}</span>}
                     </div>
 
@@ -118,7 +133,7 @@ export default function SettingsTab(props) {
                           style={{ color:'#b91c1c', background:'#fff1f1' }}
                           onClick={() => handleRemoveBrandLogo('light')}
                         >
-                          Remover
+                          {tr('Remover', 'Remove')}
                         </button>
                       )}
                     </div>
@@ -135,9 +150,9 @@ export default function SettingsTab(props) {
 
                     <div className="pmy-brand-logo-preview is-dark">
                       {logoOnDarkUrl
-                        ? <img src={logoOnDarkUrl} alt="Logo para fundo escuro" />
+                        ? <img src={logoOnDarkUrl} alt={tr('Logo para fundo escuro','Logo for dark backgrounds')} />
                         : logoOnLightUrl
-                          ? <img src={logoOnLightUrl} alt="Prévia branca automática" className="is-auto-white" />
+                          ? <img src={logoOnLightUrl} alt={tr('Prévia branca automática','Automatic white preview')} className="is-auto-white" />
                           : <span>{tr("Sem logo escura", "No dark-background logo")}</span>}
                     </div>
 
@@ -165,7 +180,7 @@ export default function SettingsTab(props) {
                           style={{ color:'#b91c1c', background:'#fff1f1' }}
                           onClick={() => handleRemoveBrandLogo('dark')}
                         >
-                          Remover
+                          {tr('Remover', 'Remove')}
                         </button>
                       )}
                     </div>
@@ -184,7 +199,7 @@ export default function SettingsTab(props) {
                     {activeSidebarLogoUrl
                       ? <img
                           src={activeSidebarLogoUrl}
-                          alt="Logo ativa"
+                          alt={tr('Logo ativa','Active logo')}
                           className={sidebarIsDark && !logoOnDarkUrl && logoOnLightUrl ? 'is-auto-white' : ''}
                         />
                       : <strong>Portugal Me & You</strong>}
@@ -390,7 +405,7 @@ export default function SettingsTab(props) {
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
                     <label>{tr("Formato das Imagens de Perfil:", "Profile Image Shape:")}</label>
                     <div style={{ display:'flex', gap:'10px', marginTop:'8px' }}>
-                      {[['circle','🔵 Redonda'],['rounded','⬜ Arredondada']].map(([v,l]) => (
+                      {[['circle',tr('🔵 Redonda','🔵 Circle')],['rounded',tr('⬜ Arredondada','⬜ Rounded')]].map(([v,l]) => (
                         <button key={v} type="button" className="pmy-format-btn"
                           style={{ background: imageShape===v?'var(--primary-green)':'#f0f0f0', color: imageShape===v?'#fff':'#555' }}
                           onClick={() => handleImageShapeChange(v)}>{l}</button>
@@ -421,7 +436,7 @@ export default function SettingsTab(props) {
                   <button type="button"
                     onClick={handleRestoreThemeDefaults}
                     style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'10px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
-                    🔄 Restaurar Padrões
+                    {tr('🔄 Restaurar Padrões', '🔄 Restore Defaults')}
                   </button>
                 </div>
               </div>
@@ -431,12 +446,12 @@ export default function SettingsTab(props) {
                 <h3>{tr("👥 Equipe com Acesso ao App", "👥 Team with App Access")}</h3>
                 <p style={{ fontSize:'13px', color:'#666', marginBottom:'20px', lineHeight:'1.6' }}>
                   {tr("Estes são os membros da sua equipe no Shopify que têm acesso ao app.", "These are the members of your Shopify team who have access to the app.")}
-                  Para adicionar ou remover pessoas, gerencie no <a href="https://admin.shopify.com/settings/account" target="_blank" rel="noreferrer" style={{ color:'var(--primary-green)', fontWeight:'700' }}>{tr("painel de conta do Shopify ↗", "Shopify account panel ↗")}</a>
+                  {tr(' Para adicionar ou remover pessoas, gerencie no ', ' To add or remove people, manage them in the ')}<a href="https://admin.shopify.com/settings/account" target="_blank" rel="noreferrer" style={{ color:'var(--primary-green)', fontWeight:'700' }}>{tr("painel de conta do Shopify ↗", "Shopify account panel ↗")}</a>
                 </p>
 
                 {shopifyStaff.length === 0 ? (
                   <div style={{ background:'#f9f9f9', borderRadius:'8px', padding:'20px', textAlign:'center', color:'#888', fontSize:'13px' }}>
-                    {tr("A Central não solicita acesso à lista de funcionários do Shopify por padrão. Esse dado exige o scope restrito", "The Central does not request access to Shopify staff lists by default. This data requires the restricted scope")} <code>read_users</code> e não é necessário para reservas, pedidos ou checkouts. Gerencie os acessos diretamente no Shopify.
+                    {tr("A Central não solicita acesso à lista de funcionários do Shopify por padrão. Esse dado exige o scope restrito", "The Central does not request access to Shopify staff lists by default. This data requires the restricted scope")} <code>read_users</code> {tr('e não é necessário para reservas, pedidos ou checkouts. Gerencie os acessos diretamente no Shopify.', 'and it is not required for bookings, orders, or checkouts. Manage access directly in Shopify.')}
                   </div>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -467,7 +482,7 @@ export default function SettingsTab(props) {
                 )}
 
                 <div style={{ marginTop:'20px', padding:'14px 16px', background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'8px', fontSize:'13px', color:'#92400e', lineHeight:'1.5' }}>
-                  💡 <strong>{tr("Para convidar novos membros:", "To invite new members:")}</strong> Vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe. Após adicionado, ele aparecerá automaticamente aqui.
+                  💡 <strong>{tr("Para convidar novos membros:", "To invite new members:")}</strong> {tr('Vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe. Após adicionado, ele aparecerá automaticamente aqui.', 'Go to Shopify Admin → Settings → Users and permissions → Add staff member. Once added, they will appear here automatically.')}
                 </div>
               </div>
 
@@ -508,18 +523,18 @@ export default function SettingsTab(props) {
                 {!platformConnections[activeMappingPlatform]?.connected && (
                   <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'8px', padding:'12px 16px', marginBottom:'20px', fontSize:'13px', color:'#92400e', display:'flex', alignItems:'center', gap:'10px' }}>
                     <span>⚠️</span>
-                    <span>Esta plataforma não está conectada. Vá em <strong>{tr("Integrações", "Integrations")}</strong> para ativar. Você pode pré-configurar o mapeamento agora.</span>
+                    <span>{tr('Esta plataforma não está conectada. Vá em', 'This platform is not connected. Go to')} <strong>{tr("Integrações", "Integrations")}</strong> {tr('para ativar. Você pode pré-configurar o mapeamento agora.', 'to activate it. You can preconfigure the mapping now.')}</span>
                   </div>
                 )}
 
                 <div style={{ display:'flex', gap:'20px', marginBottom:'15px', alignItems:'center', flexWrap:'wrap' }}>
                   <div style={{ fontSize:'12px', color:'#888', display:'flex', alignItems:'center', gap:'6px' }}>
                     <span style={{ fontFamily:'monospace', background:'#f0f0f0', padding:'2px 6px', borderRadius:'4px', fontSize:'11px' }}>campo_pmy</span>
-                    = campo fixo interno
+                    {tr('= campo fixo interno', '= fixed internal field')}
                   </div>
                   <div style={{ fontSize:'12px', color:'#888', display:'flex', alignItems:'center', gap:'6px' }}>
                     <span style={{ fontFamily:'monospace', border:'1px solid #ddd', padding:'2px 8px', borderRadius:'4px', fontSize:'11px' }}>campo.api</span>
-                    = campo da plataforma (editável)
+                    {tr('= campo da plataforma (editável)', '= platform field (editable)')}
                   </div>
                   <span className="pmy-field-badge required">{tr("● Obrigatório", "● Required")}</span>
                   <span className="pmy-field-badge optional">{tr("○ Opcional", "○ Optional")}</span>
@@ -531,7 +546,7 @@ export default function SettingsTab(props) {
                       <tr>
                         <th>{tr("Campo Interno PMY", "PMY Internal Field")}</th>
                         <th style={{ width:'30px' }}></th>
-                        <th>Campo na API {allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}</th>
+                        <th>{tr('Campo na API', 'API field')} {allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}</th>
                         <th style={{ width:'100px' }}>{tr("Tipo", "Type")}</th>
                       </tr>
                     </thead>
@@ -541,7 +556,7 @@ export default function SettingsTab(props) {
                           <td>
                             <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
                               <span className="pmy-mapping-internal-label">{field.key}</span>
-                              <span style={{ fontSize:'11px', color:'#aaa', marginTop:'3px' }}>{field.desc}</span>
+                              <span style={{ fontSize:'11px', color:'#aaa', marginTop:'3px' }}>{fieldDesc(field)}</span>
                             </div>
                           </td>
                           <td className="pmy-mapping-arrow">→</td>
@@ -549,11 +564,11 @@ export default function SettingsTab(props) {
                             <input type="text" className="pmy-mapping-field-input"
                               value={fieldMappings[activeMappingPlatform]?.[field.key]||""}
                               onChange={e => handleUpdateFieldMapping(activeMappingPlatform, field.key, e.target.value)}
-                              placeholder={`Nome do campo em ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`} />
+                              placeholder={`${tr('Nome do campo em', 'Field name in')} ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`} />
                           </td>
                           <td>
                             <span className={`pmy-field-badge ${field.required?'required':'optional'}`}>
-                              {field.required ? '● Obrig.' : '○ Opc.'}
+                              {field.required ? tr('● Obrig.', '● Req.') : tr('○ Opc.', '○ Opt.')}
                             </span>
                           </td>
                         </tr>
@@ -597,7 +612,7 @@ export default function SettingsTab(props) {
                   >
                     {mappingSaveState?.status === 'saving' && mappingSaveState?.platform === activeMappingPlatform
                       ? tr('⏳ Salvando...', '⏳ Saving...')
-                      : `💾 Salvar — ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`}
+                      : `💾 ${tr('Salvar', 'Save')} — ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`}
                   </button>
                   <button
                     type="button"
@@ -605,7 +620,7 @@ export default function SettingsTab(props) {
                     disabled={mappingSaveState?.status === 'saving'}
                     style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'11px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555', opacity:mappingSaveState?.status === 'saving'?0.6:1 }}
                   >
-                    🔄 Restaurar e salvar padrões
+                    {tr('🔄 Restaurar e salvar padrões', '🔄 Restore and save defaults')}
                   </button>
                 </div>
               </div>
