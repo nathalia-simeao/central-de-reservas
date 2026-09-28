@@ -26,6 +26,84 @@ import {
 const prisma = db;
 const json = (body, init) => data(body, init);
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getShopifyFileSnapshot = async (admin, fileId) => {
+  const response = await admin.graphql(`
+    query PmyFileSnapshot($id: ID!) {
+      node(id: $id) {
+        __typename
+        ... on MediaImage {
+          id
+          fileStatus
+          alt
+          image {
+            url
+            width
+            height
+          }
+        }
+        ... on GenericFile {
+          id
+          fileStatus
+          alt
+          url
+          mimeType
+        }
+      }
+    }
+  `, {
+    variables: { id: fileId },
+  });
+
+  const payload = await response.json();
+  if (payload?.errors?.length) {
+    throw new Error(payload.errors.map((item) => item.message).join("; "));
+  }
+
+  return payload?.data?.node || null;
+};
+
+const waitForShopifyFileUrl = async (admin, fileId, initialFile = null) => {
+  let snapshot = initialFile;
+
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    if (snapshot) {
+      const url = snapshot?.image?.url || snapshot?.url || null;
+      if (url) return { ...snapshot, resolvedUrl: url };
+
+      if (String(snapshot?.fileStatus || "").toUpperCase() === "FAILED") {
+        throw new Error("O Shopify não conseguiu processar a logo.");
+      }
+    }
+
+    if (attempt < 17) {
+      await sleep(500);
+      snapshot = await getShopifyFileSnapshot(admin, fileId);
+    }
+  }
+
+  throw new Error(
+    "A logo foi enviada, mas o Shopify ainda está processando o arquivo. Tente novamente em alguns segundos.",
+  );
+};
+
+const isLikelyTemporaryUploadUrl = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    return (
+      host.includes("staged") ||
+      host.includes("storage.googleapis.com") ||
+      host.includes("amazonaws.com")
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
@@ -417,6 +495,51 @@ export const loader = async ({ request }) => {
       businessSettings = await prisma.businessSetting.findUnique({
         where: { shop: session.shop },
       });
+
+      // Recupera automaticamente logos antigas que tenham ficado apontando
+      // para a URL temporária do staged upload. A biblioteca de mídia já foi
+      // reconciliada acima com o URL definitivo do Shopify Files.
+      if (businessSettings && Array.isArray(mediaFiles) && mediaFiles.length > 0) {
+        const latestLogoFor = (label) =>
+          mediaFiles.find(
+            (item) =>
+              item?.active !== false &&
+              item?.source === "pmy_upload" &&
+              item?.category === "logo" &&
+              item?.label === label &&
+              item?.url,
+          );
+
+        const lightMedia = latestLogoFor("Logo para fundo claro");
+        const darkMedia = latestLogoFor("Logo para fundo escuro");
+        const repaired = {};
+
+        if (
+          businessSettings.logoOnLightUrl &&
+          isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl) &&
+          lightMedia?.url &&
+          lightMedia.url !== businessSettings.logoOnLightUrl
+        ) {
+          repaired.logoOnLightUrl = lightMedia.url;
+        }
+
+        if (
+          businessSettings.logoOnDarkUrl &&
+          isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl) &&
+          darkMedia?.url &&
+          darkMedia.url !== businessSettings.logoOnDarkUrl
+        ) {
+          repaired.logoOnDarkUrl = darkMedia.url;
+        }
+
+        if (Object.keys(repaired).length > 0) {
+          businessSettings = await prisma.businessSetting.update({
+            where: { shop: session.shop },
+            data: repaired,
+          });
+          console.info("[PMY] repaired persisted logo URL(s) from Shopify Files");
+        }
+      }
     } catch (settingsError) {
       console.error("[PMY] business settings load failed:", settingsError);
       businessSettings = null;
@@ -1338,7 +1461,10 @@ export const action = async ({ request }) => {
         return json({ success: false, error: "O Shopify não retornou o arquivo criado." }, { status: 500 });
       }
 
-      const finalUrl = createdFile?.image?.url || createdFile?.url || resourceUrl;
+      // fileCreate pode responder antes de a imagem ter um URL definitivo.
+      // Nunca persistimos resourceUrl, pois ele pertence ao staged upload e expira.
+      const readyFile = await waitForShopifyFileUrl(admin, createdFile.id, createdFile);
+      const finalUrl = readyFile.resolvedUrl;
       const media = await prisma.media.upsert({
         where: {
           shop_source_externalId: {
@@ -1351,28 +1477,28 @@ export const action = async ({ request }) => {
           shop,
           url: finalUrl,
           filename,
-          mimetype: createdFile?.mimeType || mimetype || "application/octet-stream",
+          mimetype: readyFile?.mimeType || mimetype || "application/octet-stream",
           category,
           label,
           source: "pmy_upload",
           externalId: createdFile.id,
-          width: Number.isFinite(Number(createdFile?.image?.width)) ? Number(createdFile.image.width) : null,
-          height: Number.isFinite(Number(createdFile?.image?.height)) ? Number(createdFile.image.height) : null,
+          width: Number.isFinite(Number(readyFile?.image?.width)) ? Number(readyFile.image.width) : null,
+          height: Number.isFinite(Number(readyFile?.image?.height)) ? Number(readyFile.image.height) : null,
           metadata: {
-            fileStatus: createdFile.fileStatus || null,
+            fileStatus: readyFile.fileStatus || null,
             storage: "shopify_files",
           },
         },
         update: {
           url: finalUrl,
           filename,
-          mimetype: createdFile?.mimeType || mimetype || "application/octet-stream",
+          mimetype: readyFile?.mimeType || mimetype || "application/octet-stream",
           category,
           label,
-          width: Number.isFinite(Number(createdFile?.image?.width)) ? Number(createdFile.image.width) : null,
-          height: Number.isFinite(Number(createdFile?.image?.height)) ? Number(createdFile.image.height) : null,
+          width: Number.isFinite(Number(readyFile?.image?.width)) ? Number(readyFile.image.width) : null,
+          height: Number.isFinite(Number(readyFile?.image?.height)) ? Number(readyFile.image.height) : null,
           metadata: {
-            fileStatus: createdFile.fileStatus || null,
+            fileStatus: readyFile.fileStatus || null,
             storage: "shopify_files",
           },
           active: true,
