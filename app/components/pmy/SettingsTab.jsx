@@ -9,6 +9,10 @@ export default function SettingsTab(props) {
     handleLogoChange,
     handleRemoveLogo,
     handleThemeChange,
+    handleRestoreThemeDefaults,
+    handleImageShapeChange,
+    handleSaveFieldMappings,
+    handleResetFieldMappings,
     handleUpdateFieldMapping,
     imageShape,
     internalFields,
@@ -16,9 +20,7 @@ export default function SettingsTab(props) {
     platformConnections,
     reservationPlatforms,
     setActiveMappingPlatform,
-    setFieldMappings,
-    setImageShape,
-    setTheme,
+    settingsSaveMessage,
     shopifyStaff,
     t,
     theme
@@ -33,7 +35,12 @@ export default function SettingsTab(props) {
               {/* LOGO */}
               <div className="pmy-form-box">
                 <h3>🖼️ Logo da Agência</h3>
-                <p style={{ fontSize:'13px', color:'#666', marginBottom:'20px' }}>Aparece na barra lateral. Salva automaticamente e persiste mesmo após reiniciar.</p>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'8px' }}>Aparece na barra lateral. Salva automaticamente no banco e fica igual em qualquer navegador ou máquina.</p>
+                {settingsSaveMessage && (
+                  <div style={{ fontSize:'11px', fontWeight:'800', color:settingsSaveMessage.includes('Erro')?'#b91c1c':'var(--primary-green)', marginBottom:'14px' }}>
+                    {settingsSaveMessage}
+                  </div>
+                )}
                 <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
                   <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display:'none' }} ref={fileInputRef} />
                   {logoUrl
@@ -66,9 +73,11 @@ export default function SettingsTab(props) {
                     ].map((preset, i) => (
                       <button key={i} type="button"
                         onClick={() => {
-                          const newTheme = { ...theme, bgColor: preset.bg, primaryColor: preset.primary, sidebarBg: preset.sidebar, titleColor: preset.title, textColor: preset.text };
-                          setTheme(newTheme);
-                          try { localStorage.setItem('pmy_theme', JSON.stringify(newTheme)); } catch {}
+                          handleThemeChange('bgColor', preset.bg);
+                          handleThemeChange('primaryColor', preset.primary);
+                          handleThemeChange('sidebarBg', preset.sidebar);
+                          handleThemeChange('titleColor', preset.title);
+                          handleThemeChange('textColor', preset.text);
                         }}
                         style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', border:'1.5px solid #ddd', borderRadius:'20px', background:'#fff', cursor:'pointer', fontSize:'13px', fontWeight:'700', transition:'0.2s' }}>
                         <span style={{ display:'flex', gap:'3px' }}>
@@ -165,7 +174,7 @@ export default function SettingsTab(props) {
                       {[['circle','🔵 Redonda'],['rounded','⬜ Arredondada']].map(([v,l]) => (
                         <button key={v} type="button" className="pmy-format-btn"
                           style={{ background: imageShape===v?'var(--primary-green)':'#f0f0f0', color: imageShape===v?'#fff':'#555' }}
-                          onClick={() => setImageShape(v)}>{l}</button>
+                          onClick={() => handleImageShapeChange(v)}>{l}</button>
                       ))}
                     </div>
                   </div>
@@ -190,11 +199,7 @@ export default function SettingsTab(props) {
 
                 <div style={{ marginTop:'15px' }}>
                   <button type="button"
-                    onClick={() => {
-                      const def = { bgColor:'#F4DCDC', primaryColor:'#006600', sidebarBg:'#ffffff', fontFamily:'Assistant', fontSize:'14px', titleColor:'#006600', textColor:'#2b2b2b' };
-                      setTheme(def);
-                      try { localStorage.setItem('pmy_theme', JSON.stringify(def)); } catch {}
-                    }}
+                    onClick={handleRestoreThemeDefaults}
                     style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'10px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
                     🔄 Restaurar Padrões
                   </button>
@@ -344,10 +349,10 @@ export default function SettingsTab(props) {
                 </div>
 
                 <div style={{ marginTop:'20px', display:'flex', gap:'12px' }}>
-                  <button type="button" className="pmy-btn-submit" style={{ width:'auto', padding:'11px 25px' }}>
+                  <button type="button" className="pmy-btn-submit" onClick={handleSaveFieldMappings} style={{ width:'auto', padding:'11px 25px' }}>
                     💾 Salvar — {allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}
                   </button>
-                  <button type="button" onClick={() => setFieldMappings(p => ({ ...p, [activeMappingPlatform]: defaultMappings[activeMappingPlatform]||{} }))}
+                  <button type="button" onClick={handleResetFieldMappings}
                     style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'11px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
                     🔄 Restaurar Padrões
                   </button>
