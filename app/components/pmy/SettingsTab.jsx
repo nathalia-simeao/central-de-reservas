@@ -5,9 +5,10 @@ export default function SettingsTab(props) {
     allPlatforms,
     defaultMappings,
     fieldMappings,
-    fileInputRef,
-    handleLogoChange,
-    handleRemoveLogo,
+    logoLightInputRef,
+    logoDarkInputRef,
+    handleBrandLogoChange,
+    handleRemoveBrandLogo,
     handleThemeChange,
     handleRestoreThemeDefaults,
     handleImageShapeChange,
@@ -16,7 +17,11 @@ export default function SettingsTab(props) {
     handleUpdateFieldMapping,
     imageShape,
     internalFields,
-    logoUrl,
+    logoOnLightUrl,
+    logoOnDarkUrl,
+    logoUploadingVariant,
+    sidebarIsDark,
+    activeSidebarLogoUrl,
     mappingSaveState,
     platformConnections,
     reservationPlatforms,
@@ -35,22 +40,149 @@ export default function SettingsTab(props) {
 
               {/* LOGO */}
               <div className="pmy-form-box">
-                <h3>🖼️ Logo da Agência</h3>
-                <p style={{ fontSize:'13px', color:'#666', marginBottom:'8px' }}>Aparece na barra lateral. Salva automaticamente no banco e fica igual em qualquer navegador ou máquina.</p>
+                <div style={{ display:'flex', justifyContent:'space-between', gap:'16px', alignItems:'flex-start', flexWrap:'wrap', marginBottom:'18px' }}>
+                  <div>
+                    <h3 style={{ marginBottom:'6px' }}>🖼️ Identidade da Agência</h3>
+                    <p style={{ fontSize:'13px', color:'#666', margin:0, maxWidth:'720px', lineHeight:'1.55' }}>
+                      A logo agora fica salva no Shopify Files e no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.
+                    </p>
+                  </div>
+                  <div style={{
+                    display:'inline-flex',
+                    alignItems:'center',
+                    gap:'7px',
+                    padding:'7px 11px',
+                    borderRadius:'999px',
+                    background: sidebarIsDark ? '#171717' : '#f4f7f4',
+                    color: sidebarIsDark ? '#fff' : '#245c2d',
+                    fontSize:'11px',
+                    fontWeight:'800'
+                  }}>
+                    {sidebarIsDark ? '🌙 Sidebar escura · logo clara' : '☀️ Sidebar clara · logo colorida'}
+                  </div>
+                </div>
+
                 {settingsSaveMessage && (
-                  <div style={{ fontSize:'11px', fontWeight:'800', color:settingsSaveMessage.includes('Erro')?'#b91c1c':'var(--primary-green)', marginBottom:'14px' }}>
+                  <div style={{
+                    fontSize:'11px',
+                    fontWeight:'800',
+                    color:settingsSaveMessage.includes('Erro')?'#b91c1c':'var(--primary-green)',
+                    marginBottom:'14px'
+                  }}>
                     {settingsSaveMessage}
                   </div>
                 )}
-                <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
-                  <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display:'none' }} ref={fileInputRef} />
-                  {logoUrl
-                    ? <img src={logoUrl} alt="Logo" style={{ height:'60px', maxWidth:'180px', objectFit:'contain', background:'#f5f5f5', padding:'8px', borderRadius:'8px', border:'1px solid #eee' }} />
-                    : <div style={{ width:'120px', height:'60px', background:'#f5f5f5', borderRadius:'8px', border:'2px dashed #ddd', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:'#aaa' }}>Sem logo</div>
-                  }
-                  <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                    <button type="button" className="pmy-format-btn" onClick={() => fileInputRef.current.click()}>📤 Carregar Logo</button>
-                    {logoUrl && <button type="button" className="pmy-format-btn" style={{ color:'#cc0000', background:'#ffe6e6' }} onClick={handleRemoveLogo}>🗑️ Remover</button>}
+
+                <div className="pmy-brand-logo-grid">
+                  <div className="pmy-brand-logo-card">
+                    <div className="pmy-brand-logo-card-head">
+                      <div>
+                        <strong>Logo para fundo claro</strong>
+                        <span>Use a versão verde/colorida da marca.</span>
+                      </div>
+                      {logoOnLightUrl && <span className="pmy-brand-logo-status">Salva ✓</span>}
+                    </div>
+
+                    <div className="pmy-brand-logo-preview is-light">
+                      {logoOnLightUrl
+                        ? <img src={logoOnLightUrl} alt="Logo para fundo claro" />
+                        : <span>Sem logo clara</span>}
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={(event) => handleBrandLogoChange('light', event)}
+                      style={{ display:'none' }}
+                      ref={logoLightInputRef}
+                    />
+
+                    <div className="pmy-brand-logo-actions">
+                      <button
+                        type="button"
+                        className="pmy-format-btn"
+                        disabled={logoUploadingVariant === 'light'}
+                        onClick={() => logoLightInputRef.current?.click()}
+                      >
+                        {logoUploadingVariant === 'light' ? '⏳ Salvando...' : '📤 Carregar versão clara'}
+                      </button>
+                      {logoOnLightUrl && (
+                        <button
+                          type="button"
+                          className="pmy-format-btn"
+                          style={{ color:'#b91c1c', background:'#fff1f1' }}
+                          onClick={() => handleRemoveBrandLogo('light')}
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pmy-brand-logo-card">
+                    <div className="pmy-brand-logo-card-head">
+                      <div>
+                        <strong>Logo para fundo escuro</strong>
+                        <span>Use a versão branca/negativa da marca.</span>
+                      </div>
+                      {logoOnDarkUrl && <span className="pmy-brand-logo-status">Salva ✓</span>}
+                    </div>
+
+                    <div className="pmy-brand-logo-preview is-dark">
+                      {logoOnDarkUrl
+                        ? <img src={logoOnDarkUrl} alt="Logo para fundo escuro" />
+                        : logoOnLightUrl
+                          ? <img src={logoOnLightUrl} alt="Prévia branca automática" className="is-auto-white" />
+                          : <span>Sem logo escura</span>}
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={(event) => handleBrandLogoChange('dark', event)}
+                      style={{ display:'none' }}
+                      ref={logoDarkInputRef}
+                    />
+
+                    <div className="pmy-brand-logo-actions">
+                      <button
+                        type="button"
+                        className="pmy-format-btn"
+                        disabled={logoUploadingVariant === 'dark'}
+                        onClick={() => logoDarkInputRef.current?.click()}
+                      >
+                        {logoUploadingVariant === 'dark' ? '⏳ Salvando...' : '📤 Carregar versão branca'}
+                      </button>
+                      {logoOnDarkUrl && (
+                        <button
+                          type="button"
+                          className="pmy-format-btn"
+                          style={{ color:'#b91c1c', background:'#fff1f1' }}
+                          onClick={() => handleRemoveBrandLogo('dark')}
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+
+                    {!logoOnDarkUrl && logoOnLightUrl && (
+                      <div style={{ fontSize:'10px', color:'#777', lineHeight:'1.45', marginTop:'9px' }}>
+                        Sem versão branca enviada. A Central cria uma versão branca automaticamente enquanto isso.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pmy-brand-logo-current">
+                  <span>Logo usada agora na sidebar</span>
+                  <div style={{ background:theme.sidebarBg }}>
+                    {activeSidebarLogoUrl
+                      ? <img
+                          src={activeSidebarLogoUrl}
+                          alt="Logo ativa"
+                          className={sidebarIsDark && !logoOnDarkUrl && logoOnLightUrl ? 'is-auto-white' : ''}
+                        />
+                      : <strong>Portugal Me & You</strong>}
                   </div>
                 </div>
               </div>
