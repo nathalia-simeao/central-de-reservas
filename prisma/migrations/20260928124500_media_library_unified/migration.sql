@@ -1,5 +1,5 @@
 ALTER TABLE "Media"
-ADD COLUMN "shop" TEXT,
+ADD COLUMN "shop" TEXT NOT NULL DEFAULT 'legacy',
 ADD COLUMN "source" TEXT NOT NULL DEFAULT 'pmy_upload',
 ADD COLUMN "externalId" TEXT,
 ADD COLUMN "productTitle" TEXT,
@@ -9,7 +9,12 @@ ADD COLUMN "metadata" JSONB,
 ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true,
 ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
+UPDATE "Media"
+SET "externalId" = "id"
+WHERE "externalId" IS NULL;
+
 ALTER TABLE "Media"
+ALTER COLUMN "externalId" SET NOT NULL,
 ALTER COLUMN "url" TYPE TEXT;
 
 CREATE UNIQUE INDEX "Media_shop_source_externalId_key"
