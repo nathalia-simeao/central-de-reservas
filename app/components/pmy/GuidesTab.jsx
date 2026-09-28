@@ -26,8 +26,11 @@ export default function GuidesTab(props) {
     setSelectedGuideInfo,
     setUpcomingToursFilter,
     t,
-    upcomingToursFilter
+    upcomingToursFilter,
+    lang
   } = props;
+
+  const tr = (pt, en) => lang === "en" ? en : pt;
 
   return (
     <>
@@ -55,7 +58,7 @@ export default function GuidesTab(props) {
                   <div className="pmy-form-group">
                     <label>{t.form_guide_photo}</label>
                     <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
-                      <button type="button" className="pmy-format-btn" onClick={() => guidePhotoRef.current.click()}>📤 Upload</button>
+                      <button type="button" className="pmy-format-btn" onClick={() => guidePhotoRef.current.click()}>{tr('📤 Upload','📤 Upload')}</button>
                       <input type="file" accept="image/*" onChange={handleGuidePhotoChange} style={{ display:'none' }} ref={guidePhotoRef} />
                       <button type="button" className="pmy-format-btn" onClick={() => openShopifyFilePicker((url) => setGuidePhoto(url))}>
                         🛍️ Escolher do Banco
@@ -64,7 +67,7 @@ export default function GuidesTab(props) {
                     </div>
                   </div>
                   <div className="pmy-form-group">
-                    <label>ID da Campanha UTM (opcional):</label>
+                    <label>{tr('ID da Campanha UTM (opcional):','UTM Campaign ID (optional):')}</label>
                     <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
                       <input type="text" className="pmy-form-input" placeholder="Ex: 21d91c"
                         value={guideUtmId} onChange={e=>setGuideUtmId(e.target.value)}
@@ -82,7 +85,7 @@ export default function GuidesTab(props) {
 
               <div className="pmy-form-box">
                 <h3 style={{ marginBottom:'25px' }}>{t.registered_guides_list}</h3>
-                {guidesList.length === 0 ? <p style={{ color:'#999' }}>Nenhum guia cadastrado.</p> : (
+                {guidesList.length === 0 ? <p style={{ color:'#999' }}>{tr('Nenhum guia cadastrado.','No guides registered.')}</p> : (
                   <div className="pmy-guides-grid">
                     {guidesList.map(g => (
                       <div key={g.id} className="pmy-guide-card-square" style={{ paddingBottom:'10px' }}
@@ -90,9 +93,9 @@ export default function GuidesTab(props) {
                         <img src={g.photo} alt={g.name} className="pmy-guide-square-img" />
                         <div className="pmy-guide-square-name">{g.name.split(' ')[0]}<br/>{g.name.split(' ').slice(1).join(' ')}</div>
                         <div style={{ display:'flex', gap:'5px', marginTop:'10px', width:'100%' }} onClick={e=>e.stopPropagation()}>
-                          <button className="pmy-guide-edit-btn" onClick={()=>handleOpenEditGuide(g)}>✏️ Editar</button>
+                          <button className="pmy-guide-edit-btn" onClick={()=>handleOpenEditGuide(g)}>{tr('✏️ Editar','✏️ Edit')}</button>
                           {g.referralLink && (
-                            <button title="Copiar link de indicação" onClick={()=>navigator.clipboard.writeText(g.referralLink).then(()=>alert('Link copiado!')).catch(()=>{})}
+                            <button title={tr('Copiar link de indicação','Copy referral link')} onClick={()=>navigator.clipboard.writeText(g.referralLink).then(()=>alert(tr('Link copiado!','Link copied!'))).catch(()=>{})}
                               style={{ padding:'5px 8px', background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'6px', fontSize:'13px', cursor:'pointer' }}>🔗</button>
                           )}
                           <button className="pmy-guide-delete-btn" onClick={()=>handleDeleteGuide(g.id)}>🗑️</button>
@@ -107,7 +110,7 @@ export default function GuidesTab(props) {
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f5f5f5', paddingBottom:'15px', marginBottom:'15px' }}>
                   <h3 style={{ borderBottom:'none', margin:0, padding:0 }}>🚐 {t.upcoming_tours_list}</h3>
                   <div className="pmy-calendar-view-tabs" style={{ margin:0 }}>
-                    {[['today',t.filter_today],['7d',t.view_7d],['15d','15 dias'],['30d','30 dias']].map(([v,l]) => (
+                    {[['today',t.filter_today],['7d',t.view_7d],['15d',tr('15 dias','15 days')],['30d',tr('30 dias','30 days')]].map(([v,l]) => (
                       <button key={v} className={`pmy-cal-tab ${upcomingToursFilter===v?'active':''}`} onClick={() => setUpcomingToursFilter(v)}>{l}</button>
                     ))}
                   </div>
@@ -116,13 +119,13 @@ export default function GuidesTab(props) {
                   {upcomingToursFilter === 'today' ? (
                     <div className="pmy-list-item" style={{ borderBottom:'none' }}>
                       <span style={{ fontWeight:'bold' }}>🏰 Fátima, Batalha e Nazaré</span>
-                      <span style={{ fontSize:'12px', background:'#e6f2e6', color:'var(--primary-green)', padding:'4px 10px', borderRadius:'20px' }}>Hoje, 14:00 (Guia: Renan)</span>
+                      <span style={{ fontSize:'12px', background:'#e6f2e6', color:'var(--primary-green)', padding:'4px 10px', borderRadius:'20px' }}>{tr('Hoje, 14:00 (Guia: Renan)','Today, 14:00 (Guide: Renan)')}</span>
                     </div>
                   ) : (
                     <div>
-                      <div className="pmy-list-item"><span style={{ fontWeight:'bold' }}>🏰 Fátima, Batalha e Nazaré</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>Amanhã, 09:00</span></div>
-                      <div className="pmy-list-item"><span style={{ fontWeight:'bold' }}>🚶‍♂️ Walking Tour Lisboa</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>Daqui a 3 dias</span></div>
-                      <div className="pmy-list-item" style={{ borderBottom:'none' }}><span style={{ fontWeight:'bold' }}>🏰 Sintra e Cascais</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>Daqui a 5 dias</span></div>
+                      <div className="pmy-list-item"><span style={{ fontWeight:'bold' }}>🏰 Fátima, Batalha e Nazaré</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>{tr('Amanhã, 09:00','Tomorrow, 09:00')}</span></div>
+                      <div className="pmy-list-item"><span style={{ fontWeight:'bold' }}>🚶‍♂️ Walking Tour Lisboa</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>{tr('Daqui a 3 dias','In 3 days')}</span></div>
+                      <div className="pmy-list-item" style={{ borderBottom:'none' }}><span style={{ fontWeight:'bold' }}>🏰 Sintra e Cascais</span><span style={{ fontSize:'12px', background:'#f5f5f5', padding:'4px 10px', borderRadius:'20px' }}>{tr('Daqui a 5 dias','In 5 days')}</span></div>
                     </div>
                   )}
                 </div>
