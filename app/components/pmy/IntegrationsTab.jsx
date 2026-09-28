@@ -48,6 +48,8 @@ export default function IntegrationsTab(props) {
     tours
   } = props;
 
+  const tr = (pt, en) => lang === "en" ? en : pt;
+
   return (
     <>
 {/* ===== TAB: INTEGRAÇÕES ===== */}
@@ -55,9 +57,9 @@ export default function IntegrationsTab(props) {
             <div>
               {/* Sub-tabs */}
               <div className="pmy-int-subtab-bar">
-                <button className={`pmy-int-subtab ${intSubTab==='conexoes'?'active':''}`} onClick={()=>setIntSubTab('conexoes')}>🔗 Conexões</button>
-                <button className={`pmy-int-subtab ${intSubTab==='produtos'?'active':''}`} onClick={()=>setIntSubTab('produtos')}>📦 Produtos por Plataforma</button>
-                <button className={`pmy-int-subtab ${intSubTab==='logs'?'active':''}`} onClick={()=>setIntSubTab('logs')}>📡 Log de Sincronização</button>
+                <button className={`pmy-int-subtab ${intSubTab==='conexoes'?'active':''}`} onClick={()=>setIntSubTab('conexoes')}>{tr("🔗 Conexões", "🔗 Connections")}</button>
+                <button className={`pmy-int-subtab ${intSubTab==='produtos'?'active':''}`} onClick={()=>setIntSubTab('produtos')}>{tr("📦 Produtos por Plataforma", "📦 Products by Platform")}</button>
+                <button className={`pmy-int-subtab ${intSubTab==='logs'?'active':''}`} onClick={()=>setIntSubTab('logs')}>{tr("📡 Log de Sincronização", "📡 Sync Log")}</button>
               </div>
 
               {/* ── SUB-TAB: CONEXÕES ── */}
@@ -71,14 +73,14 @@ export default function IntegrationsTab(props) {
                       <span style={{ fontSize:'22px' }}>🟢</span>
                       <div>
                         <div style={{ fontWeight:'800', fontSize:'20px', color:'var(--primary-green)' }}>{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected).length}</div>
-                        <div style={{ fontSize:'12px', color:'#888' }}>Conectadas</div>
+                        <div style={{ fontSize:'12px', color:'#888' }}>{tr("Conectadas", "Connected")}</div>
                       </div>
                     </div>
                     <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'10px', padding:'14px 20px', display:'flex', alignItems:'center', gap:'10px' }}>
                       <span style={{ fontSize:'22px' }}>⚫</span>
                       <div>
                         <div style={{ fontWeight:'800', fontSize:'20px', color:'#888' }}>{reservationPlatforms.filter(p=>!platformConnections[p.key]?.connected).length}</div>
-                        <div style={{ fontSize:'12px', color:'#888' }}>Pendentes</div>
+                        <div style={{ fontSize:'12px', color:'#888' }}>{tr("Pendentes", "Pending")}</div>
                       </div>
                     </div>
                   </div>
@@ -94,7 +96,7 @@ export default function IntegrationsTab(props) {
                           <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'6px' }}>
                             <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`}></span>
                             <span style={{ fontSize:'11px', fontWeight:'700', color:conn.connected?'#22c55e':'#aaa' }}>
-                              {conn.connected ? 'CONECTADO' : 'NÃO CONECTADO'}
+                              {conn.connected ? tr('CONECTADO','CONNECTED') : tr('NÃO CONECTADO','NOT CONNECTED')}
                             </span>
                           </div>
                           <div className="pmy-int-name-v2">{platform.name}</div>
@@ -102,8 +104,8 @@ export default function IntegrationsTab(props) {
                           <div className="pmy-int-actions">
                             {conn.connected ? (
                               <>
-                                <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>⚙️ Gerenciar</button>
-                                <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>Desconectar</button>
+                                <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>{tr("⚙️ Gerenciar", "⚙️ Manage")}</button>
+                                <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>{tr("Desconectar", "Disconnect")}</button>
                               </>
                             ) : (
                               <button className="pmy-int-btn-connect" onClick={()=>handleOpenConnect(platform.key)}>
@@ -115,8 +117,8 @@ export default function IntegrationsTab(props) {
                       );
                     })}
                     <div style={{ gridColumn:'1 / -1', marginTop:'4px', paddingTop:'18px', borderTop:'1px solid #eee' }}>
-                      <div style={{ fontSize:'13px', fontWeight:'900', color:'#3949ab', marginBottom:'4px' }}>🦉 Conteúdo & reputação</div>
-                      <div style={{ fontSize:'12px', color:'#888' }}>Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.</div>
+                      <div style={{ fontSize:'13px', fontWeight:'900', color:'#3949ab', marginBottom:'4px' }}>{tr("🦉 Conteúdo & reputação", "🦉 Content & Reputation")}</div>
+                      <div style={{ fontSize:'12px', color:'#888' }}>{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>
                     </div>
                     {contentPlatforms.map(platform => {
                       const conn = platformConnections[platform.key];
@@ -124,7 +126,7 @@ export default function IntegrationsTab(props) {
                         <div key={platform.key} className="pmy-int-card-v2" style={{ display:'flex', flexDirection:'column', borderColor:'#d9def8' }}>
                           <div className="pmy-int-top">
                             <span className="pmy-int-logo-v2">{platform.logo}</span>
-                            <span className="pmy-int-sync-info">Conteúdo</span>
+                            <span className="pmy-int-sync-info">{tr("Conteúdo", "Content")}</span>
                           </div>
                           <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'6px' }}>
                             <span className="pmy-int-status-dot" style={{ background:'#3949ab' }}></span>
@@ -151,12 +153,12 @@ export default function IntegrationsTab(props) {
                     ))}
                   </div>
                   <div className="pmy-form-box" style={{ maxWidth:'600px' }}>
-                    <h3>🔗 Conectar Nova Plataforma via API</h3>
+                    <h3>{tr("🔗 Conectar Nova Plataforma via API", "🔗 Connect New Platform via API")}</h3>
                     <form onSubmit={handleAddCustomIntegration}>
-                      <div className="pmy-form-group"><label>Nome da Plataforma:</label><input type="text" className="pmy-form-input" placeholder="Ex: Agência Parceira LX" value={customName} onChange={e=>setCustomName(e.target.value)} required /></div>
-                      <div className="pmy-form-group"><label>Endpoint da API (URL):</label><input type="url" className="pmy-form-input" placeholder="https://api.parceiro.com/v1/bookings" value={customUrl} onChange={e=>setCustomUrl(e.target.value)} required /></div>
-                      <div className="pmy-form-group"><label>Chave da API / Token:</label><input type="password" className="pmy-form-input" placeholder="pmy_live_key_..." value={customKey} onChange={e=>setCustomKey(e.target.value)} /></div>
-                      <button type="submit" className="pmy-btn-submit" style={{ background:'#ff6600' }}>Ativar Integração Customizada</button>
+                      <div className="pmy-form-group"><label>{tr("Nome da Plataforma:", "Platform Name:")}</label><input type="text" className="pmy-form-input" placeholder={tr('Ex: Agência Parceira LX','E.g. Partner Agency LX')} value={customName} onChange={e=>setCustomName(e.target.value)} required /></div>
+                      <div className="pmy-form-group"><label>{tr("Endpoint da API (URL):", "API Endpoint (URL):")}</label><input type="url" className="pmy-form-input" placeholder="https://api.parceiro.com/v1/bookings" value={customUrl} onChange={e=>setCustomUrl(e.target.value)} required /></div>
+                      <div className="pmy-form-group"><label>{tr("Chave da API / Token:", "API Key / Token:")}</label><input type="password" className="pmy-form-input" placeholder="pmy_live_key_..." value={customKey} onChange={e=>setCustomKey(e.target.value)} /></div>
+                      <button type="submit" className="pmy-btn-submit" style={{ background:'#ff6600' }}>{tr("Ativar Integração Customizada", "Activate Custom Integration")}</button>
                     </form>
                   </div>
                 </div>
@@ -167,7 +169,7 @@ export default function IntegrationsTab(props) {
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'20px' }}>
                     <div>
-                      <h3 style={{ margin:'0 0 6px', color:'var(--text-dark)' }}>📡 Log de Sincronização</h3>
+                      <h3 style={{ margin:'0 0 6px', color:'var(--text-dark)' }}>{tr("📡 Log de Sincronização", "📡 Sync Log")}</h3>
                       <p style={{ color:'var(--text-muted)', margin:0, fontSize:'14px', lineHeight:'1.6' }}>
                         Acompanhe cada envio por canal, identifique divergências e reenvie falhas sem alterar a reserva original.
                         A tela atualiza automaticamente a cada 15 segundos.
@@ -181,11 +183,11 @@ export default function IntegrationsTab(props) {
                       )}
                       <button type="button" onClick={loadSyncQueue} disabled={syncQueueLoading}
                         style={{ border:'1px solid #ddd', background:'#fff', borderRadius:'8px', padding:'9px 13px', cursor:syncQueueLoading?'wait':'pointer', fontWeight:'700', fontSize:'12px', color:'#555' }}>
-                        {syncQueueLoading ? '⏳ Atualizando...' : '🔄 Atualizar'}
+                        {syncQueueLoading ? tr('⏳ Atualizando...','⏳ Refreshing...') : tr('🔄 Atualizar','🔄 Refresh')}
                       </button>
                       <button type="button" onClick={runSyncQueueNow} disabled={syncQueueActionId==='run'}
                         className="pmy-btn-submit" style={{ width:'auto', padding:'9px 15px', fontSize:'12px' }}>
-                        {syncQueueActionId==='run' ? '⏳ Processando...' : '▶ Processar fila agora'}
+                        {syncQueueActionId==='run' ? tr('⏳ Processando...','⏳ Processing...') : tr('▶ Processar fila agora','▶ Process queue now')}
                       </button>
                     </div>
                   </div>
@@ -219,7 +221,7 @@ export default function IntegrationsTab(props) {
                         </button>
                         <button type="button" onClick={startShopifyValidation} disabled={shopifyValidationLoading || shopifyValidation?.status === 'WAITING'}
                           className="pmy-btn-submit" style={{ width:'auto', padding:'8px 13px', fontSize:'11px', opacity:(shopifyValidationLoading || shopifyValidation?.status === 'WAITING')?0.6:1 }}>
-                          {shopifyValidationLoading ? '⏳ Criando pedido...' : shopifyValidation?.status === 'WAITING' ? '⏳ Aguardando webhook...' : '▶ Executar teste real'}
+                          {shopifyValidationLoading ? tr('⏳ Criando pedido...','⏳ Creating order...') : shopifyValidation?.status === 'WAITING' ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...') : tr('▶ Executar teste real','▶ Run real test')}
                         </button>
                       </div>
                     </div>
@@ -234,11 +236,11 @@ export default function IntegrationsTab(props) {
                       <div style={{ marginTop:'14px' }}>
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))', gap:'8px', marginBottom:'12px' }}>
                           {[
-                            ['Pedido Shopify', shopifyValidation.steps?.orderCreated],
-                            ['Webhook recebido', shopifyValidation.steps?.webhookReceived],
-                            ['Booking criado', shopifyValidation.steps?.bookingCreated],
-                            ['Agenda abastecida', shopifyValidation.steps?.agendaReady],
-                            ['Vagas reduzidas', shopifyValidation.steps?.capacityReduced],
+                            [tr('Pedido Shopify','Shopify Order'), shopifyValidation.steps?.orderCreated],
+                            [tr('Webhook recebido','Webhook received'), shopifyValidation.steps?.webhookReceived],
+                            [tr('Booking criado','Booking created'), shopifyValidation.steps?.bookingCreated],
+                            [tr('Agenda abastecida','Agenda updated'), shopifyValidation.steps?.agendaReady],
+                            [tr('Vagas reduzidas','Availability reduced'), shopifyValidation.steps?.capacityReduced],
                           ].map(([label,ok]) => (
                             <div key={label} style={{
                               background:ok?'#ecfdf3':'#f8fafc',
@@ -255,15 +257,15 @@ export default function IntegrationsTab(props) {
 
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'8px', fontSize:'11px', color:'#555' }}>
                           <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
-                            <strong>Pedido:</strong> {shopifyValidation.order?.name || '—'}<br/>
-                            <span style={{ color:'#888' }}>{shopifyValidation.order?.financialStatus || 'status financeiro pendente'}</span>
+                            <strong>{tr("Pedido:", "Order:")}</strong> {shopifyValidation.order?.name || '—'}<br/>
+                            <span style={{ color:'#888' }}>{shopifyValidation.order?.financialStatus || tr('status financeiro pendente','pending financial status')}</span>
                           </div>
                           <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
-                            <strong>Tour:</strong> {shopifyValidation.slot?.tourTitle || '—'}<br/>
+                            <strong>{tr("Tour:", "Tour:")}</strong> {shopifyValidation.slot?.tourTitle || '—'}<br/>
                             <span style={{ color:'#888' }}>{shopifyValidation.slot?.date || '—'} · {shopifyValidation.slot?.time || '—'}</span>
                           </div>
                           <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
-                            <strong>Vagas:</strong> {shopifyValidation.slot?.remainingBefore ?? '—'} → {shopifyValidation.slot?.remainingAfter ?? '—'}<br/>
+                            <strong>{tr("Vagas:", "Availability:")}</strong> {shopifyValidation.slot?.remainingBefore ?? '—'} → {shopifyValidation.slot?.remainingAfter ?? '—'}<br/>
                             <span style={{ color:'#888' }}>ocupadas: {shopifyValidation.slot?.occupiedBefore ?? '—'} → {shopifyValidation.slot?.occupiedAfter ?? '—'}</span>
                           </div>
                         </div>
@@ -297,10 +299,10 @@ export default function IntegrationsTab(props) {
                     const stats = syncQueueData.stats || {};
                     const divergent = Number(stats.retry || 0) + Number(stats.blocked || 0) + Number(stats.dead || 0);
                     const cards = [
-                      ['✅', 'Concluídos', stats.completed || 0, '#166534', '#ecfdf3'],
-                      ['⏳', 'Pendentes', (stats.pending || 0) + (stats.processing || 0), '#9a3412', '#fff7ed'],
-                      ['🟠', 'Em nova tentativa', stats.retry || 0, '#c2410c', '#fff7ed'],
-                      ['⚠️', 'Divergências', divergent, divergent > 0 ? '#b91c1c' : '#166534', divergent > 0 ? '#fef2f2' : '#ecfdf3'],
+                      ['✅', tr('Concluídos','Completed'), stats.completed || 0, '#166534', '#ecfdf3'],
+                      ['⏳', tr('Pendentes','Pending'), (stats.pending || 0) + (stats.processing || 0), '#9a3412', '#fff7ed'],
+                      ['🟠', tr('Em nova tentativa','Retrying'), stats.retry || 0, '#c2410c', '#fff7ed'],
+                      ['⚠️', tr('Divergências','Mismatches'), divergent, divergent > 0 ? '#b91c1c' : '#166534', divergent > 0 ? '#fef2f2' : '#ecfdf3'],
                     ];
                     return (
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'12px', marginBottom:'20px' }}>
@@ -316,11 +318,11 @@ export default function IntegrationsTab(props) {
 
                   <div className="pmy-form-box" style={{ padding:0, overflow:'hidden' }}>
                     {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
-                      <div style={{ padding:'42px', textAlign:'center', color:'#888' }}>⏳ Carregando histórico de sincronização...</div>
+                      <div style={{ padding:'42px', textAlign:'center', color:'#888' }}>{tr("⏳ Carregando histórico de sincronização...", "⏳ Loading sync history...")}</div>
                     ) : syncQueueData.jobs.length === 0 ? (
                       <div style={{ padding:'42px', textAlign:'center', color:'#888' }}>
                         <div style={{ fontSize:'32px', marginBottom:'8px' }}>📭</div>
-                        <strong style={{ display:'block', color:'#555', marginBottom:'5px' }}>Nenhum evento de sincronização registrado ainda</strong>
+                        <strong style={{ display:'block', color:'#555', marginBottom:'5px' }}>{tr("Nenhum evento de sincronização registrado ainda", "No sync events recorded yet")}</strong>
                         Os próximos bloqueios, reservas, cancelamentos e alterações de capacidade aparecerão aqui.
                       </div>
                     ) : (
@@ -382,8 +384,8 @@ export default function IntegrationsTab(props) {
                   </div>
 
                   <div style={{ marginTop:'14px', background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'12px 14px', fontSize:'12px', color:'#64748b', lineHeight:'1.6' }}>
-                    <strong style={{ color:'#475569' }}>Como ler:</strong> cada linha representa o envio de um mesmo evento para um canal.
-                    Se um canal estiver ✅ e outro ❌/🟠, existe uma divergência. O botão <strong>Reenviar</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
+                    <strong style={{ color:'#475569' }}>{tr("Como ler:", "How to read:")}</strong> cada linha representa o envio de um mesmo evento para um canal.
+                    Se um canal estiver ✅ e outro ❌/🟠, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
                   </div>
                 </div>
               )}
@@ -406,7 +408,7 @@ export default function IntegrationsTab(props) {
                           key={p.key}
                           className={`pmy-prod-ptab ${activeProdPlatform===p.key?'active':''} ${!conn.connected?'disabled':''}`}
                           onClick={() => conn.connected && setActiveProdPlatform(p.key)}
-                          title={!conn.connected ? 'Plataforma não conectada' : ''}
+                          title={!conn.connected ? tr(tr('Plataforma não conectada','Platform not connected'),'Platform not connected') : ''}
                         >
                           <span style={{ fontSize:'18px' }}>{p.logo}</span>
                           {p.name}
@@ -415,10 +417,10 @@ export default function IntegrationsTab(props) {
                               fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'10px',
                               background: activeProdPlatform===p.key ? 'rgba(255,255,255,0.25)' : '#e6f2e6',
                               color: activeProdPlatform===p.key ? '#fff' : 'var(--primary-green)'
-                            }}>{activeCount} ativos</span>
+                            }}>{activeCount} {tr('ativos','active')}</span>
                           )}
                           {!conn.connected && (
-                            <span style={{ fontSize:'10px', padding:'2px 7px', borderRadius:'10px', background:'#f5f5f5', color:'#aaa' }}>desconectado</span>
+                            <span style={{ fontSize:'10px', padding:'2px 7px', borderRadius:'10px', background:'#f5f5f5', color:'#aaa' }}>{tr('desconectado','disconnected')}</span>
                           )}
                         </button>
                       );
@@ -448,43 +450,43 @@ export default function IntegrationsTab(props) {
                             <div style={{ display:'flex', justifyContent:'space-between', gap:'12px', alignItems:'flex-start', flexWrap:'wrap', marginBottom:'13px' }}>
                               <div>
                                 <div style={{ fontWeight:'900', color:'#243b2d', fontSize:'14px' }}>
-                                  {differences === 0 ? '✅ Canais consistentes nesta verificação' : `⚠️ ${differences} diferença${differences===1?'':'s'} encontrada${differences===1?'':'s'}`}
+                                  {differences === 0 ? tr('✅ Canais consistentes nesta verificação','✅ Channels are consistent in this check') : `⚠️ ${differences} diferença${differences===1?'':'s'} encontrada${differences===1?'':'s'}`}
                                 </div>
                                 <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'4px', maxWidth:'760px', lineHeight:'1.5' }}>
                                   {result?.scopeNote}
                                 </div>
                               </div>
                               <span style={{ fontSize:'10px', fontWeight:'800', color:'#60746a', background:'#edf5ef', borderRadius:'20px', padding:'5px 9px' }}>
-                                {result?.mode === 'LIVE_API' ? 'API AO VIVO' : result?.mode === 'PUSH_API' ? 'PUSH REAL' : 'SUPPLIER / PULL'}
+                                {result?.mode === 'LIVE_API' ? tr('API AO VIVO','LIVE API') : result?.mode === 'PUSH_API' ? tr('PUSH REAL','LIVE PUSH') : tr('SUPPLIER / PULL','SUPPLIER / PULL')}
                               </span>
                             </div>
 
                             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'9px', marginBottom:'12px' }}>
                               <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
-                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>📦 PRODUTOS</div>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>{tr("📦 PRODUTOS", "📦 PRODUCTS")}</div>
                                 <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{products.remote ?? products.centralAfter ?? 0}</div>
-                                <div style={{ fontSize:'10px', color:'#777' }}>canal / cadastro verificado</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>{tr("canal / cadastro verificado", "channel / record checked")}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
-                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🎟️ RESERVAS</div>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>{tr("🎟️ RESERVAS", "🎟️ BOOKINGS")}</div>
                                 <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{reservations.remoteChecked ?? reservations.centralAfter ?? 0}</div>
-                                <div style={{ fontSize:'10px', color:'#777' }}>{reservations.remoteChecked != null ? 'pedidos consultados' : 'reservas recebidas na Central'}</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>{reservations.remoteChecked != null ? tr('pedidos consultados','orders checked') : tr('reservas recebidas na Central','bookings received by the Central')}</div>
                               </div>
                               <div style={{ background:'#fff', border:'1px solid #e8eee9', borderRadius:'9px', padding:'10px 12px' }}>
-                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🕒 DISPONIBILIDADE</div>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>{tr("🕒 DISPONIBILIDADE", "🕒 AVAILABILITY")}</div>
                                 <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px' }}>{availability.checked ?? 0}</div>
-                                <div style={{ fontSize:'10px', color:'#777' }}>tours verificados</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>{tr("tours verificados", "tours checked")}</div>
                               </div>
                               <div style={{ background:differences?'#fff7ed':'#ecfdf3', border:`1px solid ${differences?'#fed7aa':'#bbf7d0'}`, borderRadius:'9px', padding:'10px 12px' }}>
-                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>🔎 DIFERENÇAS</div>
+                                <div style={{ fontSize:'10px', color:'#888', fontWeight:'800' }}>{tr("🔎 DIFERENÇAS", "🔎 MISMATCHES")}</div>
                                 <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px', color:differences?'#c2410c':'#166534' }}>{differences}</div>
-                                <div style={{ fontSize:'10px', color:'#777' }}>itens que pedem atenção</div>
+                                <div style={{ fontSize:'10px', color:'#777' }}>{tr("itens que pedem atenção", "items needing attention")}</div>
                               </div>
                             </div>
 
                             {(products.created > 0 || products.updated > 0 || reservations.rowsTouched > 0 || availability.pushed > 0) && (
                               <div style={{ fontSize:'11px', color:'#365a43', marginBottom:'10px', lineHeight:'1.55' }}>
-                                <strong>Ações executadas:</strong>
+                                <strong>{tr("Ações executadas:", "Actions performed:")}</strong>
                                 {products.created > 0 ? ` ${products.created} produto(s) criado(s) na Central.` : ''}
                                 {products.updated > 0 ? ` ${products.updated} produto(s) atualizado(s).` : ''}
                                 {reservations.rowsTouched > 0 ? ` ${reservations.rowsTouched} reserva(s) reconciliada(s).` : ''}
@@ -499,7 +501,7 @@ export default function IntegrationsTab(props) {
                               ...(reservations.differences || []),
                             ].length > 0 && (
                               <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', marginBottom:'9px' }}>
-                                <div style={{ fontSize:'11px', fontWeight:'900', color:'#555', marginBottom:'6px' }}>Diferenças encontradas</div>
+                                <div style={{ fontSize:'11px', fontWeight:'900', color:'#555', marginBottom:'6px' }}>{tr("Diferenças encontradas", "Mismatches found")}</div>
                                 {[
                                   ...(products.missingInCentral || []),
                                   ...(products.missingInChannel || []),
@@ -529,8 +531,8 @@ export default function IntegrationsTab(props) {
                       <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'20px 24px', display:'flex', alignItems:'center', gap:'12px' }}>
                         <span style={{ fontSize:'24px' }}>⚠️</span>
                         <div>
-                          <strong style={{ fontSize:'14px', color:'#92400e', display:'block' }}>Plataforma não conectada</strong>
-                          <span style={{ fontSize:'13px', color:'#b45309' }}>Conecte esta plataforma na aba <strong>Conexões</strong> para gerenciar seus produtos aqui.</span>
+                          <strong style={{ fontSize:'14px', color:'#92400e', display:'block' }}>{tr("Plataforma não conectada", "Platform not connected")}</strong>
+                          <span style={{ fontSize:'13px', color:'#b45309' }}>Conecte esta plataforma na aba <strong>{tr("Conexões", "Connections")}</strong> para gerenciar seus produtos aqui.</span>
                         </div>
                       </div>
                     );
@@ -547,15 +549,15 @@ export default function IntegrationsTab(props) {
                         </div>
                         <div style={{ fontSize:'13px', color:'#888', lineHeight:'1.6', maxWidth:'380px', margin:'0 auto 20px' }}>
                           {platform?.key === 'shopify'
-                            ? 'Sua loja Shopify não tem produtos cadastrados ainda, ou nenhum foi retornado pela API. Cadastre produtos no painel Shopify e recarregue esta página.'
-                            : `A integração com ${platform?.name} está conectada, mas ainda não há produtos carregados nesta tela. Clique em Sincronizar Agora para consultar o canal e executar a comparação.`
+                            ? tr('Sua loja Shopify não tem produtos cadastrados ainda, ou nenhum foi retornado pela API. Cadastre produtos no painel Shopify e recarregue esta página.','Your Shopify store has no products yet, or none were returned by the API. Create products in Shopify Admin and reload this page.')
+                            : (lang === 'en' ? `The ${platform?.name} integration is connected, but no products are loaded on this screen yet. Click Sync Now to query the channel and run the comparison.` : `A integração com ${platform?.name} está conectada, mas ainda não há produtos carregados nesta tela. Clique em Sincronizar Agora para consultar o canal e executar a comparação.`)
                           }
                         </div>
                         {platform?.key !== 'shopify' && (
                           <button className="pmy-btn-submit" style={{ width:'auto', padding:'10px 24px', fontSize:'13px' }}
                             disabled={manualSyncPlatform===platform?.key}
                             onClick={() => handleSyncPlatformNow(platform?.key)}>
-                            {manualSyncPlatform===platform?.key ? '⏳ Consultando canal...' : '🔄 Sincronizar Agora'}
+                            {manualSyncPlatform===platform?.key ? tr('⏳ Consultando canal...','⏳ Checking channel...') : tr('🔄 Sincronizar Agora','🔄 Sync Now')}
                           </button>
                         )}
                         {platform?.key === 'shopify' && (
@@ -576,11 +578,11 @@ export default function IntegrationsTab(props) {
                             <div>
                               <div style={{ fontWeight:'800', fontSize:'16px', color:'var(--text-dark)' }}>{platform?.name}</div>
                               <div style={{ fontSize:'12px', color:'#888', marginTop:'2px' }}>
-                                <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>{activeCount} ativos</span>
+                                <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>{activeCount} {tr('ativos','active')}</span>
                                 <span style={{ margin:'0 8px', color:'#ddd' }}>•</span>
-                                <span style={{ color:'#aaa' }}>{inactiveCount} inativos</span>
+                                <span style={{ color:'#aaa' }}>{inactiveCount} {tr('inativos','inactive')}</span>
                                 <span style={{ margin:'0 8px', color:'#ddd' }}>•</span>
-                                {prods.length} produtos no total
+                                {prods.length} {tr('produtos no total','products total')}
                               </div>
                             </div>
                           </div>
@@ -589,10 +591,10 @@ export default function IntegrationsTab(props) {
                               onClick={() => handleSyncPlatformNow(platform?.key)}
                               disabled={manualSyncPlatform===platform?.key}
                               style={{ border:'1px solid #b9d2c0', background:'#f3faf5', color:'#245936', borderRadius:'8px', padding:'8px 13px', fontSize:'12px', fontWeight:'800', cursor:manualSyncPlatform===platform?.key?'wait':'pointer' }}>
-                              {manualSyncPlatform===platform?.key ? '⏳ Consultando...' : '🔄 Sincronizar agora'}
+                              {manualSyncPlatform===platform?.key ? tr('⏳ Consultando...','⏳ Checking...') : tr('🔄 Sincronizar agora','🔄 Sync now')}
                             </button>
                             <button className="pmy-btn-submit" style={{ width:'auto', padding:'8px 18px', fontSize:'13px' }}
-                              onClick={()=>alert('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.')}>
+                              onClick={()=>alert(tr('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.','To add a new product, create it in Shopify first and it will be synced automatically.'))}>
                               + Adicionar Produto
                             </button>
                           </div>
@@ -603,12 +605,12 @@ export default function IntegrationsTab(props) {
                           <table className="pmy-prod-table">
                             <thead>
                               <tr>
-                                <th>Produto / Tour</th>
-                                <th>SKU / ID Externo</th>
-                                <th>Preço</th>
-                                <th>Sincronizado</th>
-                                <th>Status</th>
-                                <th style={{ textAlign:'center' }}>Ativo</th>
+                                <th>{tr("Produto / Tour", "Product / Tour")}</th>
+                                <th>{tr("SKU / ID Externo", "SKU / External ID")}</th>
+                                <th>{tr("Preço", "Price")}</th>
+                                <th>{tr("Sincronizado", "Synced")}</th>
+                                <th>{tr("Status", "Status")}</th>
+                                <th style={{ textAlign:'center' }}>{tr("Ativo", "Active")}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -623,18 +625,18 @@ export default function IntegrationsTab(props) {
                                   <td style={{ fontWeight:'700', color:'var(--primary-green)' }}>{prod.price}</td>
                                   <td>
                                     {prod.synced
-                                      ? <span style={{ fontSize:'12px', color:'#22c55e', fontWeight:'700' }}>✓ Sincronizado</span>
-                                      : <span style={{ fontSize:'12px', color:'#aaa' }}>— Pendente</span>
+                                      ? <span style={{ fontSize:'12px', color:'#22c55e', fontWeight:'700' }}>{tr("✓ Sincronizado", "✓ Synced")}</span>
+                                      : <span style={{ fontSize:'12px', color:'#aaa' }}>{tr("— Pendente", "— Pending")}</span>
                                     }
                                   </td>
                                   <td>
                                     <span className={`pmy-prod-status ${prod.active?'on':'off'}`}>
                                       <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:'currentColor', display:'inline-block' }}></span>
-                                      {prod.active ? 'Ativo' : 'Inativo'}
+                                      {prod.active ? tr('Ativo','Active') : tr('Inativo','Inactive')}
                                     </span>
                                   </td>
                                   <td style={{ textAlign:'center' }}>
-                                    <label className="pmy-prod-toggle" title={prod.active ? 'Desativar produto' : 'Ativar produto'}>
+                                    <label className="pmy-prod-toggle" title={prod.active ? tr('Desativar produto','Deactivate product') : tr('Ativar produto','Activate product')}>
                                       <input type="checkbox" checked={prod.active} onChange={()=>handleToggleProduct(activeProdPlatform, prod.id)} />
                                       <span className="pmy-prod-toggle-slider"></span>
                                     </label>
