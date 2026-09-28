@@ -359,6 +359,7 @@ export default function CentralDeReservas() {
   });
   const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
   const settingsSaveTimerRef = useRef(null);
+  const settingsMessageTimerRef = useRef(null);
 
   // B. FILTROS DASHBOARD
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
@@ -1280,8 +1281,8 @@ export default function CentralDeReservas() {
     }
 
     setSettingsSaveMessage("Salvo no banco ✓");
-    window.clearTimeout(settingsSaveTimerRef.current);
-    settingsSaveTimerRef.current = window.setTimeout(
+    window.clearTimeout(settingsMessageTimerRef.current);
+    settingsMessageTimerRef.current = window.setTimeout(
       () => setSettingsSaveMessage(""),
       1800,
     );
