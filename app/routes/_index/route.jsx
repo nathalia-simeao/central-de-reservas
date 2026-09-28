@@ -3425,6 +3425,11 @@ export default function CentralDeReservas() {
     .pmy-booking-meta-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin-bottom:14px; }
     .pmy-media-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
     .pmy-media-upload-panel { position:sticky; top:92px; }
+    .pmy-settings-color-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-top:10px; }
+    .pmy-settings-color-grid > * { min-width:0; }
+    .pmy-media-filter-tabs,
+    .pmy-prod-platform-tabs,
+    .pmy-mapping-platform-tabs { scrollbar-width:thin; }
 
     .pmy-calendar-scroll { width:100%; overflow-x:auto; padding-bottom:6px; }
     .pmy-calendar-scroll .pmy-calendar-week-headers,
@@ -3504,6 +3509,7 @@ export default function CentralDeReservas() {
 
       .pmy-booking-meta-grid,
       .pmy-variants-form-grid { grid-template-columns:1fr; }
+      .pmy-settings-color-grid { grid-template-columns:1fr; gap:14px; }
       .pmy-calendar-month-selector-bar { flex-wrap:wrap; gap:8px; }
       .pmy-calendar-view-tabs { width:100%; overflow-x:auto; }
       .pmy-cal-tab { flex:0 0 auto; }
