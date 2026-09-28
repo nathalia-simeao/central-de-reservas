@@ -285,3 +285,17 @@ model SyncJob {
   @@index([tourId, startTime])
   @@index([bookingId])
 }
+
+
+model BusinessSetting {
+  id            String   @id @default(uuid())
+  shop          String   @unique
+  logoUrl       String?  @db.Text
+  theme         Json?
+  imageShape    String   @default("rounded")
+  fieldMappings Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([shop])
+}
