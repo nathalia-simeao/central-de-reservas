@@ -62,7 +62,7 @@ export default function SettingsTab(props) {
                   <div>
                     <h3 style={{ marginBottom:'6px' }}>{tr("🖼️ Identidade da Agência", "🖼️ Agency Identity")}</h3>
                     <p style={{ fontSize:'13px', color:'#666', margin:0, maxWidth:'720px', lineHeight:'1.55' }}>
-                      {tr("A logo agora fica salva no Shopify Files e no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.", "The logo is saved in Shopify Files and in the Central database. Configure one version for light backgrounds and another for dark backgrounds; the sidebar automatically chooses the correct one.")}
+                      {tr("A logo fica salva no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.", "The logo is saved in the Central database. Configure one version for light backgrounds and another for dark backgrounds; the sidebar automatically chooses the correct one.")}
                     </p>
                   </div>
                   <div style={{
