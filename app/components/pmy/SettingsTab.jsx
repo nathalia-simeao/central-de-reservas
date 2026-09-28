@@ -92,7 +92,7 @@ export default function SettingsTab(props) {
                   </div>
                 </div>
 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginTop:'10px' }}>
+                <div className="pmy-settings-color-grid">
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
                     <label>Cor de Fundo Principal:</label>
                     <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
