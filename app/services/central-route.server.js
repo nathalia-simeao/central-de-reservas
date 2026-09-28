@@ -22,6 +22,7 @@ import {
   SYNC_EVENT_TYPES,
 } from "../utils/sync-queue.server";
 
+// Server-only loader/actions for the PMY Central route.
 const prisma = db;
 const json = (body, init) => data(body, init);
 
