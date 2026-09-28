@@ -9,6 +9,7 @@ export default function MediaTab(props) {
     mediaLabelInput,
     mediaList,
     mediaPreview,
+    mediaUploadError,
     mediaUploadProgress,
     mediaUploadRef,
     mediaUploading,
@@ -19,9 +20,15 @@ export default function MediaTab(props) {
     setMediaList,
     setMediaPreview,
     setShowShopifySource,
-    shopifyImages,
     showShopifySource
   } = props;
+
+  const shopifyMediaCount = mediaList.filter((item) =>
+    String(item.source || "").startsWith("shopify_"),
+  ).length;
+  const pmyUploadCount = mediaList.filter(
+    (item) => !String(item.source || "").startsWith("shopify_"),
+  ).length;
 
   return (
     <>
@@ -56,7 +63,7 @@ export default function MediaTab(props) {
 
                     {/* Toggle fonte Shopify */}
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#f5f5f5', padding:'6px 14px', borderRadius:'20px', flexShrink:0 }}>
-                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#555' }}>🛍️ Imagens do Shopify</span>
+                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#555' }}>🛍️ Fontes Shopify</span>
                       <label style={{ position:'relative', width:'36px', height:'20px', cursor:'pointer', flexShrink:0 }}>
                         <input type="checkbox" checked={showShopifySource} onChange={e=>setShowShopifySource(e.target.checked)}
                           style={{ opacity:0, width:0, height:0 }} />
@@ -73,7 +80,7 @@ export default function MediaTab(props) {
                         </span>
                       </label>
                       <span style={{ fontSize:'11px', color:'#aaa' }}>
-                        {shopifyImages.length} imagens
+                        {shopifyMediaCount} itens
                       </span>
                     </div>
                   </div>
@@ -96,16 +103,18 @@ export default function MediaTab(props) {
                         .map(media => (
                           <div key={media.id} className="pmy-media-card" onClick={() => setMediaPreview(media.url)}>
                             {/* Badge de fonte */}
-                            {media.source?.startsWith('shopify') && (
-                              <div style={{
-                                position:'absolute', top:'8px', left:'8px', zIndex:2,
-                                background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)',
-                                color:'#fff', fontSize:'9px', fontWeight:'800', padding:'2px 7px',
-                                borderRadius:'10px', textTransform:'uppercase', letterSpacing:'0.3px'
-                              }}>
-                                🛍️ {media.source === 'shopify_product' ? 'Produto' : 'Files'}
-                              </div>
-                            )}
+                            <div style={{
+                              position:'absolute', top:'8px', left:'8px', zIndex:2,
+                              background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)',
+                              color:'#fff', fontSize:'9px', fontWeight:'800', padding:'2px 7px',
+                              borderRadius:'10px', textTransform:'uppercase', letterSpacing:'0.3px'
+                            }}>
+                              {media.source === 'shopify_product'
+                                ? '🛍️ Produto'
+                                : media.source === 'shopify_files'
+                                  ? '🛍️ Shopify Files'
+                                  : '🗂️ PMY'}
+                            </div>
 
                             {/* Ações hover */}
                             <div className="pmy-media-actions" onClick={e=>e.stopPropagation()}>
@@ -136,7 +145,7 @@ export default function MediaTab(props) {
                               <div className="pmy-media-meta">
                                 {media.source === 'shopify_product' && <span style={{ color:'#cc9900' }}>{media.productTitle} · </span>}
                                 {media.filename?.length > 25 ? media.filename.slice(0,22)+'...' : media.filename}
-                                {media.isLocal && <span style={{ color:'#e08000', marginLeft:'5px' }}>• local</span>}
+                                {media.width && media.height ? <span> · {media.width}×{media.height}</span> : null}
                               </div>
                             </div>
                           </div>
@@ -171,29 +180,22 @@ export default function MediaTab(props) {
                       style={{ display:'none' }} onChange={handleMediaUpload} />
 
                     <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'8px' }}>
-                      <button type="button" className="pmy-btn-submit"
-                        onClick={() => {
-                          window.__pmyPickerCallback = (url) => {
-                            const newItem = {
-                              id: `shopify_picked_${Date.now()}`,
-                              url,
-                              filename: url.split('/').pop().split('?')[0],
-                              mimetype: 'image/jpeg',
-                              category: mediaCategoryInput,
-                              label: mediaLabelInput || url.split('/').pop().split('?')[0],
-                              source: 'shopify_files',
-                              createdAt: new Date().toISOString(),
-                            };
-                            setMediaList(prev => prev.some(m => m.url === url) ? prev : [newItem, ...prev]);
-                            setMediaLabelInput('');
-                            window.__pmyPickerCallback = null;
-                          };
-                          setActiveModal('pickPhotoForGuide');
-                        }}>
-                        🖼️ Selecionar do Banco de Imagens
+                      <button
+                        type="button"
+                        className="pmy-format-btn"
+                        onClick={() => window.location.reload()}
+                      >
+                        🔄 Atualizar fontes Shopify
                       </button>
-                      <div style={{ textAlign:'center', fontSize:'11px', color:'#aaa' }}>ou</div>
+                      <div style={{ textAlign:'center', fontSize:'11px', color:'#aaa', lineHeight:'1.4' }}>
+                        Shopify Files e imagens de produtos são reconciliados automaticamente com a biblioteca PMY.
+                      </div>
                     </div>
+                    {mediaUploadError && (
+                      <div style={{ marginBottom:'10px', padding:'9px 10px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', color:'#b91c1c', fontSize:'12px', lineHeight:'1.4' }}>
+                        ❌ {mediaUploadError}
+                      </div>
+                    )}
                     <div className="pmy-upload-zone" onClick={() => !mediaUploading && mediaUploadRef.current?.click()}>
                       {mediaUploading ? (
                         <div>
@@ -217,7 +219,8 @@ export default function MediaTab(props) {
                     </div>
 
                     <div style={{ marginTop:'20px', padding:'12px', background:'#f5f5f5', borderRadius:'8px', fontSize:'12px', color:'#888', lineHeight:'1.6' }}>
-                      <strong style={{ display:'block', color:'#555', marginBottom:'4px' }}>💡 Como usar:</strong>
+                      <strong style={{ display:'block', color:'#555', marginBottom:'4px' }}>💡 Biblioteca única PMY:</strong>
+                      <div>• Uploads feitos aqui são gravados no <strong>Shopify Files + PostgreSQL</strong></div>
                       <div>• <strong>Logo</strong> → aparece na sidebar do app</div>
                       <div>• <strong>Guia</strong> → foto de perfil dos guias</div>
                       <div>• <strong>Tour</strong> → imagem dos passeios</div>
@@ -229,8 +232,8 @@ export default function MediaTab(props) {
                     <div style={{ marginTop:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
                       {[
                         { label:'Total', count: mediaList.length, color:'#555' },
-                        { label:'Uploads', count: mediaList.filter(m=>!m.source?.startsWith('shopify')).length, color:'var(--primary-green)' },
-                        { label:'Shopify', count: shopifyImages.length, color:'#e08000' },
+                        { label:'PMY', count: pmyUploadCount, color:'var(--primary-green)' },
+                        { label:'Shopify', count: shopifyMediaCount, color:'#e08000' },
                         { label:'Tours', count: mediaList.filter(m=>m.category==='tour').length, color:'#cc9900' },
                       ].map((stat,i) => (
                         <div key={i} style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', textAlign:'center' }}>
@@ -244,11 +247,11 @@ export default function MediaTab(props) {
                     <div style={{ marginTop:'12px', padding:'10px 12px', background:'#fafafa', borderRadius:'8px', fontSize:'11px', color:'#888', lineHeight:'1.8' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'3px' }}>
                         <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--primary-green)', display:'inline-block' }}></span>
-                        <strong>Uploads</strong> — enviados diretamente aqui
+                        <strong>PMY</strong> — uploads gerenciados pela Central e armazenados no Shopify Files
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                         <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#e08000', display:'inline-block' }}></span>
-                        <strong>🛍️ Shopify</strong> — imagens dos seus produtos e Files
+                        <strong>🛍️ Shopify</strong> — referências sincronizadas de Files e imagens dos produtos
                       </div>
                     </div>
                   </div>
