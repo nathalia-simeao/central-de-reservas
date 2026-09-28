@@ -1915,14 +1915,7 @@ function CentralDeReservasContent() {
       fd.append("platforms", JSON.stringify(blockPlatforms));
       fd.append("reason", "Bloqueio manual na Agenda Central");
 
-      const res = await requestResourceJson("/api/central-action", fd);
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        setBlockMessage(result.error || "Não foi possível salvar o bloqueio.");
-        return;
-      }
-
+      const result = await requestResourceJson("/api/central-action", fd);
       setBlockMessage(result.message || "Bloqueio salvo na Agenda Central.");
       window.location.reload();
     } catch (err) {
@@ -1939,12 +1932,7 @@ function CentralDeReservasContent() {
       const fd = new FormData();
       fd.append("_action", "removeBlock");
       fd.append("id", id);
-      const res = await requestResourceJson("/api/central-action", fd);
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        alert(result.error || "Não foi possível remover o bloqueio.");
-        return;
-      }
+      await requestResourceJson("/api/central-action", fd);
       window.location.reload();
     } catch (err) {
       alert(err?.message || "Erro ao remover bloqueio.");
@@ -2113,12 +2101,7 @@ function CentralDeReservasContent() {
       fd.append("tourId", id);
       fd.append("maxCapacity", String(next));
 
-      const res = await requestResourceJson("/api/central-action", fd);
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        setTourCapacities(prev => ({ ...prev, [id]: cur }));
-        alert(result.error || "Não foi possível salvar a capacidade.");
-      }
+      await requestResourceJson("/api/central-action", fd);
     } catch (err) {
       setTourCapacities(prev => ({ ...prev, [id]: cur }));
       alert(err?.message || "Erro ao salvar a capacidade.");
@@ -2178,14 +2161,7 @@ function CentralDeReservasContent() {
       fd.append("bookingCutoffSeconds", gygConfigCutoff);
       fd.append("gygPriceOverApi", gygConfigPriceOverApi ? "true" : "false");
 
-      const res = await requestResourceJson("/api/central-action", fd);
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        setGygConfigMessage(result.error || "Não foi possível salvar a configuração.");
-        return;
-      }
-
+      await requestResourceJson("/api/central-action", fd);
       setGygConfigMessage("Configuração do tour salva.");
       window.location.reload();
     } catch (error) {
