@@ -17,6 +17,7 @@ export default function SettingsTab(props) {
     imageShape,
     internalFields,
     logoUrl,
+    mappingSaveState,
     platformConnections,
     reservationPlatforms,
     setActiveMappingPlatform,
@@ -254,10 +255,25 @@ export default function SettingsTab(props) {
               {/* MAPEAMENTO DE CAMPOS */}
               <div className="pmy-form-box">
                 <h3>🗺️ Mapeamento de Campos entre Plataformas</h3>
-                <p style={{ fontSize:'13px', color:'#666', marginBottom:'25px', lineHeight:'1.6' }}>
+                <p style={{ fontSize:'13px', color:'#666', marginBottom:'10px', lineHeight:'1.6' }}>
                   Defina como os campos de cada plataforma externa correspondem aos campos internos do sistema PMY.
-                  Isso garante que reservas sejam importadas corretamente, independentemente do formato de cada API.
+                  Cada plataforma possui agora seu próprio mapeamento persistido no banco.
                 </p>
+                {mappingSaveState?.platform === activeMappingPlatform && mappingSaveState?.message && (
+                  <div style={{
+                    fontSize:'11px',
+                    fontWeight:'800',
+                    marginBottom:'16px',
+                    color:
+                      mappingSaveState.status === 'error' ? '#b91c1c'
+                      : mappingSaveState.status === 'dirty' ? '#b45309'
+                      : mappingSaveState.status === 'saving' ? '#6b7280'
+                      : 'var(--primary-green)'
+                  }}>
+                    {mappingSaveState.status === 'dirty' ? '● ' : mappingSaveState.status === 'saving' ? '⏳ ' : mappingSaveState.status === 'error' ? '❌ ' : '✓ '}
+                    {mappingSaveState.message}
+                  </div>
+                )}
 
                 <div className="pmy-mapping-platform-tabs">
                   {reservationPlatforms.map(p => (
@@ -349,12 +365,28 @@ export default function SettingsTab(props) {
                 </div>
 
                 <div style={{ marginTop:'20px', display:'flex', gap:'12px' }}>
-                  <button type="button" className="pmy-btn-submit" onClick={handleSaveFieldMappings} style={{ width:'auto', padding:'11px 25px' }}>
-                    💾 Salvar — {allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}
+                  <button
+                    type="button"
+                    className="pmy-btn-submit"
+                    onClick={handleSaveFieldMappings}
+                    disabled={mappingSaveState?.status === 'saving'}
+                    style={{
+                      width:'auto',
+                      padding:'11px 25px',
+                      opacity: mappingSaveState?.status === 'saving' ? 0.6 : 1
+                    }}
+                  >
+                    {mappingSaveState?.status === 'saving' && mappingSaveState?.platform === activeMappingPlatform
+                      ? '⏳ Salvando...'
+                      : `💾 Salvar — ${allPlatforms.find(p=>p.key===activeMappingPlatform)?.name}`}
                   </button>
-                  <button type="button" onClick={handleResetFieldMappings}
-                    style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'11px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
-                    🔄 Restaurar Padrões
+                  <button
+                    type="button"
+                    onClick={handleResetFieldMappings}
+                    disabled={mappingSaveState?.status === 'saving'}
+                    style={{ background:'#f0f0f0', border:'none', borderRadius:'8px', padding:'11px 20px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555', opacity:mappingSaveState?.status === 'saving'?0.6:1 }}
+                  >
+                    🔄 Restaurar e salvar padrões
                   </button>
                 </div>
               </div>
