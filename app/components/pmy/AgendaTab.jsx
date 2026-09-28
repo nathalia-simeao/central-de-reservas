@@ -61,8 +61,11 @@ export default function AgendaTab(props) {
     tourOptions,
     tourVariants,
     tours,
-    variantMatchesBookingTime
+    variantMatchesBookingTime,
+    lang
   } = props;
+
+  const tr = (pt, en) => lang === "en" ? en : pt;
 
   return (
     <>
@@ -106,11 +109,11 @@ export default function AgendaTab(props) {
                         <div className="pmy-form-group" style={{ background:'#fefefe', padding:'15px', borderRadius:'8px', border:'1px solid #eee' }}>
                           <div className="pmy-booking-meta-grid">
                             <div>
-                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>📅 Data do Tour:</label>
+                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>{tr('📅 Data do Tour:','📅 Tour Date:')}</label>
                               <input type="date" className="pmy-form-input" min={todayKey} value={bookingDate} onChange={e=>setBookingDate(e.target.value)} required />
                             </div>
                             <div>
-                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>⏰ Horário do Tour:</label>
+                              <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>{tr('⏰ Horário do Tour:','⏰ Tour Time:')}</label>
                               {timeOptions.length > 0 ? (
                                 <select className="pmy-form-input" value={bookingTime}
                                   onChange={e => {
@@ -119,7 +122,7 @@ export default function AgendaTab(props) {
                                     setGeneratedLink("");
                                     setDraftOrderInfo(null);
                                   }} required>
-                                  <option value="">-- Horário --</option>
+                                  <option value="">-- {tr('Horário','Time')} --</option>
                                   {timeOptions.map(slot => <option key={slot} value={slot}>{slot}</option>)}
                                 </select>
                               ) : (
@@ -128,13 +131,13 @@ export default function AgendaTab(props) {
                             </div>
                           </div>
 
-                          <label style={{ color:'var(--primary-green)', marginBottom:'10px', display:'block' }}>🛒 Ingressos por Variante Shopify:</label>
+                          <label style={{ color:'var(--primary-green)', marginBottom:'10px', display:'block' }}>{tr('🛒 Ingressos por Variante Shopify:','🛒 Tickets by Shopify Variant:')}</label>
                           {visibleVariants.length > 0 ? (
                             <div className="pmy-variants-form-grid">
                               {visibleVariants.map(v => (
                                 <div key={v.id}>
                                   <label style={{ fontSize:'11px', fontWeight:'700' }}>
-                                    {v.title === 'Default Title' ? 'Quantidade' : v.title}
+                                    {v.title === 'Default Title' ? tr('Quantidade','Quantity') : v.title}
                                     <span style={{ color:'var(--primary-green)', marginLeft:'4px' }}>{v.price}</span>
                                   </label>
                                   <input type="number" className="pmy-form-input" min="0"
@@ -145,7 +148,7 @@ export default function AgendaTab(props) {
                             </div>
                           ) : (
                             <div style={{ fontSize:'12px', color:'#b45309', background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'7px', padding:'9px 10px' }}>
-                              ⚠️ Nenhuma variante Shopify real foi carregada para este horário. O checkout não será criado com item genérico.
+                              {tr('⚠️ Nenhuma variante Shopify real foi carregada para este horário. O checkout não será criado com item genérico.','⚠️ No real Shopify variant was loaded for this time. The checkout will not be created with a generic item.')}
                             </div>
                           )}
                           {selTour?.image && (
@@ -161,8 +164,8 @@ export default function AgendaTab(props) {
                     {/* PLATAFORMAS DA RESERVA */}
                     <div className="pmy-form-group" style={{ marginBottom:'18px' }}>
                       <label style={{ marginBottom:'4px', display:'block' }}>
-                        Registrar entrada em qual plataforma?
-                        <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>Selecione uma ou mais</span>
+                        {tr('Registrar entrada em qual plataforma?','Which platform should record this booking?')}
+                        <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>{tr('Selecione uma ou mais','Select one or more')}</span>
                       </label>
                       <div className="pmy-platform-pills">
                         {reservationPlatforms.map(p => {
@@ -174,7 +177,7 @@ export default function AgendaTab(props) {
                               type="button"
                               className={`pmy-platform-pill${sel ? ' selected' : ''}${!conn.connected ? ' disconnected' : ''}`}
                               onClick={() => conn.connected && handleTogglePlatformSelection(p.key, bookingPlatforms, setBookingPlatforms)}
-                              title={!conn.connected ? `${p.name} não conectado` : ''}
+                              title={!conn.connected ? `${p.name} ${tr('não conectado','not connected')}` : ''}
                             >
                               <span className="pmy-platform-pill-logo">{p.logo}</span>
                               {p.name}
@@ -185,7 +188,7 @@ export default function AgendaTab(props) {
                       </div>
                       {bookingPlatforms.length === 0 && (
                         <div style={{ fontSize:'12px', color:'#e08000', marginTop:'6px', background:'#fffbeb', padding:'6px 10px', borderRadius:'6px', border:'1px solid #fcd34d' }}>
-                          ⚠️ Selecione pelo menos uma plataforma para registrar a reserva.
+                          {tr('⚠️ Selecione pelo menos uma plataforma para registrar a reserva.','⚠️ Select at least one platform to record the booking.')}
                         </div>
                       )}
                     </div>
@@ -198,21 +201,21 @@ export default function AgendaTab(props) {
                     <button type="submit" className="pmy-btn-submit"
                       disabled={bookingPlatforms.length===0 || draftOrderLoading}
                       style={{ opacity:(bookingPlatforms.length===0 || draftOrderLoading) ? 0.5 : 1 }}>
-                      {draftOrderLoading ? "Criando Draft Order no Shopify..." : "Criar checkout Shopify"}
-                      {!draftOrderLoading && bookingPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.8 }}>→ Draft Order real</span>}
+                      {draftOrderLoading ? tr('Criando Draft Order no Shopify...','Creating Shopify Draft Order...') : tr('Criar checkout Shopify','Create Shopify checkout')}
+                      {!draftOrderLoading && bookingPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.8 }}>{tr('→ Draft Order real','→ Real Draft Order')}</span>}
                     </button>
                   </form>
                   {generatedLink && (
                     <div style={{ marginTop:'15px', padding:'14px', background:'#e6f2e6', border:'1px solid var(--primary-green)', borderRadius:'8px', wordBreak:'break-all' }}>
-                      <strong style={{ fontSize:'13px', color:'var(--primary-green)', display:'block', marginBottom:'5px' }}>✅ Draft Order criado no Shopify{draftOrderInfo?.name ? ` · ${draftOrderInfo.name}` : ''}</strong>
+                      <strong style={{ fontSize:'13px', color:'var(--primary-green)', display:'block', marginBottom:'5px' }}>{tr('✅ Draft Order criado no Shopify','✅ Draft Order created in Shopify')}{draftOrderInfo?.name ? ` · ${draftOrderInfo.name}` : ''}</strong>
                       {draftOrderInfo?.total && (
                         <div style={{ fontSize:'12px', color:'#47634e', marginBottom:'7px' }}>
                           Total: <strong>{draftOrderInfo.total} {draftOrderInfo.currency || ''}</strong> · {draftOrderInfo.date} · {draftOrderInfo.time} · {draftOrderInfo.language}
                         </div>
                       )}
-                      <a href={generatedLink} target="_blank" rel="noreferrer" style={{ fontSize:'13px', color:'#0055cc', fontWeight:'700' }}>Abrir checkout seguro do Shopify ↗</a>
+                      <a href={generatedLink} target="_blank" rel="noreferrer" style={{ fontSize:'13px', color:'#0055cc', fontWeight:'700' }}>{tr('Abrir checkout seguro do Shopify ↗','Open secure Shopify checkout ↗')}</a>
                       <div style={{ fontSize:'10px', color:'#6b7b70', marginTop:'6px' }}>
-                        O link acima é o invoiceUrl real devolvido pela API de Draft Orders do Shopify.
+                        {tr('O link acima é o invoiceUrl real devolvido pela API de Draft Orders do Shopify.','The link above is the real invoiceUrl returned by the Shopify Draft Orders API.')}
                       </div>
                     </div>
                   )}
@@ -229,7 +232,7 @@ export default function AgendaTab(props) {
                         {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}{t.price ? ` — ${t.price}` : ""}</option>)}
                       </select>
                     </div>
-                    <div className="pmy-form-group"><label>{t.block_days_week}</label><input type="text" className="pmy-form-input" placeholder="Ex: 0, 1 (Domingo e Segunda)" value={blockRecurringDays} onChange={e=>setBlockRecurringDays(e.target.value)} /></div>
+                    <div className="pmy-form-group"><label>{t.block_days_week}</label><input type="text" className="pmy-form-input" placeholder={tr('Ex: 0, 1 (Domingo e Segunda)','E.g. 0, 1 (Sunday and Monday)')} value={blockRecurringDays} onChange={e=>setBlockRecurringDays(e.target.value)} /></div>
                     <div className="pmy-form-group"><label>{t.form_date_time}</label><input type="date" className="pmy-form-input" value={blockDateTime} onChange={e=>setBlockDateTime(e.target.value)} /></div>
                     {blockTourId && (() => {
                       const selTour = tourOptions.find(t => t.id === blockTourId);
@@ -249,7 +252,7 @@ export default function AgendaTab(props) {
                                 <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'5px' }}>
                                   {selTour.variants.map((v,i) => (
                                     <span key={i} style={{ fontSize:'10px', background:'#fff', border:'1px solid #ddd', padding:'2px 6px', borderRadius:'4px', color:'#555' }}>
-                                      {v.title === 'Default Title' ? 'Ingresso' : v.title}: {v.price}
+                                      {v.title === 'Default Title' ? tr('Ingresso','Ticket') : v.title}: {v.price}
                                     </span>
                                   ))}
                                 </div>
@@ -261,7 +264,7 @@ export default function AgendaTab(props) {
                           <div className="pmy-form-group">
                             <label>{t.block_select_hour}</label>
                             <select className="pmy-form-input" value={blockSelectedHour} onChange={e=>setBlockSelectedHour(e.target.value)}>
-                              <option value="ALL">🔒 Bloquear Todos os Horários</option>
+                              <option value="ALL">{tr('🔒 Bloquear Todos os Horários','🔒 Block All Times')}</option>
                               {tourAvailableHours.length > 0
                                 ? tourAvailableHours.map(h => {
                                     // Mostra quais variantes existem nesse horário
@@ -278,7 +281,7 @@ export default function AgendaTab(props) {
                             </select>
                             {tourAvailableHours.length === 0 && (
                               <div style={{ fontSize:'11px', color:'#e08000', marginTop:'5px', background:'#fffbeb', padding:'5px 8px', borderRadius:'5px', border:'1px solid #fcd34d' }}>
-                                ⚠️ Nenhum horário encontrado. Os horários são extraídos automaticamente das variantes do produto (ex: "Adult / 09:30 - Tour") ou do metafield <code>schedule</code>.
+                                {tr('⚠️ Nenhum horário encontrado. Os horários são extraídos automaticamente das variantes do produto (ex: "Adult / 09:30 - Tour") ou do metafield','⚠️ No time found. Times are automatically extracted from product variants (e.g. "Adult / 09:30 - Tour") or from the metafield')} <code>schedule</code>.
                               </div>
                             )}
                           </div>
@@ -286,7 +289,7 @@ export default function AgendaTab(props) {
                           {/* Metafields do produto */}
                           {selTour?.metafields && Object.keys(selTour.metafields).length > 0 && (
                             <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', marginBottom:'12px' }}>
-                              <div style={{ fontSize:'11px', fontWeight:'800', color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'8px' }}>Metafields do Produto</div>
+                              <div style={{ fontSize:'11px', fontWeight:'800', color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'8px' }}>{tr('Metafields do Produto','Product Metafields')}</div>
                               <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
                                 {Object.entries(selTour.metafields).map(([key, val]) => (
                                   <div key={key} style={{ display:'flex', justifyContent:'space-between', fontSize:'12px' }}>
@@ -304,8 +307,8 @@ export default function AgendaTab(props) {
                     {/* PLATAFORMAS DO BLOQUEIO */}
                     <div className="pmy-form-group" style={{ marginBottom:'18px' }}>
                       <label style={{ marginBottom:'4px', display:'block' }}>
-                        Bloquear em quais plataformas?
-                        <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>Selecione uma ou mais</span>
+                        {tr('Bloquear em quais plataformas?','Which platforms should be blocked?')}
+                        <span style={{ fontWeight:'400', color:'#aaa', fontSize:'11px', marginLeft:'6px' }}>{tr('Selecione uma ou mais','Select one or more')}</span>
                       </label>
                       <div className="pmy-platform-pills">
                         {reservationPlatforms.map(p => {
@@ -317,7 +320,7 @@ export default function AgendaTab(props) {
                               type="button"
                               className={`pmy-platform-pill${sel ? ' selected-block' : ''}${!conn.connected ? ' disconnected' : ''}`}
                               onClick={() => handleTogglePlatformSelection(p.key, blockPlatforms, setBlockPlatforms)}
-                              title={!conn.connected ? `${p.name} não conectado` : ''}
+                              title={!conn.connected ? `${p.name} ${tr('não conectado','not connected')}` : ''}
                             >
                               <span className="pmy-platform-pill-logo">{p.logo}</span>
                               {p.name}
@@ -339,7 +342,7 @@ export default function AgendaTab(props) {
                       )}
                       {blockPlatforms.length === 0 && (
                         <div style={{ fontSize:'12px', color:'#e08000', marginTop:'6px', background:'#fffbeb', padding:'6px 10px', borderRadius:'6px', border:'1px solid #fcd34d' }}>
-                          ⚠️ Nenhuma plataforma selecionada — bloqueio não terá efeito.
+                          {tr('⚠️ Nenhuma plataforma selecionada — bloqueio não terá efeito.','⚠️ No platform selected — this block will have no effect.')}
                         </div>
                       )}
                     </div>
@@ -359,30 +362,30 @@ export default function AgendaTab(props) {
                     <button type="submit" className="pmy-btn-submit"
                       style={{ background:'#2b2b2b', opacity: (blockPlatforms.length===0 || blockSaving) ? 0.5 : 1 }}
                       disabled={blockPlatforms.length===0 || blockSaving}>
-                      {blockSaving ? "Salvando bloqueio..." : t.form_btn_block}
+                      {blockSaving ? tr('Salvando bloqueio...','Saving block...') : t.form_btn_block}
                       {!blockSaving && blockPlatforms.length > 0 && <span style={{ marginLeft:'8px', fontSize:'11px', opacity:0.7 }}>em {blockPlatforms.length} plataforma{blockPlatforms.length>1?'s':''}</span>}
                     </button>
                   </form>
 
                   <div style={{ marginTop:'18px', borderTop:'1px solid #eee', paddingTop:'15px' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-                      <strong style={{ fontSize:'13px', color:'#444' }}>🔒 Bloqueios ativos no banco</strong>
+                      <strong style={{ fontSize:'13px', color:'#444' }}>{tr('🔒 Bloqueios ativos no banco','🔒 Active blocks in the database')}</strong>
                       <span style={{ fontSize:'11px', color:'#888' }}>{blockedDates.length} regra{blockedDates.length===1?'':'s'}</span>
                     </div>
                     {blockedDates.length === 0 ? (
-                      <div style={{ fontSize:'12px', color:'#999', padding:'10px 0' }}>Nenhum bloqueio ativo.</div>
+                      <div style={{ fontSize:'12px', color:'#999', padding:'10px 0' }}>{tr('Nenhum bloqueio ativo.','No active blocks.')}</div>
                     ) : (
                       <div style={{ display:'flex', flexDirection:'column', gap:'7px', maxHeight:'260px', overflowY:'auto' }}>
                         {blockedDates.slice(0, 30).map(block => (
                           <div key={block.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'10px', alignItems:'center', background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'9px 10px' }}>
                             <div>
-                              <div style={{ fontSize:'12px', fontWeight:'800', color:'#333' }}>{block.tour?.title || 'Todos os tours'}</div>
+                              <div style={{ fontSize:'12px', fontWeight:'800', color:'#333' }}>{block.tour?.title || tr('Todos os tours','All tours')}</div>
                               <div style={{ fontSize:'11px', color:'#777', marginTop:'3px' }}>
                                 {block.date ? `📅 ${String(block.date).slice(0,10)}` : `🔁 dia da semana ${block.dayOfWeek}`}
                                 {' · '}
-                                {block.timeSlot === 'ALL' || !block.timeSlot ? 'todos os horários' : block.timeSlot}
+                                {block.timeSlot === 'ALL' || !block.timeSlot ? tr('todos os horários','all times') : block.timeSlot}
                                 {' · '}
-                                {(block.platforms || []).length ? block.platforms.join(', ') : 'todas as plataformas'}
+                                {(block.platforms || []).length ? block.platforms.join(', ') : tr('todas as plataformas','all platforms')}
                               </div>
                             </div>
                             <button type="button" onClick={() => handleRemoveBlock(block.id)}
@@ -413,15 +416,15 @@ export default function AgendaTab(props) {
                 <div className="pmy-calendar-scroll">
                   {calendarView==="month" && (
                     <div className="pmy-calendar-week-headers">
-                      <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
+                      <div>{tr('Seg','Mon')}</div><div>{tr('Ter','Tue')}</div><div>{tr('Qua','Wed')}</div><div>{tr('Qui','Thu')}</div><div>{tr('Sex','Fri')}</div><div>{tr('Sáb','Sat')}</div><div>{tr('Dom','Sun')}</div>
                     </div>
                   )}
                   <div className={`pmy-calendar-grid ${calendarView==='month'?'month-view':''}`}>{renderCalendarDays()}</div>
                 </div>
 
                 <div style={{ borderTop:'1px solid #eee', paddingTop:'20px' }}>
-                  <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'6px' }}>📊 Capacidade Máxima por Tour e Horário</h4>
-                  <div style={{ fontSize:'12px', color:'#888', marginBottom:'15px' }}>A Central desconta automaticamente desta capacidade todas as reservas confirmadas e pré-reservas ativas, independentemente do canal de venda.</div>
+                  <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'6px' }}>{tr('📊 Capacidade Máxima por Tour e Horário','📊 Maximum Capacity by Tour and Time')}</h4>
+                  <div style={{ fontSize:'12px', color:'#888', marginBottom:'15px' }}>{tr('A Central desconta automaticamente desta capacidade todas as reservas confirmadas e pré-reservas ativas, independentemente do canal de venda.','The Central automatically deducts all confirmed bookings and active pre-bookings from this capacity, regardless of sales channel.')}</div>
                   {tourOptions.map(tour => {
                     const cap = tourCapacities[tour.id] !== undefined ? tourCapacities[tour.id] : 20;
                     return (
@@ -432,8 +435,8 @@ export default function AgendaTab(props) {
                             <strong style={{ fontSize:'15px' }}>{tour.title}</strong>
                             <div style={{ fontSize:'12px', color:'#888', marginTop:'4px' }}>
                               {tour.price && <span style={{ color:'var(--primary-green)', fontWeight:'700', marginRight:'8px' }}>{tour.price}</span>}
-                              Capacidade: {cap} pessoa{cap===1?'':'s'} por horário
-                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>🔒 VENDAS SUSPENSAS</span>}
+                              {tr('Capacidade:','Capacity:')} {cap} {lang === 'en' ? `person${cap===1?'':'s'} per time` : `pessoa${cap===1?'':'s'} por horário`}
+                              {cap===0 && <span style={{ color:'#cc0000', fontWeight:'bold', marginLeft:'10px' }}>{tr('🔒 VENDAS SUSPENSAS','🔒 SALES SUSPENDED')}</span>}
                             </div>
                           </div>
                         </div>
