@@ -819,6 +819,17 @@ export const action = async ({ request }) => {
         1,
         Number.parseInt(formData.get("totalParticipants") || formData.get("quantity") || "1", 10) || 1,
       );
+      const rawTotalPrice = String(formData.get("totalPrice") || "").trim();
+      const parsedTotalPrice = rawTotalPrice === "" ? null : Number(rawTotalPrice);
+      const totalPrice =
+        parsedTotalPrice !== null &&
+        Number.isFinite(parsedTotalPrice) &&
+        parsedTotalPrice >= 0
+          ? parsedTotalPrice.toFixed(2)
+          : null;
+      const currency = totalPrice
+        ? String(formData.get("currency") || "EUR").trim().toUpperCase().slice(0, 3)
+        : null;
 
       if (!tourId || Number.isNaN(startTime.getTime())) {
         return json({ success: false, error: "Tour ou horário inválido." }, { status: 400 });
@@ -832,6 +843,8 @@ export const action = async ({ request }) => {
         bookingData: {
           customerName: customerName || "Reserva manual",
           status: "CONFIRMED",
+          totalPrice,
+          currency,
           syncStatus: "CENTRAL",
         },
       });
