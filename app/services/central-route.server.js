@@ -1192,14 +1192,26 @@ export const action = async ({ request }) => {
   // Upload de mídia via Shopify Files API (staged upload)
   if (_action === "uploadMedia") {
     try {
-      const filename = formData.get("filename");
-      const mimetype = formData.get("mimetype");
-      const size     = parseInt(formData.get("size") || "0");
-      const category = formData.get("category") || "general"; // logo | guide | tour | general
+      const filename = String(formData.get("filename") || "").trim();
+      const mimetype = String(formData.get("mimetype") || "").trim();
+      const size = Number.parseInt(formData.get("size") || "0", 10);
+      const category = String(formData.get("category") || "general").trim();
 
-      // 1. Solicitar URL de upload staged ao Shopify
+      const allowedCategories = new Set(["logo", "guide", "tour", "general"]);
+      const allowedType = mimetype.startsWith("image/") || mimetype === "application/pdf";
+
+      if (!filename || !allowedType) {
+        return json({ success: false, error: "Tipo de arquivo não permitido." }, { status: 400 });
+      }
+      if (!Number.isInteger(size) || size <= 0 || size > 10 * 1024 * 1024) {
+        return json({ success: false, error: "O arquivo deve ter no máximo 10 MB." }, { status: 400 });
+      }
+      if (!allowedCategories.has(category)) {
+        return json({ success: false, error: "Categoria de mídia inválida." }, { status: 400 });
+      }
+
       const stagedRes = await admin.graphql(`
-        mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+        mutation PmyStagedUploadsCreate($input: [StagedUploadInput!]!) {
           stagedUploadsCreate(input: $input) {
             stagedTargets {
               url
@@ -1217,14 +1229,24 @@ export const action = async ({ request }) => {
             resource: "FILE",
             fileSize: String(size),
             httpMethod: "POST",
-          }]
-        }
+          }],
+        },
       });
-      const stagedData = await stagedRes.json();
-      const target = stagedData?.data?.stagedUploadsCreate?.stagedTargets?.[0];
-      if (!target) return json({ success: false, error: "Falha ao criar staged upload" });
 
-      // 2. Retornar URL e parâmetros para o cliente fazer o upload direto
+      const stagedData = await stagedRes.json();
+      const userErrors = stagedData?.data?.stagedUploadsCreate?.userErrors || [];
+      if (userErrors.length > 0) {
+        return json(
+          { success: false, error: userErrors.map((item) => item.message).join("; ") },
+          { status: 400 },
+        );
+      }
+
+      const target = stagedData?.data?.stagedUploadsCreate?.stagedTargets?.[0];
+      if (!target) {
+        return json({ success: false, error: "Falha ao criar staged upload no Shopify." }, { status: 500 });
+      }
+
       return json({
         success: true,
         uploadUrl: target.url,
@@ -1235,36 +1257,167 @@ export const action = async ({ request }) => {
         mimetype,
       });
     } catch (e) {
-      return json({ success: false, error: e.message });
+      return json({ success: false, error: e?.message || "Falha ao preparar upload." }, { status: 500 });
     }
   }
 
-  // Registrar mídia no banco após upload concluído
-  if (_action === "registerMedia") {
+  // Conclui o staged upload criando um Shopify File real e registra a
+  // mesma mídia no catálogo PostgreSQL da PMY.
+  if (_action === "finalizeMediaUpload") {
     try {
-      const url      = formData.get("url");
-      const filename = formData.get("filename");
-      const mimetype = formData.get("mimetype");
-      const category = formData.get("category") || "general";
-      const label    = formData.get("label") || filename;
+      const shop = session?.shop;
+      const resourceUrl = String(formData.get("resourceUrl") || "").trim();
+      const filename = String(formData.get("filename") || "").trim();
+      const mimetype = String(formData.get("mimetype") || "").trim();
+      const category = String(formData.get("category") || "general").trim();
+      const label = String(formData.get("label") || filename).trim() || filename;
 
-      await prisma.media.create({
-        data: { url, filename, mimetype, category, label }
+      if (!shop || !resourceUrl || !filename) {
+        return json({ success: false, error: "Dados do upload incompletos." }, { status: 400 });
+      }
+
+      const contentType = mimetype.startsWith("image/") ? "IMAGE" : "FILE";
+      const fileCreateRes = await admin.graphql(`
+        mutation PmyFileCreate($files: [FileCreateInput!]!) {
+          fileCreate(files: $files) {
+            files {
+              id
+              fileStatus
+              alt
+              ... on MediaImage {
+                image {
+                  url
+                  width
+                  height
+                }
+              }
+              ... on GenericFile {
+                url
+                mimeType
+              }
+            }
+            userErrors { field message }
+          }
+        }
+      `, {
+        variables: {
+          files: [{
+            originalSource: resourceUrl,
+            contentType,
+            alt: label,
+          }],
+        },
       });
-      return json({ success: true });
+
+      const fileCreateData = await fileCreateRes.json();
+      const userErrors = fileCreateData?.data?.fileCreate?.userErrors || [];
+      if (userErrors.length > 0) {
+        return json(
+          { success: false, error: userErrors.map((item) => item.message).join("; ") },
+          { status: 400 },
+        );
+      }
+
+      const createdFile = fileCreateData?.data?.fileCreate?.files?.[0];
+      if (!createdFile?.id) {
+        return json({ success: false, error: "O Shopify não retornou o arquivo criado." }, { status: 500 });
+      }
+
+      const finalUrl = createdFile?.image?.url || createdFile?.url || resourceUrl;
+      const media = await prisma.media.upsert({
+        where: {
+          shop_source_externalId: {
+            shop,
+            source: "pmy_upload",
+            externalId: createdFile.id,
+          },
+        },
+        create: {
+          shop,
+          url: finalUrl,
+          filename,
+          mimetype: createdFile?.mimeType || mimetype || "application/octet-stream",
+          category,
+          label,
+          source: "pmy_upload",
+          externalId: createdFile.id,
+          width: Number.isFinite(Number(createdFile?.image?.width)) ? Number(createdFile.image.width) : null,
+          height: Number.isFinite(Number(createdFile?.image?.height)) ? Number(createdFile.image.height) : null,
+          metadata: {
+            fileStatus: createdFile.fileStatus || null,
+            storage: "shopify_files",
+          },
+        },
+        update: {
+          url: finalUrl,
+          filename,
+          mimetype: createdFile?.mimeType || mimetype || "application/octet-stream",
+          category,
+          label,
+          width: Number.isFinite(Number(createdFile?.image?.width)) ? Number(createdFile.image.width) : null,
+          height: Number.isFinite(Number(createdFile?.image?.height)) ? Number(createdFile.image.height) : null,
+          metadata: {
+            fileStatus: createdFile.fileStatus || null,
+            storage: "shopify_files",
+          },
+          active: true,
+        },
+      });
+
+      return json({ success: true, media });
     } catch (e) {
-      return json({ success: false, error: e.message });
+      console.error("[PMY] finalizeMediaUpload failed:", e);
+      return json(
+        { success: false, error: e?.message || "Falha ao registrar mídia." },
+        { status: 500 },
+      );
     }
   }
 
-  // Deletar mídia
+  // Remove uploads criados pela PMY também do Shopify Files.
+  // Referências externas de produtos/Files não são apagadas pela biblioteca.
   if (_action === "deleteMedia") {
     try {
-      const id = formData.get("id");
+      const id = String(formData.get("id") || "").trim();
+      const media = await prisma.media.findUnique({ where: { id } });
+
+      if (!media) {
+        return json({ success: false, error: "Mídia não encontrada." }, { status: 404 });
+      }
+
+      if (media.source?.startsWith("shopify_")) {
+        return json(
+          { success: false, error: "Esta mídia é uma referência do Shopify e não pode ser excluída pela Central." },
+          { status: 400 },
+        );
+      }
+
+      if (media.source === "pmy_upload" && media.externalId) {
+        const deleteRes = await admin.graphql(`
+          mutation PmyFileDelete($fileIds: [ID!]!) {
+            fileDelete(fileIds: $fileIds) {
+              deletedFileIds
+              userErrors { field message }
+            }
+          }
+        `, {
+          variables: { fileIds: [media.externalId] },
+        });
+
+        const deleteData = await deleteRes.json();
+        const deleteErrors = deleteData?.data?.fileDelete?.userErrors || [];
+        if (deleteErrors.length > 0) {
+          return json(
+            { success: false, error: deleteErrors.map((item) => item.message).join("; ") },
+            { status: 400 },
+          );
+        }
+      }
+
       await prisma.media.delete({ where: { id } });
       return json({ success: true });
     } catch (e) {
-      return json({ success: false, error: e.message });
+      return json({ success: false, error: e?.message || "Falha ao remover mídia." }, { status: 500 });
     }
   }
 
