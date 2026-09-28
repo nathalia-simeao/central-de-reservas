@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 
 const ExpandIcon = () => (
   <svg className="pmy-kpi-expand" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -29,6 +31,254 @@ const KpiIcon = ({ name }) => {
   return <svg {...common}>{icons[name] || icons.bookings}</svg>;
 };
 
+const TrendChart = ({
+  data,
+  currency,
+  formatMoney,
+  granularity,
+  lang,
+  periodLabel,
+}) => {
+  const [activeIndex, setActiveIndex] = useState(null);
+
+  const width = 1000;
+  const height = 320;
+  const margin = { top: 28, right: 78, bottom: 54, left: 56 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+
+  const maxBookings = Math.max(1, ...data.map((item) => Number(item.bookings || 0)));
+  const maxRevenue = Math.max(1, ...data.map((item) => Number(item.revenue || 0)));
+  const hasData = data.some(
+    (item) => Number(item.bookings || 0) > 0 || Number(item.revenue || 0) > 0,
+  );
+
+  const xStep = data.length > 0 ? plotWidth / data.length : plotWidth;
+  const xCenter = (index) => margin.left + xStep * index + xStep / 2;
+  const bookingsY = (value) =>
+    margin.top + plotHeight - (Number(value || 0) / maxBookings) * plotHeight;
+  const revenueY = (value) =>
+    margin.top + plotHeight - (Number(value || 0) / maxRevenue) * plotHeight;
+
+  const linePoints = data
+    .map((item, index) => `${xCenter(index)},${revenueY(item.revenue)}`)
+    .join(" ");
+
+  const areaPath = data.length > 0
+    ? [
+        `M ${xCenter(0)} ${margin.top + plotHeight}`,
+        ...data.map(
+          (item, index) => `L ${xCenter(index)} ${revenueY(item.revenue)}`,
+        ),
+        `L ${xCenter(data.length - 1)} ${margin.top + plotHeight}`,
+        "Z",
+      ].join(" ")
+    : "";
+
+  const tickEvery = Math.max(1, Math.ceil(data.length / 8));
+  const visibleTick = (index) =>
+    index === 0 ||
+    index === data.length - 1 ||
+    index % tickEvery === 0;
+
+  const bookingTicks = [maxBookings, Math.ceil(maxBookings / 2), 0];
+  const revenueTicks = [maxRevenue, maxRevenue / 2, 0];
+
+  const active = activeIndex === null ? null : data[activeIndex];
+  const activeLeft =
+    activeIndex === null || data.length === 0
+      ? 50
+      : Math.max(9, Math.min(91, ((activeIndex + 0.5) / data.length) * 100));
+
+  const granularityLabel = {
+    day: lang === "pt" ? "Diário" : "Daily",
+    week: lang === "pt" ? "Semanal" : "Weekly",
+    month: lang === "pt" ? "Mensal" : "Monthly",
+  }[granularity] || granularity;
+
+  return (
+    <section className="pmy-trend-card">
+      <div className="pmy-trend-header">
+        <div>
+          <div className="pmy-trend-eyebrow">
+            {lang === "pt" ? "Evolução do período" : "Period evolution"}
+          </div>
+          <h2 className="pmy-trend-title">
+            {lang === "pt" ? "Receita e reservas" : "Revenue and bookings"}
+          </h2>
+          <p className="pmy-trend-subtitle">
+            {periodLabel} · {lang === "pt" ? "receita em" : "revenue in"} {currency}
+          </p>
+        </div>
+
+        <div className="pmy-trend-meta">
+          <span className="pmy-trend-granularity">{granularityLabel}</span>
+          <div className="pmy-trend-legend" aria-label={lang === "pt" ? "Legenda" : "Legend"}>
+            <span><i className="pmy-legend-bar" />{lang === "pt" ? "Reservas" : "Bookings"}</span>
+            <span><i className="pmy-legend-line" />{lang === "pt" ? "Receita" : "Revenue"}</span>
+          </div>
+        </div>
+      </div>
+
+      {!hasData ? (
+        <div className="pmy-trend-empty">
+          <div className="pmy-trend-empty-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>
+            </svg>
+          </div>
+          <strong>{lang === "pt" ? "Ainda não há dados suficientes neste período" : "Not enough data in this period yet"}</strong>
+          <span>{lang === "pt" ? "Quando entrarem reservas confirmadas, a evolução aparecerá aqui." : "Confirmed bookings will appear here as they arrive."}</span>
+        </div>
+      ) : (
+        <div className="pmy-trend-chart-wrap">
+          {active && (
+            <div
+              className="pmy-trend-tooltip"
+              style={{ left: `${activeLeft}%` }}
+            >
+              <strong>{active.fullLabel}</strong>
+              <span>{active.bookings} {lang === "pt" ? "reservas" : "bookings"}</span>
+              <span>{formatMoney(active.revenue, currency)}</span>
+            </div>
+          )}
+
+          <svg
+            className="pmy-trend-chart"
+            viewBox={`0 0 ${width} ${height}`}
+            role="img"
+            aria-label={lang === "pt" ? "Gráfico de receita e reservas" : "Revenue and bookings chart"}
+            onMouseLeave={() => setActiveIndex(null)}
+          >
+            <defs>
+              <linearGradient id="pmyRevenueArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary-green)" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="var(--primary-green)" stopOpacity="0.01" />
+              </linearGradient>
+            </defs>
+
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+              const y = margin.top + plotHeight * ratio;
+              return (
+                <line
+                  key={ratio}
+                  x1={margin.left}
+                  x2={width - margin.right}
+                  y1={y}
+                  y2={y}
+                  className="pmy-trend-gridline"
+                />
+              );
+            })}
+
+            {bookingTicks.map((value, index) => {
+              const ratio = maxBookings === 0 ? 1 : value / maxBookings;
+              const y = margin.top + plotHeight - ratio * plotHeight;
+              return (
+                <text key={`b-${index}`} x={margin.left - 12} y={y + 4} textAnchor="end" className="pmy-trend-axis-label">
+                  {Math.round(value)}
+                </text>
+              );
+            })}
+
+            {revenueTicks.map((value, index) => {
+              const ratio = maxRevenue === 0 ? 1 : value / maxRevenue;
+              const y = margin.top + plotHeight - ratio * plotHeight;
+              const compact = new Intl.NumberFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+                notation: value >= 1000 ? "compact" : "standard",
+                maximumFractionDigits: value >= 1000 ? 1 : 0,
+              }).format(value);
+              return (
+                <text key={`r-${index}`} x={width - margin.right + 12} y={y + 4} textAnchor="start" className="pmy-trend-axis-label">
+                  {compact}
+                </text>
+              );
+            })}
+
+            <path d={areaPath} fill="url(#pmyRevenueArea)" />
+
+            {data.map((item, index) => {
+              const barWidth = Math.min(34, Math.max(7, xStep * 0.34));
+              const y = bookingsY(item.bookings);
+              const barHeight = margin.top + plotHeight - y;
+              return (
+                <rect
+                  key={`bar-${item.key}`}
+                  x={xCenter(index) - barWidth / 2}
+                  y={y}
+                  width={barWidth}
+                  height={Math.max(1.5, barHeight)}
+                  rx={Math.min(6, barWidth / 2)}
+                  className="pmy-trend-bar"
+                />
+              );
+            })}
+
+            <polyline
+              points={linePoints}
+              fill="none"
+              className="pmy-trend-line"
+            />
+
+            {data.map((item, index) => (
+              <circle
+                key={`point-${item.key}`}
+                cx={xCenter(index)}
+                cy={revenueY(item.revenue)}
+                r={activeIndex === index ? 5 : 3}
+                className="pmy-trend-point"
+              />
+            ))}
+
+            {data.map((item, index) => (
+              visibleTick(index) ? (
+                <text
+                  key={`label-${item.key}`}
+                  x={xCenter(index)}
+                  y={height - 20}
+                  textAnchor="middle"
+                  className="pmy-trend-x-label"
+                >
+                  {item.label}
+                </text>
+              ) : null
+            ))}
+
+            {activeIndex !== null && (
+              <line
+                x1={xCenter(activeIndex)}
+                x2={xCenter(activeIndex)}
+                y1={margin.top}
+                y2={margin.top + plotHeight}
+                className="pmy-trend-hover-line"
+              />
+            )}
+
+            {data.map((item, index) => (
+              <rect
+                key={`hit-${item.key}`}
+                x={margin.left + xStep * index}
+                y={margin.top}
+                width={xStep}
+                height={plotHeight}
+                fill="transparent"
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseMove={() => setActiveIndex(index)}
+                onTouchStart={() => setActiveIndex(index)}
+              />
+            ))}
+          </svg>
+
+          <div className="pmy-trend-axis-captions">
+            <span>{lang === "pt" ? "Reservas" : "Bookings"}</span>
+            <span>{currency}</span>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
 export default function DashboardTab(props) {
   const {
     activeTab,
@@ -51,6 +301,9 @@ export default function DashboardTab(props) {
     toggleCategory,
     openCategories,
     realConfirmedBookings,
+    dashboardTrendData,
+    dashboardTrendGranularity,
+    dashboardCurrency,
     imageShape
   } = props;
 
@@ -176,6 +429,15 @@ export default function DashboardTab(props) {
                   </>
                 );
               })()}
+
+              <TrendChart
+                data={dashboardTrendData || []}
+                currency={dashboardCurrency || "EUR"}
+                formatMoney={formatMoney}
+                granularity={dashboardTrendGranularity}
+                lang={lang}
+                periodLabel={getPeriodLabel()}
+              />
 
               <div className="pmy-card" style={{ marginBottom:'20px', padding:'18px 22px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap', marginBottom:'12px' }}>
