@@ -39,6 +39,11 @@ export default function IntegrationsTab(props) {
     syncQueueLastLoaded,
     syncQueueLoading,
     syncStatusMeta,
+    shopifyValidation,
+    shopifyValidationError,
+    shopifyValidationLoading,
+    loadShopifyValidation,
+    startShopifyValidation,
     t,
     tours
   } = props;
@@ -190,6 +195,103 @@ export default function IntegrationsTab(props) {
                       ❌ {syncQueueError}
                     </div>
                   )}
+
+                  <div style={{
+                    background: shopifyValidation?.status === 'PASSED' ? '#f0fdf4' : '#fff',
+                    border: shopifyValidation?.status === 'PASSED' ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
+                    borderRadius:'12px',
+                    padding:'16px 18px',
+                    marginBottom:'18px'
+                  }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:'12px', alignItems:'flex-start', flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ fontWeight:'900', fontSize:'14px', color:'#243b2d', marginBottom:'4px' }}>
+                          🧪 Validação real Shopify → Webhook → Booking → Agenda → Vagas
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#6b7280', lineHeight:'1.55', maxWidth:'780px' }}>
+                          Cria um Draft Order de teste com 1 participante, converte em pedido Shopify com pagamento pendente e acompanha automaticamente se o webhook entrou, se o Booking foi criado e se a disponibilidade caiu.
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                        <button type="button" onClick={loadShopifyValidation}
+                          style={{ border:'1px solid #ddd', background:'#fff', borderRadius:'8px', padding:'8px 11px', fontSize:'11px', fontWeight:'800', cursor:'pointer' }}>
+                          🔄 Verificar
+                        </button>
+                        <button type="button" onClick={startShopifyValidation} disabled={shopifyValidationLoading || shopifyValidation?.status === 'WAITING'}
+                          className="pmy-btn-submit" style={{ width:'auto', padding:'8px 13px', fontSize:'11px', opacity:(shopifyValidationLoading || shopifyValidation?.status === 'WAITING')?0.6:1 }}>
+                          {shopifyValidationLoading ? '⏳ Criando pedido...' : shopifyValidation?.status === 'WAITING' ? '⏳ Aguardando webhook...' : '▶ Executar teste real'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {shopifyValidationError && (
+                      <div style={{ marginTop:'12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 11px', color:'#b91c1c', fontSize:'11px' }}>
+                        ❌ {shopifyValidationError}
+                      </div>
+                    )}
+
+                    {shopifyValidation?.exists && (
+                      <div style={{ marginTop:'14px' }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))', gap:'8px', marginBottom:'12px' }}>
+                          {[
+                            ['Pedido Shopify', shopifyValidation.steps?.orderCreated],
+                            ['Webhook recebido', shopifyValidation.steps?.webhookReceived],
+                            ['Booking criado', shopifyValidation.steps?.bookingCreated],
+                            ['Agenda abastecida', shopifyValidation.steps?.agendaReady],
+                            ['Vagas reduzidas', shopifyValidation.steps?.capacityReduced],
+                          ].map(([label,ok]) => (
+                            <div key={label} style={{
+                              background:ok?'#ecfdf3':'#f8fafc',
+                              border:`1px solid ${ok?'#bbf7d0':'#e5e7eb'}`,
+                              borderRadius:'8px',
+                              padding:'9px 10px'
+                            }}>
+                              <div style={{ fontSize:'11px', fontWeight:'800', color:ok?'#166534':'#6b7280' }}>
+                                {ok?'✅':'⏳'} {label}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'8px', fontSize:'11px', color:'#555' }}>
+                          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
+                            <strong>Pedido:</strong> {shopifyValidation.order?.name || '—'}<br/>
+                            <span style={{ color:'#888' }}>{shopifyValidation.order?.financialStatus || 'status financeiro pendente'}</span>
+                          </div>
+                          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
+                            <strong>Tour:</strong> {shopifyValidation.slot?.tourTitle || '—'}<br/>
+                            <span style={{ color:'#888' }}>{shopifyValidation.slot?.date || '—'} · {shopifyValidation.slot?.time || '—'}</span>
+                          </div>
+                          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px' }}>
+                            <strong>Vagas:</strong> {shopifyValidation.slot?.remainingBefore ?? '—'} → {shopifyValidation.slot?.remainingAfter ?? '—'}<br/>
+                            <span style={{ color:'#888' }}>ocupadas: {shopifyValidation.slot?.occupiedBefore ?? '—'} → {shopifyValidation.slot?.occupiedAfter ?? '—'}</span>
+                          </div>
+                        </div>
+
+                        {shopifyValidation.status === 'PASSED' && (
+                          <div style={{ marginTop:'12px', background:'#dcfce7', border:'1px solid #86efac', borderRadius:'8px', padding:'10px 12px', color:'#166534', fontWeight:'800', fontSize:'12px' }}>
+                            ✅ Fluxo validado de ponta a ponta. O pedido Shopify chegou por webhook, virou Booking, entrou na Agenda e reduziu a disponibilidade.
+                          </div>
+                        )}
+                        {shopifyValidation.status === 'WAITING' && (
+                          <div style={{ marginTop:'10px', fontSize:'11px', color:'#6b7280' }}>
+                            ⏳ O pedido já foi criado. A Central verifica o webhook automaticamente a cada poucos segundos.
+                          </div>
+                        )}
+                        {shopifyValidation.status === 'FAILED' && (
+                          <div style={{ marginTop:'10px', fontSize:'11px', color:'#b91c1c', fontWeight:'700' }}>
+                            ❌ O teste encontrou uma falha no processamento do webhook. Veja o Log de Sincronização abaixo.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!shopifyValidation?.exists && !shopifyValidationError && (
+                      <div style={{ marginTop:'12px', fontSize:'11px', color:'#888' }}>
+                        Nenhum teste end-to-end executado ainda. O teste usa uma reserva de 1 participante e não cobra cliente.
+                      </div>
+                    )}
+                  </div>
 
                   {(() => {
                     const stats = syncQueueData.stats || {};
