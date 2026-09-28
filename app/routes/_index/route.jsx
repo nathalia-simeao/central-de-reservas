@@ -467,6 +467,9 @@ export default function CentralDeReservas() {
   const [syncQueueError, setSyncQueueError] = useState("");
   const [syncQueueActionId, setSyncQueueActionId] = useState(null);
   const [syncQueueLastLoaded, setSyncQueueLastLoaded] = useState(null);
+  const [shopifyValidation, setShopifyValidation] = useState(null);
+  const [shopifyValidationLoading, setShopifyValidationLoading] = useState(false);
+  const [shopifyValidationError, setShopifyValidationError] = useState("");
   // platformProducts: Shopify vem do loader (dados reais).
   // Demais plataformas ficam vazias até que a integração via API seja configurada.
   const [platformProducts, setPlatformProducts] = useState({
@@ -808,6 +811,74 @@ export default function CentralDeReservas() {
     return payload;
   }, [resourceUrl]);
 
+  const loadShopifyValidation = useCallback(async () => {
+    try {
+      const payload = await requestResourceJson("/api/shopify-validation");
+      setShopifyValidation(payload);
+      setShopifyValidationError("");
+      return payload;
+    } catch (error) {
+      setShopifyValidationError(
+        error?.message || "Erro ao consultar a validação Shopify.",
+      );
+      return null;
+    }
+  }, [requestResourceJson]);
+
+  const startShopifyValidation = useCallback(async () => {
+    setShopifyValidationLoading(true);
+    setShopifyValidationError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("_action", "start");
+      const payload = await requestResourceJson(
+        "/api/shopify-validation",
+        formData,
+      );
+
+      setShopifyValidation({
+        success: true,
+        exists: true,
+        status: "WAITING",
+        order: {
+          id: payload?.test?.orderId || null,
+          name: payload?.test?.orderName || null,
+          financialStatus: payload?.test?.financialStatus || null,
+        },
+        draftOrder: {
+          id: payload?.test?.draftOrderId || null,
+          name: payload?.test?.draftOrderName || null,
+        },
+        slot: {
+          tourId: payload?.test?.tourId || null,
+          tourTitle: payload?.test?.tourTitle || null,
+          date: payload?.test?.date || null,
+          time: payload?.test?.time || null,
+          startTime: payload?.test?.startTime || null,
+          capacity: payload?.test?.capacity ?? null,
+          occupiedBefore: payload?.test?.occupiedBefore ?? null,
+          remainingBefore: payload?.test?.remainingBefore ?? null,
+        },
+        steps: {
+          orderCreated: Boolean(payload?.test?.orderId),
+          webhookReceived: false,
+          bookingCreated: false,
+          agendaReady: false,
+          capacityReduced: false,
+        },
+      });
+
+      window.setTimeout(loadShopifyValidation, 1800);
+    } catch (error) {
+      setShopifyValidationError(
+        error?.message || "Erro ao iniciar o pedido de teste Shopify.",
+      );
+    } finally {
+      setShopifyValidationLoading(false);
+    }
+  }, [loadShopifyValidation, requestResourceJson]);
+
   const loadSyncQueue = useCallback(async () => {
     setSyncQueueLoading(true);
     try {
@@ -829,9 +900,24 @@ export default function CentralDeReservas() {
     if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
 
     loadSyncQueue();
-    const timer = window.setInterval(loadSyncQueue, 15000);
-    return () => window.clearInterval(timer);
-  }, [activeTab, intSubTab, loadSyncQueue]);
+    loadShopifyValidation();
+
+    const queueTimer = window.setInterval(loadSyncQueue, 15000);
+    const validationTimer = window.setInterval(() => {
+      loadShopifyValidation();
+    }, shopifyValidation?.status === "WAITING" ? 3000 : 15000);
+
+    return () => {
+      window.clearInterval(queueTimer);
+      window.clearInterval(validationTimer);
+    };
+  }, [
+    activeTab,
+    intSubTab,
+    loadShopifyValidation,
+    loadSyncQueue,
+    shopifyValidation?.status,
+  ]);
 
   const runSyncQueueNow = async () => {
     setSyncQueueActionId("run");
@@ -3158,7 +3244,9 @@ export default function CentralDeReservas() {
             platformConnections, platformProducts, reservationPlatforms, runSyncQueueNow,
             setActiveProdPlatform, setCustomKey, setCustomName, setCustomUrl, setIntSubTab,
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
-            syncQueueLastLoaded, syncQueueLoading, syncStatusMeta, t, tours
+            syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,
+            shopifyValidation, shopifyValidationError, shopifyValidationLoading,
+            loadShopifyValidation, startShopifyValidation, t, tours
           }} />
 
           <GuidesTab {...{
