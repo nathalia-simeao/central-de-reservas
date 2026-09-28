@@ -177,14 +177,14 @@ model BlockedDate {
 
 model Media {
   id           String   @id @default(uuid())
-  shop         String?
+  shop         String
   url          String   @db.Text
   filename     String
   mimetype     String
   category     String   @default("general")
   label        String?
   source       String   @default("pmy_upload")
-  externalId   String?
+  externalId   String
   productTitle String?
   width        Int?
   height       Int?
