@@ -1658,6 +1658,7 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
+  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
   const uploadBusinessLogo = useCallback(async (variant, file) => {
     if (!file) return;
 
