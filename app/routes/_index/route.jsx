@@ -738,6 +738,153 @@ export default function CentralDeReservas() {
   ).sort((a, b) => b.bookings - a.bookings);
 
   const totalSalesCount = realConfirmedBookings.length;
+
+  // Série temporal real do Dashboard. A granularidade muda automaticamente
+  // conforme a amplitude do período selecionado.
+  const dashboardRangeDays = Math.max(
+    1,
+    Math.ceil(
+      (dashboardPeriodRange.end.getTime() - dashboardPeriodRange.start.getTime()) /
+        (24 * 60 * 60 * 1000),
+    ),
+  );
+  const dashboardTrendGranularity =
+    dashboardRangeDays <= 31
+      ? "day"
+      : dashboardRangeDays <= 150
+        ? "week"
+        : "month";
+
+  const dateOnly = (value) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate());
+
+  const startOfWeek = (value) => {
+    const result = dateOnly(value);
+    const mondayOffset = (result.getDay() + 6) % 7;
+    result.setDate(result.getDate() - mondayOffset);
+    return result;
+  };
+
+  const startOfMonth = (value) =>
+    new Date(value.getFullYear(), value.getMonth(), 1);
+
+  const bucketStartForDate = (value, granularity) => {
+    if (granularity === "week") return startOfWeek(value);
+    if (granularity === "month") return startOfMonth(value);
+    return dateOnly(value);
+  };
+
+  const bucketKeyForDate = (value, granularity) => {
+    const start = bucketStartForDate(value, granularity);
+    return [
+      start.getFullYear(),
+      String(start.getMonth() + 1).padStart(2, "0"),
+      String(start.getDate()).padStart(2, "0"),
+    ].join("-");
+  };
+
+  const compactDateLabel = (value, withYear = false) =>
+    new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      day: "2-digit",
+      month: "short",
+      ...(withYear ? { year: "2-digit" } : {}),
+    })
+      .format(value)
+      .replace(".", "");
+
+  const monthLabel = (value) =>
+    new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      month: "short",
+      year: "2-digit",
+    })
+      .format(value)
+      .replace(".", "");
+
+  const trendBuckets = new Map();
+  let trendCursor = bucketStartForDate(
+    dashboardPeriodRange.start,
+    dashboardTrendGranularity,
+  );
+  const trendRangeEnd = dateOnly(dashboardPeriodRange.end);
+
+  let trendGuard = 0;
+  while (trendCursor <= trendRangeEnd && trendGuard < 500) {
+    const start = new Date(trendCursor);
+    const key = bucketKeyForDate(start, dashboardTrendGranularity);
+    let label = compactDateLabel(start, dashboardRangeDays > 365);
+    let fullLabel = label;
+
+    if (dashboardTrendGranularity === "week") {
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      label = compactDateLabel(start);
+      fullLabel = `${compactDateLabel(start, true)} – ${compactDateLabel(end, true)}`;
+    } else if (dashboardTrendGranularity === "month") {
+      label = monthLabel(start);
+      fullLabel = new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+        month: "long",
+        year: "numeric",
+      }).format(start);
+    } else {
+      fullLabel = new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }).format(start);
+    }
+
+    trendBuckets.set(key, {
+      key,
+      label,
+      fullLabel,
+      bookings: 0,
+      revenue: 0,
+    });
+
+    if (dashboardTrendGranularity === "month") {
+      trendCursor = new Date(
+        trendCursor.getFullYear(),
+        trendCursor.getMonth() + 1,
+        1,
+      );
+    } else if (dashboardTrendGranularity === "week") {
+      const next = new Date(trendCursor);
+      next.setDate(next.getDate() + 7);
+      trendCursor = next;
+    } else {
+      const next = new Date(trendCursor);
+      next.setDate(next.getDate() + 1);
+      trendCursor = next;
+    }
+    trendGuard += 1;
+  }
+
+  for (const booking of realConfirmedBookings) {
+    const createdAt = bookingCreatedAt(booking);
+    if (Number.isNaN(createdAt.getTime())) continue;
+
+    const bucketKey = bucketKeyForDate(
+      createdAt,
+      dashboardTrendGranularity,
+    );
+    const bucket = trendBuckets.get(bucketKey);
+    if (!bucket) continue;
+
+    bucket.bookings += 1;
+
+    const amount = moneyValue(booking);
+    const currency = bookingCurrency(booking);
+    if (
+      amount !== null &&
+      currency &&
+      currency === dashboardCurrency
+    ) {
+      bucket.revenue += amount;
+    }
+  }
+
+  const dashboardTrendData = [...trendBuckets.values()];
+
   const canceledCount = realCanceledBookings.length;
   const cancellationBase = totalSalesCount + canceledCount;
   const cancellationRate = cancellationBase > 0
@@ -3877,7 +4024,7 @@ export default function CentralDeReservas() {
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, getPeriodLabel,
             salesByChannel, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
-            imageShape
+            dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
 
           <AgendaTab {...{
