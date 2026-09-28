@@ -189,10 +189,10 @@ export default function MediaTab(props) {
                         className="pmy-format-btn"
                         onClick={() => window.location.reload()}
                       >
-                        🔄 Atualizar fontes Shopify
+                        {tr('🔄 Atualizar fontes Shopify','🔄 Refresh Shopify sources')}
                       </button>
                       <div style={{ textAlign:'center', fontSize:'11px', color:'#aaa', lineHeight:'1.4' }}>
-                        Shopify Files e imagens de produtos são reconciliados automaticamente com a biblioteca PMY.
+                        {tr('Shopify Files e imagens de produtos são reconciliados automaticamente com a biblioteca PMY.','Shopify Files and product images are automatically reconciled with the PMY library.')}
                       </div>
                     </div>
                     {mediaUploadError && (
@@ -215,7 +215,7 @@ export default function MediaTab(props) {
                         <div>
                           <div style={{ fontSize:'32px', marginBottom:'8px' }}>📁</div>
                           <div style={{ fontSize:'13px', fontWeight:'700', color:'#555', marginBottom:'4px' }}>
-                            Clique para selecionar arquivo
+                            {tr('Clique para selecionar arquivo','Click to select a file')}
                           </div>
                           <div style={{ fontSize:'11px', color:'#aaa' }}>PNG, JPG, GIF, PDF · {tr('Máx','Max')} 10MB</div>
                         </div>
@@ -251,11 +251,11 @@ export default function MediaTab(props) {
                     <div style={{ marginTop:'12px', padding:'10px 12px', background:'#fafafa', borderRadius:'8px', fontSize:'11px', color:'#888', lineHeight:'1.8' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'3px' }}>
                         <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--primary-green)', display:'inline-block' }}></span>
-                        <strong>PMY</strong> — uploads gerenciados pela Central e armazenados no Shopify Files
+                        <strong>PMY</strong> — {tr('uploads gerenciados pela Central e armazenados no Shopify Files','uploads managed by the Central and stored in Shopify Files')}
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                         <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#e08000', display:'inline-block' }}></span>
-                        <strong>🛍️ Shopify</strong> — referências sincronizadas de Files e imagens dos produtos
+                        <strong>🛍️ Shopify</strong> — {tr('referências sincronizadas de Files e imagens dos produtos','synced references from Files and product images')}
                       </div>
                     </div>
                   </div>
