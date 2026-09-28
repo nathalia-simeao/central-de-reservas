@@ -3471,17 +3471,23 @@ function CentralDeReservasContent() {
       --pmy-pill: 999px;
     }
 
-    html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg-color); }
+    html, body {
+      width:100%;
+      height:100%;
+      min-height:100%;
+      overflow:hidden;
+      background:var(--bg-color);
+    }
     body { margin:0; }
     ::-webkit-scrollbar { width:8px; height:8px; }
     ::-webkit-scrollbar-thumb { background:rgba(24,55,34,0.18); border-radius:var(--pmy-pill); }
 
     .pmy-app-container {
       width:100%;
+      height:100dvh;
       min-height:100dvh;
-      height:auto;
       margin:0;
-      overflow:visible;
+      overflow:hidden;
       display:flex;
       background:
         radial-gradient(circle at 78% 6%, color-mix(in srgb, var(--primary-green) 8%, transparent) 0, transparent 26rem),
@@ -3493,8 +3499,9 @@ function CentralDeReservasContent() {
       width:270px;
       min-height:100dvh;
       height:100dvh;
-      position:sticky;
-      top:0;
+      max-height:100dvh;
+      position:relative;
+      top:auto;
       z-index:300;
       border-right:1px solid var(--pmy-border);
       box-shadow:none;
@@ -3622,9 +3629,12 @@ function CentralDeReservasContent() {
     .pmy-content {
       flex:1;
       min-width:0;
-      height:auto;
-      min-height:100dvh;
-      overflow:visible;
+      height:100dvh;
+      max-height:100dvh;
+      min-height:0;
+      overflow-y:auto;
+      overflow-x:hidden;
+      overscroll-behavior:contain;
       padding:0;
     }
     .pmy-content-inner {
