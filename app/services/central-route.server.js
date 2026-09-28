@@ -330,6 +330,56 @@ export const loader = async ({ request }) => {
     }
   }
 
+  let platformFieldMappings = [];
+  if (session?.shop) {
+    try {
+      platformFieldMappings = await prisma.platformFieldMapping.findMany({
+        where: { shop: session.shop },
+        orderBy: { platform: "asc" },
+      });
+
+      // Migração suave do JSON legado salvo em BusinessSetting.
+      if (
+        platformFieldMappings.length === 0 &&
+        businessSettings?.fieldMappings &&
+        typeof businessSettings.fieldMappings === "object" &&
+        !Array.isArray(businessSettings.fieldMappings)
+      ) {
+        const legacyEntries = Object.entries(businessSettings.fieldMappings)
+          .filter(([, mappings]) => mappings && typeof mappings === "object" && !Array.isArray(mappings));
+
+        if (legacyEntries.length > 0) {
+          await Promise.all(
+            legacyEntries.map(([platform, mappings]) =>
+              prisma.platformFieldMapping.upsert({
+                where: {
+                  shop_platform: {
+                    shop: session.shop,
+                    platform: String(platform).toLowerCase(),
+                  },
+                },
+                create: {
+                  shop: session.shop,
+                  platform: String(platform).toLowerCase(),
+                  mappings,
+                },
+                update: { mappings },
+              }),
+            ),
+          );
+
+          platformFieldMappings = await prisma.platformFieldMapping.findMany({
+            where: { shop: session.shop },
+            orderBy: { platform: "asc" },
+          });
+        }
+      }
+    } catch (mappingError) {
+      console.error("[PMY] platform field mappings load failed:", mappingError);
+      platformFieldMappings = [];
+    }
+  }
+
   const gygMappedTours = (tours || []).filter((tour) => Boolean(tour.gygActivityId));
   const gygReadyTours = gygMappedTours.filter(
     (tour) =>
@@ -381,6 +431,7 @@ export const loader = async ({ request }) => {
     shopifyWebhookStatus,
     gygIntegrationStatus,
     businessSettings,
+    platformFieldMappings,
   });
 };
 
@@ -388,6 +439,112 @@ export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
+  if (_action === "savePlatformFieldMapping") {
+    try {
+      const shop = session?.shop;
+      if (!shop) {
+        return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      }
+
+      const platform = String(formData.get("platform") || "").trim().toLowerCase();
+      const allowedPlatforms = new Set([
+        "shopify",
+        "viator",
+        "getyourguide",
+        "headout",
+        "civitatis",
+      ]);
+
+      if (!allowedPlatforms.has(platform)) {
+        return json({ success: false, error: "Plataforma inválida." }, { status: 400 });
+      }
+
+      const rawMappings = String(formData.get("mappings") || "").trim();
+      if (!rawMappings) {
+        return json({ success: false, error: "Mapeamento não informado." }, { status: 400 });
+      }
+
+      const mappings = JSON.parse(rawMappings);
+      if (!mappings || typeof mappings !== "object" || Array.isArray(mappings)) {
+        return json({ success: false, error: "Mapeamento inválido." }, { status: 400 });
+      }
+
+      const allowedFields = new Set([
+        "customerName",
+        "tourId",
+        "startTime",
+        "status",
+        "email",
+        "phone",
+        "quantity",
+        "price",
+        "currency",
+        "bookingRef",
+        "language",
+      ]);
+
+      const sanitizedMappings = {};
+      for (const [field, value] of Object.entries(mappings)) {
+        if (!allowedFields.has(field)) continue;
+        sanitizedMappings[field] = String(value ?? "").trim();
+      }
+
+      const requiredFields = [
+        "customerName",
+        "tourId",
+        "startTime",
+        "status",
+        "quantity",
+        "bookingRef",
+      ];
+      const missingRequired = requiredFields.filter(
+        (field) => !sanitizedMappings[field],
+      );
+
+      if (missingRequired.length > 0) {
+        return json(
+          {
+            success: false,
+            error: `Campos obrigatórios sem mapeamento: ${missingRequired.join(", ")}.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      const saved = await prisma.platformFieldMapping.upsert({
+        where: {
+          shop_platform: { shop, platform },
+        },
+        create: {
+          shop,
+          platform,
+          mappings: sanitizedMappings,
+        },
+        update: {
+          mappings: sanitizedMappings,
+        },
+      });
+
+      return json({
+        success: true,
+        mapping: {
+          platform: saved.platform,
+          mappings: saved.mappings,
+          updatedAt: saved.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("[PMY] savePlatformFieldMapping failed:", error);
+      return json(
+        {
+          success: false,
+          error: error?.message || "Falha ao salvar mapeamento.",
+        },
+        { status: 500 },
+      );
+    }
+  }
 
   if (_action === "saveBusinessSettings") {
     try {
