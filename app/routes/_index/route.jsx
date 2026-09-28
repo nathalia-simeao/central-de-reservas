@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
-import { useAppBridge } from "@shopify/app-bridge-react";
 
 import DashboardTab from "../../components/pmy/DashboardTab";
 import AgendaTab from "../../components/pmy/AgendaTab";
@@ -391,7 +390,7 @@ function isDarkThemeColor(value) {
   return false;
 }
 
-function CentralDeReservasContent({ shopifyAppBridge }) {
+function CentralDeReservasContent() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
@@ -1022,52 +1021,26 @@ function CentralDeReservasContent({ shopifyAppBridge }) {
   }, []);
 
   const requestResourceJson = useCallback(async (pathname, formData = null) => {
-    const doRequest = async () => {
-      const headers = {
+    // App Bridge v4 intercepta o fetch global e injeta automaticamente
+    // um ID token Shopify atualizado em requisições same-origin.
+    const response = await fetch(resourceUrl(pathname), {
+      method: formData ? "POST" : "GET",
+      body: formData || undefined,
+      credentials: "include",
+      headers: {
         Accept: "application/json",
         "X-Requested-With": "XMLHttpRequest",
-      };
-
-      // App Bridge ID tokens expiram rapidamente. Pede um token novo para
-      // cada request ao nosso backend, em vez de depender de cookie/URL.
-      if (!shopifyAppBridge?.idToken) {
-        throw new Error(
-          "App Bridge indisponível nesta tela. Abra a Central pelo admin da Shopify e recarregue a página.",
-        );
-      }
-
-      const freshIdToken = await shopifyAppBridge.idToken();
-      if (!freshIdToken) {
-        throw new Error(
-          "O Shopify não devolveu um token de autenticação para esta ação.",
-        );
-      }
-
-      headers.Authorization = `Bearer ${freshIdToken}`;
-
-      return fetch(resourceUrl(pathname), {
-        method: formData ? "POST" : "GET",
-        body: formData || undefined,
-        credentials: "include",
-        headers,
-      });
-    };
-
-    let response = await doRequest();
-
-    // Uma única nova tentativa cobre a rara corrida em que o token expira
-    // entre a emissão pelo App Bridge e a validação no servidor.
-    if (response.status === 401 || response.status === 403) {
-      response = await doRequest();
-    }
+      },
+    });
 
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
     const bodyText = await response.text();
 
     if (!contentType.includes("application/json")) {
+      const location = response.url || resourceUrl(pathname);
       if (/<!doctype|<html/i.test(bodyText)) {
         throw new Error(
-          "A autenticação Shopify expirou antes da chamada. Feche e abra a Central pelo admin da Shopify e tente novamente.",
+          `A chamada autenticada foi redirecionada pelo Shopify (HTTP ${response.status}). Destino: ${location}`,
         );
       }
       throw new Error(
@@ -1091,7 +1064,7 @@ function CentralDeReservasContent({ shopifyAppBridge }) {
     }
 
     return payload;
-  }, [resourceUrl, shopifyAppBridge]);
+  }, [resourceUrl]);
 
   const loadShopifyValidation = useCallback(async () => {
     try {
@@ -4595,17 +4568,12 @@ function CentralDeReservasContent({ shopifyAppBridge }) {
   );
 }
 
-function CentralWithAppBridge() {
-  const shopifyAppBridge = useAppBridge();
-  return <CentralDeReservasContent shopifyAppBridge={shopifyAppBridge} />;
-}
-
 export default function CentralDeReservas() {
   const { apiKey = "" } = useLoaderData() || {};
 
   return (
     <AppProvider embedded apiKey={apiKey}>
-      <CentralWithAppBridge />
+      <CentralDeReservasContent />
     </AppProvider>
   );
 }
