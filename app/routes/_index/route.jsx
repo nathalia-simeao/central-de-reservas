@@ -3746,6 +3746,230 @@ export default function CentralDeReservas() {
     .pmy-dashboard-status-dot.is-good { background:#16a34a; box-shadow:0 0 0 4px rgba(22,163,74,.12); }
     .pmy-dashboard-status-dot.is-info { background:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.11); }
     .pmy-dashboard-status-dot.is-warning { background:#d97706; box-shadow:0 0 0 4px rgba(217,119,6,.12); }
+
+    .pmy-trend-card {
+      position:relative;
+      overflow:hidden;
+      border:1px solid var(--pmy-border);
+      border-radius:24px;
+      background:var(--surface-color);
+      box-shadow:var(--pmy-shadow);
+      padding:22px 22px 16px;
+    }
+    .pmy-trend-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:18px;
+      margin-bottom:8px;
+    }
+    .pmy-trend-eyebrow {
+      font-size:10px;
+      line-height:1;
+      text-transform:uppercase;
+      letter-spacing:.14em;
+      font-weight:800;
+      color:var(--primary-green);
+      opacity:.74;
+      margin-bottom:7px;
+    }
+    .pmy-trend-title {
+      font-family:var(--pmy-heading-font);
+      font-size:24px;
+      line-height:1.05;
+      color:var(--title-color);
+      font-weight:700;
+      margin:0 0 5px;
+      letter-spacing:-.02em;
+    }
+    .pmy-trend-subtitle {
+      font-size:11px;
+      color:#7b817d;
+      margin:0;
+    }
+    .pmy-trend-meta {
+      display:flex;
+      align-items:flex-end;
+      flex-direction:column;
+      gap:9px;
+    }
+    .pmy-trend-granularity {
+      display:inline-flex;
+      align-items:center;
+      min-height:30px;
+      padding:6px 11px;
+      border-radius:999px;
+      border:1px solid color-mix(in srgb, var(--primary-green) 15%, var(--pmy-border));
+      background:var(--pmy-green-soft);
+      color:var(--primary-green);
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.03em;
+    }
+    .pmy-trend-legend {
+      display:flex;
+      align-items:center;
+      gap:13px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .pmy-trend-legend span {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:10px;
+      color:#6f7471;
+      font-weight:700;
+    }
+    .pmy-legend-bar {
+      width:9px;
+      height:9px;
+      display:inline-block;
+      border-radius:3px;
+      background:color-mix(in srgb, var(--primary-green) 28%, transparent);
+      border:1px solid color-mix(in srgb, var(--primary-green) 30%, transparent);
+    }
+    .pmy-legend-line {
+      width:16px;
+      height:2px;
+      display:inline-block;
+      border-radius:999px;
+      background:var(--primary-green);
+      position:relative;
+    }
+    .pmy-legend-line::after {
+      content:'';
+      width:5px;
+      height:5px;
+      border-radius:50%;
+      background:var(--surface-color);
+      border:1.5px solid var(--primary-green);
+      position:absolute;
+      right:3px;
+      top:50%;
+      transform:translateY(-50%);
+    }
+    .pmy-trend-chart-wrap {
+      position:relative;
+      width:100%;
+      overflow:hidden;
+      padding-top:8px;
+    }
+    .pmy-trend-chart {
+      display:block;
+      width:100%;
+      height:auto;
+      min-height:280px;
+      overflow:visible;
+    }
+    .pmy-trend-gridline {
+      stroke:color-mix(in srgb, var(--text-dark) 9%, transparent);
+      stroke-width:1;
+      stroke-dasharray:3 7;
+    }
+    .pmy-trend-axis-label,
+    .pmy-trend-x-label {
+      fill:color-mix(in srgb, var(--text-dark) 58%, transparent);
+      font-size:10px;
+      font-weight:700;
+    }
+    .pmy-trend-x-label { font-size:9px; }
+    .pmy-trend-bar {
+      fill:color-mix(in srgb, var(--primary-green) 24%, transparent);
+      stroke:color-mix(in srgb, var(--primary-green) 34%, transparent);
+      stroke-width:1;
+      transition:opacity .16s ease;
+    }
+    .pmy-trend-line {
+      stroke:var(--primary-green);
+      stroke-width:3;
+      stroke-linejoin:round;
+      stroke-linecap:round;
+      filter:drop-shadow(0 4px 7px color-mix(in srgb, var(--primary-green) 18%, transparent));
+    }
+    .pmy-trend-point {
+      fill:var(--surface-color);
+      stroke:var(--primary-green);
+      stroke-width:2.5;
+      transition:r .12s ease;
+    }
+    .pmy-trend-hover-line {
+      stroke:color-mix(in srgb, var(--primary-green) 35%, transparent);
+      stroke-width:1;
+      stroke-dasharray:4 5;
+      pointer-events:none;
+    }
+    .pmy-trend-tooltip {
+      position:absolute;
+      top:12px;
+      z-index:5;
+      transform:translateX(-50%);
+      min-width:150px;
+      max-width:210px;
+      padding:9px 11px;
+      border:1px solid var(--pmy-border);
+      border-radius:12px;
+      background:color-mix(in srgb, var(--surface-color) 97%, transparent);
+      backdrop-filter:blur(12px);
+      box-shadow:0 12px 30px rgba(22,44,29,.12);
+      pointer-events:none;
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+    }
+    .pmy-trend-tooltip strong {
+      font-size:10px;
+      color:var(--text-dark);
+      font-weight:800;
+      margin-bottom:2px;
+    }
+    .pmy-trend-tooltip span {
+      font-size:10px;
+      color:#6f7471;
+      font-weight:700;
+    }
+    .pmy-trend-axis-captions {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:-6px;
+      padding:0 14px 0 8px;
+      font-size:9px;
+      font-weight:800;
+      color:#8b908d;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    .pmy-trend-empty {
+      min-height:260px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:32px 20px;
+      color:#8b908d;
+    }
+    .pmy-trend-empty-icon {
+      width:58px;
+      height:58px;
+      border-radius:20px;
+      background:var(--pmy-green-soft);
+      color:var(--primary-green);
+      display:grid;
+      place-items:center;
+      margin-bottom:14px;
+    }
+    .pmy-trend-empty strong {
+      color:var(--text-dark);
+      font-size:13px;
+      margin-bottom:5px;
+    }
+    .pmy-trend-empty span {
+      max-width:440px;
+      font-size:11px;
+      line-height:1.5;
+    }
     .pmy-agenda-form-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; margin-bottom:28px; align-items:start; }
     .pmy-booking-meta-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin-bottom:14px; }
     .pmy-media-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
@@ -3771,6 +3995,9 @@ export default function CentralDeReservas() {
       .pmy-dashboard-kpi-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
       .pmy-kpi-card.is-featured { grid-column:span 2; }
       .pmy-dashboard-status-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .pmy-trend-card { padding:20px 18px 14px; }
+      .pmy-trend-chart { min-width:760px; }
+      .pmy-trend-chart-wrap { overflow-x:auto; padding-bottom:6px; }
       .pmy-content-inner { padding-inline:24px; }
       .pmy-agenda-form-grid { grid-template-columns:1fr; }
       .pmy-media-layout { grid-template-columns:1fr; }
@@ -3829,6 +4056,12 @@ export default function CentralDeReservas() {
       .pmy-kpi-value { font-size:25px; }
       .pmy-dashboard-status-strip { grid-template-columns:1fr 1fr; border-radius:16px; }
       .pmy-dashboard-status-item { padding:10px 11px; }
+      .pmy-trend-header { flex-direction:column; align-items:flex-start; margin-bottom:4px; }
+      .pmy-trend-meta { width:100%; align-items:flex-start; }
+      .pmy-trend-legend { justify-content:flex-start; }
+      .pmy-trend-title { font-size:21px; }
+      .pmy-trend-card { border-radius:18px; padding:17px 14px 12px; }
+      .pmy-trend-chart { min-width:680px; min-height:250px; }
       .pmy-content-inner { padding:14px 14px 38px; }
       .pmy-header-top { align-items:flex-start; }
       .pmy-header-title-wrap { flex:1; }
