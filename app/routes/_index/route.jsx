@@ -1410,7 +1410,8 @@ function CentralDeReservasContent() {
       fd.append("whatsapp", whatsapp);
       fd.append("utmId", guideUtmId || "");
       if (photoUrl) fd.append("photoUrl", photoUrl);
-      const data = await requestResourceJson("/api/central-action", fd);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const data = await res.json();
       if (data.success) window.location.reload();
     } catch {}
   };
@@ -1452,7 +1453,7 @@ function CentralDeReservasContent() {
         fd.append("whatsapp", whatsapp);
         fd.append("utmId", editGuideUtmId || "");
         if (editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
-        await requestResourceJson("/api/central-action", fd);
+        await fetch(window.location.href, { method: "POST", body: fd });
       } catch {}
     }
   };
@@ -1466,7 +1467,7 @@ function CentralDeReservasContent() {
         const fd = new FormData();
         fd.append("_action", "deleteGuide");
         fd.append("id", id);
-        await requestResourceJson("/api/central-action", fd);
+        await fetch(window.location.href, { method: "POST", body: fd });
       } catch {}
     }
   };
@@ -1493,7 +1494,7 @@ function CentralDeReservasContent() {
       fd.append("size", String(file.size));
       fd.append("category", mediaCategoryInput);
 
-      const data = await requestResourceJson("/api/central-action", fd);
+      const data = await requestResourceJson("/", fd);
       setMediaUploadProgress(30);
 
       const uploadForm = new FormData();
@@ -1522,7 +1523,7 @@ function CentralDeReservasContent() {
         mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
       );
 
-      const finalizeData = await requestResourceJson("/api/central-action", finalizeFd);
+      const finalizeData = await requestResourceJson("/", finalizeFd);
 
       if (!finalizeData.media) {
         throw new Error("Falha ao registrar o arquivo na biblioteca PMY.");
@@ -1552,7 +1553,7 @@ function CentralDeReservasContent() {
     fd.append("id", id);
 
     try {
-      await requestResourceJson("/api/central-action", fd);
+      await requestResourceJson("/", fd);
       setMediaList((current) => current.filter((item) => item.id !== id));
     } catch (error) {
       setMediaUploadError(error?.message || "Erro ao remover mídia.");
@@ -1601,7 +1602,7 @@ function CentralDeReservasContent() {
       }
     }
 
-    const payload = await requestResourceJson("/api/central-action", fd);
+    const payload = await requestResourceJson("/", fd);
 
     setSettingsSaveMessage("Salvo no banco ✓");
     window.clearTimeout(settingsMessageTimerRef.current);
@@ -1681,7 +1682,7 @@ function CentralDeReservasContent() {
       prepareFd.append("size", String(file.size));
       prepareFd.append("category", "logo");
 
-      const prepared = await requestResourceJson("/api/central-action", prepareFd);
+      const prepared = await requestResourceJson("/", prepareFd);
 
       const uploadForm = new FormData();
       for (const parameter of prepared.parameters || []) {
@@ -1709,7 +1710,7 @@ function CentralDeReservasContent() {
         variant === "dark" ? "Logo para fundo escuro" : "Logo para fundo claro",
       );
 
-      const finalized = await requestResourceJson("/api/central-action", finalizeFd);
+      const finalized = await requestResourceJson("/", finalizeFd);
       const url = String(finalized?.media?.url || "").trim();
 
       if (!url) {
@@ -1791,7 +1792,17 @@ function CentralDeReservasContent() {
     fd.append("mappings", JSON.stringify(mappings || {}));
 
     try {
-      const payload = await requestResourceJson("/api/central-action", fd);
+      const response = await fetch(window.location.href, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível salvar o mapeamento.");
+      }
 
       setFieldMappings((current) => ({
         ...current,
@@ -1915,7 +1926,14 @@ function CentralDeReservasContent() {
       fd.append("platforms", JSON.stringify(blockPlatforms));
       fd.append("reason", "Bloqueio manual na Agenda Central");
 
-      const result = await requestResourceJson("/api/central-action", fd);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setBlockMessage(result.error || "Não foi possível salvar o bloqueio.");
+        return;
+      }
+
       setBlockMessage(result.message || "Bloqueio salvo na Agenda Central.");
       window.location.reload();
     } catch (err) {
@@ -1932,7 +1950,12 @@ function CentralDeReservasContent() {
       const fd = new FormData();
       fd.append("_action", "removeBlock");
       fd.append("id", id);
-      await requestResourceJson("/api/central-action", fd);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        alert(result.error || "Não foi possível remover o bloqueio.");
+        return;
+      }
       window.location.reload();
     } catch (err) {
       alert(err?.message || "Erro ao remover bloqueio.");
@@ -2101,7 +2124,12 @@ function CentralDeReservasContent() {
       fd.append("tourId", id);
       fd.append("maxCapacity", String(next));
 
-      await requestResourceJson("/api/central-action", fd);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setTourCapacities(prev => ({ ...prev, [id]: cur }));
+        alert(result.error || "Não foi possível salvar a capacidade.");
+      }
     } catch (err) {
       setTourCapacities(prev => ({ ...prev, [id]: cur }));
       alert(err?.message || "Erro ao salvar a capacidade.");
@@ -2161,7 +2189,14 @@ function CentralDeReservasContent() {
       fd.append("bookingCutoffSeconds", gygConfigCutoff);
       fd.append("gygPriceOverApi", gygConfigPriceOverApi ? "true" : "false");
 
-      await requestResourceJson("/api/central-action", fd);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setGygConfigMessage(result.error || "Não foi possível salvar a configuração.");
+        return;
+      }
+
       setGygConfigMessage("Configuração do tour salva.");
       window.location.reload();
     } catch (error) {
@@ -3436,17 +3471,17 @@ function CentralDeReservasContent() {
       --pmy-pill: 999px;
     }
 
-    html, body { width:100%; height:100%; min-height:100%; overflow:hidden; background:var(--bg-color); }
+    html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg-color); }
     body { margin:0; }
     ::-webkit-scrollbar { width:8px; height:8px; }
     ::-webkit-scrollbar-thumb { background:rgba(24,55,34,0.18); border-radius:var(--pmy-pill); }
 
     .pmy-app-container {
       width:100%;
-      height:100dvh;
       min-height:100dvh;
+      height:auto;
       margin:0;
-      overflow:hidden;
+      overflow:visible;
       display:flex;
       background:
         radial-gradient(circle at 78% 6%, color-mix(in srgb, var(--primary-green) 8%, transparent) 0, transparent 26rem),
@@ -3458,14 +3493,13 @@ function CentralDeReservasContent() {
       width:270px;
       min-height:100dvh;
       height:100dvh;
-      max-height:100dvh;
-      position:relative;
-      top:auto;
+      position:sticky;
+      top:0;
       z-index:300;
       border-right:1px solid var(--pmy-border);
       box-shadow:none;
       transition:width .28s ease, transform .28s ease;
-      overflow:hidden;
+      overflow:visible;
       background:color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
       backdrop-filter:blur(18px);
     }
@@ -3588,14 +3622,10 @@ function CentralDeReservasContent() {
     .pmy-content {
       flex:1;
       min-width:0;
-      height:100dvh;
-      max-height:100dvh;
-      min-height:0;
-      overflow-y:auto;
-      overflow-x:hidden;
-      overscroll-behavior:contain;
+      height:auto;
+      min-height:100dvh;
+      overflow:visible;
       padding:0;
-      scrollbar-gutter:stable;
     }
     .pmy-content-inner {
       width:min(100%, 1560px);
@@ -4207,8 +4237,6 @@ function CentralDeReservasContent() {
         position:fixed;
         left:0;
         top:0;
-        height:100dvh;
-        max-height:100dvh;
         width:min(86vw, 310px);
         transform:translateX(-104%);
         box-shadow:24px 0 70px rgba(20,45,28,.18);
