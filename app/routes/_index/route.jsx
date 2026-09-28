@@ -330,7 +330,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -508,12 +508,20 @@ export default function CentralDeReservas() {
   const [gygConfigSaving, setGygConfigSaving] = useState(false);
 
   // J. MAPEAMENTO DE CAMPOS (NOVO)
-  const [fieldMappings, setFieldMappings] = useState(() => ({
-    ...defaultMappings,
-    ...(businessSettings?.fieldMappings && typeof businessSettings.fieldMappings === "object"
-      ? businessSettings.fieldMappings
-      : {}),
-  }));
+  const [fieldMappings, setFieldMappings] = useState(() => {
+    const persistedByPlatform = Object.fromEntries(
+      (platformFieldMappings || []).map((item) => [
+        String(item.platform || "").toLowerCase(),
+        item.mappings && typeof item.mappings === "object" ? item.mappings : {},
+      ]),
+    );
+
+    return {
+      ...defaultMappings,
+      ...persistedByPlatform,
+    };
+  });
+  const [mappingSaveState, setMappingSaveState] = useState({ platform: null, status: "idle", message: "" });
   const [activeMappingPlatform, setActiveMappingPlatform] = useState("viator");
 
   const fileInputRef = useRef(null);
@@ -1378,21 +1386,64 @@ export default function CentralDeReservas() {
     });
   };
 
-  const handleSaveFieldMappings = () => {
-    persistBusinessSettings({ fieldMappings }).catch((error) => {
-      setSettingsSaveMessage(error?.message || "Erro ao salvar mapeamento.");
+  const savePlatformFieldMapping = useCallback(async (platform, mappings) => {
+    setMappingSaveState({
+      platform,
+      status: "saving",
+      message: "Salvando...",
     });
+
+    const fd = new FormData();
+    fd.append("_action", "savePlatformFieldMapping");
+    fd.append("platform", platform);
+    fd.append("mappings", JSON.stringify(mappings || {}));
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível salvar o mapeamento.");
+      }
+
+      setFieldMappings((current) => ({
+        ...current,
+        [platform]: payload.mapping?.mappings || mappings,
+      }));
+      setMappingSaveState({
+        platform,
+        status: "saved",
+        message: "Mapeamento salvo no banco ✓",
+      });
+    } catch (error) {
+      setMappingSaveState({
+        platform,
+        status: "error",
+        message: error?.message || "Erro ao salvar mapeamento.",
+      });
+    }
+  }, []);
+
+  const handleSaveFieldMappings = () => {
+    const platform = activeMappingPlatform;
+    savePlatformFieldMapping(platform, fieldMappings[platform] || {});
   };
 
   const handleResetFieldMappings = () => {
-    const reset = {
-      ...fieldMappings,
-      [activeMappingPlatform]: defaultMappings[activeMappingPlatform] || {},
-    };
-    setFieldMappings(reset);
-    persistBusinessSettings({ fieldMappings: reset }).catch((error) => {
-      setSettingsSaveMessage(error?.message || "Erro ao restaurar mapeamento.");
-    });
+    const platform = activeMappingPlatform;
+    const resetMapping = { ...(defaultMappings[platform] || {}) };
+
+    setFieldMappings((current) => ({
+      ...current,
+      [platform]: resetMapping,
+    }));
+
+    savePlatformFieldMapping(platform, resetMapping);
   };
   const handleGuidePhotoChange = (e) => { const f = e.target.files[0]; if (f) setGuidePhoto(URL.createObjectURL(f)); };
   const toggleCategory = (n) => setOpenCategories(p => p.includes(n) ? p.filter(c=>c!==n) : [...p,n]);
@@ -1785,7 +1836,18 @@ export default function CentralDeReservas() {
   };
 
   const handleUpdateFieldMapping = (platform, field, value) => {
-    setFieldMappings(p => ({ ...p, [platform]: { ...p[platform], [field]: value } }));
+    setFieldMappings((current) => ({
+      ...current,
+      [platform]: {
+        ...(current[platform] || {}),
+        [field]: value,
+      },
+    }));
+    setMappingSaveState({
+      platform,
+      status: "dirty",
+      message: "Alterações ainda não salvas",
+    });
   };
 
 
@@ -3115,8 +3177,8 @@ export default function CentralDeReservas() {
             fileInputRef, handleLogoChange, handleRemoveLogo, handleThemeChange,
             handleRestoreThemeDefaults, handleImageShapeChange, handleSaveFieldMappings,
             handleResetFieldMappings, handleUpdateFieldMapping, imageShape, internalFields,
-            logoUrl, platformConnections, reservationPlatforms, setActiveMappingPlatform,
-            settingsSaveMessage, shopifyStaff, t, theme
+            logoUrl, mappingSaveState, platformConnections, reservationPlatforms,
+            setActiveMappingPlatform, settingsSaveMessage, shopifyStaff, t, theme
           }} />
 
           <MediaTab {...{
