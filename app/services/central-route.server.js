@@ -207,7 +207,7 @@ export const loader = async ({ request }) => {
     if (mediaShop) {
       // Registros anteriores à biblioteca multi-loja pertencem à loja instalada.
       await prisma.media.updateMany({
-        where: { shop: null },
+        where: { shop: "legacy" },
         data: { shop: mediaShop },
       });
     }
@@ -396,7 +396,7 @@ export const loader = async ({ request }) => {
     mediaFiles = await prisma.media.findMany({
       where: mediaShop
         ? { shop: mediaShop, active: true }
-        : { active: true },
+        : { shop: "legacy", active: true },
       orderBy: { createdAt: "desc" },
     });
 
