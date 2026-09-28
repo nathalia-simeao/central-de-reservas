@@ -635,6 +635,7 @@ export const loader = async ({ request }) => {
   };
 
   return json({
+    apiKey: process.env.SHOPIFY_API_KEY || "",
     tours,
     bookings,
     blockedDates,
