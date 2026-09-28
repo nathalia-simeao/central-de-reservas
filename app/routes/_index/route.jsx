@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 import DashboardTab from "../../components/pmy/DashboardTab";
 import AgendaTab from "../../components/pmy/AgendaTab";
@@ -390,8 +391,8 @@ function isDarkThemeColor(value) {
   return false;
 }
 
-export default function CentralDeReservas() {
-  const { apiKey = "", tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { apiKey: "", tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
+function CentralDeReservasContent({ shopifyAppBridge }) {
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -1029,10 +1030,20 @@ export default function CentralDeReservas() {
 
       // App Bridge ID tokens expiram rapidamente. Pede um token novo para
       // cada request ao nosso backend, em vez de depender de cookie/URL.
-      if (typeof window !== "undefined" && window.shopify?.idToken) {
-        const freshIdToken = await window.shopify.idToken();
-        if (freshIdToken) headers.Authorization = `Bearer ${freshIdToken}`;
+      if (!shopifyAppBridge?.idToken) {
+        throw new Error(
+          "App Bridge indisponível nesta tela. Abra a Central pelo admin da Shopify e recarregue a página.",
+        );
       }
+
+      const freshIdToken = await shopifyAppBridge.idToken();
+      if (!freshIdToken) {
+        throw new Error(
+          "O Shopify não devolveu um token de autenticação para esta ação.",
+        );
+      }
+
+      headers.Authorization = `Bearer ${freshIdToken}`;
 
       return fetch(resourceUrl(pathname), {
         method: formData ? "POST" : "GET",
@@ -1080,7 +1091,7 @@ export default function CentralDeReservas() {
     }
 
     return payload;
-  }, [resourceUrl]);
+  }, [resourceUrl, shopifyAppBridge]);
 
   const loadShopifyValidation = useCallback(async () => {
     try {
@@ -4374,7 +4385,6 @@ export default function CentralDeReservas() {
 
 
   return (
-    <AppProvider embedded apiKey={apiKey}>
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Assistant:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
@@ -4582,6 +4592,20 @@ export default function CentralDeReservas() {
       {renderConnectModal()}
       {renderEditGuideModal()}
     </>
+  );
+}
+
+function CentralWithAppBridge() {
+  const shopifyAppBridge = useAppBridge();
+  return <CentralDeReservasContent shopifyAppBridge={shopifyAppBridge} />;
+}
+
+export default function CentralDeReservas() {
+  const { apiKey = "" } = useLoaderData() || {};
+
+  return (
+    <AppProvider embedded apiKey={apiKey}>
+      <CentralWithAppBridge />
     </AppProvider>
   );
 }
