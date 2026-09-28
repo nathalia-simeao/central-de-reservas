@@ -1676,13 +1676,13 @@ function CentralDeReservasContent() {
 
     try {
       const prepareFd = new FormData();
-      prepareFd.append("_action", "uploadMedia");
+      prepareFd.append("_action", "prepareLogoUpload");
+      prepareFd.append("variant", variant);
       prepareFd.append("filename", file.name);
       prepareFd.append("mimetype", file.type || "image/png");
       prepareFd.append("size", String(file.size));
-      prepareFd.append("category", "logo");
 
-      const prepared = await requestResourceJson("/", prepareFd);
+      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
 
       const uploadForm = new FormData();
       for (const parameter of prepared.parameters || []) {
@@ -1700,27 +1700,18 @@ function CentralDeReservasContent() {
       }
 
       const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeMediaUpload");
+      finalizeFd.append("_action", "finalizeLogoUpload");
+      finalizeFd.append("variant", variant);
       finalizeFd.append("resourceUrl", prepared.resourceUrl);
       finalizeFd.append("filename", file.name);
       finalizeFd.append("mimetype", file.type || "image/png");
-      finalizeFd.append("category", "logo");
-      finalizeFd.append(
-        "label",
-        variant === "dark" ? "Logo para fundo escuro" : "Logo para fundo claro",
-      );
 
-      const finalized = await requestResourceJson("/", finalizeFd);
-      const url = String(finalized?.media?.url || "").trim();
+      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
+      const url = String(finalized?.url || finalized?.media?.url || "").trim();
 
       if (!url) {
         throw new Error("O Shopify não devolveu a URL final da logo.");
       }
-
-      const field =
-        variant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
-
-      await persistBusinessSettings({ [field]: url });
 
       if (variant === "dark") setLogoOnDarkUrl(url);
       else setLogoOnLightUrl(url);
@@ -1734,7 +1725,7 @@ function CentralDeReservasContent() {
     } finally {
       setLogoUploadingVariant(null);
     }
-  }, [persistBusinessSettings, requestResourceJson]);
+  }, [requestResourceJson]);
 
   const handleBrandLogoChange = (variant, event) => {
     const file = event.target.files?.[0];
@@ -1744,13 +1735,15 @@ function CentralDeReservasContent() {
   };
 
   const handleRemoveBrandLogo = async (variant) => {
-    const field =
-      variant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
-
     try {
-      await persistBusinessSettings({ [field]: "" });
+      const fd = new FormData();
+      fd.append("_action", "removeLogo");
+      fd.append("variant", variant);
+      await requestResourceJson("/api/brand-logo", fd);
+
       if (variant === "dark") setLogoOnDarkUrl(null);
       else setLogoOnLightUrl(null);
+
       setSettingsSaveMessage("Logo removida ✓");
     } catch (error) {
       setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
