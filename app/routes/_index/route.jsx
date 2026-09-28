@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLoaderData } from "react-router";
+import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import DashboardTab from "../../components/pmy/DashboardTab";
 import AgendaTab from "../../components/pmy/AgendaTab";
@@ -390,7 +391,7 @@ function isDarkThemeColor(value) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { apiKey = "", tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { apiKey: "", tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -4370,6 +4371,7 @@ export default function CentralDeReservas() {
 
 
   return (
+    <AppProvider embedded apiKey={apiKey}>
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Assistant:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
@@ -4460,7 +4462,7 @@ export default function CentralDeReservas() {
                 </svg>
               </button>
               <div className="pmy-header-copy">
-                <div className="pmy-eyebrow">Portugal Me & You · Central de Reservas</div>
+                <div className="pmy-eyebrow">{lang === 'pt' ? 'Portugal Me & You · Central de Reservas' : 'Portugal Me & You · Booking Hub'}</div>
                 <h1 className="pmy-page-title">
               {activeTab==='dashboard' && t.dash_title}
               {activeTab==='agenda' && t.agenda_title}
@@ -4548,7 +4550,7 @@ export default function CentralDeReservas() {
             setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter
           }} />
 
-          <AutomationsTab activeTab={activeTab} />
+          <AutomationsTab activeTab={activeTab} lang={lang} />
 
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
@@ -4558,7 +4560,7 @@ export default function CentralDeReservas() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            shopifyStaff, t, theme
+            shopifyStaff, t, theme, lang
           }} />
 
           <MediaTab {...{
@@ -4566,7 +4568,7 @@ export default function CentralDeReservas() {
             mediaCategoryInput, mediaFilter, mediaLabelInput, mediaList, mediaPreview,
             mediaUploadError, mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
             setMediaCategoryInput, setMediaFilter, setMediaLabelInput, setMediaList,
-            setMediaPreview, setShowShopifySource, showShopifySource
+            setMediaPreview, setShowShopifySource, showShopifySource, lang
           }} />
 
           </div>
