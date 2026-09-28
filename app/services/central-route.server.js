@@ -653,6 +653,16 @@ export const action = async ({ request }) => {
         patch.logoUrl = logoUrl || null;
       }
 
+      if (formData.has("logoOnLightUrl")) {
+        const logoOnLightUrl = String(formData.get("logoOnLightUrl") || "").trim();
+        patch.logoOnLightUrl = logoOnLightUrl || null;
+      }
+
+      if (formData.has("logoOnDarkUrl")) {
+        const logoOnDarkUrl = String(formData.get("logoOnDarkUrl") || "").trim();
+        patch.logoOnDarkUrl = logoOnDarkUrl || null;
+      }
+
       if (formData.has("theme")) {
         const rawTheme = String(formData.get("theme") || "").trim();
         if (!rawTheme) {
@@ -1276,7 +1286,12 @@ export const action = async ({ request }) => {
         return json({ success: false, error: "Dados do upload incompletos." }, { status: 400 });
       }
 
-      const contentType = mimetype.startsWith("image/") ? "IMAGE" : "FILE";
+      const contentType =
+        mimetype === "image/svg+xml"
+          ? "FILE"
+          : mimetype.startsWith("image/")
+            ? "IMAGE"
+            : "FILE";
       const fileCreateRes = await admin.graphql(`
         mutation PmyFileCreate($files: [FileCreateInput!]!) {
           fileCreate(files: $files) {
