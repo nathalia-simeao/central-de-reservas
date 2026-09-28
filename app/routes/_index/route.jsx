@@ -1477,21 +1477,184 @@ export default function CentralDeReservas() {
     return t[selectedPeriod] || t.period_30d;
   };
 
-  const realConfirmedBookings = bookings?.filter(b => b?.status === "CONFIRMED") || [];
-  const realCanceledBookings  = bookings?.filter(b => b?.status === "CANCELED")  || [];
-  const totalSalesCount       = realConfirmedBookings.length;
-  const canceledCount         = realCanceledBookings.length;
-  const upcomingCount         = realConfirmedBookings.length;
-  // Receita: soma real das bookings se tiver, senão mostra produtos ativos como estimativa
-  const confirmedRevenueValue = realConfirmedBookings.length > 0
-    ? realConfirmedBookings.length * 80
+  const dashboardNow = new Date();
+
+  const dashboardPeriodRange = (() => {
+    if (selectedPeriod === "period_custom" && customStart && customEnd) {
+      const start = new Date(`${customStart}T00:00:00`);
+      const end = new Date(`${customEnd}T23:59:59.999`);
+      return { start, end };
+    }
+
+    const end = new Date(dashboardNow);
+    const start = new Date(dashboardNow);
+
+    if (selectedPeriod === "period_6m") {
+      start.setMonth(start.getMonth() - 6);
+    } else if (selectedPeriod === "period_1y") {
+      start.setFullYear(start.getFullYear() - 1);
+    } else {
+      const days = {
+        period_1w: 7,
+        period_15d: 15,
+        period_30d: 30,
+        period_60d: 60,
+        period_90d: 90,
+        period_120d: 120,
+      }[selectedPeriod] || 30;
+      start.setDate(start.getDate() - days);
+    }
+
+    return { start, end };
+  })();
+
+  const bookingStatus = (booking) => String(booking?.status || "").toUpperCase();
+  const bookingCreatedAt = (booking) => new Date(booking?.externalCreatedAt || booking?.createdAt || 0);
+  const bookingUpdatedAt = (booking) => new Date(booking?.externalUpdatedAt || booking?.updatedAt || booking?.createdAt || 0);
+  const isInDashboardRange = (date) =>
+    date instanceof Date &&
+    !Number.isNaN(date.getTime()) &&
+    date >= dashboardPeriodRange.start &&
+    date <= dashboardPeriodRange.end;
+
+  const periodBookings = (bookings || []).filter((booking) =>
+    isInDashboardRange(bookingCreatedAt(booking))
+  );
+  const realConfirmedBookings = periodBookings.filter(
+    (booking) => bookingStatus(booking) === "CONFIRMED"
+  );
+  const realCanceledBookings = (bookings || []).filter((booking) =>
+    ["CANCELED", "CANCELLED"].includes(bookingStatus(booking)) &&
+    isInDashboardRange(bookingUpdatedAt(booking))
+  );
+
+  const moneyValue = (booking) => {
+    if (booking?.totalPrice === null || booking?.totalPrice === undefined || booking?.totalPrice === "") return null;
+    const parsed = Number(booking.totalPrice);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const bookingCurrency = (booking) => String(booking?.currency || "").trim().toUpperCase();
+
+  const revenueByCurrency = realConfirmedBookings.reduce((totals, booking) => {
+    const amount = moneyValue(booking);
+    const currency = bookingCurrency(booking);
+    if (amount === null || !currency) return totals;
+    totals[currency] = (totals[currency] || 0) + amount;
+    return totals;
+  }, {});
+
+  const revenueCurrencies = Object.keys(revenueByCurrency);
+  const dashboardCurrency = revenueCurrencies.includes("EUR")
+    ? "EUR"
+    : (revenueCurrencies[0] || "EUR");
+  const confirmedRevenueValue = revenueByCurrency[dashboardCurrency] || 0;
+  const pricedConfirmedBookings = realConfirmedBookings.filter(
+    (booking) => moneyValue(booking) !== null && bookingCurrency(booking) === dashboardCurrency
+  );
+  const missingFinancialBookings = realConfirmedBookings.filter(
+    (booking) => moneyValue(booking) === null || !bookingCurrency(booking)
+  );
+  const averageTicketValue = pricedConfirmedBookings.length > 0
+    ? confirmedRevenueValue / pricedConfirmedBookings.length
     : 0;
-  const estimatedRevenueValue = shopifyProducts.length > 0
-    ? shopifyProducts.filter(p=>p.active).reduce((sum, p) => sum + parseFloat(p.price?.replace('€','') || 0), 0)
+
+  const formatMoney = (amount, currency = dashboardCurrency) => {
+    if (!Number.isFinite(Number(amount))) return "—";
+    try {
+      return new Intl.NumberFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+        style: "currency",
+        currency: currency || "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Number(amount));
+    } catch {
+      return `${currency || "EUR"} ${Number(amount).toFixed(2)}`;
+    }
+  };
+
+  const platformLabel = (platform) => ({
+    SHOPIFY: "Shopify",
+    GETYOURGUIDE: "GetYourGuide",
+    VIATOR: "Viator",
+    CIVITATIS: "Civitatis",
+    HEADOUT: "Headout",
+    MANUAL: lang === "pt" ? "Manual" : "Manual",
+    CENTRAL: "Central PMY",
+  }[String(platform || "").toUpperCase()] || String(platform || "Outro"));
+
+  const salesByChannel = Object.values(
+    realConfirmedBookings.reduce((groups, booking) => {
+      const platform = String(booking?.platform || "OTHER").toUpperCase();
+      if (!groups[platform]) {
+        groups[platform] = {
+          platform,
+          label: platformLabel(platform),
+          bookings: 0,
+          passengers: 0,
+          revenueByCurrency: {},
+          missingValue: 0,
+        };
+      }
+
+      const group = groups[platform];
+      group.bookings += 1;
+      group.passengers += Number(booking?.totalParticipants || 0);
+
+      const amount = moneyValue(booking);
+      const currency = bookingCurrency(booking);
+      if (amount === null || !currency) {
+        group.missingValue += 1;
+      } else {
+        group.revenueByCurrency[currency] =
+          (group.revenueByCurrency[currency] || 0) + amount;
+      }
+
+      return groups;
+    }, {})
+  ).sort((a, b) => b.bookings - a.bookings);
+
+  const totalSalesCount = realConfirmedBookings.length;
+  const canceledCount = realCanceledBookings.length;
+  const cancellationBase = totalSalesCount + canceledCount;
+  const cancellationRate = cancellationBase > 0
+    ? (canceledCount / cancellationBase) * 100
     : 0;
-  // Contagem de produtos ativos para o dashboard
-  const activeProductsCount = shopifyProducts.filter(p => p.active).length;
-  const inactiveProductsCount = shopifyProducts.filter(p => !p.active).length;
+
+  const upcomingLimit = new Date(dashboardNow);
+  upcomingLimit.setDate(upcomingLimit.getDate() + 30);
+  const upcomingBookings = (bookings || [])
+    .filter((booking) => {
+      const status = bookingStatus(booking);
+      const start = new Date(booking?.startTime);
+      return ["CONFIRMED", "PENDING"].includes(status) &&
+        !Number.isNaN(start.getTime()) &&
+        start >= dashboardNow &&
+        start <= upcomingLimit;
+    })
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+  const upcomingDepartureMap = new Map();
+  for (const booking of upcomingBookings) {
+    const start = new Date(booking.startTime);
+    const key = `${booking.tourId}|${start.toISOString()}`;
+    if (!upcomingDepartureMap.has(key)) {
+      upcomingDepartureMap.set(key, {
+        key,
+        tourId: booking.tourId,
+        startTime: start,
+        bookings: 0,
+        passengers: 0,
+        platforms: new Set(),
+      });
+    }
+    const departure = upcomingDepartureMap.get(key);
+    departure.bookings += 1;
+    departure.passengers += Number(booking?.totalParticipants || 0);
+    departure.platforms.add(platformLabel(booking.platform));
+  }
+  const upcomingDepartures = [...upcomingDepartureMap.values()]
+    .sort((a, b) => a.startTime - b.startTime);
+  const upcomingCount = upcomingDepartures.length;
 
   // tourOptions: usa produtos do Shopify (reais) com todos os dados
   const tourOptions = shopifyProducts.length > 0
