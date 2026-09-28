@@ -254,6 +254,17 @@ const defaultMappings = {
   },
 };
 
+const DEFAULT_THEME = {
+  bgColor: "#F4DCDC",
+  primaryColor: "#006600",
+  sidebarBg: "#ffffff",
+  fontFamily: "Assistant",
+  fontSize: "14px",
+  titleColor: "#006600",
+  textColor: "#2b2b2b",
+};
+
+
 
 // Componente de seleção de imagem com busca — usado como fallback do picker nativo
 function PickerModalContent({ allImages, onSelect }) {
@@ -319,7 +330,7 @@ function PickerModalContent({ allImages, onSelect }) {
 }
 
 export default function CentralDeReservas() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -329,37 +340,25 @@ export default function CentralDeReservas() {
 
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
-  // logoUrl state moved to top (localStorage persistence)
   const [lang, setLang] = useState("pt");
-  const [imageShape, setImageShape] = useState("rounded");
+  const [imageShape, setImageShape] = useState(
+    ["circle", "rounded"].includes(businessSettings?.imageShape)
+      ? businessSettings.imageShape
+      : "rounded",
+  );
   const [activeModal, setActiveModal] = useState(null);
   const [openCategories, setOpenCategories] = useState(["Day Trips", "Walking Tours"]);
 
-  // LOGO PERSISTENTE (localStorage)
-  const [logoUrl, setLogoUrl] = useState(() => {
-    try { return localStorage.getItem('pmy_logo_url') || null; } catch { return null; }
+  // Configurações visuais do negócio vêm do banco, não do navegador.
+  const [logoUrl, setLogoUrl] = useState(businessSettings?.logoUrl || null);
+  const [theme, setTheme] = useState({
+    ...DEFAULT_THEME,
+    ...(businessSettings?.theme && typeof businessSettings.theme === "object"
+      ? businessSettings.theme
+      : {}),
   });
-
-  // THEME / PERSONALIZAÇÃO
-  const [theme, setTheme] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pmy_theme');
-      return saved ? JSON.parse(saved) : {
-        bgColor: '#F4DCDC',
-        primaryColor: '#006600',
-        sidebarBg: '#ffffff',
-        fontFamily: 'Assistant',
-        fontSize: '14px',
-        titleColor: '#006600',
-        textColor: '#2b2b2b',
-      };
-    } catch {
-      return {
-        bgColor: '#F4DCDC', primaryColor: '#006600', sidebarBg: '#ffffff',
-        fontFamily: 'Assistant', fontSize: '14px', titleColor: '#006600', textColor: '#2b2b2b',
-      };
-    }
-  });
+  const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
+  const settingsSaveTimerRef = useRef(null);
 
   // B. FILTROS DASHBOARD
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
@@ -508,7 +507,12 @@ export default function CentralDeReservas() {
   const [gygConfigSaving, setGygConfigSaving] = useState(false);
 
   // J. MAPEAMENTO DE CAMPOS (NOVO)
-  const [fieldMappings, setFieldMappings] = useState(defaultMappings);
+  const [fieldMappings, setFieldMappings] = useState(() => ({
+    ...defaultMappings,
+    ...(businessSettings?.fieldMappings && typeof businessSettings.fieldMappings === "object"
+      ? businessSettings.fieldMappings
+      : {}),
+  }));
   const [activeMappingPlatform, setActiveMappingPlatform] = useState("viator");
 
   const fileInputRef = useRef(null);
@@ -1248,29 +1252,145 @@ export default function CentralDeReservas() {
     }
   };
 
+  const persistBusinessSettings = useCallback(async (patch) => {
+    const fd = new FormData();
+    fd.append("_action", "saveBusinessSettings");
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (value !== undefined) {
+        fd.append(
+          key,
+          value !== null && typeof value === "object"
+            ? JSON.stringify(value)
+            : String(value ?? ""),
+        );
+      }
+    }
+
+    const response = await fetch(window.location.href, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.error || "Não foi possível salvar a configuração.");
+    }
+
+    setSettingsSaveMessage("Salvo no banco ✓");
+    window.clearTimeout(settingsSaveTimerRef.current);
+    settingsSaveTimerRef.current = window.setTimeout(
+      () => setSettingsSaveMessage(""),
+      1800,
+    );
+    return payload.settings;
+  }, []);
+
+  const scheduleBusinessSettingsSave = useCallback((patch) => {
+    window.clearTimeout(settingsSaveTimerRef.current);
+    settingsSaveTimerRef.current = window.setTimeout(() => {
+      persistBusinessSettings(patch).catch((error) => {
+        console.error("[PMY] settings save failed:", error);
+        setSettingsSaveMessage(error?.message || "Erro ao salvar configuração.");
+      });
+    }, 350);
+  }, [persistBusinessSettings]);
+
+  useEffect(() => {
+    if (businessSettings) return;
+
+    let legacyLogo = null;
+    let legacyTheme = null;
+    try {
+      legacyLogo = localStorage.getItem("pmy_logo_url") || null;
+      const rawTheme = localStorage.getItem("pmy_theme");
+      legacyTheme = rawTheme ? JSON.parse(rawTheme) : null;
+    } catch {
+      return;
+    }
+
+    if (!legacyLogo && !legacyTheme) return;
+
+    if (legacyLogo) setLogoUrl(legacyLogo);
+    if (legacyTheme && typeof legacyTheme === "object") {
+      setTheme({ ...DEFAULT_THEME, ...legacyTheme });
+    }
+
+    persistBusinessSettings({
+      ...(legacyLogo ? { logoUrl: legacyLogo } : {}),
+      ...(legacyTheme ? { theme: { ...DEFAULT_THEME, ...legacyTheme } } : {}),
+    })
+      .then(() => {
+        try {
+          localStorage.removeItem("pmy_logo_url");
+          localStorage.removeItem("pmy_theme");
+        } catch {}
+      })
+      .catch((error) => {
+        console.error("[PMY] legacy settings migration failed:", error);
+      });
+  }, [businessSettings, persistBusinessSettings]);
+
   const handleLogoChange = (e) => {
     const f = e.target.files[0];
-    if (f) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target.result;
-        setLogoUrl(dataUrl);
-        try { localStorage.setItem('pmy_logo_url', dataUrl); } catch {}
-      };
-      reader.readAsDataURL(f);
-    }
+    if (!f) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = String(ev.target.result || "");
+      setLogoUrl(dataUrl);
+      persistBusinessSettings({ logoUrl: dataUrl }).catch((error) => {
+        setSettingsSaveMessage(error?.message || "Erro ao salvar logo.");
+      });
+    };
+    reader.readAsDataURL(f);
   };
 
   const handleRemoveLogo = () => {
     setLogoUrl(null);
-    try { localStorage.removeItem('pmy_logo_url'); } catch {}
+    persistBusinessSettings({ logoUrl: "" }).catch((error) => {
+      setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
+    });
   };
 
   const handleThemeChange = (key, value) => {
     setTheme(prev => {
       const updated = { ...prev, [key]: value };
-      try { localStorage.setItem('pmy_theme', JSON.stringify(updated)); } catch {}
+      scheduleBusinessSettingsSave({ theme: updated });
       return updated;
+    });
+  };
+
+  const handleRestoreThemeDefaults = () => {
+    setTheme(DEFAULT_THEME);
+    persistBusinessSettings({ theme: DEFAULT_THEME }).catch((error) => {
+      setSettingsSaveMessage(error?.message || "Erro ao restaurar tema.");
+    });
+  };
+
+  const handleImageShapeChange = (value) => {
+    setImageShape(value);
+    persistBusinessSettings({ imageShape: value }).catch((error) => {
+      setSettingsSaveMessage(error?.message || "Erro ao salvar formato.");
+    });
+  };
+
+  const handleSaveFieldMappings = () => {
+    persistBusinessSettings({ fieldMappings }).catch((error) => {
+      setSettingsSaveMessage(error?.message || "Erro ao salvar mapeamento.");
+    });
+  };
+
+  const handleResetFieldMappings = () => {
+    const reset = {
+      ...fieldMappings,
+      [activeMappingPlatform]: defaultMappings[activeMappingPlatform] || {},
+    };
+    setFieldMappings(reset);
+    persistBusinessSettings({ fieldMappings: reset }).catch((error) => {
+      setSettingsSaveMessage(error?.message || "Erro ao restaurar mapeamento.");
     });
   };
   const handleGuidePhotoChange = (e) => { const f = e.target.files[0]; if (f) setGuidePhoto(URL.createObjectURL(f)); };
@@ -2992,9 +3112,10 @@ export default function CentralDeReservas() {
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
             fileInputRef, handleLogoChange, handleRemoveLogo, handleThemeChange,
-            handleUpdateFieldMapping, imageShape, internalFields, logoUrl,
-            platformConnections, reservationPlatforms, setActiveMappingPlatform,
-            setFieldMappings, setImageShape, setTheme, shopifyStaff, t, theme
+            handleRestoreThemeDefaults, handleImageShapeChange, handleSaveFieldMappings,
+            handleResetFieldMappings, handleUpdateFieldMapping, imageShape, internalFields,
+            logoUrl, platformConnections, reservationPlatforms, setActiveMappingPlatform,
+            settingsSaveMessage, shopifyStaff, t, theme
           }} />
 
           <MediaTab {...{
