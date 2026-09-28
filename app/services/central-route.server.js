@@ -197,7 +197,7 @@ export const loader = async ({ request }) => {
     dbGuides = [];
   }
 
-  // Biblioteca unificada PMY: PostgreSQL é o catálogo canônico e Shopify
+  // Biblioteca unificada PMY v1: PostgreSQL é o catálogo canônico e Shopify
   // Files/produtos são reconciliados como fontes externas da mesma biblioteca.
   let mediaFiles = [];
   let shopifyImages = [];
