@@ -607,6 +607,7 @@ export default function CentralDeReservas() {
   const logoDarkInputRef = useRef(null);
   const guidePhotoRef = useRef(null);
   const t = translations[lang] || translations.pt;
+  const ui = (pt, en) => lang === "en" ? en : pt;
   const navItems = [
     { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Dashboard" : "Dashboard" },
     { key: "agenda", icon: "agenda", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
@@ -2399,10 +2400,10 @@ export default function CentralDeReservas() {
               <div style={{ fontSize:'21px', fontWeight:'900', color:'var(--text-dark)', marginBottom:'5px' }}>{platform.name}</div>
               <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'18px' }}>
                 {isTripadvisor
-                  ? "Conteúdo e reputação · não é canal de reservas"
+                  ? ui("Conteúdo e reputação · não é canal de reservas", "Content and reputation · not a booking channel")
                   : conn.connected
-                    ? `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`
-                    : isShopify ? "Já conectado automaticamente via Shopify App" : "Siga as instruções abaixo para conectar"}
+                    ? (lang === 'en' ? `Connected as: ${conn.accountName} · Last sync: ${conn.lastSync}` : `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`)
+                    : isShopify ? ui("Já conectado automaticamente via Shopify App","Already connected automatically via Shopify App") : ui("Siga as instruções abaixo para conectar","Follow the instructions below to connect")}
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
@@ -2417,7 +2418,7 @@ export default function CentralDeReservas() {
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
                     <span style={{ fontSize:'22px' }}>✅</span>
-                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>Shopify conectado automaticamente</strong>
+                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>{ui("Shopify conectado automaticamente", "Shopify connected automatically")}</strong>
                   </div>
                   <div style={{ fontSize:'13px', color:'#444', lineHeight:'1.8' }}>
                     <div>🏢 Loja: <strong>{conn.accountName}</strong></div>
@@ -2442,7 +2443,7 @@ export default function CentralDeReservas() {
                   </div>
                 </div>
                 <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'18px', fontSize:'13px', color:'#92400e', lineHeight:'1.6' }}>
-                  <strong>ℹ️ Não precisa de token manual.</strong> Este app já acessa sua loja via autenticação OAuth do Shopify. Os produtos são puxados automaticamente pelo servidor.
+                  <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> Este app já acessa sua loja via autenticação OAuth do Shopify. Os produtos são puxados automaticamente pelo servidor.
                   Se os produtos não aparecerem, verifique se existem produtos cadastrados em <strong>Produtos → Todos os produtos</strong> no seu painel Shopify e recarregue a página.
                 </div>
                 <div style={{ display:'flex', gap:'10px' }}>
@@ -2481,7 +2482,7 @@ export default function CentralDeReservas() {
                 </div>
 
                 <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'15px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>🔌 Endpoints Supplier API v1</div>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>{ui("🔌 Endpoints Supplier API v1", "🔌 Supplier API v1 Endpoints")}</div>
                   {[
                     'get-availabilities',
                     'reserve',
@@ -2494,7 +2495,7 @@ export default function CentralDeReservas() {
                     </div>
                   ))}
                   <div style={{ marginTop:'9px', fontSize:'11px', color:'#888', lineHeight:'1.5' }}>
-                    As credenciais ficam somente no Northflank. Não cole usuário ou senha do GetYourGuide dentro da Central.
+                    {ui('As credenciais ficam somente no Northflank. Não cole usuário ou senha do GetYourGuide dentro da Central.','Credentials remain only in Northflank. Do not paste your GetYourGuide username or password inside the Central.')}
                   </div>
                 </div>
 
@@ -2504,9 +2505,9 @@ export default function CentralDeReservas() {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
-                    <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Tour mestre PMY</label>
+                    <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Tour mestre PMY", "PMY master tour")}</label>
                     <select className="pmy-form-input" value={gygConfigTourId} onChange={(e) => handleGygTourSelection(e.target.value)}>
-                      <option value="">-- Selecione --</option>
+                      <option value="">{ui("-- Selecione --", "-- Select --")}</option>
                       {(tours || [])
                         .filter((tour) => tour.shopifyStatus !== 'INACTIVE')
                         .map((tour) => (
@@ -2520,7 +2521,7 @@ export default function CentralDeReservas() {
                   {selectedGygTour && (
                     <>
                       <div style={{ background:'#f7faf7', border:'1px solid #e0eee0', borderRadius:'8px', padding:'10px', marginBottom:'10px' }}>
-                        <div style={{ fontSize:'10px', color:'#888' }}>Supplier productId da PMY</div>
+                        <div style={{ fontSize:'10px', color:'#888' }}>{ui("Supplier productId da PMY", "PMY supplier productId")}</div>
                         <code style={{ fontSize:'11px', color:'#006600', wordBreak:'break-all' }}>{selectedGygTour.id}</code>
                         <div style={{ fontSize:'10px', color:'#888', marginTop:'6px' }}>
                           Capacidade central: <strong>{selectedGygTour.maxCapacity}</strong> · fonte: {selectedGygTour.capacitySource}
@@ -2528,30 +2529,30 @@ export default function CentralDeReservas() {
                       </div>
 
                       <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
-                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>ID da atividade/opção no GetYourGuide</label>
+                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("ID da atividade/opção no GetYourGuide", "GetYourGuide activity/option ID")}</label>
                         <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
-                          placeholder="Cole o ID do produto/opção correspondente no GYG" />
+                          placeholder={ui('Cole o ID do produto/opção correspondente no GYG','Paste the corresponding product/option ID from GYG')} />
                       </div>
 
                       <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
                         <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>
-                          Horários reais <span style={{ color:'#888', fontWeight:'400' }}>(HH:MM separados por vírgula)</span>
+                          {ui('Horários reais','Real times')} <span style={{ color:'#888', fontWeight:'400' }}>({ui('HH:MM separados por vírgula','HH:MM separated by commas')})</span>
                         </label>
                         <input className="pmy-form-input" value={gygConfigSchedule} onChange={(e) => setGygConfigSchedule(e.target.value)}
                           placeholder="Ex.: 09:30, 14:00" />
                         <div style={{ fontSize:'10px', color:'#888', marginTop:'4px' }}>
-                          Fonte atual: {selectedGygTour.scheduleSource || 'UNCONFIGURED'}. Se preencher aqui, passa a ser MANUAL.
+                          {ui('Fonte atual:','Current source:')} {selectedGygTour.scheduleSource || 'UNCONFIGURED'}. {ui('Se preencher aqui, passa a ser MANUAL.','If you fill this in, the source becomes MANUAL.')}
                         </div>
                       </div>
 
                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
                         <div className="pmy-form-group">
-                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Fuso horário</label>
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Fuso horário", "Time zone")}</label>
                           <input className="pmy-form-input" value={gygConfigTimezone} onChange={(e) => setGygConfigTimezone(e.target.value)}
                             placeholder="Europe/Lisbon" />
                         </div>
                         <div className="pmy-form-group">
-                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>Cutoff em segundos</label>
+                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Cutoff em segundos", "Cutoff in seconds")}</label>
                           <input type="number" min="0" max="604800" className="pmy-form-input" value={gygConfigCutoff} onChange={(e) => setGygConfigCutoff(e.target.value)}
                             placeholder="Ex.: 3600" />
                         </div>
@@ -2577,7 +2578,7 @@ export default function CentralDeReservas() {
                           style={{ marginTop:'2px' }}
                         />
                         <span>
-                          <strong>Preço via API</strong>. Ative somente quando as categorias/preços deste produto estiverem idênticos aos configurados no GetYourGuide. Por padrão fica desligado.
+                          <strong>{ui("Preço via API", "Price via API")}</strong>. Ative somente quando as categorias/preços deste produto estiverem idênticos aos configurados no GetYourGuide. Por padrão fica desligado.
                         </span>
                       </label>
 
@@ -2589,7 +2590,7 @@ export default function CentralDeReservas() {
 
                       <button type="button" className="pmy-btn-submit" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}
                         style={{ marginTop:'12px', opacity:gygConfigSaving?0.6:1 }}>
-                        {gygConfigSaving ? 'Salvando...' : '💾 Salvar configuração GYG'}
+                        {gygConfigSaving ? ui('Salvando...','Saving...') : ui('💾 Salvar configuração GYG','💾 Save GYG configuration')}
                       </button>
                     </>
                   )}
@@ -2617,22 +2618,22 @@ export default function CentralDeReservas() {
                   <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.75' }}>
                     <div>⭐ Reviews e ratings: <strong>Tripadvisor Terra API</strong></div>
                     <div>📷 Fotos e dados da localização: <strong>Tripadvisor Terra API</strong></div>
-                    <div>🎟️ Reservas de tours/atividades: <strong>geridas pela integração Viator</strong></div>
-                    <div>🚫 Agenda, vagas, bloqueios e overbooking: <strong>Tripadvisor não entra como canal separado</strong></div>
+                    <div>🎟️ Reservas de tours/atividades: <strong>{ui("geridas pela integração Viator", "managed by the Viator integration")}</strong></div>
+                    <div>🚫 Agenda, vagas, bloqueios e overbooking: <strong>{ui("Tripadvisor não entra como canal separado", "Tripadvisor is not treated as a separate channel")}</strong></div>
                   </div>
                 </div>
 
                 <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px', fontSize:'12px', color:'#92400e', lineHeight:'1.6' }}>
-                  <strong>Sem duplicar reservas.</strong> Quando uma experiência da PMY aparece no Tripadvisor, o inventário e as reservas são distribuídos pela Viator. A Central deve contabilizar essa venda como Viator, não como um segundo canal Tripadvisor.
+                  <strong>{ui("Sem duplicar reservas.", "No duplicate bookings.")}</strong> Quando uma experiência da PMY aparece no Tripadvisor, o inventário e as reservas são distribuídos pela Viator. A Central deve contabilizar essa venda como Viator, não como um segundo canal Tripadvisor.
                 </div>
 
                 <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'10px' }}>O que poderemos integrar separadamente</div>
+                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'10px' }}>{ui("O que poderemos integrar separadamente", "What we can integrate separately")}</div>
                   <ul style={{ margin:0, paddingLeft:'18px', fontSize:'12px', color:'#555', lineHeight:'1.7' }}>
-                    <li>reviews recentes da empresa/localização</li>
-                    <li>nota média e quantidade de avaliações</li>
-                    <li>fotos e dados públicos da localização</li>
-                    <li>widgets/links de reputação no site e na Central, quando permitido pelo plano Terra</li>
+                    <li>{ui("reviews recentes da empresa/localização", "recent company/location reviews")}</li>
+                    <li>{ui("nota média e quantidade de avaliações", "average rating and review count")}</li>
+                    <li>{ui("fotos e dados públicos da localização", "public location photos and data")}</li>
+                    <li>{ui("widgets/links de reputação no site e na Central, quando permitido pelo plano Terra", "reputation widgets/links on the website and in the Central, when allowed by the Terra plan")}</li>
                   </ul>
                 </div>
 
@@ -2654,7 +2655,7 @@ export default function CentralDeReservas() {
                 <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
                     <span style={{ fontSize:'22px' }}>✅</span>
-                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>Integração Ativa</strong>
+                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>{ui("Integração Ativa", "Integration Active")}</strong>
                   </div>
                   <div style={{ fontSize:'13px', color:'#444', lineHeight:'1.8' }}>
                     <div>🏢 Conta: <strong>{conn.accountName}</strong></div>
@@ -2663,7 +2664,7 @@ export default function CentralDeReservas() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:'10px' }}>
-                  <button className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>Fechar</button>
+                  <button className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>{ui("Fechar", "Close")}</button>
                   <button onClick={() => { handleDisconnect(connectingPlatform); setConnectingPlatform(null); }}
                     style={{ flex:1, background:'#fff0f0', border:'1px solid #fcc', color:'#cc0000', borderRadius:'8px', padding:'12px', fontWeight:'700', fontSize:'13px', cursor:'pointer' }}>
                     Desconectar
@@ -2747,14 +2748,16 @@ export default function CentralDeReservas() {
     let title = "", content = null;
 
     if (activeModal === 'calendarDay') {
-      title = `📅 Grade do Dia ${selectedCalendarDay} de ${currentMonthLabel} de ${currentYear}`;
+      title = lang === 'en'
+        ? `📅 Schedule for ${currentMonthLabel} ${selectedCalendarDay}, ${currentYear}`
+        : `📅 Grade do Dia ${selectedCalendarDay} de ${currentMonthLabel} de ${currentYear}`;
       const dayBlocks = getCalendarDayBlocks(selectedCalendarDay);
       const dayBookings = getCalendarDayBookings(selectedCalendarDay);
       const dayStats = getCalendarDayStats(selectedCalendarDay);
       const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
       content = (
         <div>
-          <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>Reservas confirmadas e pré-reservas ativas:</h4>
+          <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
           <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'20px' }}>
             {dayBookings.length > 0 ? (
               <>
@@ -2766,15 +2769,15 @@ export default function CentralDeReservas() {
                 }}>
                   <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
                     <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.bookingCount}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>reservas</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("reservas", "bookings")}</div>
                   </div>
                   <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
                     <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.passengers}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>passageiros</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("passageiros", "passengers")}</div>
                   </div>
                   <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
                     <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.remaining}/{dayStats.capacity}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>vagas restantes</div>
+                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("vagas restantes", "spots remaining")}</div>
                   </div>
                 </div>
 
@@ -2820,7 +2823,7 @@ export default function CentralDeReservas() {
                         background:booking.status==='CONFIRMED'?'#eaf8ea':'#fff4d6',
                         color:booking.status==='CONFIRMED'?'#087a08':'#9a6700'
                       }}>
-                        {booking.status==='CONFIRMED'?'CONFIRMADA':'PENDENTE'}
+                        {booking.status==='CONFIRMED'?ui('CONFIRMADA','CONFIRMED'):ui('PENDENTE','PENDING')}
                       </span>
                     </div>
                   );
@@ -2841,37 +2844,37 @@ export default function CentralDeReservas() {
           )}
           {isGloballyBlocked ? (
             <div style={{ padding:'15px', background:'#ffe6e6', border:'1px solid #cc0000', color:'#cc0000', borderRadius:'8px', fontWeight:'bold', fontSize:'13px', lineHeight:'1.4' }}>
-              🔒 Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.
+              {ui('🔒 Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.','🔒 Allocation Suspended: this day has a global block in the Central Agenda.')}
             </div>
           ) : (
             <div>
               {!isFormAllocating ? (
-                <button type="button" className="pmy-btn-submit" onClick={() => setIsFormAllocating(true)}>+ Adicionar Novo Tour a este Dia</button>
+                <button type="button" className="pmy-btn-submit" onClick={() => setIsFormAllocating(true)}>{ui("+ Adicionar Novo Tour a este Dia", "+ Add New Tour to This Day")}</button>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:'15px', background:'#f5fcf5', padding:'20px', borderRadius:'10px', border:'1px solid #e0f0e0' }}>
-                  <h4 style={{ color:'var(--primary-green)', fontWeight:'bold', fontSize:'15px' }}>➕ Escalar Passeio na Folha Diária</h4>
+                  <h4 style={{ color:'var(--primary-green)', fontWeight:'bold', fontSize:'15px' }}>{ui("➕ Escalar Passeio na Folha Diária", "➕ Assign Tour to Daily Schedule")}</h4>
                   <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                    <label style={{ fontSize:'13px', fontWeight:'700' }}>Selecione o Tour</label>
+                    <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Tour", "Select Tour")}</label>
                     <select className="pmy-form-input" value={modalSelectedTour} onChange={e => handleModalTourChange(e.target.value)} required>
-                      <option value="">-- Selecione o Tour --</option>
+                      <option value="">{ui("-- Selecione o Tour --", "-- Select Tour --")}</option>
                       {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
                     </select>
                   </div>
                   {modalSelectedTour && (
                     <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                      <label style={{ fontSize:'13px', fontWeight:'700' }}>Selecione o Horário:</label>
+                      <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Horário:", "Select Time:")}</label>
                       <select className="pmy-form-input">
                         {modalAvailableHours.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                   )}
                   <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                    <label style={{ fontSize:'13px', fontWeight:'700' }}>Selecione o Guia:</label>
+                    <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Guia:", "Select Guide:")}</label>
                     <select className="pmy-form-input">
                       {guidesList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="pmy-btn-submit" onClick={() => { setActiveModal(null); setIsFormAllocating(false); }}>Confirmar e Publicar Escala</button>
+                  <button type="button" className="pmy-btn-submit" onClick={() => { setActiveModal(null); setIsFormAllocating(false); }}>{ui("Confirmar e Publicar Escala", "Confirm and Publish Schedule")}</button>
                 </div>
               )}
             </div>
@@ -2879,7 +2882,7 @@ export default function CentralDeReservas() {
         </div>
       );
     } else if (activeModal === 'pickPhotoForGuide') {
-      title = "🖼️ Escolher Foto";
+      title = ui("🖼️ Escolher Foto","🖼️ Choose Photo");
       const allImages = mediaList.filter(
         (m, idx, arr) =>
           m.mimetype?.startsWith('image/') &&
@@ -2896,7 +2899,7 @@ export default function CentralDeReservas() {
         />
       );
     } else if (activeModal === 'guideDetails' && selectedGuideInfo) {
-      title = `Detalhes do Guia`;
+      title = ui("Detalhes do Guia","Guide Details");
       content = (
         <div>
           <div style={{ display:'flex', gap:'20px', alignItems:'center', marginBottom:'20px', borderBottom:'1px solid #eee', paddingBottom:'20px' }}>
@@ -2907,26 +2910,26 @@ export default function CentralDeReservas() {
               <div style={{ fontSize:'13px', color:'#666', marginTop:'4px' }}>📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
             </div>
           </div>
-          <h4 style={{ fontSize:'15px', color:'var(--primary-green)', fontWeight:'bold', marginBottom:'10px' }}>Próximos 7 Tours Atribuídos:</h4>
+          <h4 style={{ fontSize:'15px', color:'var(--primary-green)', fontWeight:'bold', marginBottom:'10px' }}>{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
           <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'20px' }}>
-            <div className="pmy-list-item" style={{ padding:'8px 0' }}><span>🏰 Sintra e Cascais Completo</span><strong>Amanhã, 09:00</strong></div>
+            <div className="pmy-list-item" style={{ padding:'8px 0' }}><span>🏰 Sintra e Cascais Completo</span><strong>{ui("Amanhã, 09:00", "Tomorrow, 09:00")}</strong></div>
             <div className="pmy-list-item" style={{ padding:'8px 0' }}><span>🏰 Fátima, Batalha e Nazaré</span><strong>28/Maio, 08:30</strong></div>
             <div className="pmy-list-item" style={{ padding:'8px 0', borderBottom:'none' }}><span>🚶‍♂️ Lisboa Walking Tour (Baixa)</span><strong>30/Maio, 14:00</strong></div>
           </div>
-          <h4 style={{ fontSize:'15px', color:'#555', fontWeight:'bold', marginBottom:'10px' }}>Horários Disponíveis Padrão:</h4>
+          <h4 style={{ fontSize:'15px', color:'#555', fontWeight:'bold', marginBottom:'10px' }}>{ui("Horários Disponíveis Padrão:", "Default Available Hours:")}</h4>
           <div style={{ display:'flex', gap:'10px', marginBottom:'16px' }}>
-            <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>Segunda a Sábado</span>
+            <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>{ui("Segunda a Sábado", "Monday to Saturday")}</span>
             <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>08:00 - 18:00</span>
           </div>
 
           {selectedGuideInfo?.utmId && (
             <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'14px' }}>
-              <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--primary-green)', marginBottom:'10px' }}>🔗 Link de Indicação UTM</h4>
+              <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--primary-green)', marginBottom:'10px' }}>{ui("🔗 Link de Indicação UTM", "🔗 UTM Referral Link")}</h4>
               <div style={{ display:'flex', gap:'6px', alignItems:'center', marginBottom:'8px' }}>
                 <code style={{ fontSize:'11px', background:'#fff', border:'1px solid #ddd', borderRadius:'5px', padding:'4px 8px', flex:1, wordBreak:'break-all', color:'#555' }}>
                   {selectedGuideInfo.referralLink}
                 </code>
-                <button onClick={() => navigator.clipboard.writeText(selectedGuideInfo.referralLink).then(()=>alert('Copiado!')).catch(()=>{})}
+                <button onClick={() => navigator.clipboard.writeText(selectedGuideInfo.referralLink).then(()=>alert(ui('Copiado!','Copied!'))).catch(()=>{})}
                   style={{ padding:'6px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
                   📋
                 </button>
@@ -2945,7 +2948,7 @@ export default function CentralDeReservas() {
                 ))}
               </div>
               <div style={{ marginTop:'10px', fontSize:'12px', color:'#888' }}>
-                💡 Acesse <strong>Shopify → Marketing → Campanhas</strong> para ver as métricas desta campanha.
+                💡 {ui('Acesse','Go to')} <strong>Shopify → Marketing → {ui('Campanhas','Campaigns')}</strong> {ui('para ver as métricas desta campanha.','to view this campaign’s metrics.')}
               </div>
             </div>
           )}
@@ -3147,12 +3150,12 @@ export default function CentralDeReservas() {
                 <img src={editGuidePhoto || guide.photo} alt={guide.name}
                   style={{ width:"62px", height:"62px", borderRadius:"14px", objectFit:"cover", border:"2.5px solid rgba(255,255,255,0.35)", display:"block" }} />
                 <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
-                  title="Escolher do banco da Shopify"
+                  title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
                   style={{ position:"absolute", bottom:"-7px", right:"-7px", width:"22px", height:"22px", borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", boxShadow:"0 2px 6px rgba(0,0,0,0.2)" }}>📷</button>
                 <input type="file" accept="image/*" style={{ display:"none" }} ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
               </div>
               <div>
-                <div style={{ color:"rgba(255,255,255,0.65)", fontSize:"11px", fontWeight:"700", marginBottom:"3px", textTransform:"uppercase", letterSpacing:"0.5px" }}>Editando guia</div>
+                <div style={{ color:"rgba(255,255,255,0.65)", fontSize:"11px", fontWeight:"700", marginBottom:"3px", textTransform:"uppercase", letterSpacing:"0.5px" }}>{ui("Editando guia", "Editing guide")}</div>
                 <div style={{ color:"#fff", fontSize:"19px", fontWeight:"900" }}>{guide.name}</div>
               </div>
             </div>
@@ -3162,7 +3165,7 @@ export default function CentralDeReservas() {
           <form onSubmit={handleSaveEditGuide} style={{ padding:"26px" }}>
             <div style={{ display:"flex", flexDirection:"column", gap:"15px" }}>
               <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                <label>Nome e Sobrenome</label>
+                <label>{ui("Nome e Sobrenome", "Full Name")}</label>
                 <input type="text" className="pmy-form-input" value={editGuideName} onChange={e => setEditGuideName(e.target.value)} required />
               </div>
               <div className="pmy-form-group" style={{ marginBottom:0 }}>
@@ -3183,7 +3186,7 @@ export default function CentralDeReservas() {
               </div>
 
               <div className="pmy-form-group" style={{ marginBottom:0 }}>
-                <label>ID da Campanha UTM</label>
+                <label>{ui("ID da Campanha UTM", "UTM Campaign ID")}</label>
                 <input type="text" className="pmy-form-input" placeholder="Ex: 21d91c"
                   value={editGuideUtmId} onChange={e => setEditGuideUtmId(e.target.value)}
                   style={{ fontFamily:'monospace' }} />
@@ -3194,7 +3197,7 @@ export default function CentralDeReservas() {
                     </div>
                     <button type="button" onClick={() => {
                       const url = `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`;
-                      navigator.clipboard.writeText(url).then(() => alert('Link copiado!')).catch(()=>{});
+                      navigator.clipboard.writeText(url).then(() => alert(ui('Link copiado!','Link copied!'))).catch(()=>{});
                     }} style={{ padding:'5px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
                       📋 Copiar
                     </button>
@@ -3203,11 +3206,11 @@ export default function CentralDeReservas() {
               </div>
             </div>
             <div style={{ display:"flex", gap:"10px", marginTop:"22px", paddingTop:"18px", borderTop:"1px solid #f0f0f0" }}>
-              <button type="submit" className="pmy-btn-submit" style={{ flex:1 }}>💾 Salvar Alterações</button>
+              <button type="submit" className="pmy-btn-submit" style={{ flex:1 }}>{ui("💾 Salvar Alterações", "💾 Save Changes")}</button>
               <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
                 style={{ padding:"12px 16px", background:"#fff0f0", border:"1px solid #fcc", color:"#cc0000", borderRadius:"8px", fontWeight:"700", fontSize:"13px", cursor:"pointer" }}>🗑️</button>
               <button type="button" onClick={() => setEditingGuide(null)}
-                style={{ padding:"12px 16px", background:"#f5f5f5", border:"none", color:"#555", borderRadius:"8px", fontWeight:"700", fontSize:"13px", cursor:"pointer" }}>Cancelar</button>
+                style={{ padding:"12px 16px", background:"#f5f5f5", border:"none", color:"#555", borderRadius:"8px", fontWeight:"700", fontSize:"13px", cursor:"pointer" }}>{ui("Cancelar", "Cancel")}</button>
             </div>
           </form>
         </div>
