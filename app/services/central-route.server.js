@@ -22,7 +22,7 @@ import {
   SYNC_EVENT_TYPES,
 } from "../utils/sync-queue.server";
 
-// Server-only loader/actions for the PMY Central route.
+// Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
 const json = (body, init) => data(body, init);
 
