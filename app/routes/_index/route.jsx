@@ -1658,7 +1658,7 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO: persistência direta no banco da Central, sem depender do Shopify Files.
+  // BRAND LOGO v2: persistência direta no banco da Central, sem depender do Shopify Files.
   const uploadBusinessLogo = useCallback(async (variant, file) => {
     if (!file) return;
 

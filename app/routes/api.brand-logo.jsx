@@ -18,7 +18,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 ]);
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-// Logo persistence is intentionally DB-backed to avoid Shopify Files scope dependency.
+// Logo persistence v2 is DB-backed to avoid Shopify Files scope dependency.
 
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
