@@ -69,7 +69,7 @@ export default function AgendaTab(props) {
 {/* ===== TAB: AGENDA ===== */}
           {activeTab==='agenda' && (
             <div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'30px', marginBottom:'30px' }}>
+              <div className="pmy-agenda-form-grid">
 
                 {/* ── FORMULÁRIO: NOVA RESERVA ── */}
                 <div className="pmy-form-box">
@@ -104,7 +104,7 @@ export default function AgendaTab(props) {
                       const todayKey = `${today.year}-${String(today.monthIndex + 1).padStart(2,'0')}-${String(today.day).padStart(2,'0')}`;
                       return (
                         <div className="pmy-form-group" style={{ background:'#fefefe', padding:'15px', borderRadius:'8px', border:'1px solid #eee' }}>
-                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'14px' }}>
+                          <div className="pmy-booking-meta-grid">
                             <div>
                               <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', display:'block', marginBottom:'6px' }}>📅 Data do Tour:</label>
                               <input type="date" className="pmy-form-input" min={todayKey} value={bookingDate} onChange={e=>setBookingDate(e.target.value)} required />
@@ -410,12 +410,14 @@ export default function AgendaTab(props) {
                     ))}
                   </div>
                 </div>
-                {calendarView==="month" && (
-                  <div className="pmy-calendar-week-headers">
-                    <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
-                  </div>
-                )}
-                <div className={`pmy-calendar-grid ${calendarView==='month'?'month-view':''}`}>{renderCalendarDays()}</div>
+                <div className="pmy-calendar-scroll">
+                  {calendarView==="month" && (
+                    <div className="pmy-calendar-week-headers">
+                      <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
+                    </div>
+                  )}
+                  <div className={`pmy-calendar-grid ${calendarView==='month'?'month-view':''}`}>{renderCalendarDays()}</div>
+                </div>
 
                 <div style={{ borderTop:'1px solid #eee', paddingTop:'20px' }}>
                   <h4 style={{ fontSize:'16px', fontWeight:'bold', color:'var(--primary-green)', marginBottom:'6px' }}>📊 Capacidade Máxima por Tour e Horário</h4>
