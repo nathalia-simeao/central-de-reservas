@@ -104,6 +104,10 @@ Em produção, o mesmo fluxo é executado antes do start da aplicação.
 
 O deploy de aplicação é feito pelo pipeline conectado ao branch `main`. Alterações de configuração do app Shopify em TOML também precisam ser publicadas no Shopify quando aplicável.
 
+## Manutenção do repositório
+
+O repositório não versiona artefatos gerados em `build/` nem páginas de demonstração do template Shopify.
+
 ## Observações de segurança
 
 - Não adicionar segredos, tokens ou credenciais ao repositório.
