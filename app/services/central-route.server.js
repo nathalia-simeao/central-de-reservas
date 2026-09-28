@@ -318,6 +318,18 @@ export const loader = async ({ request }) => {
     shopifyImages = [];
   }
 
+  let businessSettings = null;
+  if (session?.shop) {
+    try {
+      businessSettings = await prisma.businessSetting.findUnique({
+        where: { shop: session.shop },
+      });
+    } catch (settingsError) {
+      console.error("[PMY] business settings load failed:", settingsError);
+      businessSettings = null;
+    }
+  }
+
   const gygMappedTours = (tours || []).filter((tour) => Boolean(tour.gygActivityId));
   const gygReadyTours = gygMappedTours.filter(
     (tour) =>
@@ -368,13 +380,82 @@ export const loader = async ({ request }) => {
     dbGuides,
     shopifyWebhookStatus,
     gygIntegrationStatus,
+    businessSettings,
   });
 };
 
 export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const _action = formData.get("_action");
+
+  if (_action === "saveBusinessSettings") {
+    try {
+      const shop = session?.shop;
+      if (!shop) {
+        return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      }
+
+      const patch = {};
+
+      if (formData.has("logoUrl")) {
+        const logoUrl = String(formData.get("logoUrl") || "").trim();
+        patch.logoUrl = logoUrl || null;
+      }
+
+      if (formData.has("theme")) {
+        const rawTheme = String(formData.get("theme") || "").trim();
+        if (!rawTheme) {
+          patch.theme = null;
+        } else {
+          const parsedTheme = JSON.parse(rawTheme);
+          if (!parsedTheme || typeof parsedTheme !== "object" || Array.isArray(parsedTheme)) {
+            return json({ success: false, error: "Tema inválido." }, { status: 400 });
+          }
+          patch.theme = parsedTheme;
+        }
+      }
+
+      if (formData.has("imageShape")) {
+        const imageShape = String(formData.get("imageShape") || "").trim();
+        if (!["circle", "rounded"].includes(imageShape)) {
+          return json({ success: false, error: "Formato de imagem inválido." }, { status: 400 });
+        }
+        patch.imageShape = imageShape;
+      }
+
+      if (formData.has("fieldMappings")) {
+        const rawMappings = String(formData.get("fieldMappings") || "").trim();
+        if (!rawMappings) {
+          patch.fieldMappings = null;
+        } else {
+          const parsedMappings = JSON.parse(rawMappings);
+          if (!parsedMappings || typeof parsedMappings !== "object" || Array.isArray(parsedMappings)) {
+            return json({ success: false, error: "Mapeamento de campos inválido." }, { status: 400 });
+          }
+          patch.fieldMappings = parsedMappings;
+        }
+      }
+
+      if (Object.keys(patch).length === 0) {
+        return json({ success: false, error: "Nenhuma configuração enviada." }, { status: 400 });
+      }
+
+      const settings = await prisma.businessSetting.upsert({
+        where: { shop },
+        create: { shop, ...patch },
+        update: patch,
+      });
+
+      return json({ success: true, settings });
+    } catch (error) {
+      console.error("[PMY] saveBusinessSettings failed:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao salvar configurações." },
+        { status: 500 },
+      );
+    }
+  }
 
   if (_action === "syncQueueStats") {
     try {
