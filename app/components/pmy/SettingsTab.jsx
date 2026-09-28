@@ -65,20 +65,61 @@ export default function SettingsTab(props) {
                   <label>Esquemas Prontos (Presets):</label>
                   <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginTop:'8px' }}>
                     {[
-                      { name:'Verde PMY', bg:'#F4DCDC', primary:'#006600', sidebar:'#ffffff', title:'#006600', text:'#2b2b2b' },
-                      { name:'Azul Oceano', bg:'#dce8f4', primary:'#004e9a', sidebar:'#f0f6ff', title:'#003377', text:'#1a2b3c' },
-                      { name:'Laranja Terra', bg:'#fdf0e6', primary:'#c45e00', sidebar:'#fff8f2', title:'#a04a00', text:'#2b2010' },
-                      { name:'Roxo Moderno', bg:'#f0ecf9', primary:'#5e35b1', sidebar:'#faf8ff', title:'#4527a0', text:'#1a0a3b' },
-                      { name:'Preto Elegante', bg:'#f0f0f0', primary:'#1a1a1a', sidebar:'#1a1a1a', title:'#000000', text:'#2b2b2b' },
-                      { name:'Minimalista', bg:'#f9f9f9', primary:'#333333', sidebar:'#ffffff', title:'#111111', text:'#444444' },
+                      {
+                        name:'Verde PMY', bg:'#F4DCDC', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#006600', sidebar:'#FFFFFF', title:'#006600', text:'#2B2B2B',
+                        sidebarText:'#2B2B2B', sidebarMuted:'#777777', sidebarHover:'#F2F7F2',
+                        sidebarActive:'#006600', sidebarActiveText:'#FFFFFF', sidebarBorder:'#E7ECE7'
+                      },
+                      {
+                        name:'Azul Oceano', bg:'#DCE8F4', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#004E9A', sidebar:'#F0F6FF', title:'#003377', text:'#1A2B3C',
+                        sidebarText:'#17324A', sidebarMuted:'#60778D', sidebarHover:'#E3EFFB',
+                        sidebarActive:'#004E9A', sidebarActiveText:'#FFFFFF', sidebarBorder:'#CADAEA'
+                      },
+                      {
+                        name:'Laranja Terra', bg:'#FDF0E6', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#C45E00', sidebar:'#FFF8F2', title:'#A04A00', text:'#2B2010',
+                        sidebarText:'#3A2918', sidebarMuted:'#806A56', sidebarHover:'#FCEBDD',
+                        sidebarActive:'#C45E00', sidebarActiveText:'#FFFFFF', sidebarBorder:'#EED8C5'
+                      },
+                      {
+                        name:'Roxo Moderno', bg:'#F0ECF9', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#5E35B1', sidebar:'#FAF8FF', title:'#4527A0', text:'#1A0A3B',
+                        sidebarText:'#291A45', sidebarMuted:'#74638D', sidebarHover:'#EEE8FA',
+                        sidebarActive:'#5E35B1', sidebarActiveText:'#FFFFFF', sidebarBorder:'#DDD3EE'
+                      },
+                      {
+                        name:'Preto Elegante', bg:'#F5F5F2', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#111111', sidebar:'#111111', title:'#111111', text:'#1F1F1F',
+                        sidebarText:'#F5F5F2', sidebarMuted:'#B8B8B3', sidebarHover:'#2A2A2A',
+                        sidebarActive:'#FFFFFF', sidebarActiveText:'#111111', sidebarBorder:'#343434'
+                      },
+                      {
+                        name:'Minimalista', bg:'#F8F8F6', surface:'#FFFFFF', input:'#FFFFFF',
+                        primary:'#333333', sidebar:'#FFFFFF', title:'#111111', text:'#444444',
+                        sidebarText:'#333333', sidebarMuted:'#7A7A7A', sidebarHover:'#F1F1EF',
+                        sidebarActive:'#333333', sidebarActiveText:'#FFFFFF', sidebarBorder:'#E8E8E5'
+                      },
                     ].map((preset, i) => (
                       <button key={i} type="button"
                         onClick={() => {
-                          handleThemeChange('bgColor', preset.bg);
-                          handleThemeChange('primaryColor', preset.primary);
-                          handleThemeChange('sidebarBg', preset.sidebar);
-                          handleThemeChange('titleColor', preset.title);
-                          handleThemeChange('textColor', preset.text);
+                          const values = {
+                            bgColor: preset.bg,
+                            surfaceColor: preset.surface,
+                            inputBgColor: preset.input,
+                            primaryColor: preset.primary,
+                            sidebarBg: preset.sidebar,
+                            titleColor: preset.title,
+                            textColor: preset.text,
+                            sidebarTextColor: preset.sidebarText,
+                            sidebarMutedTextColor: preset.sidebarMuted,
+                            sidebarHoverBg: preset.sidebarHover,
+                            sidebarActiveBg: preset.sidebarActive,
+                            sidebarActiveTextColor: preset.sidebarActiveText,
+                            sidebarBorderColor: preset.sidebarBorder,
+                          };
+                          Object.entries(values).forEach(([key, value]) => handleThemeChange(key, value));
                         }}
                         style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 14px', border:'1.5px solid #ddd', borderRadius:'20px', background:'#fff', cursor:'pointer', fontSize:'13px', fontWeight:'700', transition:'0.2s' }}>
                         <span style={{ display:'flex', gap:'3px' }}>
@@ -144,6 +185,46 @@ export default function SettingsTab(props) {
                   </div>
 
                   <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Texto da Sidebar:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.sidebarTextColor || '#2B2B2B'} onChange={e=>handleThemeChange('sidebarTextColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.sidebarTextColor || ''} onChange={e=>handleThemeChange('sidebarTextColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Texto Secundário da Sidebar:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.sidebarMutedTextColor || '#777777'} onChange={e=>handleThemeChange('sidebarMutedTextColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.sidebarMutedTextColor || ''} onChange={e=>handleThemeChange('sidebarMutedTextColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Fundo do Menu Ativo:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.sidebarActiveBg || theme.primaryColor} onChange={e=>handleThemeChange('sidebarActiveBg',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.sidebarActiveBg || ''} onChange={e=>handleThemeChange('sidebarActiveBg',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
+                    <label>Texto do Menu Ativo:</label>
+                    <div style={{ display:'flex', gap:'10px', alignItems:'center', marginTop:'6px' }}>
+                      <input type="color" value={theme.sidebarActiveTextColor || '#FFFFFF'} onChange={e=>handleThemeChange('sidebarActiveTextColor',e.target.value)}
+                        style={{ width:'44px', height:'38px', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', padding:'2px' }} />
+                      <input type="text" className="pmy-form-input" style={{ fontFamily:'monospace', fontSize:'13px' }}
+                        value={theme.sidebarActiveTextColor || ''} onChange={e=>handleThemeChange('sidebarActiveTextColor',e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pmy-form-group" style={{ marginBottom:0 }}>
                     <label>Tipo de Fonte:</label>
                     <select className="pmy-form-input" style={{ marginTop:'6px' }} value={theme.fontFamily} onChange={e=>handleThemeChange('fontFamily',e.target.value)}>
                       <option value="Assistant">Assistant (Padrão)</option>
@@ -185,10 +266,11 @@ export default function SettingsTab(props) {
                 <div style={{ marginTop:'25px', padding:'20px', background: theme.bgColor, borderRadius:'12px', border:'1px solid #eee' }}>
                   <div style={{ fontSize:'11px', fontWeight:'800', color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px' }}>Preview</div>
                   <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
-                    <div style={{ width:'120px', background: theme.sidebarBg, borderRadius:'10px', padding:'15px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <div style={{ width:'100%', height:'8px', background: theme.primaryColor, borderRadius:'4px', marginBottom:'8px' }}></div>
-                      <div style={{ width:'80%', height:'6px', background:'#eee', borderRadius:'4px', marginBottom:'5px' }}></div>
-                      <div style={{ width:'60%', height:'6px', background:'#eee', borderRadius:'4px' }}></div>
+                    <div style={{ width:'150px', background: theme.sidebarBg, borderRadius:'14px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', border:`1px solid ${theme.sidebarBorderColor || '#E7ECE7'}` }}>
+                      <div style={{ color:theme.sidebarMutedTextColor || '#777777', fontSize:'9px', fontWeight:'800', marginBottom:'8px' }}>PMY</div>
+                      <div style={{ color:theme.sidebarTextColor || theme.textColor, fontSize:'10px', fontWeight:'700', padding:'7px 8px', borderRadius:'20px', marginBottom:'5px' }}>Dashboard</div>
+                      <div style={{ background:theme.sidebarActiveBg || theme.primaryColor, color:theme.sidebarActiveTextColor || '#FFFFFF', fontSize:'10px', fontWeight:'800', padding:'7px 8px', borderRadius:'20px', marginBottom:'5px' }}>Configurações</div>
+                      <div style={{ color:theme.sidebarMutedTextColor || '#777777', fontSize:'8px', padding:'4px 8px' }}>Portugal Me & You</div>
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:'18px', fontWeight:'800', color: theme.titleColor, fontFamily: theme.fontFamily, marginBottom:'8px' }}>Visão Geral</div>
