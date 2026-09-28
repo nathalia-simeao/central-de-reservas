@@ -21,8 +21,11 @@ export default function MediaTab(props) {
     setMediaList,
     setMediaPreview,
     setShowShopifySource,
-    showShopifySource
+    showShopifySource,
+    lang
   } = props;
+
+  const tr = (pt, en) => lang === "en" ? en : pt;
 
   const shopifyMediaCount = mediaList.filter((item) =>
     String(item.source || "").startsWith("shopify_"),
@@ -50,11 +53,11 @@ export default function MediaTab(props) {
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px', flexWrap:'wrap', gap:'10px' }}>
                     <div className="pmy-media-filter-tabs" style={{ marginBottom:0 }}>
                       {[
-                        ['all','🗂️ Todas', mediaList.filter(m=>showShopifySource || !m.source?.startsWith('shopify')).length],
-                        ['logo','🖼️ Logos', mediaList.filter(m=>m.category==='logo'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
-                        ['guide','👤 Guias', mediaList.filter(m=>m.category==='guide'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
-                        ['tour','🏰 Tours', mediaList.filter(m=>m.category==='tour'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
-                        ['general','📎 Geral', mediaList.filter(m=>m.category==='general'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['all',tr('🗂️ Todas','🗂️ All'), mediaList.filter(m=>showShopifySource || !m.source?.startsWith('shopify')).length],
+                        ['logo',tr('🖼️ Logos','🖼️ Logos'), mediaList.filter(m=>m.category==='logo'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['guide',tr('👤 Guias','👤 Guides'), mediaList.filter(m=>m.category==='guide'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['tour',tr('🏰 Tours','🏰 Tours'), mediaList.filter(m=>m.category==='tour'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
+                        ['general',tr('📎 Geral','📎 General'), mediaList.filter(m=>m.category==='general'&&(showShopifySource||!m.source?.startsWith('shopify'))).length],
                       ].map(([v,l,count]) => (
                         <button key={v} className={`pmy-media-ftab ${mediaFilter===v?'active':''}`} onClick={()=>setMediaFilter(v)}>
                           {l} <span style={{ opacity:0.7, marginLeft:'4px' }}>({count})</span>
@@ -64,7 +67,7 @@ export default function MediaTab(props) {
 
                     {/* Toggle fonte Shopify */}
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'#f5f5f5', padding:'6px 14px', borderRadius:'20px', flexShrink:0 }}>
-                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#555' }}>🛍️ Fontes Shopify</span>
+                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#555' }}>{tr('🛍️ Fontes Shopify','🛍️ Shopify Sources')}</span>
                       <label style={{ position:'relative', width:'36px', height:'20px', cursor:'pointer', flexShrink:0 }}>
                         <input type="checkbox" checked={showShopifySource} onChange={e=>setShowShopifySource(e.target.checked)}
                           style={{ opacity:0, width:0, height:0 }} />
@@ -81,7 +84,7 @@ export default function MediaTab(props) {
                         </span>
                       </label>
                       <span style={{ fontSize:'11px', color:'#aaa' }}>
-                        {shopifyMediaCount} itens
+                        {shopifyMediaCount} {tr('itens','items')}
                       </span>
                     </div>
                   </div>
@@ -90,8 +93,8 @@ export default function MediaTab(props) {
                   {mediaList.filter(m => mediaFilter==='all' || m.category===mediaFilter).length === 0 ? (
                     <div style={{ background:'#f9f9f9', borderRadius:'12px', padding:'50px', textAlign:'center', color:'#aaa' }}>
                       <div style={{ fontSize:'40px', marginBottom:'12px' }}>📂</div>
-                      <div style={{ fontWeight:'700', fontSize:'15px', marginBottom:'6px' }}>Nenhuma mídia nesta categoria</div>
-                      <div style={{ fontSize:'13px' }}>Use o painel ao lado para fazer upload</div>
+                      <div style={{ fontWeight:'700', fontSize:'15px', marginBottom:'6px' }}>{tr('Nenhuma mídia nesta categoria','No media in this category')}</div>
+                      <div style={{ fontSize:'13px' }}>{tr('Use o painel ao lado para fazer upload','Use the panel beside it to upload a file')}</div>
                     </div>
                   ) : (
                     <div className="pmy-media-grid">
@@ -111,7 +114,7 @@ export default function MediaTab(props) {
                               borderRadius:'10px', textTransform:'uppercase', letterSpacing:'0.3px'
                             }}>
                               {media.source === 'shopify_product'
-                                ? '🛍️ Produto'
+                                ? tr('🛍️ Produto','🛍️ Product')
                                 : media.source === 'shopify_files'
                                   ? '🛍️ Shopify Files'
                                   : '🗂️ PMY'}
@@ -120,11 +123,11 @@ export default function MediaTab(props) {
                             {/* Ações hover */}
                             <div className="pmy-media-actions" onClick={e=>e.stopPropagation()}>
                               <button className="pmy-media-action-btn pmy-media-action-copy"
-                                title="Copiar URL" onClick={() => handleCopyMediaUrl(media.url)}>📋</button>
+                                title={tr('Copiar URL','Copy URL')} onClick={() => handleCopyMediaUrl(media.url)}>📋</button>
                               {/* Só mostra excluir para uploads próprios */}
                               {!media.source?.startsWith('shopify') && (
                                 <button className="pmy-media-action-btn pmy-media-action-delete"
-                                  title="Remover" onClick={() => handleDeleteMedia(media.id)}>🗑️</button>
+                                  title={tr('Remover','Remove')} onClick={() => handleDeleteMedia(media.id)}>🗑️</button>
                               )}
                             </div>
 
@@ -140,7 +143,7 @@ export default function MediaTab(props) {
                             {/* Info */}
                             <div className="pmy-media-info">
                               <span className={`pmy-media-cat-badge pmy-media-cat-${media.category}`}>
-                                {media.category === 'logo' ? '🖼️ Logo' : media.category === 'guide' ? '👤 Guia' : media.category === 'tour' ? '🏰 Tour' : '📎 Geral'}
+                                {media.category === 'logo' ? '🖼️ Logo' : media.category === 'guide' ? tr('👤 Guia','👤 Guide') : media.category === 'tour' ? '🏰 Tour' : tr('📎 Geral','📎 General')}
                               </span>
                               <div className="pmy-media-label" title={media.label || media.filename}>{media.label || media.filename}</div>
                               <div className="pmy-media-meta">
@@ -159,21 +162,21 @@ export default function MediaTab(props) {
                 {/* Painel de upload */}
                 <div className="pmy-media-upload-panel">
                   <div className="pmy-form-box" style={{ marginBottom:0 }}>
-                    <h3 style={{ marginBottom:'16px' }}>📤 Adicionar Mídia</h3>
+                    <h3 style={{ marginBottom:'16px' }}>{tr('📤 Adicionar Mídia','📤 Add Media')}</h3>
 
                     <div className="pmy-form-group">
-                      <label>Categoria:</label>
+                      <label>{tr('Categoria:','Category:')}</label>
                       <select className="pmy-form-input" value={mediaCategoryInput} onChange={e=>setMediaCategoryInput(e.target.value)}>
                         <option value="logo">🖼️ Logo</option>
-                        <option value="guide">👤 Foto de Guia</option>
-                        <option value="tour">🏰 Imagem de Tour</option>
-                        <option value="general">📎 Geral</option>
+                        <option value="guide">{tr('👤 Foto de Guia','👤 Guide Photo')}</option>
+                        <option value="tour">{tr('🏰 Imagem de Tour','🏰 Tour Image')}</option>
+                        <option value="general">{tr('📎 Geral','📎 General')}</option>
                       </select>
                     </div>
 
                     <div className="pmy-form-group">
-                      <label>Nome/Etiqueta (opcional):</label>
-                      <input type="text" className="pmy-form-input" placeholder="Ex: Logo PMY 2024"
+                      <label>{tr('Nome/Etiqueta (opcional):','Name/Label (optional):')}</label>
+                      <input type="text" className="pmy-form-input" placeholder={tr('Ex: Logo PMY 2024','E.g. PMY Logo 2024')}
                         value={mediaLabelInput} onChange={e=>setMediaLabelInput(e.target.value)} />
                     </div>
 
@@ -202,7 +205,7 @@ export default function MediaTab(props) {
                         <div>
                           <div style={{ fontSize:'24px', marginBottom:'8px' }}>⏳</div>
                           <div style={{ fontSize:'13px', fontWeight:'700', color:'var(--primary-green)', marginBottom:'8px' }}>
-                            Enviando... {mediaUploadProgress}%
+                            {tr('Enviando...','Uploading...')} {mediaUploadProgress}%
                           </div>
                           <div className="pmy-upload-progress">
                             <div className="pmy-upload-progress-bar" style={{ width:`${mediaUploadProgress}%` }}></div>
@@ -214,28 +217,28 @@ export default function MediaTab(props) {
                           <div style={{ fontSize:'13px', fontWeight:'700', color:'#555', marginBottom:'4px' }}>
                             Clique para selecionar arquivo
                           </div>
-                          <div style={{ fontSize:'11px', color:'#aaa' }}>PNG, JPG, GIF, PDF · Máx 10MB</div>
+                          <div style={{ fontSize:'11px', color:'#aaa' }}>PNG, JPG, GIF, PDF · {tr('Máx','Max')} 10MB</div>
                         </div>
                       )}
                     </div>
 
                     <div style={{ marginTop:'20px', padding:'12px', background:'#f5f5f5', borderRadius:'8px', fontSize:'12px', color:'#888', lineHeight:'1.6' }}>
-                      <strong style={{ display:'block', color:'#555', marginBottom:'4px' }}>💡 Biblioteca única PMY:</strong>
-                      <div>• Uploads feitos aqui são gravados no <strong>Shopify Files + PostgreSQL</strong></div>
-                      <div>• <strong>Logo</strong> → aparece na sidebar do app</div>
-                      <div>• <strong>Guia</strong> → foto de perfil dos guias</div>
-                      <div>• <strong>Tour</strong> → imagem dos passeios</div>
-                      <div>• Clique em 📋 para copiar a URL de qualquer imagem</div>
-                      <div>• Clique na imagem para ampliar</div>
+                      <strong style={{ display:'block', color:'#555', marginBottom:'4px' }}>{tr('💡 Biblioteca única PMY:','💡 Unified PMY Library:')}</strong>
+                      <div>{tr('• Uploads feitos aqui são gravados no ','• Uploads made here are stored in ')}<strong>Shopify Files + PostgreSQL</strong></div>
+                      <div>• <strong>Logo</strong> → {tr('aparece na sidebar do app','appears in the app sidebar')}</div>
+                      <div>• <strong>{tr('Guia','Guide')}</strong> → {tr('foto de perfil dos guias','guide profile photo')}</div>
+                      <div>• <strong>Tour</strong> → {tr('imagem dos passeios','tour image')}</div>
+                      <div>{tr('• Clique em 📋 para copiar a URL de qualquer imagem','• Click 📋 to copy any image URL')}</div>
+                      <div>{tr('• Clique na imagem para ampliar','• Click an image to enlarge it')}</div>
                     </div>
 
                     {/* Estatísticas */}
                     <div style={{ marginTop:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
                       {[
-                        { label:'Total', count: mediaList.length, color:'#555' },
+                        { label:tr('Total','Total'), count: mediaList.length, color:'#555' },
                         { label:'PMY', count: pmyUploadCount, color:'var(--primary-green)' },
                         { label:'Shopify', count: shopifyMediaCount, color:'#e08000' },
-                        { label:'Tours', count: mediaList.filter(m=>m.category==='tour').length, color:'#cc9900' },
+                        { label:tr('Tours','Tours'), count: mediaList.filter(m=>m.category==='tour').length, color:'#cc9900' },
                       ].map((stat,i) => (
                         <div key={i} style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'8px', padding:'10px 12px', textAlign:'center' }}>
                           <div style={{ fontSize:'20px', fontWeight:'900', color:stat.color }}>{stat.count}</div>
