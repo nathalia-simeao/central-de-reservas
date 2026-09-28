@@ -329,6 +329,32 @@ function PickerModalContent({ allImages, onSelect }) {
   );
 }
 
+function PmyNavIcon({ name }) {
+  const common = {
+    width: 19,
+    height: 19,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": true,
+  };
+
+  const paths = {
+    dashboard: <><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
+    agenda: <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></>,
+    integracoes: <><path d="M8.5 14.5l-2 2a3.5 3.5 0 105 5l2-2"/><path d="M15.5 9.5l2-2a3.5 3.5 0 10-5-5l-2 2"/><path d="M9 15l6-6"/></>,
+    guias: <><path d="M16 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></>,
+    automacoes: <><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/><circle cx="12" cy="12" r="4"/></>,
+    midias: <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5L5 20"/></>,
+    configuracoes: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1V21h-4v-.1A1.7 1.7 0 008.6 19.4a1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4H3v-4h.1A1.7 1.7 0 004.6 8.6a1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1V3h4v.1A1.7 1.7 0 0015.4 4.6a1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 9c.16.38.4.72.72 1 .3.27.7.41 1.1.4H21v4h-.1a1.7 1.7 0 00-1.5.6z"/></>,
+  };
+
+  return <svg {...common}>{paths[name] || paths.dashboard}</svg>;
+}
+
 export default function CentralDeReservas() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
@@ -341,6 +367,10 @@ export default function CentralDeReservas() {
   // A. NAVEGAÇÃO
   const [activeTab, setActiveTab] = useState("dashboard");
   const [lang, setLang] = useState("pt");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem("pmy_sidebar_collapsed") === "1"; } catch { return false; }
+  });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [imageShape, setImageShape] = useState(
     ["circle", "rounded"].includes(businessSettings?.imageShape)
       ? businessSettings.imageShape
@@ -527,6 +557,28 @@ export default function CentralDeReservas() {
   const fileInputRef = useRef(null);
   const guidePhotoRef = useRef(null);
   const t = translations[lang] || translations.pt;
+  const navItems = [
+    { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Dashboard" : "Dashboard" },
+    { key: "agenda", icon: "agenda", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
+    { key: "integracoes", icon: "integracoes", label: lang === "pt" ? "Integrações" : "Integrations" },
+    { key: "guias", icon: "guias", label: lang === "pt" ? "Guias" : "Guides" },
+    { key: "automacoes", icon: "automacoes", label: lang === "pt" ? "Automações" : "Automations" },
+    { key: "midias", icon: "midias", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
+  ];
+
+  const openNavigationTab = (key) => {
+    if (key === "agenda") handleOpenAgenda();
+    else setActiveTab(key);
+    setMobileNavOpen(false);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      try { localStorage.setItem("pmy_sidebar_collapsed", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   const ptMonths = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const enMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -3130,38 +3182,433 @@ export default function CentralDeReservas() {
     .pmy-upload-progress { height:4px; background:#eee; border-radius:4px; overflow:hidden; margin-top:10px; }
     .pmy-upload-progress-bar { height:100%; background:var(--primary-green); border-radius:4px; transition:width 0.3s; }
     .pmy-media-preview-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:99999; cursor:zoom-out; }
-    .pmy-media-preview-img { max-width:90vw; max-height:85vh; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+    .pmy-media-preview-img { max-width:90vw; max-height:85vh; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+
+    /* ===== PMY RESPONSIVE SHELL 2026 ===== */
+    :root {
+      --pmy-pink-soft: color-mix(in srgb, var(--bg-color) 78%, #ffffff 22%);
+      --pmy-green-soft: color-mix(in srgb, var(--primary-green) 10%, #ffffff 90%);
+      --pmy-border: rgba(28, 47, 34, 0.10);
+      --pmy-shadow: 0 18px 45px rgba(22, 44, 29, 0.075);
+      --pmy-heading-font: 'Asul', Georgia, serif;
+      --pmy-pill: 999px;
+    }
+
+    html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg-color); }
+    body { margin:0; }
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-thumb { background:rgba(24,55,34,0.18); border-radius:var(--pmy-pill); }
+
+    .pmy-app-container {
+      width:100%;
+      min-height:100dvh;
+      height:auto;
+      margin:0;
+      overflow:visible;
+      display:flex;
+      background:
+        radial-gradient(circle at 78% 6%, color-mix(in srgb, var(--primary-green) 8%, transparent) 0, transparent 26rem),
+        linear-gradient(180deg, var(--pmy-pink-soft) 0%, var(--bg-color) 42%, var(--bg-color) 100%);
+      color:var(--text-dark);
+    }
+
+    .pmy-sidebar {
+      width:270px;
+      min-height:100dvh;
+      height:100dvh;
+      position:sticky;
+      top:0;
+      z-index:300;
+      border-right:1px solid var(--pmy-border);
+      box-shadow:none;
+      transition:width .28s ease, transform .28s ease;
+      overflow:hidden;
+      background:color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
+      backdrop-filter:blur(18px);
+    }
+    .pmy-sidebar.is-collapsed { width:88px; }
+    .pmy-sidebar.is-collapsed .pmy-logo-full,
+    .pmy-sidebar.is-collapsed .pmy-menu-label,
+    .pmy-sidebar.is-collapsed .pmy-credit-text,
+    .pmy-sidebar.is-collapsed .pmy-lang-pill { display:none; }
+    .pmy-sidebar.is-collapsed .pmy-logo-mini { display:flex; }
+    .pmy-sidebar.is-collapsed .pmy-menu-item { width:48px; height:48px; margin-inline:auto; padding:0; justify-content:center; border-radius:18px; }
+    .pmy-sidebar.is-collapsed .pmy-sidebar-footer { padding-inline:12px; }
+
+    .pmy-logo-area {
+      min-height:132px;
+      padding:22px 18px 16px;
+      border-bottom:none;
+      position:relative;
+    }
+    .pmy-logo-wrapper { width:176px; height:92px; border-radius:18px; }
+    .pmy-logo-image { max-height:88px; }
+    .pmy-logo-placeholder { width:172px; height:72px; border-radius:18px; }
+    .pmy-logo-mini {
+      display:none;
+      width:48px;
+      height:48px;
+      align-items:center;
+      justify-content:center;
+      border-radius:18px;
+      background:var(--primary-green);
+      color:#fff;
+      font-family:var(--pmy-heading-font);
+      font-size:16px;
+      font-weight:700;
+      letter-spacing:.08em;
+    }
+    .pmy-sidebar-collapse {
+      position:absolute;
+      right:-14px;
+      top:82px;
+      width:30px;
+      height:30px;
+      border-radius:50%;
+      border:1px solid var(--pmy-border);
+      background:#fff;
+      color:var(--primary-green);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 8px 18px rgba(24,55,34,.10);
+      z-index:5;
+    }
+
+    .pmy-menu { padding:10px 12px 18px; gap:7px; overflow-y:auto; }
+    .pmy-menu-item {
+      appearance:none;
+      border:1px solid transparent;
+      width:100%;
+      margin:0;
+      padding:12px 14px;
+      border-radius:var(--pmy-pill);
+      background:transparent;
+      color:var(--text-dark);
+      font-weight:700;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      text-align:left;
+      cursor:pointer;
+      transition:transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+    }
+    .pmy-menu-item:hover {
+      background:var(--pmy-green-soft);
+      color:var(--primary-green);
+      transform:translateX(2px);
+    }
+    .pmy-menu-item.active {
+      background:var(--primary-green);
+      color:#fff;
+      box-shadow:0 10px 24px color-mix(in srgb, var(--primary-green) 22%, transparent);
+    }
+    .pmy-menu-icon { width:20px; height:20px; display:grid; place-items:center; flex:0 0 20px; }
+    .pmy-menu-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pmy-sidebar-footer { padding:16px 12px 18px; gap:12px; border-top:1px solid var(--pmy-border); }
+    .pmy-sidebar-footer .pmy-menu-item { width:100%; }
+    .pmy-lang-pill { border-color:var(--pmy-border); background:rgba(255,255,255,.62); }
+    .pmy-credit-text { font-size:11px; opacity:.82; }
+
+    .pmy-mobile-menu-btn {
+      display:none;
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      border:1px solid var(--pmy-border);
+      background:#fff;
+      color:var(--primary-green);
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      flex:0 0 42px;
+      box-shadow:0 8px 20px rgba(24,55,34,.08);
+    }
+    .pmy-mobile-backdrop { display:none; }
+
+    .pmy-content {
+      flex:1;
+      min-width:0;
+      height:auto;
+      min-height:100dvh;
+      overflow:visible;
+      padding:0;
+    }
+    .pmy-content-inner {
+      width:min(100%, 1560px);
+      margin:0 auto;
+      padding:34px clamp(24px, 3.2vw, 54px) 64px;
+    }
+    .pmy-header-top {
+      min-height:72px;
+      margin-bottom:24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:18px;
+      position:sticky;
+      top:0;
+      z-index:120;
+      padding:10px 0;
+      background:color-mix(in srgb, var(--bg-color) 86%, transparent);
+      backdrop-filter:blur(18px);
+    }
+    .pmy-header-title-wrap { display:flex; align-items:center; gap:12px; min-width:0; }
+    .pmy-header-copy { min-width:0; }
+    .pmy-eyebrow {
+      font-size:10px;
+      line-height:1;
+      text-transform:uppercase;
+      letter-spacing:.15em;
+      font-weight:800;
+      color:var(--primary-green);
+      opacity:.78;
+      margin-bottom:7px;
+    }
+    .pmy-page-title {
+      font-family:var(--pmy-heading-font);
+      font-size:clamp(26px, 2.2vw, 38px);
+      line-height:1.02;
+      font-weight:700;
+      color:var(--title-color);
+      letter-spacing:-.025em;
+    }
+
+    .pmy-card,
+    .pmy-form-box,
+    .pmy-calendar-grid,
+    .pmy-int-card-v2,
+    .pmy-connect-modal,
+    .pmy-modal {
+      border:1px solid var(--pmy-border);
+      box-shadow:var(--pmy-shadow);
+    }
+    .pmy-card { border-radius:22px; padding:22px; }
+    .pmy-card.has-hover:hover { transform:translateY(-2px); box-shadow:0 22px 48px rgba(22,44,29,.11); }
+    .pmy-form-box { border-radius:22px; padding:24px; }
+    .pmy-form-box h3 {
+      font-family:var(--pmy-heading-font);
+      font-size:19px;
+      border-bottom:none;
+      padding-bottom:0;
+      margin-bottom:18px;
+    }
+    .pmy-btn-submit,
+    .pmy-format-btn,
+    .pmy-date-btn,
+    .pmy-int-btn-connect,
+    .pmy-int-btn-settings,
+    .pmy-int-btn-disconnect,
+    .pmy-cal-tab,
+    .pmy-prod-ptab,
+    .pmy-mapping-tab,
+    .pmy-media-ftab {
+      border-radius:var(--pmy-pill);
+    }
+    .pmy-btn-submit { min-height:44px; padding:11px 20px; }
+    .pmy-form-input {
+      min-height:44px;
+      border-radius:14px;
+      border-color:rgba(30,55,38,.14);
+      background:rgba(255,255,255,.92);
+      transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .pmy-form-input:focus {
+      border-color:var(--primary-green);
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--primary-green) 11%, transparent);
+      background:#fff;
+    }
+
+    .pmy-grid { gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+    .pmy-agenda-form-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; margin-bottom:28px; align-items:start; }
+    .pmy-booking-meta-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin-bottom:14px; }
+    .pmy-media-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
+    .pmy-media-upload-panel { position:sticky; top:92px; }
+
+    .pmy-calendar-scroll { width:100%; overflow-x:auto; padding-bottom:6px; }
+    .pmy-calendar-scroll .pmy-calendar-week-headers,
+    .pmy-calendar-scroll .pmy-calendar-grid { min-width:720px; }
+    .pmy-calendar-grid { border-radius:22px; }
+    .pmy-calendar-day { border-radius:15px; min-height:112px; }
+
+    .pmy-prod-table,
+    .pmy-mapping-table { min-width:680px; }
+    .pmy-form-box:has(.pmy-prod-table),
+    .pmy-form-box:has(.pmy-mapping-table) { overflow-x:auto; }
+
+    @media (max-width: 1180px) {
+      .pmy-content-inner { padding-inline:24px; }
+      .pmy-agenda-form-grid { grid-template-columns:1fr; }
+      .pmy-media-layout { grid-template-columns:1fr; }
+      .pmy-media-upload-panel { position:static; }
+      .pmy-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width: 980px) {
+      .pmy-sidebar {
+        position:fixed;
+        left:0;
+        top:0;
+        width:min(86vw, 310px);
+        transform:translateX(-104%);
+        box-shadow:24px 0 70px rgba(20,45,28,.18);
+      }
+      .pmy-sidebar.is-collapsed { width:min(86vw, 310px); }
+      .pmy-sidebar.is-collapsed .pmy-logo-full,
+      .pmy-sidebar.is-collapsed .pmy-menu-label,
+      .pmy-sidebar.is-collapsed .pmy-credit-text,
+      .pmy-sidebar.is-collapsed .pmy-lang-pill { display:flex; }
+      .pmy-sidebar.is-collapsed .pmy-logo-mini { display:none; }
+      .pmy-sidebar.is-collapsed .pmy-menu-item { width:100%; height:auto; margin:0; padding:12px 14px; justify-content:flex-start; }
+      .pmy-sidebar.is-mobile-open { transform:translateX(0); }
+      .pmy-sidebar-collapse { display:none; }
+      .pmy-mobile-menu-btn { display:flex; }
+      .pmy-mobile-backdrop {
+        display:block;
+        position:fixed;
+        inset:0;
+        border:0;
+        background:rgba(14,28,18,.34);
+        backdrop-filter:blur(3px);
+        z-index:250;
+        opacity:0;
+        pointer-events:none;
+        transition:opacity .22s ease;
+      }
+      .pmy-mobile-backdrop.is-visible { opacity:1; pointer-events:auto; }
+      .pmy-content-inner { padding:20px 20px 48px; }
+      .pmy-header-top {
+        min-height:66px;
+        margin-bottom:18px;
+        padding-block:8px;
+      }
+      .pmy-date-btn { padding:10px 14px; }
+    }
+
+    @media (max-width: 720px) {
+      .pmy-content-inner { padding:14px 14px 38px; }
+      .pmy-header-top { align-items:flex-start; }
+      .pmy-header-title-wrap { flex:1; }
+      .pmy-eyebrow { display:none; }
+      .pmy-page-title { font-size:27px; padding-top:6px; }
+      .pmy-grid { grid-template-columns:1fr; gap:12px; margin-bottom:18px; }
+      .pmy-card, .pmy-form-box { border-radius:18px; padding:18px; }
+      .pmy-card-value { font-size:28px; }
+      .pmy-date-wrapper { flex-shrink:0; }
+      .pmy-date-btn { width:42px; height:42px; overflow:hidden; padding:0; justify-content:center; font-size:0; }
+      .pmy-date-btn::before { content:'📅'; font-size:17px; }
+      .pmy-date-dropdown { position:fixed; left:14px; right:14px; top:76px; width:auto; max-height:calc(100dvh - 96px); overflow:auto; }
+      .pmy-date-custom-inputs { flex-direction:column; align-items:stretch; }
+      .pmy-date-custom-inputs > span { display:none; }
+
+      .pmy-booking-meta-grid,
+      .pmy-variants-form-grid { grid-template-columns:1fr; }
+      .pmy-calendar-month-selector-bar { flex-wrap:wrap; gap:8px; }
+      .pmy-calendar-view-tabs { width:100%; overflow-x:auto; }
+      .pmy-cal-tab { flex:0 0 auto; }
+      .pmy-calendar-current-month-year-label { min-width:0; flex:1; }
+      .pmy-list-item,
+      .pmy-tour-item { align-items:flex-start; gap:10px; }
+      .pmy-tour-item { flex-wrap:wrap; }
+
+      .pmy-int-subtab-bar,
+      .pmy-prod-platform-tabs,
+      .pmy-mapping-platform-tabs,
+      .pmy-media-filter-tabs { width:100%; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:thin; padding-bottom:4px; }
+      .pmy-int-subtab,
+      .pmy-prod-ptab,
+      .pmy-mapping-tab,
+      .pmy-media-ftab { flex:0 0 auto; }
+
+      .pmy-modal-overlay { align-items:flex-end; padding:0; }
+      .pmy-modal,
+      .pmy-connect-modal {
+        width:100%;
+        max-width:100%;
+        max-height:92dvh;
+        border-radius:24px 24px 0 0;
+      }
+      .pmy-modal-header { padding:18px; }
+      .pmy-modal-body { padding:18px; }
+      .pmy-guides-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+      .pmy-media-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .pmy-media-thumb, .pmy-media-thumb-placeholder { height:110px; }
+    }
+
+    @media (max-width: 430px) {
+      .pmy-content-inner { padding-inline:10px; }
+      .pmy-header-top { gap:8px; }
+      .pmy-page-title { font-size:24px; }
+      .pmy-mobile-menu-btn, .pmy-date-btn { width:40px; height:40px; flex-basis:40px; }
+      .pmy-card, .pmy-form-box { padding:16px; }
+      .pmy-guides-grid, .pmy-media-grid { grid-template-columns:1fr; }
+      .pmy-platform-pill { padding-inline:10px; }
+    }
   `;
 
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Assistant:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
       `}</style>
       <style>{styles}</style>
       <div className="pmy-app-container">
+        <button
+          type="button"
+          className={`pmy-mobile-backdrop ${mobileNavOpen ? "is-visible" : ""}`}
+          aria-label={lang === "pt" ? "Fechar menu" : "Close menu"}
+          onClick={() => setMobileNavOpen(false)}
+        />
 
-        <aside className="pmy-sidebar">
+        <aside className={`pmy-sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileNavOpen ? "is-mobile-open" : ""}`}>
           <div className="pmy-logo-area">
-            {logoUrl ? (
-              <div className="pmy-logo-wrapper"><img src={logoUrl} alt="Logo" className="pmy-logo-image" /></div>
-            ) : (
-              <div className="pmy-logo-placeholder"><span>PMY Logo</span></div>
-            )}
-          </div>
-          <nav className="pmy-menu">
-            <div className={`pmy-menu-item ${activeTab==='dashboard'?'active':''}`} onClick={() => setActiveTab('dashboard')}>{t.menu_dashboard}</div>
-            <div className={`pmy-menu-item ${activeTab==='agenda'?'active':''}`} onClick={handleOpenAgenda}>{t.menu_agenda}</div>
-            <div className={`pmy-menu-item ${activeTab==='integracoes'?'active':''}`} onClick={() => setActiveTab('integracoes')}>{t.menu_integrations}</div>
-            <div className={`pmy-menu-item ${activeTab==='guias'?'active':''}`} onClick={() => setActiveTab('guias')}>{t.menu_guides}</div>
-            <div className={`pmy-menu-item ${activeTab==='automacoes'?'active':''}`} onClick={() => setActiveTab('automacoes')}>{t.menu_automations}</div>
-            <div className={`pmy-menu-item ${activeTab==='midias'?'active':''}`} onClick={() => setActiveTab('midias')}>🗂️ Banco de Mídias</div>
-          </nav>
-          <div className="pmy-sidebar-footer">
-            <div style={{ width:'100%', padding:'5px 0' }}>
-              <div className={`pmy-menu-item ${activeTab==='configuracoes'?'active':''}`} style={{ margin:0 }} onClick={() => setActiveTab('configuracoes')}>{t.menu_settings}</div>
+            <div className="pmy-logo-full">
+              {logoUrl ? (
+                <div className="pmy-logo-wrapper"><img src={logoUrl} alt="Portugal Me & You" className="pmy-logo-image" /></div>
+              ) : (
+                <div className="pmy-logo-placeholder"><span>Portugal Me & You</span></div>
+              )}
             </div>
+            <div className="pmy-logo-mini">PMY</div>
+            <button
+              type="button"
+              className="pmy-sidebar-collapse"
+              onClick={toggleSidebar}
+              title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+              aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+            >
+              {sidebarCollapsed ? "›" : "‹"}
+            </button>
+          </div>
+
+          <nav className="pmy-menu" aria-label={lang === "pt" ? "Navegação principal" : "Main navigation"}>
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`pmy-menu-item ${activeTab === item.key ? "active" : ""}`}
+                onClick={() => openNavigationTab(item.key)}
+                title={sidebarCollapsed ? item.label : undefined}
+              >
+                <span className="pmy-menu-icon"><PmyNavIcon name={item.icon} /></span>
+                <span className="pmy-menu-label">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="pmy-sidebar-footer">
+            <button
+              type="button"
+              className={`pmy-menu-item ${activeTab === "configuracoes" ? "active" : ""}`}
+              onClick={() => openNavigationTab("configuracoes")}
+              title={sidebarCollapsed ? (lang === "pt" ? "Configurações" : "Settings") : undefined}
+            >
+              <span className="pmy-menu-icon"><PmyNavIcon name="configuracoes" /></span>
+              <span className="pmy-menu-label">{lang === "pt" ? "Configurações" : "Settings"}</span>
+            </button>
+
             <div className="pmy-lang-pill">
               <span className={lang==='pt'?'active':''} onClick={() => setLang('pt')}><img src="https://flagcdn.com/w40/pt.png" alt="PT" className="pmy-flag-icon" /></span>
               <div className="pmy-lang-divider"></div>
@@ -3172,16 +3619,32 @@ export default function CentralDeReservas() {
         </aside>
 
         <main className="pmy-content">
+          <div className="pmy-content-inner">
           <div className="pmy-header-top">
-            <h1 className="pmy-page-title">
+            <div className="pmy-header-title-wrap">
+              <button
+                type="button"
+                className="pmy-mobile-menu-btn"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label={lang === "pt" ? "Abrir menu" : "Open menu"}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M4 7h16M4 12h16M4 17h16"/>
+                </svg>
+              </button>
+              <div className="pmy-header-copy">
+                <div className="pmy-eyebrow">Portugal Me & You · Central de Reservas</div>
+                <h1 className="pmy-page-title">
               {activeTab==='dashboard' && t.dash_title}
               {activeTab==='agenda' && t.agenda_title}
               {activeTab==='integracoes' && t.integrations_title}
               {activeTab==='guias' && t.guides_title}
               {activeTab==='automacoes' && t.automations_title}
               {activeTab==='configuracoes' && t.settings_title}
-              {activeTab==='midias' && '🗂️ Banco de Mídias'}
+              {activeTab==='midias' && (lang === 'pt' ? 'Banco de Mídias' : 'Media Library')}
             </h1>
+              </div>
+            </div>
             {activeTab==='dashboard' && (
               <div className="pmy-date-wrapper">
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}>📅 {getPeriodLabel()} ▾</button>
@@ -3277,7 +3740,8 @@ export default function CentralDeReservas() {
             setMediaPreview, setShowShopifySource, showShopifySource
           }} />
 
-                </main>
+          </div>
+        </main>
       </div>
 
       {renderModal()}
