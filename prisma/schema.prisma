@@ -176,13 +176,27 @@ model BlockedDate {
 }
 
 model Media {
-  id        String   @id @default(uuid())
-  url       String
-  filename  String
-  mimetype  String
-  category  String   @default("general")
-  label     String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  shop         String?
+  url          String   @db.Text
+  filename     String
+  mimetype     String
+  category     String   @default("general")
+  label        String?
+  source       String   @default("pmy_upload")
+  externalId   String?
+  productTitle String?
+  width        Int?
+  height       Int?
+  metadata     Json?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@unique([shop, source, externalId], map: "Media_shop_source_externalId_key")
+  @@index([shop, active])
+  @@index([source])
+  @@index([category])
 }
 
 
