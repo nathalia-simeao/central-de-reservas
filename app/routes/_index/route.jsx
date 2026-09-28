@@ -3222,7 +3222,7 @@ export default function CentralDeReservas() {
       border-right:1px solid var(--pmy-border);
       box-shadow:none;
       transition:width .28s ease, transform .28s ease;
-      overflow:hidden;
+      overflow:visible;
       background:color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
       backdrop-filter:blur(18px);
     }
@@ -3276,7 +3276,7 @@ export default function CentralDeReservas() {
       z-index:5;
     }
 
-    .pmy-menu { padding:10px 12px 18px; gap:7px; overflow-y:auto; }
+    .pmy-menu { padding:10px 12px 18px; gap:7px; overflow-y:auto; flex:1; min-height:0; }
     .pmy-menu-item {
       appearance:none;
       border:1px solid transparent;
