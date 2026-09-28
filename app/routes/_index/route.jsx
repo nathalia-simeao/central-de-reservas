@@ -1490,6 +1490,7 @@ export default function CentralDeReservas() {
     return t[selectedPeriod] || t.period_30d;
   };
 
+  // Dashboard financeiro calculado somente com dados reais persistidos em Booking.
   const dashboardNow = new Date();
 
   const dashboardPeriodRange = (() => {
