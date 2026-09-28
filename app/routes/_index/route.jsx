@@ -1007,7 +1007,9 @@ export default function CentralDeReservas() {
     const current = new URL(window.location.href);
     const params = new URLSearchParams();
 
-    for (const key of ["shop", "host", "embedded", "id_token", "session"]) {
+    // Nunca reaproveitar id_token/session da URL: os tokens Shopify são
+    // curtos e precisam ser renovados a cada chamada autenticada.
+    for (const key of ["shop", "host", "embedded"]) {
       const value = current.searchParams.get(key);
       if (value) params.set(key, value);
     }
@@ -1017,15 +1019,34 @@ export default function CentralDeReservas() {
   }, []);
 
   const requestResourceJson = useCallback(async (pathname, formData = null) => {
-    const response = await fetch(resourceUrl(pathname), {
-      method: formData ? "POST" : "GET",
-      body: formData || undefined,
-      credentials: "include",
-      headers: {
+    const doRequest = async () => {
+      const headers = {
         Accept: "application/json",
         "X-Requested-With": "XMLHttpRequest",
-      },
-    });
+      };
+
+      // App Bridge ID tokens expiram rapidamente. Pede um token novo para
+      // cada request ao nosso backend, em vez de depender de cookie/URL.
+      if (typeof window !== "undefined" && window.shopify?.idToken) {
+        const freshIdToken = await window.shopify.idToken();
+        if (freshIdToken) headers.Authorization = `Bearer ${freshIdToken}`;
+      }
+
+      return fetch(resourceUrl(pathname), {
+        method: formData ? "POST" : "GET",
+        body: formData || undefined,
+        credentials: "include",
+        headers,
+      });
+    };
+
+    let response = await doRequest();
+
+    // Uma única nova tentativa cobre a rara corrida em que o token expira
+    // entre a emissão pelo App Bridge e a validação no servidor.
+    if (response.status === 401 || response.status === 403) {
+      response = await doRequest();
+    }
 
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
     const bodyText = await response.text();
@@ -1033,7 +1054,7 @@ export default function CentralDeReservas() {
     if (!contentType.includes("application/json")) {
       if (/<!doctype|<html/i.test(bodyText)) {
         throw new Error(
-          "A sessão da integração não autenticou a chamada de API. Recarregue a Central e tente novamente.",
+          "A autenticação Shopify expirou antes da chamada. Feche e abra a Central pelo admin da Shopify e tente novamente.",
         );
       }
       throw new Error(
@@ -1487,13 +1508,8 @@ export default function CentralDeReservas() {
       fd.append("size", String(file.size));
       fd.append("category", mediaCategoryInput);
 
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const data = await res.json();
+      const data = await requestResourceJson("/", fd);
       setMediaUploadProgress(30);
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Erro ao preparar upload no Shopify.");
-      }
 
       const uploadForm = new FormData();
       data.parameters.forEach((param) => uploadForm.append(param.name, param.value));
@@ -1521,14 +1537,10 @@ export default function CentralDeReservas() {
         mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
       );
 
-      const finalizeRes = await fetch(window.location.href, {
-        method: "POST",
-        body: finalizeFd,
-      });
-      const finalizeData = await finalizeRes.json();
+      const finalizeData = await requestResourceJson("/", finalizeFd);
 
-      if (!finalizeRes.ok || !finalizeData.success || !finalizeData.media) {
-        throw new Error(finalizeData.error || "Falha ao registrar o arquivo na biblioteca PMY.");
+      if (!finalizeData.media) {
+        throw new Error("Falha ao registrar o arquivo na biblioteca PMY.");
       }
 
       setMediaUploadProgress(100);
@@ -1555,13 +1567,7 @@ export default function CentralDeReservas() {
     fd.append("id", id);
 
     try {
-      const response = await fetch(window.location.href, { method: "POST", body: fd });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Não foi possível remover a mídia.");
-      }
-
+      await requestResourceJson("/", fd);
       setMediaList((current) => current.filter((item) => item.id !== id));
     } catch (error) {
       setMediaUploadError(error?.message || "Erro ao remover mídia.");
@@ -1610,17 +1616,7 @@ export default function CentralDeReservas() {
       }
     }
 
-    const response = await fetch(window.location.href, {
-      method: "POST",
-      body: fd,
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    });
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok || !payload?.success) {
-      throw new Error(payload?.error || "Não foi possível salvar a configuração.");
-    }
+    const payload = await requestResourceJson("/", fd);
 
     setSettingsSaveMessage("Salvo no banco ✓");
     window.clearTimeout(settingsMessageTimerRef.current);
@@ -1629,7 +1625,7 @@ export default function CentralDeReservas() {
       1800,
     );
     return payload.settings;
-  }, []);
+  }, [requestResourceJson]);
 
   const scheduleBusinessSettingsSave = useCallback((patch) => {
     window.clearTimeout(settingsSaveTimerRef.current);
