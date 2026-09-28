@@ -197,84 +197,41 @@ export const loader = async ({ request }) => {
     dbGuides = [];
   }
 
-  // Busca mídias salvas no banco (uploads próprios do app)
+  // Biblioteca unificada PMY: PostgreSQL é o catálogo canônico e Shopify
+  // Files/produtos são reconciliados como fontes externas da mesma biblioteca.
   let mediaFiles = [];
-  try {
-    mediaFiles = await prisma.media.findMany({ orderBy: { createdAt: 'desc' } });
-  } catch (e) {
-    mediaFiles = [];
-  }
-
-  // Busca imagens do próprio Shopify (produtos + arquivos Files)
   let shopifyImages = [];
+  const mediaShop = session?.shop || null;
+
   try {
-    // ── Imagens dos produtos (todas as imagens de todos os produtos) ──────────
-    const prodImgRes = await admin.graphql(`
-      query {
-        products(first: 100) {
-          edges {
-            node {
-              id
-              title
-              images(first: 10) {
-                edges {
-                  node {
-                    id
-                    url
-                    altText
-                    width
-                    height
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `);
-    const prodImgData = await prodImgRes.json();
-    const productImages = [];
-    for (const { node: product } of (prodImgData?.data?.products?.edges || [])) {
-      for (const { node: img } of (product?.images?.edges || [])) {
-        if (img?.url) {
-          // ID seguro sem Buffer
-          const safeId = img.id?.split('/').pop() || String(Date.now() + Math.random()).replace('.','');
-          productImages.push({
-            id: `shopify_prod_${safeId}`,
-            url: img.url,
-            filename: img.url.split('/').pop().split('?')[0],
-            mimetype: 'image/jpeg',
-            category: 'tour',
-            label: img.altText || product.title,
-            source: 'shopify_product',
-            productTitle: product.title,
-            width: img.width,
-            height: img.height,
-            createdAt: new Date().toISOString(),
-          });
-        }
-      }
+    if (mediaShop) {
+      // Registros anteriores à biblioteca multi-loja pertencem à loja instalada.
+      await prisma.media.updateMany({
+        where: { shop: null },
+        data: { shop: mediaShop },
+      });
     }
 
-    // ── Arquivos do Shopify Files (galeria da loja — todos os usuários) ────────
-    // Requer scope read_files — tenta, se falhar retorna só os de produtos
-    let fileImages = [];
+    const externalMedia = [];
+
+    // Imagens dos produtos Shopify.
     try {
-      const filesRes = await admin.graphql(`
-        query {
-          files(first: 100, query: "media_type:IMAGE") {
+      const prodImgRes = await admin.graphql(`
+        query PmyProductMediaLibrary {
+          products(first: 100) {
             edges {
               node {
-                ... on MediaImage {
-                  id
-                  alt
-                  createdAt
-                  image {
-                    id
-                    url
-                    altText
-                    width
-                    height
+                id
+                title
+                images(first: 10) {
+                  edges {
+                    node {
+                      id
+                      url
+                      altText
+                      width
+                      height
+                    }
                   }
                 }
               }
@@ -282,39 +239,175 @@ export const loader = async ({ request }) => {
           }
         }
       `);
-      const filesData = await filesRes.json();
-      for (const { node: file } of (filesData?.data?.files?.edges || [])) {
-        const url = file?.image?.url;
-        if (url) {
-          const safeId = file.id?.split('/').pop() || String(Date.now() + Math.random()).replace('.','');
-          fileImages.push({
-            id: `shopify_file_${safeId}`,
-            url,
-            filename: url.split('/').pop().split('?')[0],
-            mimetype: 'image/jpeg',
-            category: 'general',
-            label: file.alt || file.image?.altText || url.split('/').pop().split('?')[0],
-            source: 'shopify_files',
-            width: file.image?.width,
-            height: file.image?.height,
-            createdAt: file.createdAt || new Date().toISOString(),
+      const prodImgData = await prodImgRes.json();
+
+      for (const { node: product } of (prodImgData?.data?.products?.edges || [])) {
+        for (const { node: img } of (product?.images?.edges || [])) {
+          if (!img?.id || !img?.url) continue;
+          externalMedia.push({
+            source: "shopify_product",
+            externalId: img.id,
+            url: img.url,
+            filename: img.url.split("/").pop()?.split("?")[0] || "shopify-product-image.jpg",
+            mimetype: "image/jpeg",
+            category: "tour",
+            label: img.altText || product.title || "Imagem de tour",
+            productTitle: product.title || null,
+            width: Number.isFinite(Number(img.width)) ? Number(img.width) : null,
+            height: Number.isFinite(Number(img.height)) ? Number(img.height) : null,
+            metadata: { productId: product.id },
           });
         }
       }
-    } catch (filesErr) {
-      // Files API pode não ter permissão — apenas ignora, usa só produtos
-      fileImages = [];
+    } catch (productMediaError) {
+      console.error("[PMY] Shopify product media sync failed:", productMediaError);
     }
 
-    // Deduplica por URL
-    const seen = new Set();
-    shopifyImages = [...fileImages, ...productImages].filter(img => {
-      if (seen.has(img.url)) return false;
-      seen.add(img.url);
-      return true;
+    // Shopify Files, incluindo imagens e arquivos genéricos como PDF.
+    try {
+      const filesRes = await admin.graphql(`
+        query PmyShopifyFilesLibrary {
+          files(first: 100) {
+            edges {
+              node {
+                __typename
+                id
+                ... on MediaImage {
+                  alt
+                  createdAt
+                  fileStatus
+                  image {
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+                ... on GenericFile {
+                  alt
+                  createdAt
+                  fileStatus
+                  url
+                  mimeType
+                }
+              }
+            }
+          }
+        }
+      `);
+      const filesData = await filesRes.json();
+
+      for (const { node: file } of (filesData?.data?.files?.edges || [])) {
+        if (!file?.id) continue;
+
+        const isImage = file.__typename === "MediaImage";
+        const url = isImage ? file?.image?.url : file?.url;
+        if (!url) continue;
+
+        externalMedia.push({
+          source: "shopify_files",
+          externalId: file.id,
+          url,
+          filename: url.split("/").pop()?.split("?")[0] || "shopify-file",
+          mimetype: isImage ? "image/jpeg" : (file.mimeType || "application/octet-stream"),
+          category: "general",
+          label: file.alt || file?.image?.altText || url.split("/").pop()?.split("?")[0] || "Arquivo Shopify",
+          productTitle: null,
+          width: isImage && Number.isFinite(Number(file?.image?.width)) ? Number(file.image.width) : null,
+          height: isImage && Number.isFinite(Number(file?.image?.height)) ? Number(file.image.height) : null,
+          metadata: {
+            fileStatus: file.fileStatus || null,
+            shopifyType: file.__typename,
+            createdAt: file.createdAt || null,
+          },
+        });
+      }
+    } catch (filesErr) {
+      console.error("[PMY] Shopify Files media sync failed:", filesErr);
+    }
+
+    if (mediaShop && externalMedia.length > 0) {
+      const ownedUploads = await prisma.media.findMany({
+        where: { shop: mediaShop, source: "pmy_upload" },
+      });
+      const ownedByExternalId = new Map(
+        ownedUploads
+          .filter((item) => item.externalId)
+          .map((item) => [item.externalId, item]),
+      );
+      const ownedByUrl = new Map(
+        ownedUploads
+          .filter((item) => item.url)
+          .map((item) => [item.url, item]),
+      );
+
+      for (const item of externalMedia) {
+        // Uploads iniciados pela Central continuam sendo uma única mídia PMY,
+        // mesmo que também apareçam na listagem do Shopify Files.
+        const owned =
+          item.source === "shopify_files"
+            ? ownedByExternalId.get(item.externalId) || ownedByUrl.get(item.url)
+            : null;
+
+        if (owned) {
+          await prisma.media.update({
+            where: { id: owned.id },
+            data: {
+              url: item.url,
+              filename: item.filename,
+              mimetype: item.mimetype,
+              externalId: item.externalId,
+              width: item.width,
+              height: item.height,
+              metadata: item.metadata,
+              active: true,
+            },
+          });
+          continue;
+        }
+
+        await prisma.media.upsert({
+          where: {
+            shop_source_externalId: {
+              shop: mediaShop,
+              source: item.source,
+              externalId: item.externalId,
+            },
+          },
+          create: {
+            shop: mediaShop,
+            ...item,
+          },
+          update: {
+            url: item.url,
+            filename: item.filename,
+            mimetype: item.mimetype,
+            label: item.label,
+            productTitle: item.productTitle,
+            width: item.width,
+            height: item.height,
+            metadata: item.metadata,
+            active: true,
+          },
+        });
+      }
+    }
+
+    mediaFiles = await prisma.media.findMany({
+      where: mediaShop
+        ? { shop: mediaShop, active: true }
+        : { active: true },
+      orderBy: { createdAt: "desc" },
     });
 
-  } catch (e) {
+    // Mantido apenas para compatibilidade visual durante a transição.
+    // A fonte real da tela é mediaFiles, já unificada.
+    shopifyImages = mediaFiles.filter((item) =>
+      String(item.source || "").startsWith("shopify_"),
+    );
+  } catch (mediaError) {
+    console.error("[PMY] unified media library failed:", mediaError);
+    mediaFiles = [];
     shopifyImages = [];
   }
 
