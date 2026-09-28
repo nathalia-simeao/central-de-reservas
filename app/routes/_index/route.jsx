@@ -442,17 +442,14 @@ export default function CentralDeReservas() {
   const [customName, setCustomName] = useState("");
 
   // BANCO DE MÍDIA
-  // Merge: uploads próprios + imagens do Shopify (deduplicado por URL)
-  const allMediaCombined = [
-    ...mediaFiles,
-    ...shopifyImages.filter(si => !mediaFiles.some(mf => mf.url === si.url)),
-  ];
-  const [mediaList, setMediaList] = useState(allMediaCombined);
+  // O loader já devolve a biblioteca canônica consolidada no PostgreSQL.
+  const [mediaList, setMediaList] = useState(mediaFiles);
   const [showShopifySource, setShowShopifySource] = useState(true);
-  const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit' // toggle mostrar/ocultar mídias do Shopify
+  const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit'
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
+  const [mediaUploadError, setMediaUploadError] = useState("");
   const [mediaLabelInput, setMediaLabelInput] = useState("");
   const [mediaCategoryInput, setMediaCategoryInput] = useState("general");
   const [mediaPreview, setMediaPreview] = useState(null); // modal de preview
@@ -1143,11 +1140,12 @@ export default function CentralDeReservas() {
   const handleMediaUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     setMediaUploading(true);
+    setMediaUploadError("");
     setMediaUploadProgress(10);
 
     try {
-      // 1. Solicitar staged upload ao servidor
       const fd = new FormData();
       fd.append("_action", "uploadMedia");
       fd.append("filename", file.name);
@@ -1159,79 +1157,81 @@ export default function CentralDeReservas() {
       const data = await res.json();
       setMediaUploadProgress(30);
 
-      if (!data.success) throw new Error(data.error || "Erro no staged upload");
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao preparar upload no Shopify.");
+      }
 
-      // 2. Upload direto para a URL retornada (multipart)
       const uploadForm = new FormData();
-      data.parameters.forEach(p => uploadForm.append(p.name, p.value));
+      data.parameters.forEach((param) => uploadForm.append(param.name, param.value));
       uploadForm.append("file", file);
       setMediaUploadProgress(60);
 
-      const uploadRes = await fetch(data.uploadUrl, { method: "POST", body: uploadForm });
-      if (!uploadRes.ok) throw new Error("Falha no upload para Shopify");
-      setMediaUploadProgress(85);
-
-      // 3. Registrar no banco
-      const regFd = new FormData();
-      regFd.append("_action", "registerMedia");
-      regFd.append("url", data.resourceUrl);
-      regFd.append("filename", file.name);
-      regFd.append("mimetype", file.type);
-      regFd.append("category", mediaCategoryInput);
-      regFd.append("label", mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""));
-
-      const regRes = await fetch(window.location.href, { method: "POST", body: regFd });
-      const regData = await regRes.json();
-      setMediaUploadProgress(100);
-
-      if (regData.success) {
-        // Adiciona à lista local com URL temporária
-        const newItem = {
-          id: Date.now().toString(),
-          url: data.resourceUrl,
-          filename: file.name,
-          mimetype: file.type,
-          category: mediaCategoryInput,
-          label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
-          createdAt: new Date().toISOString(),
-        };
-        setMediaList(prev => [newItem, ...prev]);
-        setMediaLabelInput("");
+      const uploadRes = await fetch(data.uploadUrl, {
+        method: "POST",
+        body: uploadForm,
+      });
+      if (!uploadRes.ok) {
+        throw new Error("Falha ao enviar o arquivo para o Shopify Files.");
       }
+
+      setMediaUploadProgress(82);
+
+      const finalizeFd = new FormData();
+      finalizeFd.append("_action", "finalizeMediaUpload");
+      finalizeFd.append("resourceUrl", data.resourceUrl);
+      finalizeFd.append("filename", file.name);
+      finalizeFd.append("mimetype", file.type);
+      finalizeFd.append("category", mediaCategoryInput);
+      finalizeFd.append(
+        "label",
+        mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
+      );
+
+      const finalizeRes = await fetch(window.location.href, {
+        method: "POST",
+        body: finalizeFd,
+      });
+      const finalizeData = await finalizeRes.json();
+
+      if (!finalizeRes.ok || !finalizeData.success || !finalizeData.media) {
+        throw new Error(finalizeData.error || "Falha ao registrar o arquivo na biblioteca PMY.");
+      }
+
+      setMediaUploadProgress(100);
+      setMediaList((current) => [
+        finalizeData.media,
+        ...current.filter((item) => item.id !== finalizeData.media.id),
+      ]);
+      setMediaLabelInput("");
     } catch (err) {
-      // Fallback: salvar base64 local se Shopify falhar
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const newItem = {
-          id: Date.now().toString(),
-          url: ev.target.result,
-          filename: file.name,
-          mimetype: file.type,
-          category: mediaCategoryInput,
-          label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
-          createdAt: new Date().toISOString(),
-          isLocal: true,
-        };
-        setMediaList(prev => [newItem, ...prev]);
-        setMediaLabelInput("");
-      };
-      reader.readAsDataURL(file);
+      setMediaUploadError(err?.message || "Não foi possível enviar a mídia.");
     } finally {
       setMediaUploading(false);
-      setMediaUploadProgress(0);
+      window.setTimeout(() => setMediaUploadProgress(0), 250);
       if (mediaUploadRef.current) mediaUploadRef.current.value = "";
     }
   };
 
   const handleDeleteMedia = async (id) => {
-    if (!window.confirm("Remover esta mídia do banco?")) return;
+    if (!window.confirm("Remover esta mídia da biblioteca PMY?")) return;
+
+    setMediaUploadError("");
     const fd = new FormData();
     fd.append("_action", "deleteMedia");
     fd.append("id", id);
+
     try {
-      await fetch(window.location.href, { method: "POST", body: fd });
-    } catch {}
-    setMediaList(prev => prev.filter(m => m.id !== id));
+      const response = await fetch(window.location.href, { method: "POST", body: fd });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Não foi possível remover a mídia.");
+      }
+
+      setMediaList((current) => current.filter((item) => item.id !== id));
+    } catch (error) {
+      setMediaUploadError(error?.message || "Erro ao remover mídia.");
+    }
   };
 
   const handleCopyMediaUrl = (url) => {
@@ -2472,11 +2472,11 @@ export default function CentralDeReservas() {
       );
     } else if (activeModal === 'pickPhotoForGuide') {
       title = "🖼️ Escolher Foto";
-      const allImages = [
-        ...mediaFiles,
-        ...mediaList.filter(m => m.source?.startsWith('shopify')),
-        ...shopifyImages,
-      ].filter((m, idx, arr) => m.mimetype?.startsWith('image/') && arr.findIndex(x => x.url === m.url) === idx);
+      const allImages = mediaList.filter(
+        (m, idx, arr) =>
+          m.mimetype?.startsWith('image/') &&
+          arr.findIndex((item) => item.url === m.url) === idx,
+      );
       const pickerCallback = window.__pmyPickerCallback;
       content = (
         <PickerModalContent
@@ -3184,9 +3184,9 @@ export default function CentralDeReservas() {
           <MediaTab {...{
             activeTab, handleCopyMediaUrl, handleDeleteMedia, handleMediaUpload,
             mediaCategoryInput, mediaFilter, mediaLabelInput, mediaList, mediaPreview,
-            mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
+            mediaUploadError, mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
             setMediaCategoryInput, setMediaFilter, setMediaLabelInput, setMediaList,
-            setMediaPreview, setShowShopifySource, shopifyImages, showShopifySource
+            setMediaPreview, setShowShopifySource, showShopifySource
           }} />
 
                 </main>
