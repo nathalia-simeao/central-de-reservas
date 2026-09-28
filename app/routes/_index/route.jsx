@@ -4405,8 +4405,8 @@ export default function CentralDeReservas() {
               type="button"
               className="pmy-sidebar-collapse"
               onClick={toggleSidebar}
-              title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
-              aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+              title={sidebarCollapsed ? (lang === "pt" ? "Expandir menu" : "Expand menu") : (lang === "pt" ? "Recolher menu" : "Collapse menu")}
+              aria-label={sidebarCollapsed ? (lang === "pt" ? "Expandir menu" : "Expand menu") : (lang === "pt" ? "Recolher menu" : "Collapse menu")}
             >
               {sidebarCollapsed ? "›" : "‹"}
             </button>
@@ -4524,7 +4524,7 @@ export default function CentralDeReservas() {
             setBlockSelectedHour, setBookingDate, setBookingPlatforms, setBookingTime,
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
-            tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime
+            tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang
           }} />
 
           <IntegrationsTab {...{
@@ -4547,7 +4547,7 @@ export default function CentralDeReservas() {
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
             openShopifyFilePicker, setActiveModal, setGuideDdi, setGuideEmail,
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
-            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter
+            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
           }} />
 
           <AutomationsTab activeTab={activeTab} lang={lang} />
@@ -4579,5 +4579,6 @@ export default function CentralDeReservas() {
       {renderConnectModal()}
       {renderEditGuideModal()}
     </>
+    </AppProvider>
   );
 }
