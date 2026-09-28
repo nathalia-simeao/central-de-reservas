@@ -3310,153 +3310,173 @@ export default function CentralDeReservas() {
         </div>
       );
     } else if (activeModal === 'sales') {
-      title = t.modal_sales_details;
+      title = lang === 'pt' ? "Vendas por Canal" : "Sales by Channel";
       content = (
         <div>
-          {tours?.length === 0 ? <p>Nenhum passeio cadastrado.</p> : tours?.map(tour => {
-            const tb = tour?.bookings || [];
-            const total = tb.filter(b => b.status==='CONFIRMED').length;
+          <div style={{ background:'#f8faf8', border:'1px solid #e3ebe4', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px' }}>
+            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)' }}>{totalSalesCount}</div>
+            <div style={{ fontSize:'12px', color:'#666' }}>{lang==='pt'?'reservas confirmadas no período':'confirmed bookings in period'} · {getPeriodLabel()}</div>
+          </div>
+          {salesByChannel.length === 0 ? (
+            <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhuma venda confirmada no período.':'No confirmed sales in this period.'}</p>
+          ) : salesByChannel.map(channel => (
+            <div className="pmy-list-item" key={channel.platform}>
+              <div>
+                <strong>{channel.label}</strong>
+                <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                  {channel.bookings} {lang==='pt'?'reservas':'bookings'} · {channel.passengers} pax
+                  {channel.missingValue > 0 ? ` · ⚠️ ${channel.missingValue} ${lang==='pt'?'sem valor':'without value'}` : ''}
+                </div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                {Object.entries(channel.revenueByCurrency).length > 0
+                  ? Object.entries(channel.revenueByCurrency).map(([currency, amount]) => (
+                      <div key={currency} style={{ fontWeight:'800', color:'var(--primary-green)', fontSize:'13px' }}>{formatMoney(amount, currency)}</div>
+                    ))
+                  : <span style={{ color:'#aaa' }}>—</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (activeModal === 'canceled') {
+      title = lang === 'pt' ? "Cancelamentos" : "Cancellations";
+      content = (
+        <div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px' }}>
+            <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'10px', padding:'12px', textAlign:'center' }}>
+              <div style={{ fontSize:'22px', fontWeight:'900', color:'#b91c1c' }}>{canceledCount}</div>
+              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'cancelamentos no período':'cancellations in period'}</div>
+            </div>
+            <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'10px', padding:'12px', textAlign:'center' }}>
+              <div style={{ fontSize:'22px', fontWeight:'900', color:'#c2410c' }}>{cancellationRate.toFixed(1)}%</div>
+              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'taxa de cancelamento':'cancellation rate'}</div>
+            </div>
+          </div>
+          {realCanceledBookings.length === 0
+            ? <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhum cancelamento registrado no período.':'No cancellations in this period.'}</p>
+            : realCanceledBookings.map(b => (
+                <div className="pmy-list-item" key={b.id}>
+                  <div>
+                    <strong>{b.customerName||"N/A"}</strong>
+                    <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                      {platformLabel(b.platform)} · {new Date(b.externalUpdatedAt || b.updatedAt || b.createdAt).toLocaleDateString(lang==='pt'?'pt-PT':'en-GB')}
+                      {b.cancelReason ? ` · ${b.cancelReason}` : ''}
+                    </div>
+                  </div>
+                  <span style={{ color:'#b91c1c', fontWeight:'800', fontSize:'12px' }}>
+                    {moneyValue(b) !== null && bookingCurrency(b) ? formatMoney(moneyValue(b), bookingCurrency(b)) : '—'}
+                  </span>
+                </div>
+              ))}
+        </div>
+      );
+    } else if (activeModal === 'confirmed') {
+      title = lang === 'pt' ? "Faturamento Confirmado" : "Confirmed Revenue";
+      content = (
+        <div>
+          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+            <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>
+              {confirmedRevenueValue > 0 ? formatMoney(confirmedRevenueValue) : '—'}
+            </div>
+            <div style={{ fontSize:'12px', color:'#555', marginTop:'4px' }}>
+              {pricedConfirmedBookings.length} {lang==='pt'?'reservas com valor real':'bookings with real value'}
+              {missingFinancialBookings.length > 0 ? ` · ${missingFinancialBookings.length} ${lang==='pt'?'sem valor financeiro':'without financial value'}` : ''}
+            </div>
+            {revenueCurrencies.length > 1 && (
+              <div style={{ fontSize:'11px', color:'#b45309', marginTop:'6px' }}>
+                ⚠️ {lang==='pt'?'Existem múltiplas moedas. O cartão principal mostra':'Multiple currencies detected. Main card shows'} {dashboardCurrency}.
+              </div>
+            )}
+          </div>
+          {realConfirmedBookings.length === 0
+            ? <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
+                <div style={{ fontSize:'32px', marginBottom:'10px' }}>📋</div>
+                <div style={{ fontWeight:'700' }}>{lang==='pt'?'Nenhuma reserva confirmada no período':'No confirmed bookings in this period'}</div>
+              </div>
+            : realConfirmedBookings.map(b => {
+                const tour = (tours || []).find(item => item.id === b.tourId);
+                return (
+                  <div className="pmy-list-item" key={b.id}>
+                    <div>
+                      <strong>{tour?.title || b.customerName || "Reserva"}</strong>
+                      <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                        {platformLabel(b.platform)} · {new Date(b.startTime).toLocaleDateString(lang==='pt'?'pt-PT':'en-GB')} · {Number(b.totalParticipants || 0)} pax
+                      </div>
+                    </div>
+                    <span style={{ color:moneyValue(b)!==null&&bookingCurrency(b)?'var(--primary-green)':'#b45309', fontWeight:'800' }}>
+                      {moneyValue(b)!==null&&bookingCurrency(b) ? formatMoney(moneyValue(b), bookingCurrency(b)) : (lang==='pt'?'Sem valor':'No value')}
+                    </span>
+                  </div>
+                );
+              })
+          }
+        </div>
+      );
+    } else if (activeModal === 'estimated') {
+      title = lang === 'pt' ? "Ticket Médio" : "Average Ticket";
+      content = (
+        <div>
+          <div style={{ background:'#fffaf0', border:'1px solid #f3d7a2', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
+            <div style={{ fontSize:'24px', fontWeight:'900', color:'#b7791f' }}>
+              {averageTicketValue > 0 ? formatMoney(averageTicketValue) : '—'}
+            </div>
+            <div style={{ fontSize:'12px', color:'#555', marginTop:'4px' }}>
+              {lang==='pt'?'Faturamento real dividido pelas reservas com valor na mesma moeda.':'Real revenue divided by bookings priced in the same currency.'}
+            </div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+            <div style={{ background:'#f8faf8', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'12px' }}>
+              <div style={{ fontSize:'20px', fontWeight:'900' }}>{pricedConfirmedBookings.length}</div>
+              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'reservas usadas no cálculo':'bookings used in calculation'}</div>
+            </div>
+            <div style={{ background:missingFinancialBookings.length?'#fff7ed':'#f0fdf4', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'12px' }}>
+              <div style={{ fontSize:'20px', fontWeight:'900', color:missingFinancialBookings.length?'#c2410c':'#166534' }}>{missingFinancialBookings.length}</div>
+              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'reservas sem valor':'bookings without value'}</div>
+            </div>
+          </div>
+          {revenueCurrencies.length > 1 && (
+            <div style={{ marginTop:'12px', fontSize:'11px', color:'#b45309', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'8px', padding:'9px 11px' }}>
+              ⚠️ {lang==='pt'?'O ticket médio não mistura moedas. O valor principal usa':'Average ticket never mixes currencies. Main value uses'} {dashboardCurrency}.
+            </div>
+          )}
+        </div>
+      );
+    } else if (activeModal === 'upcoming') {
+      title = lang === 'pt' ? "Próximas Saídas — 30 dias" : "Upcoming Departures — 30 days";
+      content = (
+        <div>
+          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px' }}>
+            <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>{upcomingCount}</div>
+            <div style={{ fontSize:'12px', color:'#555' }}>{lang==='pt'?'saídas únicas com reservas confirmadas ou pendentes':'unique departures with confirmed or pending bookings'}</div>
+          </div>
+          {upcomingDepartures.length === 0 ? (
+            <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhuma saída nos próximos 30 dias.':'No departures in the next 30 days.'}</p>
+          ) : upcomingDepartures.map(departure => {
+            const tour = (tours || []).find(item => item.id === departure.tourId);
+            const when = departure.startTime.toLocaleString(lang==='pt'?'pt-PT':'en-GB', {
+              timeZone:'Europe/Lisbon',
+              day:'2-digit',
+              month:'2-digit',
+              year:'numeric',
+              hour:'2-digit',
+              minute:'2-digit',
+            });
             return (
-              <div className="pmy-list-item" style={{ flexDirection:'column', alignItems:'flex-start' }} key={tour.id}>
-                <div style={{ width:'100%', display:'flex', justifyContent:'space-between' }}>
-                  <strong>{tour.title||"Tour sem título"}</strong>
-                  <span style={{ fontWeight:'bold', color:'var(--primary-green)' }}>{total} {t.dash_bookings}</span>
+              <div className="pmy-list-item" key={departure.key}>
+                <div>
+                  <strong>{tour?.title || 'Tour'}</strong>
+                  <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                    {when} · {departure.bookings} {lang==='pt'?'reservas':'bookings'} · {departure.passengers} pax
+                  </div>
+                  <div style={{ fontSize:'10px', color:'#999', marginTop:'2px' }}>{[...departure.platforms].join(' · ')}</div>
                 </div>
               </div>
             );
           })}
         </div>
       );
-    } else if (activeModal === 'canceled') {
-      title = t.modal_canceled_details;
-      content = (
-        <div>
-          {realCanceledBookings.length === 0
-            ? <p style={{ textAlign:'center', color:'#999' }}>Nenhum cancelamento registrado.</p>
-            : realCanceledBookings.map(b => (
-                <div className="pmy-list-item" key={b.id}>
-                  <div><strong>{b.customerName||"N/A"}</strong></div>
-                  <span className="pmy-tag gyg">{b.platform}</span>
-                </div>
-              ))}
-        </div>
-      );
-    } else if (activeModal === 'confirmed') {
-      title = t.modal_confirmed_details;
-      content = (
-        <div>
-          {realConfirmedBookings.length === 0
-            ? <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
-                <div style={{ fontSize:'32px', marginBottom:'10px' }}>📋</div>
-                <div style={{ fontWeight:'700' }}>Nenhuma reserva confirmada ainda</div>
-                <div style={{ fontSize:'13px', marginTop:'6px' }}>As reservas aparecerão aqui quando forem registradas na Agenda Central.</div>
-              </div>
-            : realConfirmedBookings.map(b => (
-                <div className="pmy-list-item" key={b.id}>
-                  <div>
-                    <strong>{b.customerName}</strong>
-                    <div style={{ fontSize:'12px', color:'#888' }}>{b.platform} · {new Date(b.startTime).toLocaleDateString('pt-PT')}</div>
-                  </div>
-                  <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>✓ Confirmado</span>
-                </div>
-              ))
-          }
-        </div>
-      );
-    } else if (activeModal === 'estimated') {
-      title = "Receita Potencial — Produtos Ativos";
-      content = (
-        <div>
-          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'16px', marginBottom:'20px' }}>
-            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)' }}>
-              € {Math.round(estimatedRevenueValue).toLocaleString('pt-BR')}
-            </div>
-            <div style={{ fontSize:'13px', color:'#555', marginTop:'4px' }}>
-              Soma dos preços base de {shopifyProducts.filter(p=>p.active).length} produtos ativos
-            </div>
-          </div>
-          {shopifyProducts.filter(p=>p.active).map(p => (
-            <div className="pmy-list-item" key={p.id}>
-              <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
-                {p.image
-                  ? <img src={p.image} alt={p.imageAlt} style={{ width:'36px', height:'36px', borderRadius:'6px', objectFit:'cover' }} />
-                  : <div style={{ width:'36px', height:'36px', borderRadius:'6px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px' }}>🏰</div>
-                }
-                <div>
-                  <strong style={{ fontSize:'13px' }}>{p.name}</strong>
-                  {p.collections?.length > 0 && <div style={{ fontSize:'11px', color:'#aaa' }}>{p.collections.map(c=>c.title).join(', ')}</div>}
-                </div>
-              </div>
-              <span style={{ color:'var(--primary-green)', fontWeight:'700' }}>{p.price}</span>
-            </div>
-          ))}
-        </div>
-      );
-    } else if (activeModal === 'upcoming') {
-      title = "Catálogo de Produtos";
-      const activeProds   = shopifyProducts.filter(p => p.active);
-      const inactiveProds = shopifyProducts.filter(p => !p.active);
-      content = (
-        <div>
-          <div style={{ display:'flex', gap:'10px', marginBottom:'20px' }}>
-            <div style={{ flex:1, background:'#e6f2e6', border:'1px solid #b8e6b8', borderRadius:'8px', padding:'12px', textAlign:'center' }}>
-              <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>{activeProds.length}</div>
-              <div style={{ fontSize:'12px', color:'#555' }}>Ativos</div>
-            </div>
-            <div style={{ flex:1, background:'#f5f5f5', border:'1px solid #eee', borderRadius:'8px', padding:'12px', textAlign:'center' }}>
-              <div style={{ fontSize:'24px', fontWeight:'900', color:'#aaa' }}>{inactiveProds.length}</div>
-              <div style={{ fontSize:'12px', color:'#888' }}>Inativos</div>
-            </div>
-          </div>
-          <div style={{ fontWeight:'800', fontSize:'13px', color:'var(--primary-green)', marginBottom:'10px' }}>✅ Ativos ({activeProds.length})</div>
-          {activeProds.map(p => (
-            <div key={p.id} style={{ display:'flex', gap:'12px', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f0f0f0' }}>
-              {p.image
-                ? <img src={p.image} alt={p.imageAlt} style={{ width:'44px', height:'44px', borderRadius:'8px', objectFit:'cover', flexShrink:0 }} />
-                : <div style={{ width:'44px', height:'44px', borderRadius:'8px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🏰</div>
-              }
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:'700', fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                <div style={{ fontSize:'11px', color:'#aaa', marginTop:'2px' }}>
-                  {p.sku !== '—' && <span>SKU: {p.sku} · </span>}
-                  {p.collections?.map(c=>c.title).join(', ')}
-                  {p.scheduleSlots?.length > 0 && <span style={{ color:'var(--primary-green)' }}> · ⏰ {p.scheduleSlots.join(', ')}</span>}
-                </div>
-                {p.variants?.length > 1 && (
-                  <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px' }}>
-                    {p.variants.map((v,i) => (
-                      <span key={i} style={{ fontSize:'10px', background:'#f0f0f0', padding:'1px 6px', borderRadius:'4px', color:'#555' }}>
-                        {v.title}: {v.price}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <span style={{ color:'var(--primary-green)', fontWeight:'800', flexShrink:0 }}>{p.price}</span>
-            </div>
-          ))}
-          {inactiveProds.length > 0 && (
-            <>
-              <div style={{ fontWeight:'800', fontSize:'13px', color:'#aaa', margin:'16px 0 10px' }}>⚫ Inativos ({inactiveProds.length})</div>
-              {inactiveProds.map(p => (
-                <div key={p.id} style={{ display:'flex', gap:'12px', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f0f0f0', opacity:0.5 }}>
-                  {p.image
-                    ? <img src={p.image} alt={p.imageAlt} style={{ width:'44px', height:'44px', borderRadius:'8px', objectFit:'cover', flexShrink:0 }} />
-                    : <div style={{ width:'44px', height:'44px', borderRadius:'8px', background:'#f5f5f5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🏰</div>
-                  }
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:'700', fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                    <div style={{ fontSize:'11px', color:'#aaa' }}>{p.collections?.map(c=>c.title).join(', ')}</div>
-                  </div>
-                  <span style={{ color:'#aaa', fontWeight:'700', flexShrink:0 }}>{p.price}</span>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      );
     }
-
     return (
       <div className="pmy-modal-overlay" onClick={() => setActiveModal(null)}>
         <div className="pmy-modal" onClick={e => e.stopPropagation()}>
