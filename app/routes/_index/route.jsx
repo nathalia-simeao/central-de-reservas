@@ -363,6 +363,32 @@ function PmyNavIcon({ name }) {
   return <svg {...common}>{paths[name] || paths.dashboard}</svg>;
 }
 
+function isDarkThemeColor(value) {
+  const color = String(value || "").trim();
+
+  const hexMatch = color.match(/^#([0-9a-f]{6})$/i);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return luminance < 0.48;
+  }
+
+  const shortHexMatch = color.match(/^#([0-9a-f]{3})$/i);
+  if (shortHexMatch) {
+    const hex = shortHexMatch[1];
+    const r = parseInt(hex[0] + hex[0], 16);
+    const g = parseInt(hex[1] + hex[1], 16);
+    const b = parseInt(hex[2] + hex[2], 16);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return luminance < 0.48;
+  }
+
+  return false;
+}
+
 export default function CentralDeReservas() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
@@ -387,8 +413,15 @@ export default function CentralDeReservas() {
   const [activeModal, setActiveModal] = useState(null);
   const [openCategories, setOpenCategories] = useState(["Day Trips", "Walking Tours"]);
 
-  // Configurações visuais do negócio vêm do banco, não do navegador.
-  const [logoUrl, setLogoUrl] = useState(businessSettings?.logoUrl || null);
+  // Identidade visual persistente do negócio.
+  // A logo para fundo claro e a versão para fundo escuro ficam no banco.
+  const [logoOnLightUrl, setLogoOnLightUrl] = useState(
+    businessSettings?.logoOnLightUrl || businessSettings?.logoUrl || null,
+  );
+  const [logoOnDarkUrl, setLogoOnDarkUrl] = useState(
+    businessSettings?.logoOnDarkUrl || null,
+  );
+  const [logoUploadingVariant, setLogoUploadingVariant] = useState(null);
   const [theme, setTheme] = useState({
     ...DEFAULT_THEME,
     ...(businessSettings?.theme && typeof businessSettings.theme === "object"
@@ -398,6 +431,13 @@ export default function CentralDeReservas() {
   const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
   const settingsSaveTimerRef = useRef(null);
   const settingsMessageTimerRef = useRef(null);
+
+  const sidebarIsDark = isDarkThemeColor(theme.sidebarBg);
+  const activeSidebarLogoUrl = sidebarIsDark
+    ? (logoOnDarkUrl || logoOnLightUrl)
+    : (logoOnLightUrl || logoOnDarkUrl);
+  const autoWhiteSidebarLogo =
+    sidebarIsDark && !logoOnDarkUrl && Boolean(logoOnLightUrl);
 
   // B. FILTROS DASHBOARD
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
@@ -562,7 +602,8 @@ export default function CentralDeReservas() {
   const [mappingSaveState, setMappingSaveState] = useState({ platform: null, status: "idle", message: "" });
   const [activeMappingPlatform, setActiveMappingPlatform] = useState("viator");
 
-  const fileInputRef = useRef(null);
+  const logoLightInputRef = useRef(null);
+  const logoDarkInputRef = useRef(null);
   const guidePhotoRef = useRef(null);
   const t = translations[lang] || translations.pt;
   const navItems = [
@@ -1615,13 +1656,13 @@ export default function CentralDeReservas() {
 
     if (!legacyLogo && !legacyTheme) return;
 
-    if (legacyLogo) setLogoUrl(legacyLogo);
+    if (legacyLogo) setLogoOnLightUrl(legacyLogo);
     if (legacyTheme && typeof legacyTheme === "object") {
       setTheme({ ...DEFAULT_THEME, ...legacyTheme });
     }
 
     persistBusinessSettings({
-      ...(legacyLogo ? { logoUrl: legacyLogo } : {}),
+      ...(legacyLogo ? { logoOnLightUrl: legacyLogo } : {}),
       ...(legacyTheme ? { theme: { ...DEFAULT_THEME, ...legacyTheme } } : {}),
     })
       .then(() => {
@@ -1635,26 +1676,103 @@ export default function CentralDeReservas() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  const handleLogoChange = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
+  const uploadBusinessLogo = useCallback(async (variant, file) => {
+    if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = String(ev.target.result || "");
-      setLogoUrl(dataUrl);
-      persistBusinessSettings({ logoUrl: dataUrl }).catch((error) => {
-        setSettingsSaveMessage(error?.message || "Erro ao salvar logo.");
+    if (!String(file.type || "").startsWith("image/")) {
+      setSettingsSaveMessage("Erro: selecione um arquivo de imagem.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setSettingsSaveMessage("Erro: a logo deve ter no máximo 10 MB.");
+      return;
+    }
+
+    setLogoUploadingVariant(variant);
+    setSettingsSaveMessage("Enviando logo...");
+
+    try {
+      const prepareFd = new FormData();
+      prepareFd.append("_action", "uploadMedia");
+      prepareFd.append("filename", file.name);
+      prepareFd.append("mimetype", file.type || "image/png");
+      prepareFd.append("size", String(file.size));
+      prepareFd.append("category", "logo");
+
+      const prepared = await requestResourceJson("/", prepareFd);
+
+      const uploadForm = new FormData();
+      for (const parameter of prepared.parameters || []) {
+        uploadForm.append(parameter.name, parameter.value);
+      }
+      uploadForm.append("file", file);
+
+      const uploadResponse = await fetch(prepared.uploadUrl, {
+        method: "POST",
+        body: uploadForm,
       });
-    };
-    reader.readAsDataURL(f);
+
+      if (!uploadResponse.ok) {
+        throw new Error("Falha ao enviar a logo para o Shopify Files.");
+      }
+
+      const finalizeFd = new FormData();
+      finalizeFd.append("_action", "finalizeMediaUpload");
+      finalizeFd.append("resourceUrl", prepared.resourceUrl);
+      finalizeFd.append("filename", file.name);
+      finalizeFd.append("mimetype", file.type || "image/png");
+      finalizeFd.append("category", "logo");
+      finalizeFd.append(
+        "label",
+        variant === "dark" ? "Logo para fundo escuro" : "Logo para fundo claro",
+      );
+
+      const finalized = await requestResourceJson("/", finalizeFd);
+      const url = String(finalized?.media?.url || "").trim();
+
+      if (!url) {
+        throw new Error("O Shopify não devolveu a URL final da logo.");
+      }
+
+      const field =
+        variant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
+
+      await persistBusinessSettings({ [field]: url });
+
+      if (variant === "dark") setLogoOnDarkUrl(url);
+      else setLogoOnLightUrl(url);
+
+      setSettingsSaveMessage("Logo salva e sincronizada ✓");
+    } catch (error) {
+      console.error("[PMY] brand logo upload failed:", error);
+      setSettingsSaveMessage(
+        error?.message || "Erro ao salvar a logo.",
+      );
+    } finally {
+      setLogoUploadingVariant(null);
+    }
+  }, [persistBusinessSettings, requestResourceJson]);
+
+  const handleBrandLogoChange = (variant, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    uploadBusinessLogo(variant, file);
+    event.target.value = "";
   };
 
-  const handleRemoveLogo = () => {
-    setLogoUrl(null);
-    persistBusinessSettings({ logoUrl: "" }).catch((error) => {
+  const handleRemoveBrandLogo = async (variant) => {
+    const field =
+      variant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
+
+    try {
+      await persistBusinessSettings({ [field]: "" });
+      if (variant === "dark") setLogoOnDarkUrl(null);
+      else setLogoOnLightUrl(null);
+      setSettingsSaveMessage("Logo removida ✓");
+    } catch (error) {
       setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
-    });
+    }
   };
 
   const handleThemeChange = (key, value) => {
@@ -3418,6 +3536,7 @@ export default function CentralDeReservas() {
     }
     .pmy-logo-wrapper { width:176px; height:92px; border-radius:18px; }
     .pmy-logo-image { max-height:88px; }
+    .pmy-logo-image.is-auto-white { filter:brightness(0) invert(1); }
     .pmy-logo-placeholder { width:172px; height:72px; border-radius:18px; }
     .pmy-logo-mini {
       display:none;
@@ -4144,8 +4263,14 @@ export default function CentralDeReservas() {
         <aside className={`pmy-sidebar ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileNavOpen ? "is-mobile-open" : ""}`}>
           <div className="pmy-logo-area">
             <div className="pmy-logo-full">
-              {logoUrl ? (
-                <div className="pmy-logo-wrapper"><img src={logoUrl} alt="Portugal Me & You" className="pmy-logo-image" /></div>
+              {activeSidebarLogoUrl ? (
+                <div className="pmy-logo-wrapper">
+                  <img
+                    src={activeSidebarLogoUrl}
+                    alt="Portugal Me & You"
+                    className={`pmy-logo-image ${autoWhiteSidebarLogo ? "is-auto-white" : ""}`}
+                  />
+                </div>
               ) : (
                 <div className="pmy-logo-placeholder"><span>Portugal Me & You</span></div>
               )}
@@ -4304,11 +4429,13 @@ export default function CentralDeReservas() {
 
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
-            fileInputRef, handleLogoChange, handleRemoveLogo, handleThemeChange,
-            handleRestoreThemeDefaults, handleImageShapeChange, handleSaveFieldMappings,
-            handleResetFieldMappings, handleUpdateFieldMapping, imageShape, internalFields,
-            logoUrl, mappingSaveState, platformConnections, reservationPlatforms,
-            setActiveMappingPlatform, settingsSaveMessage, shopifyStaff, t, theme
+            logoLightInputRef, logoDarkInputRef, handleBrandLogoChange, handleRemoveBrandLogo,
+            handleThemeChange, handleRestoreThemeDefaults, handleImageShapeChange,
+            handleSaveFieldMappings, handleResetFieldMappings, handleUpdateFieldMapping,
+            imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
+            sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
+            reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
+            shopifyStaff, t, theme
           }} />
 
           <MediaTab {...{
