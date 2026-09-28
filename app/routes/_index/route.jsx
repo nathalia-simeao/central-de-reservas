@@ -4094,6 +4094,130 @@ export default function CentralDeReservas() {
     .pmy-media-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:24px; align-items:start; }
     .pmy-media-upload-panel { position:sticky; top:92px; }
     .pmy-settings-color-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-top:10px; }
+
+    .pmy-brand-logo-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+    .pmy-brand-logo-card {
+      border:1px solid var(--pmy-border);
+      border-radius:18px;
+      padding:16px;
+      background:color-mix(in srgb, var(--surface-color) 97%, var(--bg-color) 3%);
+    }
+    .pmy-brand-logo-card-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .pmy-brand-logo-card-head > div {
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+    }
+    .pmy-brand-logo-card-head strong {
+      color:var(--text-dark);
+      font-size:13px;
+      font-weight:800;
+    }
+    .pmy-brand-logo-card-head span {
+      color:#777;
+      font-size:10px;
+      line-height:1.4;
+    }
+    .pmy-brand-logo-status {
+      flex:0 0 auto;
+      border-radius:999px;
+      padding:4px 7px;
+      background:#ecfdf3;
+      color:#166534 !important;
+      font-size:9px !important;
+      font-weight:800;
+    }
+    .pmy-brand-logo-preview {
+      min-height:120px;
+      border-radius:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      margin-bottom:12px;
+      border:1px solid rgba(0,0,0,.07);
+      overflow:hidden;
+    }
+    .pmy-brand-logo-preview.is-light {
+      background:#f6f7f5;
+    }
+    .pmy-brand-logo-preview.is-dark {
+      background:#171717;
+      border-color:#2d2d2d;
+    }
+    .pmy-brand-logo-preview img {
+      display:block;
+      max-width:100%;
+      max-height:82px;
+      object-fit:contain;
+    }
+    .pmy-brand-logo-preview img.is-auto-white,
+    .pmy-brand-logo-current img.is-auto-white {
+      filter:brightness(0) invert(1);
+    }
+    .pmy-brand-logo-preview > span {
+      font-size:11px;
+      color:#929792;
+      font-weight:700;
+    }
+    .pmy-brand-logo-preview.is-dark > span {
+      color:#b8b8b8;
+    }
+    .pmy-brand-logo-actions {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .pmy-brand-logo-actions button:disabled {
+      cursor:wait;
+      opacity:.6;
+    }
+    .pmy-brand-logo-current {
+      margin-top:16px;
+      padding-top:16px;
+      border-top:1px solid var(--pmy-border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .pmy-brand-logo-current > span {
+      color:#777;
+      font-size:11px;
+      font-weight:700;
+    }
+    .pmy-brand-logo-current > div {
+      width:220px;
+      min-height:72px;
+      border-radius:15px;
+      padding:10px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid var(--pmy-border);
+    }
+    .pmy-brand-logo-current img {
+      display:block;
+      max-width:100%;
+      max-height:54px;
+      object-fit:contain;
+    }
+    .pmy-brand-logo-current strong {
+      font-size:12px;
+      color:var(--sidebar-text);
+    }
     .pmy-settings-color-grid > * { min-width:0; }
     .pmy-media-filter-tabs,
     .pmy-prod-platform-tabs,
@@ -4199,6 +4323,9 @@ export default function CentralDeReservas() {
       .pmy-booking-meta-grid,
       .pmy-variants-form-grid { grid-template-columns:1fr; }
       .pmy-settings-color-grid { grid-template-columns:1fr; gap:14px; }
+      .pmy-brand-logo-grid { grid-template-columns:1fr; }
+      .pmy-brand-logo-current { align-items:flex-start; }
+      .pmy-brand-logo-current > div { width:100%; }
       .pmy-calendar-month-selector-bar { flex-wrap:wrap; gap:8px; }
       .pmy-calendar-view-tabs { width:100%; overflow-x:auto; }
       .pmy-cal-tab { flex:0 0 auto; }
