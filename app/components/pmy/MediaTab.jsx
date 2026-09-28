@@ -1,3 +1,4 @@
+// PMY unified media library: PostgreSQL catalog + Shopify Files/product references.
 export default function MediaTab(props) {
   const {
     activeTab,
