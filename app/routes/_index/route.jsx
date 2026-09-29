@@ -4615,7 +4615,7 @@ function CentralDeReservasContent() {
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, getPeriodLabel,
-            salesByChannel, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
+            salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
 
