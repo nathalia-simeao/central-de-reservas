@@ -1395,6 +1395,316 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
   );
 };
 
+const UpcomingDeparturesPanel = ({
+  departures = [],
+  lang,
+  imageShape = "rounded",
+}) => {
+  const [showAll, setShowAll] = useState(false);
+  const visibleDepartures = showAll ? departures : departures.slice(0, 8);
+
+  const formatDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      timeZone: "Europe/Lisbon",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const formatTime = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      timeZone: "Europe/Lisbon",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date);
+  };
+
+  return (
+    <section className="pmy-card" style={{ padding:'22px 24px' }}>
+      <div style={{
+        display:'flex',
+        justifyContent:'space-between',
+        alignItems:'flex-start',
+        gap:'16px',
+        flexWrap:'wrap',
+        marginBottom:'18px'
+      }}>
+        <div>
+          <div className="pmy-trend-eyebrow">
+            {lang === 'pt' ? 'Operação dos próximos 30 dias' : 'Next 30 days operations'}
+          </div>
+          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
+            {lang === 'pt' ? 'Próximas saídas' : 'Upcoming departures'}
+          </h2>
+          <div className="pmy-trend-subtitle">
+            {lang === 'pt'
+              ? 'Tour, data, horário, passageiros, canais e vagas disponíveis'
+              : 'Tour, date, time, passengers, channels and available seats'}
+          </div>
+        </div>
+
+        <div style={{
+          minWidth:'120px',
+          padding:'10px 13px',
+          border:'1px solid #e8e8e8',
+          borderRadius:'14px',
+          background:'#fafafa',
+          textAlign:'right'
+        }}>
+          <div style={{
+            fontSize:'11px',
+            color:'#888',
+            fontWeight:'800',
+            textTransform:'uppercase',
+            letterSpacing:'.05em'
+          }}>
+            {lang === 'pt' ? 'Saídas' : 'Departures'}
+          </div>
+          <strong style={{
+            display:'block',
+            marginTop:'2px',
+            fontSize:'24px',
+            lineHeight:1,
+            color:'var(--primary-green)'
+          }}>
+            {departures.length}
+          </strong>
+        </div>
+      </div>
+
+      {visibleDepartures.length === 0 ? (
+        <div style={{
+          minHeight:'150px',
+          display:'grid',
+          placeItems:'center',
+          textAlign:'center',
+          color:'#858b86',
+          fontSize:'13px'
+        }}>
+          {lang === 'pt'
+            ? 'Nenhuma saída confirmada ou pendente nos próximos 30 dias.'
+            : 'No confirmed or pending departures in the next 30 days.'}
+        </div>
+      ) : (
+        <div style={{ overflowX:'auto' }}>
+          <div style={{ minWidth:'920px' }}>
+            <div style={{
+              display:'grid',
+              gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
+              gap:'12px',
+              padding:'0 12px 9px',
+              borderBottom:'1px solid #eceeec',
+              color:'#8a908b',
+              fontSize:'11px',
+              fontWeight:'850',
+              textTransform:'uppercase',
+              letterSpacing:'.05em'
+            }}>
+              <span>Tour</span>
+              <span>{lang === 'pt' ? 'Data' : 'Date'}</span>
+              <span>{lang === 'pt' ? 'Horário' : 'Time'}</span>
+              <span>{lang === 'pt' ? 'Passageiros' : 'Passengers'}</span>
+              <span>{lang === 'pt' ? 'Canais' : 'Channels'}</span>
+              <span style={{ textAlign:'right' }}>
+                {lang === 'pt' ? 'Vagas disponíveis' : 'Available seats'}
+              </span>
+            </div>
+
+            {visibleDepartures.map((departure) => {
+              const capacity = Math.max(0, Number(departure?.capacity || 0));
+              const available = Math.max(0, Number(departure?.availableSeats || 0));
+              const occupancy = capacity > 0
+                ? Math.min(100, (Number(departure?.passengers || 0) / capacity) * 100)
+                : 0;
+              const isFull = capacity > 0 && available === 0;
+              const isTight = !isFull && capacity > 0 && occupancy >= 80;
+              const seatColor = isFull ? '#b42318' : isTight ? '#a46108' : '#167a35';
+              const seatBg = isFull ? '#fff1f0' : isTight ? '#fff7e7' : '#edf8f0';
+
+              return (
+                <div
+                  key={departure.key}
+                  style={{
+                    display:'grid',
+                    gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
+                    gap:'12px',
+                    alignItems:'center',
+                    minHeight:'74px',
+                    padding:'10px 12px',
+                    borderBottom:'1px solid #f0f1f0'
+                  }}
+                >
+                  <div style={{
+                    minWidth:0,
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'11px'
+                  }}>
+                    {departure.image ? (
+                      <img
+                        src={departure.image}
+                        alt={departure.imageAlt || departure.tourTitle}
+                        className={imageShape}
+                        style={{
+                          width:'46px',
+                          height:'46px',
+                          flex:'0 0 46px',
+                          objectFit:'cover'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width:'46px',
+                        height:'46px',
+                        flex:'0 0 46px',
+                        borderRadius:'12px',
+                        background:'#f4f5f4',
+                        display:'grid',
+                        placeItems:'center',
+                        fontSize:'18px'
+                      }}>
+                        🧭
+                      </div>
+                    )}
+
+                    <div style={{ minWidth:0 }}>
+                      <div style={{
+                        fontSize:'14px',
+                        fontWeight:'850',
+                        color:'#343734',
+                        overflow:'hidden',
+                        textOverflow:'ellipsis',
+                        whiteSpace:'nowrap'
+                      }}>
+                        {departure.tourTitle}
+                      </div>
+                      <div style={{
+                        marginTop:'3px',
+                        fontSize:'11px',
+                        color:'#858b86'
+                      }}>
+                        {departure.bookings} {lang === 'pt' ? 'reserva(s)' : 'booking(s)'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <strong style={{ fontSize:'13px', color:'#444' }}>
+                    {formatDate(departure.startTime)}
+                  </strong>
+
+                  <strong style={{ fontSize:'14px', color:'#444' }}>
+                    {formatTime(departure.startTime)}
+                  </strong>
+
+                  <div>
+                    <strong style={{
+                      display:'block',
+                      fontSize:'17px',
+                      color:'#333'
+                    }}>
+                      {departure.passengers}
+                    </strong>
+                    <span style={{ fontSize:'11px', color:'#8a908b' }}>
+                      pax
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display:'flex',
+                    flexWrap:'wrap',
+                    gap:'5px'
+                  }}>
+                    {(departure.platforms || []).map((platform) => (
+                      <span
+                        key={platform}
+                        style={{
+                          padding:'5px 8px',
+                          borderRadius:'999px',
+                          background:'#f3f5f3',
+                          color:'#5d665f',
+                          fontSize:'11px',
+                          fontWeight:'750'
+                        }}
+                      >
+                        {platform}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={{ textAlign:'right' }}>
+                    <span style={{
+                      display:'inline-flex',
+                      alignItems:'center',
+                      justifyContent:'center',
+                      minWidth:'58px',
+                      minHeight:'34px',
+                      padding:'7px 10px',
+                      borderRadius:'11px',
+                      background:seatBg,
+                      color:seatColor,
+                      fontSize:'16px',
+                      fontWeight:'900'
+                    }}>
+                      {available}
+                    </span>
+                    <div style={{
+                      marginTop:'4px',
+                      fontSize:'10px',
+                      color:'#8a908b'
+                    }}>
+                      {lang === 'pt' ? `de ${capacity} vagas` : `of ${capacity} seats`}
+                      {departure.capacitySource === "DEFAULT"
+                        ? (lang === 'pt' ? ' · padrão' : ' · default')
+                        : ''}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {departures.length > 8 && (
+        <div style={{
+          display:'flex',
+          justifyContent:'center',
+          paddingTop:'15px'
+        }}>
+          <button
+            type="button"
+            onClick={() => setShowAll((current) => !current)}
+            style={{
+              border:'1px solid #dfe4df',
+              borderRadius:'999px',
+              background:'#fff',
+              padding:'8px 14px',
+              color:'var(--primary-green)',
+              fontSize:'12px',
+              fontWeight:'850',
+              cursor:'pointer'
+            }}
+          >
+            {showAll
+              ? (lang === 'pt' ? 'Mostrar menos' : 'Show less')
+              : (lang === 'pt'
+                ? `Ver todas as ${departures.length} saídas`
+                : `View all ${departures.length} departures`)}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+};
+
 const TourPerformanceRanking = ({
   categoriesData = [],
   realConfirmedBookings = [],
@@ -1798,6 +2108,7 @@ export default function DashboardTab(props) {
     canceledCount,
     cancellationRate,
     upcomingCount,
+    dashboardUpcomingDepartures,
     getPeriodLabel,
     salesByChannel,
     bookings,
@@ -1939,6 +2250,12 @@ export default function DashboardTab(props) {
                 summary={dashboardBookingStatusSummary}
                 lang={lang}
                 periodLabel={getPeriodLabel()}
+              />
+
+              <UpcomingDeparturesPanel
+                departures={dashboardUpcomingDepartures || []}
+                lang={lang}
+                imageShape={imageShape}
               />
 
               <TrendChart
