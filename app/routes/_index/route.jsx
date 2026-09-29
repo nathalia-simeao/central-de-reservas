@@ -695,6 +695,36 @@ function CentralDeReservasContent() {
     isInDashboardRange(bookingUpdatedAt(booking))
   );
 
+  const dashboardBookingStatusSummary = periodBookings.reduce(
+    (summary, booking) => {
+      const status = bookingStatus(booking);
+      const startTime = new Date(booking?.startTime || 0);
+      const hasValidStart = !Number.isNaN(startTime.getTime());
+
+      if (["CANCELED", "CANCELLED"].includes(status)) {
+        summary.canceled += 1;
+      } else if (status === "PENDING") {
+        summary.pending += 1;
+      } else if (["COMPLETED", "COMPLETE", "FINISHED"].includes(status)) {
+        summary.completed += 1;
+      } else if (status === "CONFIRMED") {
+        if (hasValidStart && startTime < dashboardNow) summary.completed += 1;
+        else summary.confirmed += 1;
+      } else {
+        summary.unclassified += 1;
+      }
+
+      return summary;
+    },
+    { confirmed: 0, pending: 0, canceled: 0, completed: 0, unclassified: 0 },
+  );
+
+  dashboardBookingStatusSummary.total =
+    dashboardBookingStatusSummary.confirmed +
+    dashboardBookingStatusSummary.pending +
+    dashboardBookingStatusSummary.canceled +
+    dashboardBookingStatusSummary.completed;
+
   const moneyValue = (booking) => {
     if (booking?.totalPrice === null || booking?.totalPrice === undefined || booking?.totalPrice === "") return null;
     const parsed = Number(booking.totalPrice);
@@ -4538,8 +4568,8 @@ function CentralDeReservasContent() {
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, getPeriodLabel,
-            salesByChannel, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
-            dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
+            salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
+            dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
 
           <AgendaTab {...{
