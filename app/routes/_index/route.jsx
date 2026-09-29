@@ -390,9 +390,8 @@ function isDarkThemeColor(value) {
   return false;
 }
 
-// Production recovery baseline 2026-09-29.
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [], logoSelectionMessage = "" } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [], logoSelectionMessage: "" };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -430,7 +429,7 @@ function CentralDeReservasContent() {
       ? businessSettings.theme
       : {}),
   });
-  const [settingsSaveMessage, setSettingsSaveMessage] = useState(logoSelectionMessage || "");
+  const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
   const settingsSaveTimerRef = useRef(null);
   const settingsMessageTimerRef = useRef(null);
 
@@ -1659,80 +1658,98 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO: seletor nativo Shopify + persistência pelo loader GET já existente.
-  const handleChooseBrandLogo = useCallback(async (variant) => {
+  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
+  const uploadBusinessLogo = useCallback(async (variant, file) => {
+    if (!file) return;
+
+    if (!String(file.type || "").startsWith("image/")) {
+      setSettingsSaveMessage("Erro: selecione um arquivo de imagem.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setSettingsSaveMessage("Erro: a logo deve ter no máximo 10 MB.");
+      return;
+    }
+
     setLogoUploadingVariant(variant);
-    setSettingsSaveMessage("");
+    setSettingsSaveMessage("Enviando logo...");
 
     try {
-      if (typeof window === "undefined" || !window.shopify?.intents?.invoke) {
-        throw new Error("O seletor da biblioteca Shopify não está disponível nesta sessão.");
-      }
+      const prepareFd = new FormData();
+      prepareFd.append("_action", "prepareLogoUpload");
+      prepareFd.append("variant", variant);
+      prepareFd.append("filename", file.name);
+      prepareFd.append("mimetype", file.type || "image/png");
+      prepareFd.append("size", String(file.size));
 
-      const activity = await window.shopify.intents.invoke("pick:shopify/File", {
-        data: {
-          mediaTypes: ["MediaImage"],
-          multiSelect: false,
-        },
+      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
+
+      const uploadForm = new FormData();
+      for (const parameter of prepared.parameters || []) {
+        uploadForm.append(parameter.name, parameter.value);
+      }
+      uploadForm.append("file", file);
+
+      const uploadResponse = await fetch(prepared.uploadUrl, {
+        method: "POST",
+        body: uploadForm,
       });
 
-      const response = await activity.complete;
-
-      if (response?.code === "closed") return;
-
-      if (response?.code !== "ok") {
-        throw new Error(response?.message || "Não foi possível abrir a biblioteca Shopify.");
+      if (!uploadResponse.ok) {
+        throw new Error("Falha ao enviar a logo para o Shopify Files.");
       }
 
-      const fileId = Array.isArray(response?.data?.ids)
-        ? response.data.ids[0]
-        : null;
+      const finalizeFd = new FormData();
+      finalizeFd.append("_action", "finalizeLogoUpload");
+      finalizeFd.append("variant", variant);
+      finalizeFd.append("resourceUrl", prepared.resourceUrl);
+      finalizeFd.append("filename", file.name);
+      finalizeFd.append("mimetype", file.type || "image/png");
 
-      if (!fileId) {
-        throw new Error("Nenhuma imagem foi selecionada.");
+      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
+      const url = String(finalized?.url || finalized?.media?.url || "").trim();
+
+      if (!url) {
+        throw new Error("O Shopify não devolveu a URL final da logo.");
       }
 
-      const nextUrl = new URL(window.location.href);
-      nextUrl.searchParams.set("pmyLogoFileId", fileId);
-      nextUrl.searchParams.set("pmyLogoVariant", variant);
-      nextUrl.searchParams.delete("pmyLogoRemove");
-      window.location.assign(nextUrl.toString());
+      if (variant === "dark") setLogoOnDarkUrl(url);
+      else setLogoOnLightUrl(url);
+
+      setSettingsSaveMessage("Logo salva e sincronizada ✓");
     } catch (error) {
-      console.error("[PMY] Shopify logo picker failed:", error);
-      setSettingsSaveMessage(error?.message || "Erro ao selecionar a logo.");
+      console.error("[PMY] brand logo upload failed:", error);
+      setSettingsSaveMessage(
+        error?.message || "Erro ao salvar a logo.",
+      );
+    } finally {
       setLogoUploadingVariant(null);
     }
-  }, []);
+  }, [requestResourceJson]);
 
-  const handleRemoveBrandLogo = useCallback((variant) => {
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("pmyLogoRemove", variant);
-    nextUrl.searchParams.delete("pmyLogoFileId");
-    nextUrl.searchParams.delete("pmyLogoVariant");
-    window.location.assign(nextUrl.toString());
-  }, []);
+  const handleBrandLogoChange = (variant, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    uploadBusinessLogo(variant, file);
+    event.target.value = "";
+  };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const handleRemoveBrandLogo = async (variant) => {
+    try {
+      const fd = new FormData();
+      fd.append("_action", "removeLogo");
+      fd.append("variant", variant);
+      await requestResourceJson("/api/brand-logo", fd);
 
-    const cleanUrl = new URL(window.location.href);
-    const hadLogoAction =
-      cleanUrl.searchParams.has("pmyLogoFileId") ||
-      cleanUrl.searchParams.has("pmyLogoVariant") ||
-      cleanUrl.searchParams.has("pmyLogoRemove");
+      if (variant === "dark") setLogoOnDarkUrl(null);
+      else setLogoOnLightUrl(null);
 
-    if (!hadLogoAction) return;
-
-    cleanUrl.searchParams.delete("pmyLogoFileId");
-    cleanUrl.searchParams.delete("pmyLogoVariant");
-    cleanUrl.searchParams.delete("pmyLogoRemove");
-
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`,
-    );
-  }, []);
+      setSettingsSaveMessage("Logo removida ✓");
+    } catch (error) {
+      setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
+    }
+  };
 
   const handleThemeChange = (key, value) => {
     setTheme(prev => {
@@ -4527,7 +4544,7 @@ function CentralDeReservasContent() {
 
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
-            logoLightInputRef, logoDarkInputRef, handleChooseBrandLogo, handleRemoveBrandLogo,
+            logoLightInputRef, logoDarkInputRef, handleBrandLogoChange, handleRemoveBrandLogo,
             handleThemeChange, handleRestoreThemeDefaults, handleImageShapeChange,
             handleSaveFieldMappings, handleResetFieldMappings, handleUpdateFieldMapping,
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
