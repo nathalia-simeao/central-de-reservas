@@ -1178,6 +1178,223 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   );
 };
 
+const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
+  const total = Number(summary?.total || 0);
+  const unclassified = Number(summary?.unclassified || 0);
+
+  const items = [
+    {
+      key: "confirmed",
+      label: lang === "pt" ? "Confirmadas" : "Confirmed",
+      description: lang === "pt" ? "passeios futuros confirmados" : "confirmed upcoming tours",
+      value: Number(summary?.confirmed || 0),
+      icon: "✓",
+      color: "#167a35",
+      soft: "#edf8f0",
+    },
+    {
+      key: "pending",
+      label: lang === "pt" ? "Pendentes" : "Pending",
+      description: lang === "pt" ? "aguardando confirmação" : "awaiting confirmation",
+      value: Number(summary?.pending || 0),
+      icon: "⏳",
+      color: "#a46108",
+      soft: "#fff7e7",
+    },
+    {
+      key: "canceled",
+      label: lang === "pt" ? "Canceladas" : "Canceled",
+      description: lang === "pt" ? "reservas canceladas" : "canceled bookings",
+      value: Number(summary?.canceled || 0),
+      icon: "×",
+      color: "#b42318",
+      soft: "#fff1f0",
+    },
+    {
+      key: "completed",
+      label: lang === "pt" ? "Concluídas" : "Completed",
+      description: lang === "pt" ? "passeios já realizados" : "tours already completed",
+      value: Number(summary?.completed || 0),
+      icon: "✓✓",
+      color: "#315a78",
+      soft: "#eef5f9",
+    },
+  ];
+
+  return (
+    <section className="pmy-card" style={{ padding:'22px 24px' }}>
+      <div style={{
+        display:'flex',
+        justifyContent:'space-between',
+        alignItems:'flex-start',
+        gap:'18px',
+        flexWrap:'wrap',
+        marginBottom:'18px'
+      }}>
+        <div>
+          <div className="pmy-trend-eyebrow">
+            {lang === 'pt' ? 'Situação das reservas' : 'Booking status'}
+          </div>
+          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
+            {lang === 'pt' ? 'Status das reservas' : 'Booking status'}
+          </h2>
+          <div className="pmy-trend-subtitle">
+            {periodLabel} · {lang === 'pt'
+              ? 'visão atual das reservas criadas no período'
+              : 'current status of bookings created in the period'}
+          </div>
+        </div>
+
+        <div style={{
+          minWidth:'132px',
+          padding:'10px 13px',
+          border:'1px solid #e8e8e8',
+          borderRadius:'14px',
+          background:'#fafafa',
+          textAlign:'right'
+        }}>
+          <div style={{
+            fontSize:'11px',
+            color:'#888',
+            fontWeight:'800',
+            textTransform:'uppercase',
+            letterSpacing:'.05em'
+          }}>
+            {lang === 'pt' ? 'Total classificado' : 'Classified total'}
+          </div>
+          <div style={{
+            fontSize:'25px',
+            fontWeight:'900',
+            color:'var(--primary-green)',
+            lineHeight:1.1,
+            marginTop:'3px'
+          }}>
+            {total}
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        height:'12px',
+        borderRadius:'999px',
+        background:'#f0f1f0',
+        overflow:'hidden',
+        display:'flex',
+        marginBottom:'18px'
+      }}>
+        {items.map((item) => {
+          const share = total > 0 ? (item.value / total) * 100 : 0;
+          if (share <= 0) return null;
+
+          return (
+            <div
+              key={item.key}
+              title={`${item.label}: ${item.value} (${share.toFixed(1)}%)`}
+              style={{
+                width:`${share}%`,
+                minWidth:item.value > 0 ? '6px' : 0,
+                background:item.color,
+                transition:'width .3s ease'
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <div style={{
+        display:'grid',
+        gridTemplateColumns:'repeat(4,minmax(0,1fr))',
+        gap:'12px'
+      }}>
+        {items.map((item) => {
+          const share = total > 0 ? (item.value / total) * 100 : 0;
+
+          return (
+            <div
+              key={item.key}
+              style={{
+                minWidth:0,
+                border:'1px solid #ececec',
+                borderRadius:'16px',
+                padding:'15px 16px',
+                background:'#fff'
+              }}
+            >
+              <div style={{
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'space-between',
+                gap:'10px',
+                marginBottom:'14px'
+              }}>
+                <span style={{
+                  width:'36px',
+                  height:'36px',
+                  borderRadius:'12px',
+                  display:'grid',
+                  placeItems:'center',
+                  background:item.soft,
+                  color:item.color,
+                  fontSize:'14px',
+                  fontWeight:'900'
+                }}>
+                  {item.icon}
+                </span>
+                <span style={{
+                  fontSize:'12px',
+                  fontWeight:'850',
+                  color:item.color
+                }}>
+                  {share.toFixed(1)}%
+                </span>
+              </div>
+
+              <div style={{
+                fontSize:'14px',
+                fontWeight:'850',
+                color:'#363936',
+                marginBottom:'3px'
+              }}>
+                {item.label}
+              </div>
+              <strong style={{
+                display:'block',
+                fontSize:'28px',
+                lineHeight:1,
+                color:item.color,
+                marginBottom:'7px'
+              }}>
+                {item.value}
+              </strong>
+              <div style={{
+                fontSize:'12px',
+                lineHeight:1.35,
+                color:'#858985'
+              }}>
+                {item.description}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {unclassified > 0 && (
+        <div style={{
+          marginTop:'13px',
+          paddingTop:'11px',
+          borderTop:'1px solid #efefef',
+          fontSize:'12px',
+          color:'#8a8f8b'
+        }}>
+          {lang === 'pt'
+            ? `${unclassified} reserva(s) possui(em) status ainda não classificado pela Central.`
+            : `${unclassified} booking(s) have a status not yet classified by the Central.`}
+        </div>
+      )}
+    </section>
+  );
+};
+
 export default function DashboardTab(props) {
   const {
     activeTab,
@@ -1201,6 +1418,7 @@ export default function DashboardTab(props) {
     toggleCategory,
     openCategories,
     realConfirmedBookings,
+    dashboardBookingStatusSummary,
     dashboardTrendData,
     dashboardTrendGranularity,
     dashboardCurrency,
@@ -1329,6 +1547,12 @@ export default function DashboardTab(props) {
                   </>
                 );
               })()}
+
+              <BookingStatusOverview
+                summary={dashboardBookingStatusSummary}
+                lang={lang}
+                periodLabel={getPeriodLabel()}
+              />
 
               <TrendChart
                 data={dashboardTrendData || []}
