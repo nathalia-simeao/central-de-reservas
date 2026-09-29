@@ -285,6 +285,11 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [calendarSelectionStep, setCalendarSelectionStep] = useState("start");
 
   const classifyChannel = (platform) => {
     const key = String(platform || "").trim().toUpperCase();
@@ -435,11 +440,86 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
     if (value === "custom") {
       ensureCustomDates();
       setSelectedRange("custom");
+      const currentStart = parseDateInput(customStart);
+      const anchorDate = currentStart || new Date();
+      setCalendarMonth(new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1));
+      setCalendarSelectionStep("start");
       return;
     }
 
     setSelectedRange(value);
     setPeriodMenuOpen(false);
+  };
+
+  const calendarMonthLabel = new Intl.DateTimeFormat(
+    lang === "pt" ? "pt-PT" : "en-GB",
+    { month: "long", year: "numeric" },
+  ).format(calendarMonth);
+
+  const calendarWeekdays = lang === "pt"
+    ? ["S", "T", "Q", "Q", "S", "S", "D"]
+    : ["M", "T", "W", "T", "F", "S", "S"];
+
+  const calendarDays = (() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const mondayOffset = (firstDay.getDay() + 6) % 7;
+    const cells = [];
+
+    for (let index = 0; index < mondayOffset; index += 1) {
+      cells.push(null);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      cells.push(new Date(year, month, day));
+    }
+
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  })();
+
+  const sameCalendarDay = (left, right) =>
+    left &&
+    right &&
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate();
+
+  const selectedStartDate = parseDateInput(customStart);
+  const selectedEndDate = parseDateInput(customEnd);
+
+  const handleCalendarDayClick = (date) => {
+    const value = toDateInput(date);
+    setSelectedRange("custom");
+
+    if (
+      calendarSelectionStep === "start" ||
+      !selectedStartDate ||
+      (selectedStartDate && selectedEndDate)
+    ) {
+      setCustomStart(value);
+      setCustomEnd("");
+      setCalendarSelectionStep("end");
+      return;
+    }
+
+    if (date < selectedStartDate) {
+      setCustomStart(value);
+      setCustomEnd("");
+      setCalendarSelectionStep("end");
+      return;
+    }
+
+    setCustomEnd(value);
+    setCalendarSelectionStep("start");
+  };
+
+  const moveCalendarMonth = (direction) => {
+    setCalendarMonth((current) =>
+      new Date(current.getFullYear(), current.getMonth() + direction, 1),
+    );
   };
 
   const applyCustomRange = () => {
@@ -631,71 +711,186 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   <div style={{
                     display:'grid',
                     gridTemplateColumns:'1fr 1fr',
-                    gap:'10px',
-                    marginBottom:'14px'
+                    gap:'9px',
+                    marginBottom:'12px'
                   }}>
-                    <label style={{ display:'grid', gap:'5px' }}>
-                      <span style={{ fontSize:'9px', color:'#888', fontWeight:'800', textTransform:'uppercase' }}>
+                    <div style={{
+                      border:'1px solid #e5e5e5',
+                      borderRadius:'11px',
+                      padding:'9px 10px',
+                      background:calendarSelectionStep === "start"
+                        ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                        : '#fff'
+                    }}>
+                      <span style={{ display:'block', fontSize:'8px', color:'#999', fontWeight:'850', textTransform:'uppercase', letterSpacing:'.05em' }}>
                         {lang === 'pt' ? 'De' : 'From'}
                       </span>
-                      <input
-                        type="date"
-                        value={customStart}
-                        onFocus={ensureCustomDates}
-                        onChange={(event) => {
-                          setCustomStart(event.target.value);
-                          setSelectedRange("custom");
-                        }}
-                        style={{
-                          width:'100%',
-                          height:'38px',
-                          border:'1px solid #dedede',
-                          borderRadius:'10px',
-                          padding:'0 9px',
-                          fontSize:'11px',
-                          background:'#fff'
-                        }}
-                      />
-                    </label>
+                      <strong style={{ display:'block', marginTop:'3px', fontSize:'11px', color:'#333' }}>
+                        {selectedStartDate ? formatDate(selectedStartDate) : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                      </strong>
+                    </div>
 
-                    <label style={{ display:'grid', gap:'5px' }}>
-                      <span style={{ fontSize:'9px', color:'#888', fontWeight:'800', textTransform:'uppercase' }}>
+                    <div style={{
+                      border:'1px solid #e5e5e5',
+                      borderRadius:'11px',
+                      padding:'9px 10px',
+                      background:calendarSelectionStep === "end"
+                        ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                        : '#fff'
+                    }}>
+                      <span style={{ display:'block', fontSize:'8px', color:'#999', fontWeight:'850', textTransform:'uppercase', letterSpacing:'.05em' }}>
                         {lang === 'pt' ? 'Até' : 'To'}
                       </span>
-                      <input
-                        type="date"
-                        value={customEnd}
-                        onFocus={ensureCustomDates}
-                        onChange={(event) => {
-                          setCustomEnd(event.target.value);
-                          setSelectedRange("custom");
-                        }}
-                        style={{
-                          width:'100%',
-                          height:'38px',
-                          border:'1px solid #dedede',
-                          borderRadius:'10px',
-                          padding:'0 9px',
-                          fontSize:'11px',
-                          background:'#fff'
-                        }}
-                      />
-                    </label>
+                      <strong style={{ display:'block', marginTop:'3px', fontSize:'11px', color:'#333' }}>
+                        {selectedEndDate ? formatDate(selectedEndDate) : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                      </strong>
+                    </div>
                   </div>
 
                   <div style={{
-                    padding:'10px 11px',
+                    border:'1px solid #ececec',
+                    borderRadius:'14px',
+                    padding:'11px',
+                    background:'#fff',
+                    marginBottom:'13px'
+                  }}>
+                    <div style={{
+                      display:'flex',
+                      alignItems:'center',
+                      justifyContent:'space-between',
+                      gap:'10px',
+                      marginBottom:'10px'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => moveCalendarMonth(-1)}
+                        aria-label={lang === 'pt' ? 'Mês anterior' : 'Previous month'}
+                        style={{
+                          width:'30px',
+                          height:'30px',
+                          border:'1px solid #e8e8e8',
+                          borderRadius:'9px',
+                          background:'#fff',
+                          cursor:'pointer',
+                          fontSize:'15px',
+                          color:'#555'
+                        }}
+                      >
+                        ‹
+                      </button>
+
+                      <strong style={{ fontSize:'11px', color:'#333', textTransform:'capitalize' }}>
+                        {calendarMonthLabel}
+                      </strong>
+
+                      <button
+                        type="button"
+                        onClick={() => moveCalendarMonth(1)}
+                        aria-label={lang === 'pt' ? 'Próximo mês' : 'Next month'}
+                        style={{
+                          width:'30px',
+                          height:'30px',
+                          border:'1px solid #e8e8e8',
+                          borderRadius:'9px',
+                          background:'#fff',
+                          cursor:'pointer',
+                          fontSize:'15px',
+                          color:'#555'
+                        }}
+                      >
+                        ›
+                      </button>
+                    </div>
+
+                    <div style={{
+                      display:'grid',
+                      gridTemplateColumns:'repeat(7,1fr)',
+                      gap:'4px',
+                      marginBottom:'4px'
+                    }}>
+                      {calendarWeekdays.map((day, index) => (
+                        <div
+                          key={`weekday-${index}`}
+                          style={{
+                            height:'22px',
+                            display:'grid',
+                            placeItems:'center',
+                            fontSize:'8px',
+                            color:'#999',
+                            fontWeight:'850'
+                          }}
+                        >
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{
+                      display:'grid',
+                      gridTemplateColumns:'repeat(7,1fr)',
+                      gap:'4px'
+                    }}>
+                      {calendarDays.map((date, index) => {
+                        if (!date) {
+                          return <div key={`empty-${index}`} style={{ height:'30px' }} />;
+                        }
+
+                        const isStart = sameCalendarDay(date, selectedStartDate);
+                        const isEnd = sameCalendarDay(date, selectedEndDate);
+                        const inRange =
+                          selectedStartDate &&
+                          selectedEndDate &&
+                          date > selectedStartDate &&
+                          date < selectedEndDate;
+                        const isToday = sameCalendarDay(date, new Date());
+
+                        return (
+                          <button
+                            key={date.toISOString()}
+                            type="button"
+                            onClick={() => handleCalendarDayClick(date)}
+                            style={{
+                              height:'30px',
+                              border:isToday && !isStart && !isEnd
+                                ? '1px solid color-mix(in srgb, var(--primary-green) 38%, #ddd)'
+                                : '1px solid transparent',
+                              borderRadius:'9px',
+                              background:isStart || isEnd
+                                ? 'var(--primary-green)'
+                                : inRange
+                                  ? 'color-mix(in srgb, var(--primary-green) 10%, white)'
+                                  : 'transparent',
+                              color:isStart || isEnd
+                                ? '#fff'
+                                : inRange
+                                  ? 'var(--primary-green)'
+                                  : '#444',
+                              fontSize:'10px',
+                              fontWeight:isStart || isEnd || isToday ? '850' : '650',
+                              cursor:'pointer'
+                            }}
+                          >
+                            {date.getDate()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding:'9px 10px',
                     borderRadius:'10px',
                     background:'#f7f8f7',
                     color:'#777',
-                    fontSize:'10px',
+                    fontSize:'9px',
+                    lineHeight:'1.45',
                     marginBottom:'13px'
                   }}>
-                    {selectedRange === "custom"
-                      ? rangeLabel
-                      : (lang === 'pt'
-                          ? 'Selecione Personalizado ou altere uma das datas para criar um intervalo.'
-                          : 'Choose Custom or change either date to create a range.')}
+                    {selectedStartDate && selectedEndDate
+                      ? `${formatDate(selectedStartDate)} – ${formatDate(selectedEndDate)}`
+                      : calendarSelectionStep === "end"
+                        ? (lang === 'pt' ? 'Agora escolha a data final.' : 'Now choose the end date.')
+                        : (lang === 'pt' ? 'Clique no primeiro dia do período.' : 'Click the first day of the range.')}
                   </div>
 
                   <div style={{ display:'flex', justifyContent:'flex-end', gap:'8px' }}>
