@@ -1395,6 +1395,283 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
   );
 };
 
+const OperationalAlertsPanel = ({ alerts = {}, lang }) => {
+  const syncFailed = Number(alerts?.sync?.failed || 0);
+  const syncRetry = Number(alerts?.sync?.retry || 0);
+  const syncHasTechnicalError = Boolean(
+    alerts?.sync?.queueError || alerts?.sync?.manualError
+  );
+  const missingValue = Number(alerts?.missingValue?.count || 0);
+  const integrationCount = Number(alerts?.integrations?.count || 0);
+  const integrationNames = Array.isArray(alerts?.integrations?.names)
+    ? alerts.integrations.names
+    : [];
+  const capacityCount = Number(alerts?.capacity?.count || 0);
+  const capacityDepartures = Array.isArray(alerts?.capacity?.departures)
+    ? alerts.capacity.departures
+    : [];
+
+  const alertItems = [
+    {
+      key: "sync",
+      title: lang === "pt" ? "Sincronizações" : "Synchronizations",
+      count: syncFailed + syncRetry + (syncHasTechnicalError ? 1 : 0),
+      tone: syncFailed > 0 || syncHasTechnicalError ? "danger" : syncRetry > 0 ? "warning" : "success",
+      icon: syncFailed > 0 || syncHasTechnicalError ? "!" : syncRetry > 0 ? "↻" : "✓",
+      description:
+        syncFailed > 0
+          ? (lang === "pt"
+              ? `${syncFailed} sincronização(ões) com falha ou bloqueio`
+              : `${syncFailed} failed or blocked synchronization(s)`)
+          : syncRetry > 0
+            ? (lang === "pt"
+                ? `${syncRetry} sincronização(ões) aguardando nova tentativa`
+                : `${syncRetry} synchronization(s) waiting for retry`)
+            : syncHasTechnicalError
+              ? (lang === "pt" ? "Erro ao consultar ou executar a fila" : "Error reading or running the queue")
+              : (lang === "pt" ? "Nenhuma falha detectada na fila" : "No queue failures detected"),
+      detail: alerts?.sync?.queueError || alerts?.sync?.manualError || "",
+    },
+    {
+      key: "finance",
+      title: lang === "pt" ? "Reservas sem valor" : "Bookings without value",
+      count: missingValue,
+      tone: missingValue > 0 ? "warning" : "success",
+      icon: missingValue > 0 ? "€" : "✓",
+      description:
+        missingValue > 0
+          ? (lang === "pt"
+              ? `${missingValue} reserva(s) confirmada(s) sem valor financeiro completo`
+              : `${missingValue} confirmed booking(s) without complete financial value`)
+          : (lang === "pt" ? "Cobertura financeira completa no período" : "Complete financial coverage in the period"),
+      detail: "",
+    },
+    {
+      key: "integrations",
+      title: lang === "pt" ? "Integrações" : "Integrations",
+      count: integrationCount,
+      tone: integrationCount > 0 ? "warning" : "success",
+      icon: integrationCount > 0 ? "↗" : "✓",
+      description:
+        integrationCount > 0
+          ? (lang === "pt"
+              ? `${integrationCount} canal(is) de reserva ainda não conectado(s)`
+              : `${integrationCount} booking channel(s) not connected yet`)
+          : (lang === "pt" ? "Canais de reserva conectados" : "Booking channels connected"),
+      detail: integrationNames.join(" · "),
+    },
+    {
+      key: "capacity",
+      title: lang === "pt" ? "Capacidade" : "Capacity",
+      count: capacityCount,
+      tone: capacityCount > 0 ? "warning" : "success",
+      icon: capacityCount > 0 ? "↑" : "✓",
+      description:
+        capacityCount > 0
+          ? (lang === "pt"
+              ? `${capacityCount} saída(s) com 80% ou mais da capacidade ocupada`
+              : `${capacityCount} departure(s) at 80% or more capacity`)
+          : (lang === "pt" ? "Nenhuma saída próxima da lotação" : "No departure close to full capacity"),
+      detail: "",
+    },
+  ];
+
+  const activeAlerts = alertItems.reduce((sum, item) => sum + (item.count > 0 ? 1 : 0), 0);
+  const toneStyle = {
+    danger: { color:'#b42318', bg:'#fff1f0', border:'#f4c7c3' },
+    warning: { color:'#9a6700', bg:'#fff8e8', border:'#f0d8a4' },
+    success: { color:'#167a35', bg:'#edf8f0', border:'#cde8d4' },
+  };
+
+  const formatDepartureDate = (value) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      timeZone: "Europe/Lisbon",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(parsed);
+  };
+
+  return (
+    <section className="pmy-card" style={{ padding:'22px 24px' }}>
+      <div style={{
+        display:'flex',
+        justifyContent:'space-between',
+        alignItems:'flex-start',
+        gap:'16px',
+        flexWrap:'wrap',
+        marginBottom:'18px'
+      }}>
+        <div>
+          <div className="pmy-trend-eyebrow">
+            {lang === 'pt' ? 'Monitoramento operacional' : 'Operational monitoring'}
+          </div>
+          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
+            {lang === 'pt' ? 'Alertas operacionais' : 'Operational alerts'}
+          </h2>
+          <div className="pmy-trend-subtitle">
+            {lang === 'pt'
+              ? 'Sincronização, financeiro, integrações e capacidade'
+              : 'Synchronization, finance, integrations and capacity'}
+          </div>
+        </div>
+
+        <div style={{
+          minWidth:'142px',
+          padding:'10px 13px',
+          borderRadius:'14px',
+          border:`1px solid ${activeAlerts > 0 ? '#f0d8a4' : '#cde8d4'}`,
+          background:activeAlerts > 0 ? '#fff8e8' : '#edf8f0',
+          textAlign:'right'
+        }}>
+          <div style={{
+            fontSize:'11px',
+            color:activeAlerts > 0 ? '#9a6700' : '#167a35',
+            fontWeight:'850',
+            textTransform:'uppercase',
+            letterSpacing:'.05em'
+          }}>
+            {lang === 'pt' ? 'Áreas com atenção' : 'Areas needing attention'}
+          </div>
+          <strong style={{
+            display:'block',
+            marginTop:'3px',
+            fontSize:'25px',
+            lineHeight:1,
+            color:activeAlerts > 0 ? '#9a6700' : '#167a35'
+          }}>
+            {activeAlerts}
+          </strong>
+        </div>
+      </div>
+
+      <div style={{
+        display:'grid',
+        gridTemplateColumns:'repeat(4,minmax(0,1fr))',
+        gap:'12px'
+      }}>
+        {alertItems.map((item) => {
+          const tone = toneStyle[item.tone];
+          return (
+            <div
+              key={item.key}
+              style={{
+                minWidth:0,
+                minHeight:'164px',
+                padding:'15px 16px',
+                border:`1px solid ${tone.border}`,
+                borderRadius:'16px',
+                background:tone.bg,
+                display:'flex',
+                flexDirection:'column'
+              }}
+            >
+              <div style={{
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'space-between',
+                gap:'10px',
+                marginBottom:'12px'
+              }}>
+                <span style={{
+                  width:'36px',
+                  height:'36px',
+                  borderRadius:'12px',
+                  display:'grid',
+                  placeItems:'center',
+                  background:'#fff',
+                  color:tone.color,
+                  fontSize:'15px',
+                  fontWeight:'900'
+                }}>
+                  {item.icon}
+                </span>
+                <strong style={{
+                  fontSize:'22px',
+                  color:tone.color,
+                  lineHeight:1
+                }}>
+                  {item.count}
+                </strong>
+              </div>
+
+              <div style={{
+                fontSize:'14px',
+                fontWeight:'850',
+                color:'#353935',
+                marginBottom:'5px'
+              }}>
+                {item.title}
+              </div>
+
+              <div style={{
+                fontSize:'12px',
+                lineHeight:1.45,
+                color:'#646b66'
+              }}>
+                {item.description}
+              </div>
+
+              {item.detail && (
+                <div style={{
+                  marginTop:'auto',
+                  paddingTop:'8px',
+                  fontSize:'11px',
+                  lineHeight:1.35,
+                  color:tone.color,
+                  overflow:'hidden',
+                  textOverflow:'ellipsis'
+                }}>
+                  {item.detail}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {capacityDepartures.length > 0 && (
+        <div style={{
+          marginTop:'14px',
+          paddingTop:'13px',
+          borderTop:'1px solid #eceeec'
+        }}>
+          <div style={{
+            fontSize:'12px',
+            fontWeight:'850',
+            color:'#5f665f',
+            marginBottom:'8px'
+          }}>
+            {lang === 'pt' ? 'Saídas que pedem atenção' : 'Departures needing attention'}
+          </div>
+          <div style={{ display:'flex', gap:'7px', flexWrap:'wrap' }}>
+            {capacityDepartures.slice(0, 5).map((departure) => (
+              <span
+                key={departure.key}
+                style={{
+                  padding:'7px 10px',
+                  borderRadius:'999px',
+                  background:'#fff8e8',
+                  border:'1px solid #f0d8a4',
+                  color:'#805b09',
+                  fontSize:'11px',
+                  fontWeight:'750'
+                }}
+              >
+                {departure.tourTitle} · {formatDepartureDate(departure.startTime)} · {departure.availableSeats} {lang === 'pt' ? 'vaga(s)' : 'seat(s)'}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
 const UpcomingDeparturesPanel = ({
   departures = [],
   lang,
@@ -2109,6 +2386,7 @@ export default function DashboardTab(props) {
     cancellationRate,
     upcomingCount,
     dashboardUpcomingDepartures,
+    dashboardOperationalAlerts,
     getPeriodLabel,
     salesByChannel,
     bookings,
@@ -2245,6 +2523,11 @@ export default function DashboardTab(props) {
                   </>
                 );
               })()}
+
+              <OperationalAlertsPanel
+                alerts={dashboardOperationalAlerts}
+                lang={lang}
+              />
 
               <BookingStatusOverview
                 summary={dashboardBookingStatusSummary}
