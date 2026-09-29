@@ -1395,6 +1395,393 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
   );
 };
 
+const TourPerformanceRanking = ({
+  categoriesData = [],
+  realConfirmedBookings = [],
+  dashboardCurrency = "EUR",
+  formatMoney,
+  lang,
+  periodLabel,
+  imageShape = "rounded",
+}) => {
+  const [rankingMetric, setRankingMetric] = useState("revenue");
+
+  const uniqueToursMap = new Map();
+  for (const category of categoriesData || []) {
+    for (const tour of category?.toursList || []) {
+      const key = tour?.masterTourId || tour?.id;
+      if (!key || uniqueToursMap.has(key)) continue;
+      uniqueToursMap.set(key, {
+        ...tour,
+        rankingTourId: key,
+      });
+    }
+  }
+
+  const passengerCount = (booking) => {
+    const explicit = Number(booking?.totalParticipants || 0);
+    if (explicit > 0) return explicit;
+
+    return (
+      Number(booking?.adults || 0) +
+      Number(booking?.children || 0) +
+      Number(booking?.youths || 0) +
+      Number(booking?.seniors || 0)
+    );
+  };
+
+  const rankingRows = [...uniqueToursMap.values()]
+    .map((tour) => {
+      const tourBookings = (realConfirmedBookings || []).filter(
+        (booking) => booking?.tourId === tour.rankingTourId,
+      );
+
+      let revenue = 0;
+      let pricedBookings = 0;
+      let missingRevenue = 0;
+
+      for (const booking of tourBookings) {
+        const bookingCurrency = String(booking?.currency || "").trim().toUpperCase();
+        const amount = Number(booking?.totalPrice);
+
+        if (
+          booking?.totalPrice !== null &&
+          booking?.totalPrice !== undefined &&
+          booking?.totalPrice !== "" &&
+          Number.isFinite(amount) &&
+          bookingCurrency === dashboardCurrency
+        ) {
+          revenue += amount;
+          pricedBookings += 1;
+        } else {
+          missingRevenue += 1;
+        }
+      }
+
+      return {
+        id: tour.rankingTourId,
+        title: tour?.title || (lang === "pt" ? "Tour sem título" : "Untitled tour"),
+        image: tour?.image || null,
+        imageAlt: tour?.imageAlt || tour?.title || "",
+        bookings: tourBookings.length,
+        passengers: tourBookings.reduce(
+          (sum, booking) => sum + passengerCount(booking),
+          0,
+        ),
+        revenue,
+        pricedBookings,
+        missingRevenue,
+      };
+    })
+    .filter((row) => row.bookings > 0)
+    .sort((left, right) => {
+      if (rankingMetric === "bookings") {
+        return (
+          right.bookings - left.bookings ||
+          right.passengers - left.passengers ||
+          right.revenue - left.revenue
+        );
+      }
+
+      if (rankingMetric === "passengers") {
+        return (
+          right.passengers - left.passengers ||
+          right.bookings - left.bookings ||
+          right.revenue - left.revenue
+        );
+      }
+
+      return (
+        right.revenue - left.revenue ||
+        right.bookings - left.bookings ||
+        right.passengers - left.passengers
+      );
+    });
+
+  const topRows = rankingRows.slice(0, 10);
+  const maxMetric = Math.max(
+    1,
+    ...topRows.map((row) =>
+      rankingMetric === "bookings"
+        ? row.bookings
+        : rankingMetric === "passengers"
+          ? row.passengers
+          : row.revenue,
+    ),
+  );
+
+  const metricOptions = [
+    {
+      key: "revenue",
+      label: lang === "pt" ? "Receita real" : "Real revenue",
+    },
+    {
+      key: "bookings",
+      label: lang === "pt" ? "Reservas" : "Bookings",
+    },
+    {
+      key: "passengers",
+      label: lang === "pt" ? "Passageiros" : "Passengers",
+    },
+  ];
+
+  return (
+    <section className="pmy-card" style={{ padding:'22px 24px' }}>
+      <div style={{
+        display:'flex',
+        justifyContent:'space-between',
+        alignItems:'flex-start',
+        gap:'16px',
+        flexWrap:'wrap',
+        marginBottom:'18px'
+      }}>
+        <div>
+          <div className="pmy-trend-eyebrow">
+            {lang === 'pt' ? 'Performance dos tours' : 'Tour performance'}
+          </div>
+          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
+            {lang === 'pt' ? 'Ranking de tours' : 'Tour ranking'}
+          </h2>
+          <div className="pmy-trend-subtitle">
+            {periodLabel} · {lang === 'pt'
+              ? 'reservas confirmadas, passageiros e receita real'
+              : 'confirmed bookings, passengers and real revenue'}
+          </div>
+        </div>
+
+        <div style={{
+          display:'flex',
+          gap:'5px',
+          padding:'4px',
+          borderRadius:'999px',
+          background:'#f3f4f3',
+          border:'1px solid #e7e9e7'
+        }}>
+          {metricOptions.map((option) => {
+            const active = rankingMetric === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setRankingMetric(option.key)}
+                style={{
+                  border:0,
+                  borderRadius:'999px',
+                  padding:'8px 12px',
+                  background:active ? '#fff' : 'transparent',
+                  color:active ? 'var(--primary-green)' : '#737873',
+                  fontSize:'12px',
+                  fontWeight:'850',
+                  cursor:'pointer',
+                  boxShadow:active ? '0 2px 8px rgba(28,47,34,.08)' : 'none'
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {topRows.length === 0 ? (
+        <div style={{
+          minHeight:'150px',
+          display:'grid',
+          placeItems:'center',
+          textAlign:'center',
+          color:'#8b908d',
+          fontSize:'13px'
+        }}>
+          {lang === 'pt'
+            ? 'Ainda não há reservas confirmadas no período para montar o ranking.'
+            : 'There are no confirmed bookings in the period to build the ranking yet.'}
+        </div>
+      ) : (
+        <div style={{ display:'grid', gap:'8px' }}>
+          {topRows.map((row, index) => {
+            const metricValue =
+              rankingMetric === "bookings"
+                ? row.bookings
+                : rankingMetric === "passengers"
+                  ? row.passengers
+                  : row.revenue;
+
+            const barWidth = metricValue > 0
+              ? Math.max(4, (metricValue / maxMetric) * 100)
+              : 0;
+
+            return (
+              <div
+                key={row.id}
+                style={{
+                  display:'grid',
+                  gridTemplateColumns:'46px minmax(230px,1.6fr) minmax(120px,1fr) 112px 112px 150px',
+                  alignItems:'center',
+                  gap:'12px',
+                  minHeight:'72px',
+                  padding:'10px 12px',
+                  border:'1px solid #eceeec',
+                  borderRadius:'15px',
+                  background:index === 0
+                    ? 'color-mix(in srgb, var(--primary-green) 4%, white)'
+                    : '#fff'
+                }}
+              >
+                <div style={{
+                  width:'34px',
+                  height:'34px',
+                  borderRadius:'11px',
+                  display:'grid',
+                  placeItems:'center',
+                  background:index === 0 ? 'var(--primary-green)' : '#f2f3f2',
+                  color:index === 0 ? '#fff' : '#6e746f',
+                  fontSize:'13px',
+                  fontWeight:'900'
+                }}>
+                  {index + 1}
+                </div>
+
+                <div style={{
+                  minWidth:0,
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'11px'
+                }}>
+                  {row.image ? (
+                    <img
+                      src={row.image}
+                      alt={row.imageAlt}
+                      className={imageShape}
+                      style={{
+                        width:'44px',
+                        height:'44px',
+                        objectFit:'cover',
+                        flex:'0 0 44px'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width:'44px',
+                      height:'44px',
+                      flex:'0 0 44px',
+                      borderRadius:'12px',
+                      background:'#f5f3f3',
+                      display:'grid',
+                      placeItems:'center',
+                      fontSize:'18px'
+                    }}>
+                      🧭
+                    </div>
+                  )}
+
+                  <div style={{ minWidth:0 }}>
+                    <div style={{
+                      fontSize:'14px',
+                      fontWeight:'850',
+                      color:'#333',
+                      overflow:'hidden',
+                      textOverflow:'ellipsis',
+                      whiteSpace:'nowrap'
+                    }}>
+                      {row.title}
+                    </div>
+                    {row.missingRevenue > 0 && (
+                      <div style={{
+                        fontSize:'11px',
+                        color:'#9a6700',
+                        marginTop:'3px'
+                      }}>
+                        {lang === 'pt'
+                          ? `${row.missingRevenue} reserva(s) sem receita comparável`
+                          : `${row.missingRevenue} booking(s) without comparable revenue`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{
+                  height:'10px',
+                  borderRadius:'999px',
+                  background:'#f0f1f0',
+                  overflow:'hidden'
+                }}>
+                  <div style={{
+                    width:`${barWidth}%`,
+                    minWidth:metricValue > 0 ? '5px' : 0,
+                    height:'100%',
+                    borderRadius:'inherit',
+                    background:'var(--primary-green)'
+                  }} />
+                </div>
+
+                <div>
+                  <span style={{
+                    display:'block',
+                    fontSize:'10px',
+                    color:'#929792',
+                    fontWeight:'800',
+                    textTransform:'uppercase',
+                    letterSpacing:'.04em'
+                  }}>
+                    {lang === 'pt' ? 'Reservas' : 'Bookings'}
+                  </span>
+                  <strong style={{ fontSize:'18px', color:'#333' }}>{row.bookings}</strong>
+                </div>
+
+                <div>
+                  <span style={{
+                    display:'block',
+                    fontSize:'10px',
+                    color:'#929792',
+                    fontWeight:'800',
+                    textTransform:'uppercase',
+                    letterSpacing:'.04em'
+                  }}>
+                    {lang === 'pt' ? 'Passageiros' : 'Passengers'}
+                  </span>
+                  <strong style={{ fontSize:'18px', color:'#333' }}>{row.passengers}</strong>
+                </div>
+
+                <div style={{ textAlign:'right' }}>
+                  <span style={{
+                    display:'block',
+                    fontSize:'10px',
+                    color:'#929792',
+                    fontWeight:'800',
+                    textTransform:'uppercase',
+                    letterSpacing:'.04em'
+                  }}>
+                    {lang === 'pt' ? 'Receita real' : 'Real revenue'}
+                  </span>
+                  <strong style={{
+                    display:'block',
+                    fontSize:'17px',
+                    color:'var(--primary-green)'
+                  }}>
+                    {formatMoney(row.revenue, dashboardCurrency)}
+                  </strong>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{
+        marginTop:'14px',
+        paddingTop:'11px',
+        borderTop:'1px solid #efefef',
+        fontSize:'12px',
+        color:'#858b86'
+      }}>
+        {lang === 'pt'
+          ? `Receita considera apenas valores reais na moeda ${dashboardCurrency}. Reservas sem valor ou em outra moeda não são convertidas nem estimadas.`
+          : `Revenue includes only real values in ${dashboardCurrency}. Bookings without value or in another currency are not converted or estimated.`}
+      </div>
+    </section>
+  );
+};
+
 export default function DashboardTab(props) {
   const {
     activeTab,
@@ -1566,6 +1953,16 @@ export default function DashboardTab(props) {
               <ChannelBookingsChart
                 bookings={bookings}
                 lang={lang}
+              />
+
+              <TourPerformanceRanking
+                categoriesData={categoriesData}
+                realConfirmedBookings={realConfirmedBookings}
+                dashboardCurrency={dashboardCurrency}
+                formatMoney={formatMoney}
+                lang={lang}
+                periodLabel={getPeriodLabel()}
+                imageShape={imageShape}
               />
 
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
