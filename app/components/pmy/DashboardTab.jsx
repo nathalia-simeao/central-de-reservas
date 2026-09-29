@@ -1396,6 +1396,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
 };
 
 const OperationalAlertsPanel = ({ alerts = {}, lang }) => {
+  const syncChecked = Boolean(alerts?.sync?.checked);
   const syncFailed = Number(alerts?.sync?.failed || 0);
   const syncRetry = Number(alerts?.sync?.retry || 0);
   const syncHasTechnicalError = Boolean(
@@ -1416,8 +1417,20 @@ const OperationalAlertsPanel = ({ alerts = {}, lang }) => {
       key: "sync",
       title: lang === "pt" ? "Sincronizações" : "Synchronizations",
       count: syncFailed + syncRetry + (syncHasTechnicalError ? 1 : 0),
-      tone: syncFailed > 0 || syncHasTechnicalError ? "danger" : syncRetry > 0 ? "warning" : "success",
-      icon: syncFailed > 0 || syncHasTechnicalError ? "!" : syncRetry > 0 ? "↻" : "✓",
+      tone: syncHasTechnicalError || syncFailed > 0
+        ? "danger"
+        : syncRetry > 0
+          ? "warning"
+          : syncChecked
+            ? "success"
+            : "neutral",
+      icon: syncHasTechnicalError || syncFailed > 0
+        ? "!"
+        : syncRetry > 0
+          ? "↻"
+          : syncChecked
+            ? "✓"
+            : "…",
       description:
         syncFailed > 0
           ? (lang === "pt"
@@ -1429,7 +1442,9 @@ const OperationalAlertsPanel = ({ alerts = {}, lang }) => {
                 : `${syncRetry} synchronization(s) waiting for retry`)
             : syncHasTechnicalError
               ? (lang === "pt" ? "Erro ao consultar ou executar a fila" : "Error reading or running the queue")
-              : (lang === "pt" ? "Nenhuma falha detectada na fila" : "No queue failures detected"),
+              : syncChecked
+                ? (lang === "pt" ? "Nenhuma falha detectada na fila" : "No queue failures detected")
+                : (lang === "pt" ? "Fila ainda não verificada nesta sessão" : "Queue not checked in this session yet"),
       detail: alerts?.sync?.queueError || alerts?.sync?.manualError || "",
     },
     {
@@ -1481,6 +1496,7 @@ const OperationalAlertsPanel = ({ alerts = {}, lang }) => {
     danger: { color:'#b42318', bg:'#fff1f0', border:'#f4c7c3' },
     warning: { color:'#9a6700', bg:'#fff8e8', border:'#f0d8a4' },
     success: { color:'#167a35', bg:'#edf8f0', border:'#cde8d4' },
+    neutral: { color:'#667085', bg:'#f7f8f7', border:'#e1e4e1' },
   };
 
   const formatDepartureDate = (value) => {
