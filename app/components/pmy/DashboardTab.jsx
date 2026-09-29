@@ -284,6 +284,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   const [selectedRange, setSelectedRange] = useState("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
 
   const classifyChannel = (platform) => {
     const key = String(platform || "").trim().toUpperCase();
@@ -413,25 +414,49 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
         "1y": lang === "pt" ? "1 ano" : "1 year",
       }[selectedRange] || (lang === "pt" ? "30 dias" : "30 days"));
 
-  const handleRangeChange = (event) => {
-    const value = event.target.value;
-    setSelectedRange(value);
+  const toDateInput = (date) => [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 
-    if (value === "custom" && (!customStart || !customEnd)) {
-      const today = new Date();
-      const start = new Date(today);
-      start.setDate(start.getDate() - 30);
+  const ensureCustomDates = () => {
+    if (customStart && customEnd) return;
 
-      const toInput = (date) => [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, "0"),
-        String(date.getDate()).padStart(2, "0"),
-      ].join("-");
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 30);
 
-      setCustomStart(toInput(start));
-      setCustomEnd(toInput(today));
-    }
+    if (!customStart) setCustomStart(toDateInput(start));
+    if (!customEnd) setCustomEnd(toDateInput(today));
   };
+
+  const choosePreset = (value) => {
+    if (value === "custom") {
+      ensureCustomDates();
+      setSelectedRange("custom");
+      return;
+    }
+
+    setSelectedRange(value);
+    setPeriodMenuOpen(false);
+  };
+
+  const applyCustomRange = () => {
+    if (!customStart || !customEnd) return;
+    setSelectedRange("custom");
+    setPeriodMenuOpen(false);
+  };
+
+  const presetOptions = [
+    ["7d", lang === "pt" ? "7 dias" : "7 days"],
+    ["15d", lang === "pt" ? "15 dias" : "15 days"],
+    ["30d", lang === "pt" ? "30 dias" : "30 days"],
+    ["60d", lang === "pt" ? "60 dias" : "60 days"],
+    ["90d", lang === "pt" ? "90 dias" : "90 days"],
+    ["6m", lang === "pt" ? "6 meses" : "6 months"],
+    ["1y", lang === "pt" ? "1 ano" : "1 year"],
+  ];
 
   return (
     <section className="pmy-card" style={{ marginBottom:'20px', padding:'20px 22px' }}>
@@ -446,32 +471,274 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
         </div>
 
         <div style={{ display:'flex', alignItems:'flex-end', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end' }}>
-          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
-            <span>{lang === 'pt' ? 'Período do gráfico' : 'Chart period'}</span>
-            <select
-              value={selectedRange}
-              onChange={handleRangeChange}
+          <div style={{ position:'relative' }}>
+            <div style={{ fontSize:'10px', color:'#777', fontWeight:'700', marginBottom:'4px' }}>
+              {lang === 'pt' ? 'Período do gráfico' : 'Chart period'}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!periodMenuOpen && selectedRange === "custom") ensureCustomDates();
+                setPeriodMenuOpen((open) => !open);
+              }}
               style={{
-                minWidth:'138px',
-                height:'36px',
+                minWidth:'154px',
+                height:'38px',
                 border:'1px solid #dedede',
-                borderRadius:'10px',
+                borderRadius:'12px',
                 background:'#fff',
-                padding:'0 10px',
+                padding:'0 12px',
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'space-between',
+                gap:'10px',
                 fontSize:'11px',
-                fontWeight:'700'
+                fontWeight:'800',
+                color:'#333',
+                cursor:'pointer',
+                boxShadow:periodMenuOpen ? '0 8px 24px rgba(0,0,0,.08)' : 'none'
               }}
             >
-              <option value="7d">{lang === 'pt' ? '7 dias' : '7 days'}</option>
-              <option value="15d">{lang === 'pt' ? '15 dias' : '15 days'}</option>
-              <option value="30d">{lang === 'pt' ? '30 dias' : '30 days'}</option>
-              <option value="60d">{lang === 'pt' ? '60 dias' : '60 days'}</option>
-              <option value="90d">{lang === 'pt' ? '90 dias' : '90 days'}</option>
-              <option value="6m">{lang === 'pt' ? '6 meses' : '6 months'}</option>
-              <option value="1y">{lang === 'pt' ? '1 ano' : '1 year'}</option>
-              <option value="custom">{lang === 'pt' ? 'Personalizado' : 'Custom'}</option>
-            </select>
-          </label>
+              <span style={{ display:'flex', alignItems:'center', gap:'7px' }}>
+                <span aria-hidden="true">📅</span>
+                <span>{rangeLabel}</span>
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  fontSize:'11px',
+                  transform:periodMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition:'transform .18s ease'
+                }}
+              >
+                ▾
+              </span>
+            </button>
+
+            {periodMenuOpen && (
+              <div
+                style={{
+                  position:'absolute',
+                  top:'calc(100% + 8px)',
+                  right:0,
+                  width:'520px',
+                  maxWidth:'min(520px, calc(100vw - 48px))',
+                  display:'grid',
+                  gridTemplateColumns:'168px minmax(0,1fr)',
+                  background:'#fff',
+                  border:'1px solid #e5e5e5',
+                  borderRadius:'18px',
+                  boxShadow:'0 20px 55px rgba(29,45,34,.16)',
+                  overflow:'hidden',
+                  zIndex:80
+                }}
+              >
+                <div style={{
+                  padding:'12px',
+                  borderRight:'1px solid #ededed',
+                  background:'#fbfbfb'
+                }}>
+                  <div style={{
+                    fontSize:'9px',
+                    color:'#999',
+                    fontWeight:'800',
+                    textTransform:'uppercase',
+                    letterSpacing:'.06em',
+                    padding:'3px 8px 8px'
+                  }}>
+                    {lang === 'pt' ? 'Períodos rápidos' : 'Quick ranges'}
+                  </div>
+
+                  <div style={{ display:'grid', gap:'3px' }}>
+                    {presetOptions.map(([value, label]) => {
+                      const active = selectedRange === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => choosePreset(value)}
+                          style={{
+                            border:0,
+                            borderRadius:'10px',
+                            background:active ? 'color-mix(in srgb, var(--primary-green) 11%, white)' : 'transparent',
+                            color:active ? 'var(--primary-green)' : '#444',
+                            padding:'9px 10px',
+                            textAlign:'left',
+                            fontSize:'11px',
+                            fontWeight:active ? '850' : '700',
+                            cursor:'pointer'
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => choosePreset("custom")}
+                      style={{
+                        border:0,
+                        borderRadius:'10px',
+                        background:selectedRange === "custom"
+                          ? 'color-mix(in srgb, var(--primary-green) 11%, white)'
+                          : 'transparent',
+                        color:selectedRange === "custom" ? 'var(--primary-green)' : '#444',
+                        padding:'9px 10px',
+                        textAlign:'left',
+                        fontSize:'11px',
+                        fontWeight:selectedRange === "custom" ? '850' : '700',
+                        cursor:'pointer'
+                      }}
+                    >
+                      {lang === 'pt' ? 'Personalizado' : 'Custom'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ padding:'17px 18px 16px' }}>
+                  <div style={{
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    gap:'12px',
+                    marginBottom:'16px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize:'12px', fontWeight:'900', color:'#2e2e2e' }}>
+                        {lang === 'pt' ? 'Calendário' : 'Calendar'}
+                      </div>
+                      <div style={{ fontSize:'10px', color:'#999', marginTop:'2px' }}>
+                        {lang === 'pt'
+                          ? 'Escolha uma data inicial e final'
+                          : 'Choose a start and end date'}
+                      </div>
+                    </div>
+                    <span style={{
+                      width:'34px',
+                      height:'34px',
+                      borderRadius:'10px',
+                      display:'grid',
+                      placeItems:'center',
+                      background:'color-mix(in srgb, var(--primary-green) 9%, white)',
+                      fontSize:'16px'
+                    }}>
+                      📆
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display:'grid',
+                    gridTemplateColumns:'1fr 1fr',
+                    gap:'10px',
+                    marginBottom:'14px'
+                  }}>
+                    <label style={{ display:'grid', gap:'5px' }}>
+                      <span style={{ fontSize:'9px', color:'#888', fontWeight:'800', textTransform:'uppercase' }}>
+                        {lang === 'pt' ? 'De' : 'From'}
+                      </span>
+                      <input
+                        type="date"
+                        value={customStart}
+                        onFocus={ensureCustomDates}
+                        onChange={(event) => {
+                          setCustomStart(event.target.value);
+                          setSelectedRange("custom");
+                        }}
+                        style={{
+                          width:'100%',
+                          height:'38px',
+                          border:'1px solid #dedede',
+                          borderRadius:'10px',
+                          padding:'0 9px',
+                          fontSize:'11px',
+                          background:'#fff'
+                        }}
+                      />
+                    </label>
+
+                    <label style={{ display:'grid', gap:'5px' }}>
+                      <span style={{ fontSize:'9px', color:'#888', fontWeight:'800', textTransform:'uppercase' }}>
+                        {lang === 'pt' ? 'Até' : 'To'}
+                      </span>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onFocus={ensureCustomDates}
+                        onChange={(event) => {
+                          setCustomEnd(event.target.value);
+                          setSelectedRange("custom");
+                        }}
+                        style={{
+                          width:'100%',
+                          height:'38px',
+                          border:'1px solid #dedede',
+                          borderRadius:'10px',
+                          padding:'0 9px',
+                          fontSize:'11px',
+                          background:'#fff'
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{
+                    padding:'10px 11px',
+                    borderRadius:'10px',
+                    background:'#f7f8f7',
+                    color:'#777',
+                    fontSize:'10px',
+                    marginBottom:'13px'
+                  }}>
+                    {selectedRange === "custom"
+                      ? rangeLabel
+                      : (lang === 'pt'
+                          ? 'Selecione Personalizado ou altere uma das datas para criar um intervalo.'
+                          : 'Choose Custom or change either date to create a range.')}
+                  </div>
+
+                  <div style={{ display:'flex', justifyContent:'flex-end', gap:'8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPeriodMenuOpen(false)}
+                      style={{
+                        height:'34px',
+                        border:'1px solid #dedede',
+                        borderRadius:'10px',
+                        background:'#fff',
+                        padding:'0 12px',
+                        fontSize:'10px',
+                        fontWeight:'800',
+                        cursor:'pointer'
+                      }}
+                    >
+                      {lang === 'pt' ? 'Fechar' : 'Close'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!customStart || !customEnd}
+                      onClick={applyCustomRange}
+                      style={{
+                        height:'34px',
+                        border:0,
+                        borderRadius:'10px',
+                        background:'var(--primary-green)',
+                        color:'#fff',
+                        padding:'0 14px',
+                        fontSize:'10px',
+                        fontWeight:'850',
+                        cursor:customStart && customEnd ? 'pointer' : 'not-allowed',
+                        opacity:customStart && customEnd ? 1 : .45
+                      }}
+                    >
+                      {lang === 'pt' ? 'Aplicar período' : 'Apply range'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={{
             minWidth:'118px',
@@ -490,40 +757,6 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
           </div>
         </div>
       </div>
-
-      {selectedRange === "custom" && (
-        <div style={{
-          display:'flex',
-          gap:'10px',
-          alignItems:'flex-end',
-          flexWrap:'wrap',
-          marginBottom:'18px',
-          padding:'12px',
-          background:'#fafafa',
-          border:'1px solid #eeeeee',
-          borderRadius:'12px'
-        }}>
-          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
-            <span>{lang === 'pt' ? 'De' : 'From'}</span>
-            <input
-              type="date"
-              value={customStart}
-              onChange={(event) => setCustomStart(event.target.value)}
-              style={{ height:'34px', border:'1px solid #ddd', borderRadius:'9px', padding:'0 9px', fontSize:'11px' }}
-            />
-          </label>
-
-          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
-            <span>{lang === 'pt' ? 'Até' : 'To'}</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(event) => setCustomEnd(event.target.value)}
-              style={{ height:'34px', border:'1px solid #ddd', borderRadius:'9px', padding:'0 9px', fontSize:'11px' }}
-            />
-          </label>
-        </div>
-      )}
 
       <div
         role="img"
