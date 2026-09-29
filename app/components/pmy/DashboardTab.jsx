@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigation } from "react-router";
 
 
 const ExpandIcon = () => (
@@ -102,77 +101,6 @@ const DashboardEmptyState = ({
     </div>
   );
 };
-
-const DashboardLoadingSkeleton = ({ lang }) => (
-  <div className="pmy-dashboard" aria-live="polite" aria-busy="true">
-    <style>{`
-      @keyframes pmyDashPulse {
-        0%,100% { opacity:.48; }
-        50% { opacity:.82; }
-      }
-      .pmy-dash-skeleton {
-        background:linear-gradient(90deg,#f0f2f0 25%,#f7f8f7 50%,#f0f2f0 75%);
-        background-size:200% 100%;
-        animation:pmyDashPulse 1.25s ease-in-out infinite;
-        border-radius:12px;
-      }
-      .pmy-dashboard-loading-kpis {
-        display:grid;
-        grid-template-columns:repeat(5,minmax(0,1fr));
-        gap:12px;
-        margin-bottom:14px;
-      }
-      @media (max-width: 1100px) {
-        .pmy-dashboard-loading-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      }
-      @media (max-width: 640px) {
-        .pmy-dashboard-loading-kpis { grid-template-columns:1fr; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .pmy-dash-skeleton { animation:none; }
-      }
-    `}</style>
-    <div style={{
-      display:'flex',
-      alignItems:'center',
-      gap:'9px',
-      padding:'11px 14px',
-      borderRadius:'14px',
-      background:'#fff',
-      border:'1px solid #eceeec',
-      color:'#687068',
-      fontSize:'13px',
-      fontWeight:'750',
-      marginBottom:'14px'
-    }}>
-      <span style={{
-        width:'8px',
-        height:'8px',
-        borderRadius:'50%',
-        background:'var(--primary-green)'
-      }} />
-      {lang === 'pt' ? 'Carregando dados do Dashboard…' : 'Loading Dashboard data…'}
-    </div>
-
-    <div className="pmy-dashboard-loading-kpis">
-      {Array.from({ length:5 }).map((_, index) => (
-        <div key={index} className="pmy-card" style={{ padding:'18px', minHeight:'132px' }}>
-          <div className="pmy-dash-skeleton" style={{ width:'34px', height:'34px', marginBottom:'18px' }} />
-          <div className="pmy-dash-skeleton" style={{ width:'62%', height:'11px', marginBottom:'11px' }} />
-          <div className="pmy-dash-skeleton" style={{ width:'45%', height:'28px', marginBottom:'10px' }} />
-          <div className="pmy-dash-skeleton" style={{ width:'76%', height:'10px' }} />
-        </div>
-      ))}
-    </div>
-
-    {[160, 230, 210].map((height, index) => (
-      <div key={index} className="pmy-card" style={{ padding:'20px', marginBottom:'14px' }}>
-        <div className="pmy-dash-skeleton" style={{ width:'190px', height:'13px', marginBottom:'16px' }} />
-        <div className="pmy-dash-skeleton" style={{ width:'100%', height:`${height}px` }} />
-      </div>
-    ))}
-  </div>
-);
 
 const DashboardResponsiveStyles = () => (
   <style>{`
@@ -2631,8 +2559,7 @@ export default function DashboardTab(props) {
     imageShape
   } = props;
 
-  const navigation = useNavigation();
-  const dashboardIsLoading = navigation.state === "loading";
+  const dashboardIsLoading = false;
 
   const [crossFilters, setCrossFilters] = useState({
     channel: null,
