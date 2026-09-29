@@ -555,7 +555,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
 
         <div style={{ display:'flex', alignItems:'flex-end', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end' }}>
           <div style={{ position:'relative' }}>
-            <div style={{ fontSize:'10px', color:'#777', fontWeight:'700', marginBottom:'4px' }}>
+            <div style={{ fontSize:'15px', color:'#777', fontWeight:'700', marginBottom:'4px' }}>
               {lang === 'pt' ? 'Período do gráfico' : 'Chart period'}
             </div>
 
@@ -576,7 +576,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                 alignItems:'center',
                 justifyContent:'space-between',
                 gap:'10px',
-                fontSize:'11px',
+                fontSize:'13px',
                 fontWeight:'800',
                 color:'#333',
                 cursor:'pointer',
@@ -590,7 +590,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               <span
                 aria-hidden="true"
                 style={{
-                  fontSize:'11px',
+                  fontSize:'13px',
                   transform:periodMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                   transition:'transform .18s ease'
                 }}
@@ -623,7 +623,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   background:'#fbfbfb'
                 }}>
                   <div style={{
-                    fontSize:'9px',
+                    fontSize:'13px',
                     color:'#999',
                     fontWeight:'800',
                     textTransform:'uppercase',
@@ -648,7 +648,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             color:active ? 'var(--primary-green)' : '#444',
                             padding:'9px 10px',
                             textAlign:'left',
-                            fontSize:'11px',
+                            fontSize:'13px',
                             fontWeight:active ? '850' : '700',
                             cursor:'pointer'
                           }}
@@ -670,7 +670,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         color:selectedRange === "custom" ? 'var(--primary-green)' : '#444',
                         padding:'9px 10px',
                         textAlign:'left',
-                        fontSize:'11px',
+                        fontSize:'13px',
                         fontWeight:selectedRange === "custom" ? '850' : '700',
                         cursor:'pointer'
                       }}
@@ -689,10 +689,10 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                     marginBottom:'16px'
                   }}>
                     <div>
-                      <div style={{ fontSize:'12px', fontWeight:'900', color:'#2e2e2e' }}>
+                      <div style={{ fontSize:'15px', fontWeight:'900', color:'#2e2e2e' }}>
                         {lang === 'pt' ? 'Calendário' : 'Calendar'}
                       </div>
-                      <div style={{ fontSize:'10px', color:'#999', marginTop:'2px' }}>
+                      <div style={{ fontSize:'15px', color:'#999', marginTop:'2px' }}>
                         {lang === 'pt'
                           ? 'Escolha uma data inicial e final'
                           : 'Choose a start and end date'}
@@ -747,19 +747,19 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         alignItems:'center',
                         justifyContent:'space-between',
                         gap:'8px',
-                        fontSize:'8px',
+                        fontSize:'15px',
                         color:calendarSelectionStep === "start" ? 'var(--primary-green)' : '#999',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
                       }}>
                         <span>{lang === 'pt' ? 'De' : 'From'}</span>
-                        <span aria-hidden="true" style={{ fontSize:'12px', opacity:.72 }}>📅</span>
+                        <span aria-hidden="true" style={{ fontSize:'15px', opacity:.72 }}>📅</span>
                       </span>
                       <strong style={{
                         display:'block',
                         marginTop:'4px',
-                        fontSize:'12px',
+                        fontSize:'15px',
                         lineHeight:1.2,
                         color:'#2f2f2f',
                         whiteSpace:'nowrap'
@@ -812,19 +812,19 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         alignItems:'center',
                         justifyContent:'space-between',
                         gap:'8px',
-                        fontSize:'8px',
+                        fontSize:'15px',
                         color:calendarSelectionStep === "end" ? 'var(--primary-green)' : '#999',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
                       }}>
                         <span>{lang === 'pt' ? 'Até' : 'To'}</span>
-                        <span aria-hidden="true" style={{ fontSize:'12px', opacity:.72 }}>📅</span>
+                        <span aria-hidden="true" style={{ fontSize:'15px', opacity:.72 }}>📅</span>
                       </span>
                       <strong style={{
                         display:'block',
                         marginTop:'4px',
-                        fontSize:'12px',
+                        fontSize:'15px',
                         lineHeight:1.2,
                         color:'#2f2f2f',
                         whiteSpace:'nowrap'
@@ -868,7 +868,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         ‹
                       </button>
 
-                      <strong style={{ fontSize:'11px', color:'#333', textTransform:'capitalize' }}>
+                      <strong style={{ fontSize:'13px', color:'#333', textTransform:'capitalize' }}>
                         {calendarMonthLabel}
                       </strong>
 
@@ -904,7 +904,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             height:'22px',
                             display:'grid',
                             placeItems:'center',
-                            fontSize:'8px',
+                            fontSize:'15px',
                             color:'#999',
                             fontWeight:'850'
                           }}
@@ -954,7 +954,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                                 : inRange
                                   ? 'var(--primary-green)'
                                   : '#444',
-                              fontSize:'10px',
+                              fontSize:'15px',
                               fontWeight:isStart || isEnd || isToday ? '850' : '650',
                               cursor:'pointer'
                             }}
@@ -971,7 +971,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                     borderRadius:'10px',
                     background:'#f7f8f7',
                     color:'#777',
-                    fontSize:'9px',
+                    fontSize:'13px',
                     lineHeight:'1.45',
                     marginBottom:'13px'
                   }}>
@@ -992,7 +992,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         borderRadius:'10px',
                         background:'#fff',
                         padding:'0 12px',
-                        fontSize:'10px',
+                        fontSize:'15px',
                         fontWeight:'800',
                         cursor:'pointer'
                       }}
@@ -1010,7 +1010,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         background:'var(--primary-green)',
                         color:'#fff',
                         padding:'0 14px',
-                        fontSize:'10px',
+                        fontSize:'15px',
                         fontWeight:'850',
                         cursor:customStart && customEnd ? 'pointer' : 'not-allowed',
                         opacity:customStart && customEnd ? 1 : .45
@@ -1032,7 +1032,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
             background:'#fafafa',
             textAlign:'right'
           }}>
-            <div style={{ fontSize:'10px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
+            <div style={{ fontSize:'15px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
               {lang === 'pt' ? 'Total no período' : 'Period total'}
             </div>
             <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)', lineHeight:1.1, marginTop:'3px' }}>
@@ -1085,7 +1085,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               >
                 <div style={{ minWidth:0 }}>
                   <div style={{
-                    fontSize:'12px',
+                    fontSize:'15px',
                     fontWeight:'850',
                     color:isExpanded ? 'var(--primary-green)' : '#2f2f2f',
                     overflow:'hidden',
@@ -1094,7 +1094,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   }}>
                     {item.label}
                   </div>
-                  <div style={{ fontSize:'10px', color:'#999', marginTop:'1px' }}>
+                  <div style={{ fontSize:'15px', color:'#999', marginTop:'1px' }}>
                     {share.toFixed(1)}%
                   </div>
                 </div>
@@ -1121,7 +1121,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
 
                 <div style={{ textAlign:'right' }}>
                   <strong style={{ fontSize:'15px', color:'#222' }}>{item.bookings}</strong>
-                  <span style={{ display:'block', fontSize:'9px', color:'#999', marginTop:'1px' }}>
+                  <span style={{ display:'block', fontSize:'13px', color:'#999', marginTop:'1px' }}>
                     {lang === 'pt' ? 'reservas' : 'bookings'}
                   </span>
                 </div>
@@ -1139,22 +1139,22 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   gap:'10px'
                 }}>
                   <div>
-                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Reservas' : 'Bookings'}
                     </span>
-                    <strong style={{ fontSize:'14px' }}>{item.bookings}</strong>
+                    <strong style={{ fontSize:'15px' }}>{item.bookings}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Passageiros' : 'Passengers'}
                     </span>
-                    <strong style={{ fontSize:'14px' }}>{item.passengers}</strong>
+                    <strong style={{ fontSize:'15px' }}>{item.passengers}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Participação' : 'Share'}
                     </span>
-                    <strong style={{ fontSize:'14px' }}>{share.toFixed(1)}%</strong>
+                    <strong style={{ fontSize:'15px' }}>{share.toFixed(1)}%</strong>
                   </div>
                 </div>
               )}
@@ -1167,7 +1167,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
         marginTop:'15px',
         paddingTop:'11px',
         borderTop:'1px solid #efefef',
-        fontSize:'10px',
+        fontSize:'15px',
         color:'#999'
       }}>
         {lang === 'pt'
@@ -1365,7 +1365,7 @@ export default function DashboardTab(props) {
                       </div>
                       <div className={`pmy-accordion-content ${openCategories.includes(cat.name)?'open':''}`}>
                         {cat.toursList.length === 0 ? (
-                          <p style={{ padding:'10px 0', color:'#999', fontSize:'14px' }}>Nenhum passeio nesta categoria.</p>
+                          <p style={{ padding:'10px 0', color:'#999', fontSize:'15px' }}>Nenhum passeio nesta categoria.</p>
                         ) : cat.toursList.map(tour => {
                           const masterTourId = tour.masterTourId || tour.id;
                           const tourBookings = realConfirmedBookings.filter(b => b.tourId === masterTourId);
@@ -1380,7 +1380,7 @@ export default function DashboardTab(props) {
                               }
                               <div className="pmy-tour-details">
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
-                                {tour.price && <div style={{ fontSize:'12px', color:'var(--primary-green)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
+                                {tour.price && <div style={{ fontSize:'15px', color:'var(--primary-green)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
                                 <div className="pmy-tag-row">
                                   <span className="pmy-tag site">{t.source_site}: {shopifyB} reservas</span>
                                   <span className="pmy-tag viator">{t.source_viator}: {viatorB} reservas</span>
