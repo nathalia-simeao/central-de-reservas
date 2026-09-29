@@ -1658,89 +1658,208 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
-  const uploadBusinessLogo = useCallback(async (variant, file) => {
-    if (!file) return;
+  const shopifyAdminGraphql = useCallback(async (query, variables = {}) => {
+    const response = await fetch("shopify:admin/api/graphql.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
 
-    if (!String(file.type || "").startsWith("image/")) {
-      setSettingsSaveMessage("Erro: selecione um arquivo de imagem.");
-      return;
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        payload?.errors?.[0]?.message ||
+        `Shopify Admin API respondeu HTTP ${response.status}.`,
+      );
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setSettingsSaveMessage("Erro: a logo deve ter no máximo 10 MB.");
-      return;
+    if (payload?.errors?.length) {
+      throw new Error(payload.errors.map((item) => item.message).join("; "));
     }
 
+    return payload?.data || {};
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateBrandLogos = async () => {
+      try {
+        const data = await shopifyAdminGraphql(`
+          query PmyBrandingSettings {
+            currentAppInstallation {
+              light: metafield(namespace: "pmy_branding", key: "logo_light_url") {
+                value
+              }
+              dark: metafield(namespace: "pmy_branding", key: "logo_dark_url") {
+                value
+              }
+            }
+          }
+        `);
+
+        if (cancelled) return;
+
+        const light = String(data?.currentAppInstallation?.light?.value || "").trim();
+        const dark = String(data?.currentAppInstallation?.dark?.value || "").trim();
+
+        if (light) setLogoOnLightUrl(light);
+        if (dark) setLogoOnDarkUrl(dark);
+      } catch (error) {
+        console.warn("[PMY] branding hydrate unavailable:", error);
+      }
+    };
+
+    hydrateBrandLogos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shopifyAdminGraphql]);
+
+  const handleChooseBrandLogo = useCallback(async (variant) => {
     setLogoUploadingVariant(variant);
-    setSettingsSaveMessage("Enviando logo...");
+    setSettingsSaveMessage("");
 
     try {
-      const prepareFd = new FormData();
-      prepareFd.append("_action", "prepareLogoUpload");
-      prepareFd.append("variant", variant);
-      prepareFd.append("filename", file.name);
-      prepareFd.append("mimetype", file.type || "image/png");
-      prepareFd.append("size", String(file.size));
-
-      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
-
-      const uploadForm = new FormData();
-      for (const parameter of prepared.parameters || []) {
-        uploadForm.append(parameter.name, parameter.value);
+      if (typeof window === "undefined" || !window.shopify?.intents?.invoke) {
+        throw new Error("O seletor da biblioteca Shopify não está disponível nesta sessão.");
       }
-      uploadForm.append("file", file);
 
-      const uploadResponse = await fetch(prepared.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
+      const activity = await window.shopify.intents.invoke("pick:shopify/File", {
+        data: {
+          mediaTypes: ["MediaImage"],
+          multiSelect: false,
+        },
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error("Falha ao enviar a logo para o Shopify Files.");
+      const pickerResponse = await activity.complete;
+
+      if (pickerResponse?.code === "closed") return;
+
+      if (pickerResponse?.code !== "ok") {
+        throw new Error(
+          pickerResponse?.message || "Não foi possível abrir a biblioteca Shopify.",
+        );
       }
 
-      const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeLogoUpload");
-      finalizeFd.append("variant", variant);
-      finalizeFd.append("resourceUrl", prepared.resourceUrl);
-      finalizeFd.append("filename", file.name);
-      finalizeFd.append("mimetype", file.type || "image/png");
+      const fileId = Array.isArray(pickerResponse?.data?.ids)
+        ? pickerResponse.data.ids[0]
+        : null;
 
-      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
-      const url = String(finalized?.url || finalized?.media?.url || "").trim();
+      if (!fileId) throw new Error("Nenhuma imagem foi selecionada.");
 
-      if (!url) {
-        throw new Error("O Shopify não devolveu a URL final da logo.");
+      const selected = await shopifyAdminGraphql(`
+        query PmySelectedBrandLogo($id: ID!) {
+          node(id: $id) {
+            __typename
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+          currentAppInstallation {
+            id
+          }
+        }
+      `, { id: fileId });
+
+      const selectedUrl = String(selected?.node?.image?.url || "").trim();
+      const ownerId = String(selected?.currentAppInstallation?.id || "").trim();
+
+      if (selected?.node?.__typename !== "MediaImage" || !selectedUrl) {
+        throw new Error("A Shopify não devolveu a URL da imagem selecionada.");
       }
 
-      if (variant === "dark") setLogoOnDarkUrl(url);
-      else setLogoOnLightUrl(url);
+      if (!ownerId) {
+        throw new Error("A instalação atual do app não foi identificada.");
+      }
 
-      setSettingsSaveMessage("Logo salva e sincronizada ✓");
+      const key = variant === "dark" ? "logo_dark_url" : "logo_light_url";
+
+      const saved = await shopifyAdminGraphql(`
+        mutation PmySaveBrandLogo($metafields: [MetafieldsSetInput!]!) {
+          metafieldsSet(metafields: $metafields) {
+            metafields {
+              key
+              value
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `, {
+        metafields: [{
+          ownerId,
+          namespace: "pmy_branding",
+          key,
+          type: "single_line_text_field",
+          value: selectedUrl,
+        }],
+      });
+
+      const errors = saved?.metafieldsSet?.userErrors || [];
+      if (errors.length) {
+        throw new Error(errors.map((item) => item.message).join("; "));
+      }
+
+      if (variant === "dark") setLogoOnDarkUrl(selectedUrl);
+      else setLogoOnLightUrl(selectedUrl);
+
+      setSettingsSaveMessage("Logo salva ✓");
     } catch (error) {
-      console.error("[PMY] brand logo upload failed:", error);
-      setSettingsSaveMessage(
-        error?.message || "Erro ao salvar a logo.",
-      );
+      console.error("[PMY] native Shopify logo flow failed:", error);
+      setSettingsSaveMessage(error?.message || "Erro ao selecionar a logo.");
     } finally {
       setLogoUploadingVariant(null);
     }
-  }, [requestResourceJson]);
+  }, [shopifyAdminGraphql]);
 
-  const handleBrandLogoChange = (variant, event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    uploadBusinessLogo(variant, file);
-    event.target.value = "";
-  };
-
-  const handleRemoveBrandLogo = async (variant) => {
+  const handleRemoveBrandLogo = useCallback(async (variant) => {
     try {
-      const fd = new FormData();
-      fd.append("_action", "removeLogo");
-      fd.append("variant", variant);
-      await requestResourceJson("/api/brand-logo", fd);
+      const install = await shopifyAdminGraphql(`
+        query PmyBrandingOwner {
+          currentAppInstallation {
+            id
+          }
+        }
+      `);
+
+      const ownerId = String(install?.currentAppInstallation?.id || "").trim();
+      if (!ownerId) {
+        throw new Error("A instalação atual do app não foi identificada.");
+      }
+
+      const key = variant === "dark" ? "logo_dark_url" : "logo_light_url";
+
+      const deleted = await shopifyAdminGraphql(`
+        mutation PmyRemoveBrandLogo($metafields: [MetafieldIdentifierInput!]!) {
+          metafieldsDelete(metafields: $metafields) {
+            deletedMetafields {
+              key
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `, {
+        metafields: [{
+          ownerId,
+          namespace: "pmy_branding",
+          key,
+        }],
+      });
+
+      const errors = deleted?.metafieldsDelete?.userErrors || [];
+      if (errors.length) {
+        throw new Error(errors.map((item) => item.message).join("; "));
+      }
 
       if (variant === "dark") setLogoOnDarkUrl(null);
       else setLogoOnLightUrl(null);
@@ -1749,7 +1868,7 @@ function CentralDeReservasContent() {
     } catch (error) {
       setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
     }
-  };
+  }, [shopifyAdminGraphql]);
 
   const handleThemeChange = (key, value) => {
     setTheme(prev => {
@@ -4544,7 +4663,7 @@ function CentralDeReservasContent() {
 
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
-            logoLightInputRef, logoDarkInputRef, handleBrandLogoChange, handleRemoveBrandLogo,
+            handleChooseBrandLogo, handleRemoveBrandLogo,
             handleThemeChange, handleRestoreThemeDefaults, handleImageShapeChange,
             handleSaveFieldMappings, handleResetFieldMappings, handleUpdateFieldMapping,
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
