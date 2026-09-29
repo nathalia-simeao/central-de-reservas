@@ -4818,3 +4818,5 @@ export default function CentralDeReservas() {
     </AppProvider>
   );
 }
+
+// deployment-recovery: stable full-tree snapshot
