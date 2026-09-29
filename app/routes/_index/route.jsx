@@ -993,7 +993,15 @@ function CentralDeReservasContent() {
     }
     const departure = upcomingDepartureMap.get(key);
     departure.bookings += 1;
-    departure.passengers += Number(booking?.totalParticipants || 0);
+    const explicitPassengers = Number(booking?.totalParticipants || 0);
+    const fallbackPassengers =
+      Number(booking?.adults || 0) +
+      Number(booking?.children || 0) +
+      Number(booking?.youths || 0) +
+      Number(booking?.seniors || 0);
+    departure.passengers += explicitPassengers > 0
+      ? explicitPassengers
+      : (fallbackPassengers > 0 ? fallbackPassengers : 1);
     departure.platforms.add(platformLabel(booking.platform));
   }
   const upcomingDepartures = [...upcomingDepartureMap.values()]
@@ -1017,6 +1025,37 @@ function CentralDeReservasContent() {
         scheduleSlots: p.scheduleSlots, description: p.description,
       }))
     : (tours || []).map(t => ({ id: t.id, title: t.title, price: null, sku: null, image: null, collections: [], scheduleSlots: [] }));
+
+  const dashboardUpcomingDepartures = upcomingDepartures.map((departure) => {
+    const canonicalTour = (tours || []).find((tour) => tour.id === departure.tourId) || null;
+    const displayTour = tourOptions.find(
+      (tour) => tour.masterTourId === departure.tourId || tour.id === departure.tourId,
+    ) || null;
+
+    const capacity = Math.max(
+      0,
+      Number(canonicalTour?.maxCapacity ?? displayTour?.maxCapacity ?? 20),
+    );
+    const availableSeats = Math.max(0, capacity - Number(departure.passengers || 0));
+
+    return {
+      key: departure.key,
+      tourId: departure.tourId,
+      tourTitle:
+        displayTour?.title ||
+        canonicalTour?.title ||
+        (lang === "pt" ? "Tour sem título" : "Untitled tour"),
+      image: displayTour?.image || null,
+      imageAlt: displayTour?.imageAlt || displayTour?.title || canonicalTour?.title || "",
+      startTime: departure.startTime.toISOString(),
+      bookings: departure.bookings,
+      passengers: departure.passengers,
+      platforms: [...departure.platforms],
+      capacity,
+      capacitySource: canonicalTour?.capacitySource || "DEFAULT",
+      availableSeats,
+    };
+  });
 
   // Categorias: agrupa pelas coleções do Shopify (dinâmico)
   const allCollections = [...new Set(
@@ -4693,7 +4732,7 @@ function CentralDeReservasContent() {
           <DashboardTab {...{
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
-            averageTicketValue, canceledCount, cancellationRate, upcomingCount, getPeriodLabel,
+            averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, getPeriodLabel,
             salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
