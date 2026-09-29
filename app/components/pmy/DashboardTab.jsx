@@ -31,6 +31,25 @@ const KpiIcon = ({ name }) => {
   return <svg {...common}>{icons[name] || icons.bookings}</svg>;
 };
 
+const dashboardChannelKey = (platform) => {
+  const key = String(platform || "").trim().toUpperCase();
+  if (key === "SHOPIFY") return "SHOPIFY";
+  if (key === "VIATOR") return "VIATOR";
+  if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(key)) return "GETYOURGUIDE";
+  if (key === "CIVITATIS") return "CIVITATIS";
+  if (key === "HEADOUT") return "HEADOUT";
+  return "OTHER";
+};
+
+const dashboardChannelLabel = (key, lang) => ({
+  SHOPIFY: "Shopify",
+  VIATOR: "Viator",
+  GETYOURGUIDE: "GetYourGuide",
+  CIVITATIS: "Civitatis",
+  HEADOUT: "Headout",
+  OTHER: lang === "pt" ? "Outros" : "Other",
+}[key] || key);
+
 const TrendChart = ({
   data,
   currency,
@@ -40,6 +59,7 @@ const TrendChart = ({
   periodLabel,
 }) => {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [pinnedIndex, setPinnedIndex] = useState(null);
 
   const width = 1000;
   const height = 320;
@@ -84,11 +104,12 @@ const TrendChart = ({
   const bookingTicks = [maxBookings, Math.ceil(maxBookings / 2), 0];
   const revenueTicks = [maxRevenue, maxRevenue / 2, 0];
 
-  const active = activeIndex === null ? null : data[activeIndex];
+  const displayIndex = activeIndex !== null ? activeIndex : pinnedIndex;
+  const active = displayIndex === null ? null : data[displayIndex];
   const activeLeft =
-    activeIndex === null || data.length === 0
+    displayIndex === null || data.length === 0
       ? 50
-      : Math.max(9, Math.min(91, ((activeIndex + 0.5) / data.length) * 100));
+      : Math.max(9, Math.min(91, ((displayIndex + 0.5) / data.length) * 100));
 
   const granularityLabel = {
     day: lang === "pt" ? "Diário" : "Daily",
@@ -225,7 +246,7 @@ const TrendChart = ({
                 key={`point-${item.key}`}
                 cx={xCenter(index)}
                 cy={revenueY(item.revenue)}
-                r={activeIndex === index ? 5 : 3}
+                r={displayIndex === index ? 5 : 3}
                 className="pmy-trend-point"
               />
             ))}
@@ -244,10 +265,10 @@ const TrendChart = ({
               ) : null
             ))}
 
-            {activeIndex !== null && (
+            {displayIndex !== null && (
               <line
-                x1={xCenter(activeIndex)}
-                x2={xCenter(activeIndex)}
+                x1={xCenter(displayIndex)}
+                x2={xCenter(displayIndex)}
                 y1={margin.top}
                 y2={margin.top + plotHeight}
                 className="pmy-trend-hover-line"
@@ -265,6 +286,8 @@ const TrendChart = ({
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseMove={() => setActiveIndex(index)}
                 onTouchStart={() => setActiveIndex(index)}
+                onClick={() => setPinnedIndex((current) => current === index ? null : index)}
+                style={{ cursor:'pointer' }}
               />
             ))}
           </svg>
@@ -279,7 +302,12 @@ const TrendChart = ({
   );
 };
 
-const ChannelBookingsChart = ({ bookings = [], lang }) => {
+const ChannelBookingsChart = ({
+  bookings = [],
+  lang,
+  activeChannelFilter = null,
+  onChannelFilter,
+}) => {
   const [expandedKey, setExpandedKey] = useState(null);
   const [selectedRange, setSelectedRange] = useState("30d");
   const [customStart, setCustomStart] = useState("");
@@ -1053,6 +1081,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
             ? Math.max(4, (item.bookings / maxBookings) * 100)
             : 0;
           const isExpanded = expandedKey === item.key;
+          const isFiltered = activeChannelFilter === item.key;
 
           return (
             <div
@@ -1060,9 +1089,15 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               onMouseEnter={() => setExpandedKey(item.key)}
               onMouseLeave={() => setExpandedKey(null)}
               style={{
-                border:isExpanded ? '1px solid color-mix(in srgb, var(--primary-green) 22%, #e7e7e7)' : '1px solid transparent',
+                border:isExpanded || isFiltered
+                  ? '1px solid color-mix(in srgb, var(--primary-green) 28%, #e7e7e7)'
+                  : '1px solid transparent',
                 borderRadius:'12px',
-                background:isExpanded ? 'color-mix(in srgb, var(--primary-green) 4%, white)' : 'transparent',
+                background:isFiltered
+                  ? 'color-mix(in srgb, var(--primary-green) 8%, white)'
+                  : isExpanded
+                    ? 'color-mix(in srgb, var(--primary-green) 4%, white)'
+                    : 'transparent',
                 transition:'background .16s ease, border-color .16s ease'
               }}
             >
@@ -1087,7 +1122,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   <div style={{
                     fontSize:'15px',
                     fontWeight:'850',
-                    color:isExpanded ? 'var(--primary-green)' : '#2f2f2f',
+                    color:isExpanded || isFiltered ? 'var(--primary-green)' : '#2f2f2f',
                     overflow:'hidden',
                     textOverflow:'ellipsis',
                     whiteSpace:'nowrap'
@@ -1135,7 +1170,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   background:'#fff',
                   border:'1px solid #ececec',
                   display:'grid',
-                  gridTemplateColumns:'repeat(3,minmax(0,1fr))',
+                  gridTemplateColumns:'repeat(4,minmax(0,1fr))',
                   gap:'10px'
                 }}>
                   <div>
@@ -1155,6 +1190,28 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       {lang === 'pt' ? 'Participação' : 'Share'}
                     </span>
                     <strong style={{ fontSize:'15px' }}>{share.toFixed(1)}%</strong>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => onChannelFilter?.(item.key, item.label)}
+                      style={{
+                        minHeight:'34px',
+                        border:isFiltered ? '1px solid var(--primary-green)' : '1px solid #dfe5df',
+                        borderRadius:'999px',
+                        background:isFiltered ? 'var(--primary-green)' : '#fff',
+                        color:isFiltered ? '#fff' : 'var(--primary-green)',
+                        padding:'7px 11px',
+                        fontSize:'12px',
+                        fontWeight:'850',
+                        cursor:'pointer',
+                        whiteSpace:'nowrap'
+                      }}
+                    >
+                      {isFiltered
+                        ? (lang === 'pt' ? 'Remover filtro' : 'Remove filter')
+                        : (lang === 'pt' ? 'Filtrar painel' : 'Filter dashboard')}
+                    </button>
                   </div>
                 </div>
               )}
@@ -1713,6 +1770,8 @@ const TourPerformanceRanking = ({
   lang,
   periodLabel,
   imageShape = "rounded",
+  activeTourFilter = null,
+  onTourFilter,
 }) => {
   const [rankingMetric, setRankingMetric] = useState("revenue");
 
@@ -1920,9 +1979,21 @@ const TourPerformanceRanking = ({
               ? Math.max(4, (metricValue / maxMetric) * 100)
               : 0;
 
+            const isFiltered = activeTourFilter === row.id;
+
             return (
               <div
                 key={row.id}
+                role="button"
+                tabIndex={0}
+                title={lang === 'pt' ? 'Clique para filtrar o Dashboard por este tour' : 'Click to filter the Dashboard by this tour'}
+                onClick={() => onTourFilter?.(row.id, row.title)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onTourFilter?.(row.id, row.title);
+                  }
+                }}
                 style={{
                   display:'grid',
                   gridTemplateColumns:'46px minmax(230px,1.6fr) minmax(120px,1fr) 112px 112px 150px',
@@ -1930,11 +2001,17 @@ const TourPerformanceRanking = ({
                   gap:'12px',
                   minHeight:'72px',
                   padding:'10px 12px',
-                  border:'1px solid #eceeec',
+                  border:isFiltered
+                    ? '1px solid color-mix(in srgb, var(--primary-green) 48%, #dfe5df)'
+                    : '1px solid #eceeec',
                   borderRadius:'15px',
-                  background:index === 0
-                    ? 'color-mix(in srgb, var(--primary-green) 4%, white)'
-                    : '#fff'
+                  background:isFiltered
+                    ? 'color-mix(in srgb, var(--primary-green) 9%, white)'
+                    : index === 0
+                      ? 'color-mix(in srgb, var(--primary-green) 4%, white)'
+                      : '#fff',
+                  cursor:'pointer',
+                  outline:'none'
                 }}
               >
                 <div style={{
@@ -2123,6 +2200,118 @@ export default function DashboardTab(props) {
     imageShape
   } = props;
 
+  const [crossFilters, setCrossFilters] = useState({
+    channel: null,
+    channelLabel: "",
+    tourId: null,
+    tourLabel: "",
+  });
+
+  const toggleChannelFilter = (channel, label) => {
+    setCrossFilters((current) => ({
+      ...current,
+      channel: current.channel === channel ? null : channel,
+      channelLabel: current.channel === channel ? "" : label,
+    }));
+  };
+
+  const toggleTourFilter = (tourId, label) => {
+    setCrossFilters((current) => ({
+      ...current,
+      tourId: current.tourId === tourId ? null : tourId,
+      tourLabel: current.tourId === tourId ? "" : label,
+    }));
+  };
+
+  const clearCrossFilters = () => {
+    setCrossFilters({
+      channel: null,
+      channelLabel: "",
+      tourId: null,
+      tourLabel: "",
+    });
+  };
+
+  const bookingMatchesCrossFilters = (booking, { ignoreChannel = false } = {}) => {
+    if (crossFilters.tourId && booking?.tourId !== crossFilters.tourId) return false;
+    if (!ignoreChannel && crossFilters.channel) {
+      if (dashboardChannelKey(booking?.platform) !== crossFilters.channel) return false;
+    }
+    return true;
+  };
+
+  const filteredConfirmedBookings = (realConfirmedBookings || []).filter((booking) =>
+    bookingMatchesCrossFilters(booking)
+  );
+
+  const channelChartBookings = (bookings || []).filter((booking) =>
+    bookingMatchesCrossFilters(booking, { ignoreChannel: true })
+  );
+
+  const filteredUpcomingDepartures = (dashboardUpcomingDepartures || []).filter((departure) => {
+    if (crossFilters.tourId && departure?.tourId !== crossFilters.tourId) return false;
+    if (!crossFilters.channel) return true;
+
+    const labels = (departure?.platforms || []).map((label) => String(label || "").toUpperCase());
+    const expected = dashboardChannelLabel(crossFilters.channel, lang).toUpperCase();
+
+    if (crossFilters.channel === "OTHER") {
+      return labels.some((label) =>
+        !["SHOPIFY", "VIATOR", "GETYOURGUIDE", "CIVITATIS", "HEADOUT"].includes(label)
+      );
+    }
+
+    return labels.includes(expected);
+  });
+
+  const filteredTrendData = (dashboardTrendData || []).map((item) => ({
+    ...item,
+    bookings: 0,
+    revenue: 0,
+  }));
+  const trendBucketMap = new Map(filteredTrendData.map((item) => [item.key, item]));
+
+  const trendBucketKey = (booking) => {
+    const rawDate = booking?.externalCreatedAt || booking?.createdAt;
+    const date = rawDate ? new Date(rawDate) : null;
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+
+    const bucket = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (dashboardTrendGranularity === "week") {
+      const mondayOffset = (bucket.getDay() + 6) % 7;
+      bucket.setDate(bucket.getDate() - mondayOffset);
+    } else if (dashboardTrendGranularity === "month") {
+      bucket.setDate(1);
+    }
+
+    return [
+      bucket.getFullYear(),
+      String(bucket.getMonth() + 1).padStart(2, "0"),
+      String(bucket.getDate()).padStart(2, "0"),
+    ].join("-");
+  };
+
+  for (const booking of filteredConfirmedBookings) {
+    const key = trendBucketKey(booking);
+    const bucket = key ? trendBucketMap.get(key) : null;
+    if (!bucket) continue;
+
+    bucket.bookings += 1;
+    const amount = Number(booking?.totalPrice);
+    const currency = String(booking?.currency || "").trim().toUpperCase();
+    if (
+      booking?.totalPrice !== null &&
+      booking?.totalPrice !== undefined &&
+      booking?.totalPrice !== "" &&
+      Number.isFinite(amount) &&
+      currency === dashboardCurrency
+    ) {
+      bucket.revenue += amount;
+    }
+  }
+
+  const hasCrossFilters = Boolean(crossFilters.channel || crossFilters.tourId);
+
   return (
     <>
 {/* ===== TAB: DASHBOARD ===== */}
@@ -2199,6 +2388,7 @@ export default function DashboardTab(props) {
                           key={item.key}
                           type="button"
                           className={`pmy-kpi-card pmy-kpi-${item.tone} ${item.featured ? "is-featured" : ""}`}
+                          title={lang === "pt" ? "Clique para ver detalhes" : "Click to view details"}
                           onClick={() => setActiveModal(item.modal)}
                         >
                           <span className="pmy-kpi-topline">
@@ -2246,6 +2436,93 @@ export default function DashboardTab(props) {
                 );
               })()}
 
+              <section
+                className="pmy-card"
+                style={{
+                  padding:'12px 16px',
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'space-between',
+                  gap:'12px',
+                  flexWrap:'wrap',
+                  borderStyle:'dashed'
+                }}
+              >
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                  <strong style={{ fontSize:'13px', color:'#4e564f' }}>
+                    {lang === 'pt' ? 'Filtros cruzados' : 'Cross-filters'}
+                  </strong>
+
+                  {!hasCrossFilters && (
+                    <span style={{ fontSize:'12px', color:'#858b86' }}>
+                      {lang === 'pt'
+                        ? 'Clique em um canal ou tour para cruzar os demais painéis.'
+                        : 'Click a channel or tour to cross-filter the other panels.'}
+                    </span>
+                  )}
+
+                  {crossFilters.channel && (
+                    <button
+                      type="button"
+                      onClick={() => toggleChannelFilter(crossFilters.channel, crossFilters.channelLabel)}
+                      style={{
+                        border:'1px solid color-mix(in srgb, var(--primary-green) 24%, #dfe5df)',
+                        borderRadius:'999px',
+                        background:'color-mix(in srgb, var(--primary-green) 8%, white)',
+                        color:'var(--primary-green)',
+                        padding:'6px 10px',
+                        fontSize:'12px',
+                        fontWeight:'800',
+                        cursor:'pointer'
+                      }}
+                    >
+                      {lang === 'pt' ? 'Canal' : 'Channel'}: {crossFilters.channelLabel} ×
+                    </button>
+                  )}
+
+                  {crossFilters.tourId && (
+                    <button
+                      type="button"
+                      onClick={() => toggleTourFilter(crossFilters.tourId, crossFilters.tourLabel)}
+                      style={{
+                        border:'1px solid color-mix(in srgb, var(--primary-green) 24%, #dfe5df)',
+                        borderRadius:'999px',
+                        background:'color-mix(in srgb, var(--primary-green) 8%, white)',
+                        color:'var(--primary-green)',
+                        padding:'6px 10px',
+                        fontSize:'12px',
+                        fontWeight:'800',
+                        cursor:'pointer',
+                        maxWidth:'360px',
+                        overflow:'hidden',
+                        textOverflow:'ellipsis',
+                        whiteSpace:'nowrap'
+                      }}
+                    >
+                      Tour: {crossFilters.tourLabel} ×
+                    </button>
+                  )}
+                </div>
+
+                {hasCrossFilters && (
+                  <button
+                    type="button"
+                    onClick={clearCrossFilters}
+                    style={{
+                      border:0,
+                      background:'transparent',
+                      color:'#707771',
+                      fontSize:'12px',
+                      fontWeight:'800',
+                      cursor:'pointer',
+                      textDecoration:'underline'
+                    }}
+                  >
+                    {lang === 'pt' ? 'Limpar filtros' : 'Clear filters'}
+                  </button>
+                )}
+              </section>
+
               <BookingStatusOverview
                 summary={dashboardBookingStatusSummary}
                 lang={lang}
@@ -2253,13 +2530,13 @@ export default function DashboardTab(props) {
               />
 
               <UpcomingDeparturesPanel
-                departures={dashboardUpcomingDepartures || []}
+                departures={filteredUpcomingDepartures}
                 lang={lang}
                 imageShape={imageShape}
               />
 
               <TrendChart
-                data={dashboardTrendData || []}
+                data={filteredTrendData}
                 currency={dashboardCurrency || "EUR"}
                 formatMoney={formatMoney}
                 granularity={dashboardTrendGranularity}
@@ -2268,18 +2545,22 @@ export default function DashboardTab(props) {
               />
 
               <ChannelBookingsChart
-                bookings={bookings}
+                bookings={channelChartBookings}
                 lang={lang}
+                activeChannelFilter={crossFilters.channel}
+                onChannelFilter={toggleChannelFilter}
               />
 
               <TourPerformanceRanking
                 categoriesData={categoriesData}
-                realConfirmedBookings={realConfirmedBookings}
+                realConfirmedBookings={filteredConfirmedBookings}
                 dashboardCurrency={dashboardCurrency}
                 formatMoney={formatMoney}
                 lang={lang}
                 periodLabel={getPeriodLabel()}
                 imageShape={imageShape}
+                activeTourFilter={crossFilters.tourId}
+                onTourFilter={toggleTourFilter}
               />
 
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
@@ -2306,7 +2587,7 @@ export default function DashboardTab(props) {
                           <p style={{ padding:'10px 0', color:'#999', fontSize:'15px' }}>Nenhum passeio nesta categoria.</p>
                         ) : cat.toursList.map(tour => {
                           const masterTourId = tour.masterTourId || tour.id;
-                          const tourBookings = realConfirmedBookings.filter(b => b.tourId === masterTourId);
+                          const tourBookings = filteredConfirmedBookings.filter(b => b.tourId === masterTourId);
                           const shopifyB = tourBookings.filter(b=>b.platform==='SHOPIFY').length;
                           const viatorB  = tourBookings.filter(b=>b.platform==='VIATOR').length;
                           const gygB     = tourBookings.filter(b=>b.platform==='GETYOURGUIDE').length;
