@@ -1057,53 +1057,6 @@ function CentralDeReservasContent() {
     };
   });
 
-  const failedSyncJobs = (syncQueueData?.jobs || []).filter((job) =>
-    ["DEAD", "BLOCKED"].includes(String(job?.status || "").toUpperCase())
-  );
-  const retrySyncJobs = (syncQueueData?.jobs || []).filter(
-    (job) => String(job?.status || "").toUpperCase() === "RETRY"
-  );
-
-  const disconnectedReservationPlatforms = reservationPlatforms.filter((platform) => {
-    if (platform.key === "shopify") return false;
-    return !platformConnections?.[platform.key]?.connected;
-  });
-
-  const nearCapacityDepartures = dashboardUpcomingDepartures.filter((departure) => {
-    const capacity = Number(departure?.capacity || 0);
-    const passengers = Number(departure?.passengers || 0);
-    if (capacity <= 0) return false;
-    return passengers / capacity >= 0.8;
-  });
-
-  const dashboardOperationalAlerts = {
-    sync: {
-      checked: Boolean(syncQueueLastLoaded),
-      failed: failedSyncJobs.length,
-      retry: retrySyncJobs.length,
-      queueError: syncQueueError || "",
-      manualError: manualSyncError || "",
-    },
-    missingValue: {
-      count: missingFinancialBookings.length,
-    },
-    integrations: {
-      count: disconnectedReservationPlatforms.length,
-      names: disconnectedReservationPlatforms.map((platform) => platform.name),
-    },
-    capacity: {
-      count: nearCapacityDepartures.length,
-      departures: nearCapacityDepartures.map((departure) => ({
-        key: departure.key,
-        tourTitle: departure.tourTitle,
-        startTime: departure.startTime,
-        passengers: departure.passengers,
-        capacity: departure.capacity,
-        availableSeats: departure.availableSeats,
-      })),
-    },
-  };
-
   // Categorias: agrupa pelas coleções do Shopify (dinâmico)
   const allCollections = [...new Set(
     tourOptions.flatMap(t => (t.collections || []).map(c => c.title))
@@ -4779,7 +4732,7 @@ function CentralDeReservasContent() {
           <DashboardTab {...{
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
-            averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, dashboardOperationalAlerts, getPeriodLabel,
+            averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, getPeriodLabel,
             salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
