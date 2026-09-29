@@ -542,10 +542,13 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
     <section className="pmy-card" style={{ marginBottom:'20px', padding:'20px 22px' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'18px' }}>
         <div>
-          <div className="pmy-card-title" style={{ fontSize:'17px', marginBottom:'4px' }}>
-            {lang === 'pt' ? 'Reservas por Canal' : 'Bookings by Channel'}
+          <div className="pmy-trend-eyebrow">
+            {lang === 'pt' ? 'Distribuição por canal' : 'Channel distribution'}
           </div>
-          <div style={{ fontSize:'11px', color:'#888' }}>
+          <h2 className="pmy-trend-title" style={{ marginBottom:'4px' }}>
+            {lang === 'pt' ? 'Reservas por Canal' : 'Bookings by Channel'}
+          </h2>
+          <div className="pmy-trend-subtitle">
             {rangeLabel} · {lang === 'pt' ? 'somente reservas confirmadas' : 'confirmed bookings only'}
           </div>
         </div>
@@ -1343,8 +1346,16 @@ export default function DashboardTab(props) {
 
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
                 <div className="pmy-card" style={{ padding:'0 25px 25px 25px' }}>
-                  <div style={{ padding:'25px 0 10px 0', borderBottom:'2px solid #f0f0f0' }}>
-                    <div className="pmy-card-title" style={{ fontSize:'18px', color:'#000', margin:0 }}>{t.dash_performance}</div>
+                  <div style={{ padding:'25px 0 14px 0', borderBottom:'1px solid #f0f0f0' }}>
+                    <div className="pmy-trend-eyebrow">
+                      {lang === 'pt' ? 'Performance dos produtos' : 'Product performance'}
+                    </div>
+                    <h2 className="pmy-trend-title" style={{ marginBottom:'4px' }}>
+                      {t.dash_performance}
+                    </h2>
+                    <div className="pmy-trend-subtitle">
+                      {getPeriodLabel()} · {lang === 'pt' ? 'reservas confirmadas por passeio' : 'confirmed bookings by tour'}
+                    </div>
                   </div>
                   {categoriesData.map(cat => (
                     <div key={cat.name}>
