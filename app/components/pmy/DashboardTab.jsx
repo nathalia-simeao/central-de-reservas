@@ -279,14 +279,17 @@ const TrendChart = ({
   );
 };
 
-const ChannelBookingsChart = ({ salesByChannel = [], lang, periodLabel }) => {
-  const [activeKey, setActiveKey] = useState(null);
+const ChannelBookingsChart = ({ bookings = [], lang }) => {
+  const [expandedKey, setExpandedKey] = useState(null);
+  const [selectedRange, setSelectedRange] = useState("30d");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   const classifyChannel = (platform) => {
     const key = String(platform || "").trim().toUpperCase();
 
     if (key === "SHOPIFY") return "SHOPIFY";
-    if (["VIATOR"].includes(key)) return "VIATOR";
+    if (key === "VIATOR") return "VIATOR";
     if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(key)) return "GETYOURGUIDE";
     if (key === "CIVITATIS") return "CIVITATIS";
     if (key === "HEADOUT") return "HEADOUT";
@@ -303,14 +306,82 @@ const ChannelBookingsChart = ({ salesByChannel = [], lang, periodLabel }) => {
     { key: "OTHER", label: lang === "pt" ? "Outros" : "Other" },
   ];
 
-  const totals = salesByChannel.reduce((acc, channel) => {
-    const key = classifyChannel(channel?.platform);
+  const endOfDay = (value) => {
+    const result = new Date(value);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  };
+
+  const startOfDay = (value) => {
+    const result = new Date(value);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  };
+
+  const parseDateInput = (value) => {
+    if (!value) return null;
+    const parts = value.split("-").map(Number);
+    if (parts.length !== 3 || parts.some((item) => !Number.isFinite(item))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  };
+
+  const now = new Date();
+  const rangeEnd = selectedRange === "custom"
+    ? endOfDay(parseDateInput(customEnd) || now)
+    : endOfDay(now);
+
+  const rangeStart = (() => {
+    if (selectedRange === "custom") {
+      return startOfDay(parseDateInput(customStart) || now);
+    }
+
+    const result = startOfDay(now);
+
+    if (selectedRange === "6m") {
+      result.setMonth(result.getMonth() - 6);
+      return result;
+    }
+
+    if (selectedRange === "1y") {
+      result.setFullYear(result.getFullYear() - 1);
+      return result;
+    }
+
+    const days = {
+      "7d": 7,
+      "15d": 15,
+      "30d": 30,
+      "60d": 60,
+      "90d": 90,
+    }[selectedRange] || 30;
+
+    result.setDate(result.getDate() - days);
+    return result;
+  })();
+
+  const confirmedBookings = (bookings || []).filter((booking) => {
+    if (String(booking?.status || "").toUpperCase() !== "CONFIRMED") return false;
+
+    const rawDate = booking?.externalCreatedAt || booking?.createdAt;
+    const createdAt = rawDate ? new Date(rawDate) : null;
+
+    return (
+      createdAt instanceof Date &&
+      !Number.isNaN(createdAt.getTime()) &&
+      createdAt >= rangeStart &&
+      createdAt <= rangeEnd
+    );
+  });
+
+  const totals = confirmedBookings.reduce((acc, booking) => {
+    const key = classifyChannel(booking?.platform);
+
     if (!acc[key]) {
       acc[key] = { bookings: 0, passengers: 0 };
     }
 
-    acc[key].bookings += Number(channel?.bookings || 0);
-    acc[key].passengers += Number(channel?.passengers || 0);
+    acc[key].bookings += 1;
+    acc[key].passengers += Number(booking?.totalParticipants || 0);
     return acc;
   }, {});
 
@@ -322,136 +393,262 @@ const ChannelBookingsChart = ({ salesByChannel = [], lang, periodLabel }) => {
 
   const totalBookings = data.reduce((sum, item) => sum + item.bookings, 0);
   const maxBookings = Math.max(1, ...data.map((item) => item.bookings));
-  const active = data.find((item) => item.key === activeKey) || null;
+
+  const formatDate = (date) =>
+    new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+
+  const rangeLabel = selectedRange === "custom"
+    ? `${formatDate(rangeStart)} – ${formatDate(rangeEnd)}`
+    : ({
+        "7d": lang === "pt" ? "7 dias" : "7 days",
+        "15d": lang === "pt" ? "15 dias" : "15 days",
+        "30d": lang === "pt" ? "30 dias" : "30 days",
+        "60d": lang === "pt" ? "60 dias" : "60 days",
+        "90d": lang === "pt" ? "90 dias" : "90 days",
+        "6m": lang === "pt" ? "6 meses" : "6 months",
+        "1y": lang === "pt" ? "1 ano" : "1 year",
+      }[selectedRange] || (lang === "pt" ? "30 dias" : "30 days"));
+
+  const handleRangeChange = (event) => {
+    const value = event.target.value;
+    setSelectedRange(value);
+
+    if (value === "custom" && (!customStart || !customEnd)) {
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(start.getDate() - 30);
+
+      const toInput = (date) => [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
+
+      setCustomStart(toInput(start));
+      setCustomEnd(toInput(today));
+    }
+  };
 
   return (
     <section className="pmy-card" style={{ marginBottom:'20px', padding:'20px 22px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'20px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'18px' }}>
         <div>
           <div className="pmy-card-title" style={{ fontSize:'17px', marginBottom:'4px' }}>
             {lang === 'pt' ? 'Reservas por Canal' : 'Bookings by Channel'}
           </div>
           <div style={{ fontSize:'11px', color:'#888' }}>
-            {periodLabel} · {lang === 'pt' ? 'somente reservas confirmadas' : 'confirmed bookings only'}
+            {rangeLabel} · {lang === 'pt' ? 'somente reservas confirmadas' : 'confirmed bookings only'}
           </div>
         </div>
 
-        <div style={{
-          minWidth:'118px',
-          padding:'9px 12px',
-          border:'1px solid #e8e8e8',
-          borderRadius:'14px',
-          background:'#fafafa',
-          textAlign:'right'
-        }}>
-          <div style={{ fontSize:'10px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
-            {lang === 'pt' ? 'Total no período' : 'Period total'}
-          </div>
-          <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)', lineHeight:1.1, marginTop:'3px' }}>
-            {totalBookings}
+        <div style={{ display:'flex', alignItems:'flex-end', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end' }}>
+          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
+            <span>{lang === 'pt' ? 'Período do gráfico' : 'Chart period'}</span>
+            <select
+              value={selectedRange}
+              onChange={handleRangeChange}
+              style={{
+                minWidth:'138px',
+                height:'36px',
+                border:'1px solid #dedede',
+                borderRadius:'10px',
+                background:'#fff',
+                padding:'0 10px',
+                fontSize:'11px',
+                fontWeight:'700'
+              }}
+            >
+              <option value="7d">{lang === 'pt' ? '7 dias' : '7 days'}</option>
+              <option value="15d">{lang === 'pt' ? '15 dias' : '15 days'}</option>
+              <option value="30d">{lang === 'pt' ? '30 dias' : '30 days'}</option>
+              <option value="60d">{lang === 'pt' ? '60 dias' : '60 days'}</option>
+              <option value="90d">{lang === 'pt' ? '90 dias' : '90 days'}</option>
+              <option value="6m">{lang === 'pt' ? '6 meses' : '6 months'}</option>
+              <option value="1y">{lang === 'pt' ? '1 ano' : '1 year'}</option>
+              <option value="custom">{lang === 'pt' ? 'Personalizado' : 'Custom'}</option>
+            </select>
+          </label>
+
+          <div style={{
+            minWidth:'118px',
+            padding:'9px 12px',
+            border:'1px solid #e8e8e8',
+            borderRadius:'14px',
+            background:'#fafafa',
+            textAlign:'right'
+          }}>
+            <div style={{ fontSize:'10px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
+              {lang === 'pt' ? 'Total no período' : 'Period total'}
+            </div>
+            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)', lineHeight:1.1, marginTop:'3px' }}>
+              {totalBookings}
+            </div>
           </div>
         </div>
       </div>
 
-      {active && (
+      {selectedRange === "custom" && (
         <div style={{
-          marginBottom:'14px',
-          padding:'10px 12px',
-          borderRadius:'12px',
-          background:'color-mix(in srgb, var(--primary-green) 8%, white)',
-          border:'1px solid color-mix(in srgb, var(--primary-green) 18%, #eee)',
-          fontSize:'12px',
           display:'flex',
-          alignItems:'center',
-          justifyContent:'space-between',
-          gap:'12px',
-          flexWrap:'wrap'
+          gap:'10px',
+          alignItems:'flex-end',
+          flexWrap:'wrap',
+          marginBottom:'18px',
+          padding:'12px',
+          background:'#fafafa',
+          border:'1px solid #eeeeee',
+          borderRadius:'12px'
         }}>
-          <strong>{active.label}</strong>
-          <span>
-            {active.bookings} {lang === 'pt' ? 'reservas' : 'bookings'} · {active.passengers} pax · {totalBookings > 0 ? ((active.bookings / totalBookings) * 100).toFixed(1) : '0.0'}%
-          </span>
+          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
+            <span>{lang === 'pt' ? 'De' : 'From'}</span>
+            <input
+              type="date"
+              value={customStart}
+              onChange={(event) => setCustomStart(event.target.value)}
+              style={{ height:'34px', border:'1px solid #ddd', borderRadius:'9px', padding:'0 9px', fontSize:'11px' }}
+            />
+          </label>
+
+          <label style={{ display:'grid', gap:'4px', fontSize:'10px', color:'#777', fontWeight:'700' }}>
+            <span>{lang === 'pt' ? 'Até' : 'To'}</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(event) => setCustomEnd(event.target.value)}
+              style={{ height:'34px', border:'1px solid #ddd', borderRadius:'9px', padding:'0 9px', fontSize:'11px' }}
+            />
+          </label>
         </div>
       )}
 
       <div
         role="img"
         aria-label={lang === 'pt' ? 'Gráfico de reservas confirmadas por canal' : 'Confirmed bookings by channel chart'}
-        style={{ display:'grid', gap:'13px' }}
+        style={{ display:'grid', gap:'8px' }}
       >
         {data.map((item) => {
           const share = totalBookings > 0 ? (item.bookings / totalBookings) * 100 : 0;
           const width = item.bookings > 0
             ? Math.max(4, (item.bookings / maxBookings) * 100)
             : 0;
-          const isActive = activeKey === item.key;
+          const isExpanded = expandedKey === item.key;
 
           return (
             <div
               key={item.key}
-              onMouseEnter={() => setActiveKey(item.key)}
-              onMouseLeave={() => setActiveKey(null)}
-              onFocus={() => setActiveKey(item.key)}
-              onBlur={() => setActiveKey(null)}
-              tabIndex={0}
+              onMouseEnter={() => setExpandedKey(item.key)}
+              onMouseLeave={() => setExpandedKey(null)}
               style={{
-                display:'grid',
-                gridTemplateColumns:'minmax(108px, 145px) minmax(120px, 1fr) 72px',
-                alignItems:'center',
-                gap:'12px',
-                outline:'none'
+                border:isExpanded ? '1px solid color-mix(in srgb, var(--primary-green) 22%, #e7e7e7)' : '1px solid transparent',
+                borderRadius:'12px',
+                background:isExpanded ? 'color-mix(in srgb, var(--primary-green) 4%, white)' : 'transparent',
+                transition:'background .16s ease, border-color .16s ease'
               }}
             >
-              <div style={{ minWidth:0 }}>
+              <button
+                type="button"
+                onClick={() => setExpandedKey((current) => current === item.key ? null : item.key)}
+                onFocus={() => setExpandedKey(item.key)}
+                style={{
+                  width:'100%',
+                  border:0,
+                  background:'transparent',
+                  display:'grid',
+                  gridTemplateColumns:'minmax(108px, 145px) minmax(120px, 1fr) 72px',
+                  alignItems:'center',
+                  gap:'12px',
+                  padding:'8px 9px',
+                  textAlign:'left',
+                  cursor:'pointer'
+                }}
+              >
+                <div style={{ minWidth:0 }}>
+                  <div style={{
+                    fontSize:'12px',
+                    fontWeight:'850',
+                    color:isExpanded ? 'var(--primary-green)' : '#2f2f2f',
+                    overflow:'hidden',
+                    textOverflow:'ellipsis',
+                    whiteSpace:'nowrap'
+                  }}>
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize:'10px', color:'#999', marginTop:'1px' }}>
+                    {share.toFixed(1)}%
+                  </div>
+                </div>
+
                 <div style={{
-                  fontSize:'12px',
-                  fontWeight:'850',
-                  color:isActive ? 'var(--primary-green)' : '#2f2f2f',
+                  height:'18px',
+                  borderRadius:'999px',
+                  background:'#f1f2f1',
                   overflow:'hidden',
-                  textOverflow:'ellipsis',
-                  whiteSpace:'nowrap'
+                  position:'relative'
                 }}>
-                  {item.label}
+                  <div
+                    style={{
+                      width:`${width}%`,
+                      minWidth:item.bookings > 0 ? '6px' : 0,
+                      height:'100%',
+                      borderRadius:'inherit',
+                      background:'var(--primary-green)',
+                      opacity:isExpanded ? 1 : 0.8,
+                      transition:'width .35s ease, opacity .18s ease'
+                    }}
+                  />
                 </div>
-                <div style={{ fontSize:'10px', color:'#999', marginTop:'1px' }}>
-                  {share.toFixed(1)}%
+
+                <div style={{ textAlign:'right' }}>
+                  <strong style={{ fontSize:'15px', color:'#222' }}>{item.bookings}</strong>
+                  <span style={{ display:'block', fontSize:'9px', color:'#999', marginTop:'1px' }}>
+                    {lang === 'pt' ? 'reservas' : 'bookings'}
+                  </span>
                 </div>
-              </div>
+              </button>
 
-              <div style={{
-                height:'18px',
-                borderRadius:'999px',
-                background:'#f1f2f1',
-                overflow:'hidden',
-                position:'relative'
-              }}>
-                <div
-                  style={{
-                    width:`${width}%`,
-                    minWidth:item.bookings > 0 ? '6px' : 0,
-                    height:'100%',
-                    borderRadius:'inherit',
-                    background:'var(--primary-green)',
-                    opacity:isActive ? 1 : 0.8,
-                    transition:'width .35s ease, opacity .18s ease'
-                  }}
-                />
-              </div>
-
-              <div style={{ textAlign:'right' }}>
-                <strong style={{ fontSize:'15px', color:'#222' }}>{item.bookings}</strong>
-                <span style={{ display:'block', fontSize:'9px', color:'#999', marginTop:'1px' }}>
-                  {lang === 'pt' ? 'reservas' : 'bookings'}
-                </span>
-              </div>
+              {isExpanded && (
+                <div style={{
+                  margin:'0 9px 9px',
+                  padding:'10px 12px',
+                  borderRadius:'10px',
+                  background:'#fff',
+                  border:'1px solid #ececec',
+                  display:'grid',
+                  gridTemplateColumns:'repeat(3,minmax(0,1fr))',
+                  gap:'10px'
+                }}>
+                  <div>
+                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                      {lang === 'pt' ? 'Reservas' : 'Bookings'}
+                    </span>
+                    <strong style={{ fontSize:'14px' }}>{item.bookings}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                      {lang === 'pt' ? 'Passageiros' : 'Passengers'}
+                    </span>
+                    <strong style={{ fontSize:'14px' }}>{item.passengers}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display:'block', fontSize:'9px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                      {lang === 'pt' ? 'Participação' : 'Share'}
+                    </span>
+                    <strong style={{ fontSize:'14px' }}>{share.toFixed(1)}%</strong>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       <div style={{
-        marginTop:'17px',
-        paddingTop:'12px',
+        marginTop:'15px',
+        paddingTop:'11px',
         borderTop:'1px solid #efefef',
         fontSize:'10px',
         color:'#999'
@@ -482,6 +679,7 @@ export default function DashboardTab(props) {
     upcomingCount,
     getPeriodLabel,
     salesByChannel,
+    bookings,
     categoriesData,
     toggleCategory,
     openCategories,
@@ -625,9 +823,8 @@ export default function DashboardTab(props) {
               />
 
               <ChannelBookingsChart
-                salesByChannel={salesByChannel}
+                bookings={bookings}
                 lang={lang}
-                periodLabel={getPeriodLabel()}
               />
 
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
