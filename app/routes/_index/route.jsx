@@ -3483,9 +3483,7 @@ function CentralDeReservasContent() {
       margin:0;
       overflow:hidden;
       display:flex;
-      background:
-        radial-gradient(circle at 78% 6%, color-mix(in srgb, var(--primary-green) 8%, transparent) 0, transparent 26rem),
-        linear-gradient(180deg, var(--pmy-pink-soft) 0%, var(--bg-color) 42%, var(--bg-color) 100%);
+      background:var(--bg-color);
       color:var(--text-dark);
     }
 
@@ -3661,8 +3659,8 @@ function CentralDeReservasContent() {
       top:0;
       z-index:120;
       padding:10px 0;
-      background:color-mix(in srgb, var(--bg-color) 86%, transparent);
-      backdrop-filter:blur(18px);
+      background:var(--bg-color);
+      backdrop-filter:none;
     }
     .pmy-header-title-wrap { display:flex; align-items:center; gap:12px; min-width:0; }
     .pmy-header-copy { min-width:0; }
@@ -3731,6 +3729,36 @@ function CentralDeReservasContent() {
     }
 
     .pmy-grid { gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
+
+    /* ===== DESKTOP TYPOGRAPHY SCALE ===== */
+    .pmy-menu-item,
+    .pmy-menu-label { font-size:15px; }
+    .pmy-credit-text { font-size:12px; }
+    .pmy-date-btn { font-size:14px; }
+    .pmy-card-title { font-size:16px; }
+    .pmy-form-group label { font-size:14px; }
+    .pmy-form-input { font-size:15px; }
+    .pmy-btn-submit { font-size:15px; }
+    .pmy-cal-tab { font-size:13px; }
+
+    .pmy-eyebrow { font-size:12px; }
+    .pmy-kpi-label { font-size:14px; }
+    .pmy-kpi-detail { font-size:13px; }
+    .pmy-dashboard-status-item strong { font-size:20px; }
+    .pmy-dashboard-status-item span:not(.pmy-dashboard-status-dot) { font-size:13px; }
+
+    .pmy-trend-eyebrow { font-size:12px; }
+    .pmy-trend-title { font-size:30px; }
+    .pmy-trend-subtitle { font-size:14px; }
+    .pmy-trend-granularity { font-size:13px; }
+    .pmy-trend-legend span { font-size:13px; }
+    .pmy-trend-axis-label { font-size:13px; }
+    .pmy-trend-x-label { font-size:12px; }
+    .pmy-trend-tooltip strong,
+    .pmy-trend-tooltip span { font-size:12px; }
+    .pmy-trend-axis-captions { font-size:12px; }
+    .pmy-trend-empty strong { font-size:15px; }
+    .pmy-trend-empty span { font-size:13px; }
 
     /* ===== DASHBOARD / KPI SHELL ===== */
     .pmy-dashboard { display:flex; flex-direction:column; gap:22px; }
