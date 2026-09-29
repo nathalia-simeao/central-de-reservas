@@ -116,6 +116,18 @@ const DashboardLoadingSkeleton = ({ lang }) => (
         animation:pmyDashPulse 1.25s ease-in-out infinite;
         border-radius:12px;
       }
+      .pmy-dashboard-loading-kpis {
+        display:grid;
+        grid-template-columns:repeat(5,minmax(0,1fr));
+        gap:12px;
+        margin-bottom:14px;
+      }
+      @media (max-width: 1100px) {
+        .pmy-dashboard-loading-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      }
+      @media (max-width: 640px) {
+        .pmy-dashboard-loading-kpis { grid-template-columns:1fr; }
+      }
       @media (prefers-reduced-motion: reduce) {
         .pmy-dash-skeleton { animation:none; }
       }
@@ -142,12 +154,7 @@ const DashboardLoadingSkeleton = ({ lang }) => (
       {lang === 'pt' ? 'Carregando dados do Dashboard…' : 'Loading Dashboard data…'}
     </div>
 
-    <div style={{
-      display:'grid',
-      gridTemplateColumns:'repeat(5,minmax(0,1fr))',
-      gap:'12px',
-      marginBottom:'14px'
-    }}>
+    <div className="pmy-dashboard-loading-kpis">
       {Array.from({ length:5 }).map((_, index) => (
         <div key={index} className="pmy-card" style={{ padding:'18px', minHeight:'132px' }}>
           <div className="pmy-dash-skeleton" style={{ width:'34px', height:'34px', marginBottom:'18px' }} />
@@ -2467,7 +2474,10 @@ export default function DashboardTab(props) {
   const dashboardHasAnyData =
     Number(totalSalesCount || 0) > 0 ||
     Number(canceledCount || 0) > 0 ||
-    Number(upcomingCount || 0) > 0;
+    Number(upcomingCount || 0) > 0 ||
+    Number(dashboardBookingStatusSummary?.total || 0) > 0 ||
+    Number(dashboardBookingStatusSummary?.unclassified || 0) > 0 ||
+    (bookings || []).length > 0;
   const dashboardHasLimitedData =
     Number(totalSalesCount || 0) > 0 &&
     Number(totalSalesCount || 0) < 5;
