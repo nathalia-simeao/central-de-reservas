@@ -279,6 +279,191 @@ const TrendChart = ({
   );
 };
 
+const ChannelBookingsChart = ({ salesByChannel = [], lang, periodLabel }) => {
+  const [activeKey, setActiveKey] = useState(null);
+
+  const classifyChannel = (platform) => {
+    const key = String(platform || "").trim().toUpperCase();
+
+    if (key === "SHOPIFY") return "SHOPIFY";
+    if (["VIATOR"].includes(key)) return "VIATOR";
+    if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(key)) return "GETYOURGUIDE";
+    if (key === "CIVITATIS") return "CIVITATIS";
+    if (key === "HEADOUT") return "HEADOUT";
+
+    return "OTHER";
+  };
+
+  const baseChannels = [
+    { key: "SHOPIFY", label: "Shopify" },
+    { key: "VIATOR", label: "Viator" },
+    { key: "GETYOURGUIDE", label: "GetYourGuide" },
+    { key: "CIVITATIS", label: "Civitatis" },
+    { key: "HEADOUT", label: "Headout" },
+    { key: "OTHER", label: lang === "pt" ? "Outros" : "Other" },
+  ];
+
+  const totals = salesByChannel.reduce((acc, channel) => {
+    const key = classifyChannel(channel?.platform);
+    if (!acc[key]) {
+      acc[key] = { bookings: 0, passengers: 0 };
+    }
+
+    acc[key].bookings += Number(channel?.bookings || 0);
+    acc[key].passengers += Number(channel?.passengers || 0);
+    return acc;
+  }, {});
+
+  const data = baseChannels.map((channel) => ({
+    ...channel,
+    bookings: Number(totals[channel.key]?.bookings || 0),
+    passengers: Number(totals[channel.key]?.passengers || 0),
+  }));
+
+  const totalBookings = data.reduce((sum, item) => sum + item.bookings, 0);
+  const maxBookings = Math.max(1, ...data.map((item) => item.bookings));
+  const active = data.find((item) => item.key === activeKey) || null;
+
+  return (
+    <section className="pmy-card" style={{ marginBottom:'20px', padding:'20px 22px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'20px' }}>
+        <div>
+          <div className="pmy-card-title" style={{ fontSize:'17px', marginBottom:'4px' }}>
+            {lang === 'pt' ? 'Reservas por Canal' : 'Bookings by Channel'}
+          </div>
+          <div style={{ fontSize:'11px', color:'#888' }}>
+            {periodLabel} · {lang === 'pt' ? 'somente reservas confirmadas' : 'confirmed bookings only'}
+          </div>
+        </div>
+
+        <div style={{
+          minWidth:'118px',
+          padding:'9px 12px',
+          border:'1px solid #e8e8e8',
+          borderRadius:'14px',
+          background:'#fafafa',
+          textAlign:'right'
+        }}>
+          <div style={{ fontSize:'10px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
+            {lang === 'pt' ? 'Total no período' : 'Period total'}
+          </div>
+          <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)', lineHeight:1.1, marginTop:'3px' }}>
+            {totalBookings}
+          </div>
+        </div>
+      </div>
+
+      {active && (
+        <div style={{
+          marginBottom:'14px',
+          padding:'10px 12px',
+          borderRadius:'12px',
+          background:'color-mix(in srgb, var(--primary-green) 8%, white)',
+          border:'1px solid color-mix(in srgb, var(--primary-green) 18%, #eee)',
+          fontSize:'12px',
+          display:'flex',
+          alignItems:'center',
+          justifyContent:'space-between',
+          gap:'12px',
+          flexWrap:'wrap'
+        }}>
+          <strong>{active.label}</strong>
+          <span>
+            {active.bookings} {lang === 'pt' ? 'reservas' : 'bookings'} · {active.passengers} pax · {totalBookings > 0 ? ((active.bookings / totalBookings) * 100).toFixed(1) : '0.0'}%
+          </span>
+        </div>
+      )}
+
+      <div
+        role="img"
+        aria-label={lang === 'pt' ? 'Gráfico de reservas confirmadas por canal' : 'Confirmed bookings by channel chart'}
+        style={{ display:'grid', gap:'13px' }}
+      >
+        {data.map((item) => {
+          const share = totalBookings > 0 ? (item.bookings / totalBookings) * 100 : 0;
+          const width = item.bookings > 0
+            ? Math.max(4, (item.bookings / maxBookings) * 100)
+            : 0;
+          const isActive = activeKey === item.key;
+
+          return (
+            <div
+              key={item.key}
+              onMouseEnter={() => setActiveKey(item.key)}
+              onMouseLeave={() => setActiveKey(null)}
+              onFocus={() => setActiveKey(item.key)}
+              onBlur={() => setActiveKey(null)}
+              tabIndex={0}
+              style={{
+                display:'grid',
+                gridTemplateColumns:'minmax(108px, 145px) minmax(120px, 1fr) 72px',
+                alignItems:'center',
+                gap:'12px',
+                outline:'none'
+              }}
+            >
+              <div style={{ minWidth:0 }}>
+                <div style={{
+                  fontSize:'12px',
+                  fontWeight:'850',
+                  color:isActive ? 'var(--primary-green)' : '#2f2f2f',
+                  overflow:'hidden',
+                  textOverflow:'ellipsis',
+                  whiteSpace:'nowrap'
+                }}>
+                  {item.label}
+                </div>
+                <div style={{ fontSize:'10px', color:'#999', marginTop:'1px' }}>
+                  {share.toFixed(1)}%
+                </div>
+              </div>
+
+              <div style={{
+                height:'18px',
+                borderRadius:'999px',
+                background:'#f1f2f1',
+                overflow:'hidden',
+                position:'relative'
+              }}>
+                <div
+                  style={{
+                    width:`${width}%`,
+                    minWidth:item.bookings > 0 ? '6px' : 0,
+                    height:'100%',
+                    borderRadius:'inherit',
+                    background:'var(--primary-green)',
+                    opacity:isActive ? 1 : 0.8,
+                    transition:'width .35s ease, opacity .18s ease'
+                  }}
+                />
+              </div>
+
+              <div style={{ textAlign:'right' }}>
+                <strong style={{ fontSize:'15px', color:'#222' }}>{item.bookings}</strong>
+                <span style={{ display:'block', fontSize:'9px', color:'#999', marginTop:'1px' }}>
+                  {lang === 'pt' ? 'reservas' : 'bookings'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop:'17px',
+        paddingTop:'12px',
+        borderTop:'1px solid #efefef',
+        fontSize:'10px',
+        color:'#999'
+      }}>
+        {lang === 'pt'
+          ? 'Outros agrupa reservas manuais, Central PMY e qualquer origem ainda não classificada.'
+          : 'Other groups manual bookings, Central PMY and any source not yet classified.'}
+      </div>
+    </section>
+  );
+};
+
 export default function DashboardTab(props) {
   const {
     activeTab,
@@ -439,41 +624,12 @@ export default function DashboardTab(props) {
                 periodLabel={getPeriodLabel()}
               />
 
-              <div className="pmy-card" style={{ marginBottom:'20px', padding:'18px 22px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap', marginBottom:'12px' }}>
-                  <div>
-                    <div className="pmy-card-title" style={{ fontSize:'16px', marginBottom:'3px' }}>{lang==='pt'?'Vendas por Canal':'Sales by Channel'}</div>
-                    <div style={{ fontSize:'11px', color:'#888' }}>{getPeriodLabel()} · {lang==='pt'?'somente reservas confirmadas':'confirmed bookings only'}</div>
-                  </div>
-                  {missingFinancialBookings.length > 0 && (
-                    <span style={{ fontSize:'10px', background:'#fff7ed', color:'#b45309', padding:'5px 9px', borderRadius:'14px', fontWeight:'800' }}>
-                      ⚠️ {missingFinancialBookings.length} {lang==='pt'?'sem valor financeiro':'without financial value'}
-                    </span>
-                  )}
-                </div>
-                {salesByChannel.length === 0 ? (
-                  <div style={{ color:'#999', fontSize:'13px', padding:'8px 0' }}>{lang==='pt'?'Nenhuma venda confirmada no período.':'No confirmed sales in this period.'}</div>
-                ) : (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'10px' }}>
-                    {salesByChannel.map(channel => {
-                      const revenues = Object.entries(channel.revenueByCurrency);
-                      return (
-                        <div key={channel.platform} style={{ border:'1px solid #eee', borderRadius:'10px', padding:'12px 14px', background:'#fff' }}>
-                          <div style={{ fontWeight:'900', fontSize:'13px', color:'#333' }}>{channel.label}</div>
-                          <div style={{ fontSize:'21px', fontWeight:'900', color:'var(--primary-green)', marginTop:'5px' }}>{channel.bookings}</div>
-                          <div style={{ fontSize:'10px', color:'#888' }}>{lang==='pt'?'reservas confirmadas':'confirmed bookings'} · {channel.passengers} pax</div>
-                          <div style={{ fontSize:'12px', fontWeight:'800', marginTop:'7px', color:'#444' }}>
-                            {revenues.length > 0
-                              ? revenues.map(([currency, amount]) => formatMoney(amount, currency)).join(' + ')
-                              : '—'}
-                          </div>
-                          {channel.missingValue > 0 && <div style={{ fontSize:'10px', color:'#b45309', marginTop:'3px' }}>⚠️ {channel.missingValue} {lang==='pt'?'sem valor':'without value'}</div>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <ChannelBookingsChart
+                salesByChannel={salesByChannel}
+                lang={lang}
+                periodLabel={getPeriodLabel()}
+              />
+
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
                 <div className="pmy-card" style={{ padding:'0 25px 25px 25px' }}>
                   <div style={{ padding:'25px 0 10px 0', borderBottom:'2px solid #f0f0f0' }}>
