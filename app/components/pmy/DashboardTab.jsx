@@ -174,6 +174,261 @@ const DashboardLoadingSkeleton = ({ lang }) => (
   </div>
 );
 
+const DashboardResponsiveStyles = () => (
+  <style>{`
+    .pmy-upcoming-mobile-label {
+      display:none;
+    }
+
+    @media (max-width:1180px) {
+      .pmy-dashboard .pmy-dashboard-kpi-grid {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+      .pmy-dashboard .pmy-kpi-card.is-featured {
+        grid-column:span 2;
+      }
+      .pmy-dashboard .pmy-booking-status-grid {
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      }
+      .pmy-dashboard .pmy-ranking-row {
+        grid-template-columns:42px minmax(180px,1.35fr) minmax(100px,1fr) 84px 92px minmax(120px,1fr) !important;
+        gap:10px !important;
+      }
+      .pmy-dashboard .pmy-ranking-controls {
+        max-width:100%;
+        overflow-x:auto;
+        scrollbar-width:thin;
+      }
+      .pmy-dashboard .pmy-ranking-controls button {
+        flex:0 0 auto;
+      }
+    }
+
+    @media (max-width:820px) {
+      .pmy-dashboard .pmy-dashboard-status-strip {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+      .pmy-dashboard .pmy-trend-chart {
+        min-width:600px;
+      }
+
+      .pmy-dashboard .pmy-upcoming-table {
+        overflow:visible !important;
+      }
+      .pmy-dashboard .pmy-upcoming-table-inner {
+        min-width:0 !important;
+      }
+      .pmy-dashboard .pmy-upcoming-table-head {
+        display:none !important;
+      }
+      .pmy-dashboard .pmy-upcoming-row {
+        display:grid !important;
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        gap:12px 16px !important;
+        min-height:0 !important;
+        margin-bottom:10px;
+        padding:14px !important;
+        border:1px solid #e8ece8 !important;
+        border-radius:16px;
+        background:#fff;
+      }
+      .pmy-dashboard .pmy-upcoming-tour {
+        grid-column:1 / -1;
+        padding-bottom:10px;
+        border-bottom:1px solid #f0f1f0;
+      }
+      .pmy-dashboard .pmy-upcoming-channels {
+        grid-column:1 / -1;
+      }
+      .pmy-dashboard .pmy-upcoming-seats {
+        text-align:left !important;
+      }
+      .pmy-upcoming-mobile-label {
+        display:block;
+        margin-bottom:4px;
+        font-size:10px;
+        line-height:1;
+        font-weight:850;
+        letter-spacing:.05em;
+        text-transform:uppercase;
+        color:#929792;
+      }
+
+      .pmy-dashboard .pmy-ranking-row {
+        grid-template-columns:40px minmax(0,1fr) minmax(115px,.6fr) !important;
+        align-items:center !important;
+      }
+      .pmy-dashboard .pmy-ranking-position {
+        grid-column:1;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-ranking-tour {
+        grid-column:2;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-ranking-bar {
+        grid-column:1 / -1;
+        grid-row:2;
+      }
+      .pmy-dashboard .pmy-ranking-bookings {
+        grid-column:1;
+        grid-row:3;
+      }
+      .pmy-dashboard .pmy-ranking-passengers {
+        grid-column:2;
+        grid-row:3;
+      }
+      .pmy-dashboard .pmy-ranking-revenue {
+        grid-column:3;
+        grid-row:1 / span 3;
+        align-self:stretch;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        padding-left:12px;
+        border-left:1px solid #eef0ee;
+      }
+    }
+
+    @media (max-width:620px) {
+      .pmy-dashboard {
+        gap:13px;
+      }
+      .pmy-dashboard .pmy-dashboard-kpi-grid {
+        grid-template-columns:1fr;
+      }
+      .pmy-dashboard .pmy-kpi-card.is-featured {
+        grid-column:span 1;
+      }
+      .pmy-dashboard .pmy-dashboard-status-strip {
+        grid-template-columns:1fr;
+      }
+      .pmy-dashboard .pmy-booking-status-grid {
+        grid-template-columns:1fr !important;
+      }
+
+      .pmy-dashboard .pmy-cross-filter-bar {
+        align-items:stretch !important;
+        flex-direction:column;
+      }
+      .pmy-dashboard .pmy-cross-filter-actions {
+        width:100%;
+      }
+      .pmy-dashboard .pmy-cross-filter-actions > button {
+        max-width:100% !important;
+      }
+
+      .pmy-dashboard .pmy-channel-row {
+        grid-template-columns:minmax(0,1fr) 68px !important;
+        gap:8px 10px !important;
+      }
+      .pmy-dashboard .pmy-channel-row > :nth-child(1) {
+        grid-column:1;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-channel-row > :nth-child(2) {
+        grid-column:1 / -1;
+        grid-row:2;
+      }
+      .pmy-dashboard .pmy-channel-row > :nth-child(3) {
+        grid-column:2;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-channel-detail {
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      }
+      .pmy-dashboard .pmy-channel-detail > :last-child {
+        grid-column:1 / -1;
+        justify-content:flex-start !important;
+      }
+
+      .pmy-dashboard .pmy-ranking-header {
+        align-items:stretch !important;
+      }
+      .pmy-dashboard .pmy-ranking-controls {
+        width:100%;
+      }
+      .pmy-dashboard .pmy-ranking-row {
+        grid-template-columns:38px minmax(0,1fr) !important;
+        gap:10px !important;
+        padding:12px !important;
+      }
+      .pmy-dashboard .pmy-ranking-position {
+        grid-column:1;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-ranking-tour {
+        grid-column:2;
+        grid-row:1;
+      }
+      .pmy-dashboard .pmy-ranking-bar {
+        grid-column:1 / -1;
+        grid-row:2;
+      }
+      .pmy-dashboard .pmy-ranking-bookings {
+        grid-column:1;
+        grid-row:3;
+      }
+      .pmy-dashboard .pmy-ranking-passengers {
+        grid-column:2;
+        grid-row:3;
+      }
+      .pmy-dashboard .pmy-ranking-revenue {
+        grid-column:1 / -1;
+        grid-row:4;
+        padding:10px 0 0;
+        border-left:0;
+        border-top:1px solid #eef0ee;
+        text-align:left !important;
+      }
+
+      .pmy-dashboard .pmy-upcoming-row {
+        grid-template-columns:1fr !important;
+      }
+      .pmy-dashboard .pmy-upcoming-tour,
+      .pmy-dashboard .pmy-upcoming-channels {
+        grid-column:1;
+      }
+      .pmy-dashboard .pmy-upcoming-seats {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+      .pmy-dashboard .pmy-upcoming-seats .pmy-upcoming-mobile-label {
+        width:100%;
+      }
+
+      .pmy-dashboard .pmy-trend-chart {
+        min-width:520px;
+      }
+      .pmy-dashboard .pmy-trend-card {
+        overflow:hidden;
+      }
+      .pmy-dashboard .pmy-trend-chart-wrap {
+        overflow-x:auto;
+        overscroll-behavior-inline:contain;
+        scrollbar-width:thin;
+      }
+    }
+
+    @media (max-width:430px) {
+      .pmy-dashboard .pmy-kpi-card {
+        min-height:132px;
+      }
+      .pmy-dashboard .pmy-trend-chart {
+        min-width:480px;
+      }
+      .pmy-dashboard .pmy-channel-detail {
+        grid-template-columns:1fr !important;
+      }
+      .pmy-dashboard .pmy-channel-detail > :last-child {
+        grid-column:1;
+      }
+    }
+  `}</style>
+);
+
 const dashboardChannelKey = (platform) => {
   const key = String(platform || "").trim().toUpperCase();
   if (key === "SHOPIFY") return "SHOPIFY";
@@ -1255,6 +1510,7 @@ const ChannelBookingsChart = ({
             >
               <button
                 type="button"
+                className="pmy-channel-row"
                 onClick={() => setExpandedKey((current) => current === item.key ? null : item.key)}
                 onFocus={() => setExpandedKey(item.key)}
                 style={{
@@ -1315,7 +1571,9 @@ const ChannelBookingsChart = ({
               </button>
 
               {isExpanded && (
-                <div style={{
+                <div
+                  className="pmy-channel-detail"
+                  style={{
                   margin:'0 9px 9px',
                   padding:'10px 12px',
                   borderRadius:'10px',
@@ -1522,11 +1780,14 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
         })}
       </div>
 
-      <div style={{
-        display:'grid',
-        gridTemplateColumns:'repeat(4,minmax(0,1fr))',
-        gap:'12px'
-      }}>
+      <div
+        className="pmy-booking-status-grid"
+        style={{
+          display:'grid',
+          gridTemplateColumns:'repeat(4,minmax(0,1fr))',
+          gap:'12px'
+        }}
+      >
         {items.map((item) => {
           const share = total > 0 ? (item.value / total) * 100 : 0;
 
@@ -1713,9 +1974,9 @@ const UpcomingDeparturesPanel = ({
             : 'Confirmed or pending departures will appear here automatically with time, passengers, channels and seats.'}
         />
       ) : (
-        <div style={{ overflowX:'auto' }}>
-          <div style={{ minWidth:'920px' }}>
-            <div style={{
+        <div className="pmy-upcoming-table" style={{ overflowX:'auto' }}>
+          <div className="pmy-upcoming-table-inner" style={{ minWidth:'920px' }}>
+            <div className="pmy-upcoming-table-head" style={{
               display:'grid',
               gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
               gap:'12px',
@@ -1751,6 +2012,7 @@ const UpcomingDeparturesPanel = ({
               return (
                 <div
                   key={departure.key}
+                  className="pmy-upcoming-row"
                   style={{
                     display:'grid',
                     gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
@@ -1761,7 +2023,7 @@ const UpcomingDeparturesPanel = ({
                     borderBottom:'1px solid #f0f1f0'
                   }}
                 >
-                  <div style={{
+                  <div className="pmy-upcoming-tour" style={{
                     minWidth:0,
                     display:'flex',
                     alignItems:'center',
@@ -1815,15 +2077,22 @@ const UpcomingDeparturesPanel = ({
                     </div>
                   </div>
 
-                  <strong style={{ fontSize:'13px', color:'#444' }}>
-                    {formatDate(departure.startTime)}
-                  </strong>
+                  <div className="pmy-upcoming-date">
+                    <span className="pmy-upcoming-mobile-label">{lang === 'pt' ? 'Data' : 'Date'}</span>
+                    <strong style={{ fontSize:'13px', color:'#444' }}>
+                      {formatDate(departure.startTime)}
+                    </strong>
+                  </div>
 
-                  <strong style={{ fontSize:'14px', color:'#444' }}>
-                    {formatTime(departure.startTime)}
-                  </strong>
+                  <div className="pmy-upcoming-time">
+                    <span className="pmy-upcoming-mobile-label">{lang === 'pt' ? 'Horário' : 'Time'}</span>
+                    <strong style={{ fontSize:'14px', color:'#444' }}>
+                      {formatTime(departure.startTime)}
+                    </strong>
+                  </div>
 
-                  <div>
+                  <div className="pmy-upcoming-passengers">
+                    <span className="pmy-upcoming-mobile-label">{lang === 'pt' ? 'Passageiros' : 'Passengers'}</span>
                     <strong style={{
                       display:'block',
                       fontSize:'17px',
@@ -1836,11 +2105,14 @@ const UpcomingDeparturesPanel = ({
                     </span>
                   </div>
 
-                  <div style={{
+                  <div className="pmy-upcoming-channels" style={{
                     display:'flex',
                     flexWrap:'wrap',
                     gap:'5px'
                   }}>
+                    <span className="pmy-upcoming-mobile-label" style={{ width:'100%' }}>
+                      {lang === 'pt' ? 'Canais' : 'Channels'}
+                    </span>
                     {(departure.platforms || []).map((platform) => (
                       <span
                         key={platform}
@@ -1858,7 +2130,8 @@ const UpcomingDeparturesPanel = ({
                     ))}
                   </div>
 
-                  <div style={{ textAlign:'right' }}>
+                  <div className="pmy-upcoming-seats" style={{ textAlign:'right' }}>
+                    <span className="pmy-upcoming-mobile-label">{lang === 'pt' ? 'Vagas disponíveis' : 'Available seats'}</span>
                     <span style={{
                       display:'inline-flex',
                       alignItems:'center',
@@ -2058,7 +2331,7 @@ const TourPerformanceRanking = ({
 
   return (
     <section className="pmy-card" style={{ padding:'22px 24px' }}>
-      <div style={{
+      <div className="pmy-ranking-header" style={{
         display:'flex',
         justifyContent:'space-between',
         alignItems:'flex-start',
@@ -2080,7 +2353,7 @@ const TourPerformanceRanking = ({
           </div>
         </div>
 
-        <div style={{
+        <div className="pmy-ranking-controls" style={{
           display:'flex',
           gap:'5px',
           padding:'4px',
@@ -2141,6 +2414,7 @@ const TourPerformanceRanking = ({
             return (
               <div
                 key={row.id}
+                className="pmy-ranking-row"
                 role="button"
                 tabIndex={0}
                 title={lang === 'pt' ? 'Clique para filtrar o Dashboard por este tour' : 'Click to filter the Dashboard by this tour'}
@@ -2171,7 +2445,7 @@ const TourPerformanceRanking = ({
                   outline:'none'
                 }}
               >
-                <div style={{
+                <div className="pmy-ranking-position" style={{
                   width:'34px',
                   height:'34px',
                   borderRadius:'11px',
@@ -2185,7 +2459,7 @@ const TourPerformanceRanking = ({
                   {index + 1}
                 </div>
 
-                <div style={{
+                <div className="pmy-ranking-tour" style={{
                   minWidth:0,
                   display:'flex',
                   alignItems:'center',
@@ -2243,7 +2517,7 @@ const TourPerformanceRanking = ({
                   </div>
                 </div>
 
-                <div style={{
+                <div className="pmy-ranking-bar" style={{
                   height:'10px',
                   borderRadius:'999px',
                   background:'#f0f1f0',
@@ -2258,7 +2532,7 @@ const TourPerformanceRanking = ({
                   }} />
                 </div>
 
-                <div>
+                <div className="pmy-ranking-bookings">
                   <span style={{
                     display:'block',
                     fontSize:'10px',
@@ -2272,7 +2546,7 @@ const TourPerformanceRanking = ({
                   <strong style={{ fontSize:'18px', color:'#333' }}>{row.bookings}</strong>
                 </div>
 
-                <div>
+                <div className="pmy-ranking-passengers">
                   <span style={{
                     display:'block',
                     fontSize:'10px',
@@ -2286,7 +2560,7 @@ const TourPerformanceRanking = ({
                   <strong style={{ fontSize:'18px', color:'#333' }}>{row.passengers}</strong>
                 </div>
 
-                <div style={{ textAlign:'right' }}>
+                <div className="pmy-ranking-revenue" style={{ textAlign:'right' }}>
                   <span style={{
                     display:'block',
                     fontSize:'10px',
@@ -2491,6 +2765,7 @@ export default function DashboardTab(props) {
 {/* ===== TAB: DASHBOARD ===== */}
           {activeTab==='dashboard' && (
             <div className="pmy-dashboard">
+              <DashboardResponsiveStyles />
               {dashboardIsLoading && dashboardHasAnyData && (
                 <div
                   role="status"
@@ -2701,7 +2976,7 @@ export default function DashboardTab(props) {
               })()}
 
               <section
-                className="pmy-card"
+                className="pmy-card pmy-cross-filter-bar"
                 style={{
                   padding:'12px 16px',
                   display:'flex',
@@ -2712,7 +2987,7 @@ export default function DashboardTab(props) {
                   borderStyle:'dashed'
                 }}
               >
-                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                <div className="pmy-cross-filter-actions" style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
                   <strong style={{ fontSize:'13px', color:'#4e564f' }}>
                     {lang === 'pt' ? 'Filtros cruzados' : 'Cross-filters'}
                   </strong>
