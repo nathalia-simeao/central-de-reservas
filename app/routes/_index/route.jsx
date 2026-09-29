@@ -1078,6 +1078,7 @@ function CentralDeReservasContent() {
 
   const dashboardOperationalAlerts = {
     sync: {
+      checked: Boolean(syncQueueLastLoaded),
       failed: failedSyncJobs.length,
       retry: retrySyncJobs.length,
       queueError: syncQueueError || "",
@@ -1288,17 +1289,6 @@ function CentralDeReservasContent() {
     loadSyncQueue,
     shopifyValidation?.status,
   ]);
-
-  useEffect(() => {
-    if (activeTab !== "dashboard") return undefined;
-
-    loadSyncQueue();
-    const dashboardQueueTimer = window.setInterval(loadSyncQueue, 60000);
-
-    return () => {
-      window.clearInterval(dashboardQueueTimer);
-    };
-  }, [activeTab, loadSyncQueue]);
 
   const runSyncQueueNow = async () => {
     setSyncQueueActionId("run");
