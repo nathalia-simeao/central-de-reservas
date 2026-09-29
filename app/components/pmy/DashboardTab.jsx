@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigation } from "react-router";
 
 
 const ExpandIcon = () => (
@@ -30,6 +31,141 @@ const KpiIcon = ({ name }) => {
 
   return <svg {...common}>{icons[name] || icons.bookings}</svg>;
 };
+
+const DashboardEmptyState = ({
+  icon = "chart",
+  title,
+  description,
+  compact = false,
+}) => {
+  const icons = {
+    chart: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></>,
+    calendar: <><path d="M6 2v3M18 2v3M4 8h16"/><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 13h3M13 13h3M8 17h3"/></>,
+    ranking: <><path d="M8 21V11h4v10M14 21V5h4v16M2 21v-6h4v6M2 21h18"/></>,
+    bookings: <><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></>,
+  };
+
+  return (
+    <div
+      role="status"
+      style={{
+        minHeight:compact ? '112px' : '150px',
+        display:'grid',
+        placeItems:'center',
+        textAlign:'center',
+        padding:compact ? '18px' : '24px'
+      }}
+    >
+      <div style={{ maxWidth:'470px' }}>
+        <span style={{
+          width:compact ? '38px' : '44px',
+          height:compact ? '38px' : '44px',
+          borderRadius:'14px',
+          display:'grid',
+          placeItems:'center',
+          margin:'0 auto 10px',
+          background:'color-mix(in srgb, var(--primary-green) 7%, white)',
+          color:'var(--primary-green)',
+          border:'1px solid color-mix(in srgb, var(--primary-green) 15%, #e7ebe7)'
+        }}>
+          <svg
+            width={compact ? 19 : 22}
+            height={compact ? 19 : 22}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {icons[icon] || icons.chart}
+          </svg>
+        </span>
+        <strong style={{
+          display:'block',
+          fontSize:compact ? '14px' : '15px',
+          color:'#404641',
+          marginBottom:'4px'
+        }}>
+          {title}
+        </strong>
+        <span style={{
+          display:'block',
+          fontSize:compact ? '12px' : '13px',
+          lineHeight:1.5,
+          color:'#858b86'
+        }}>
+          {description}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const DashboardLoadingSkeleton = ({ lang }) => (
+  <div className="pmy-dashboard" aria-live="polite" aria-busy="true">
+    <style>{`
+      @keyframes pmyDashPulse {
+        0%,100% { opacity:.48; }
+        50% { opacity:.82; }
+      }
+      .pmy-dash-skeleton {
+        background:linear-gradient(90deg,#f0f2f0 25%,#f7f8f7 50%,#f0f2f0 75%);
+        background-size:200% 100%;
+        animation:pmyDashPulse 1.25s ease-in-out infinite;
+        border-radius:12px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pmy-dash-skeleton { animation:none; }
+      }
+    `}</style>
+    <div style={{
+      display:'flex',
+      alignItems:'center',
+      gap:'9px',
+      padding:'11px 14px',
+      borderRadius:'14px',
+      background:'#fff',
+      border:'1px solid #eceeec',
+      color:'#687068',
+      fontSize:'13px',
+      fontWeight:'750',
+      marginBottom:'14px'
+    }}>
+      <span style={{
+        width:'8px',
+        height:'8px',
+        borderRadius:'50%',
+        background:'var(--primary-green)'
+      }} />
+      {lang === 'pt' ? 'Carregando dados do Dashboard…' : 'Loading Dashboard data…'}
+    </div>
+
+    <div style={{
+      display:'grid',
+      gridTemplateColumns:'repeat(5,minmax(0,1fr))',
+      gap:'12px',
+      marginBottom:'14px'
+    }}>
+      {Array.from({ length:5 }).map((_, index) => (
+        <div key={index} className="pmy-card" style={{ padding:'18px', minHeight:'132px' }}>
+          <div className="pmy-dash-skeleton" style={{ width:'34px', height:'34px', marginBottom:'18px' }} />
+          <div className="pmy-dash-skeleton" style={{ width:'62%', height:'11px', marginBottom:'11px' }} />
+          <div className="pmy-dash-skeleton" style={{ width:'45%', height:'28px', marginBottom:'10px' }} />
+          <div className="pmy-dash-skeleton" style={{ width:'76%', height:'10px' }} />
+        </div>
+      ))}
+    </div>
+
+    {[160, 230, 210].map((height, index) => (
+      <div key={index} className="pmy-card" style={{ padding:'20px', marginBottom:'14px' }}>
+        <div className="pmy-dash-skeleton" style={{ width:'190px', height:'13px', marginBottom:'16px' }} />
+        <div className="pmy-dash-skeleton" style={{ width:'100%', height:`${height}px` }} />
+      </div>
+    ))}
+  </div>
+);
 
 const dashboardChannelKey = (platform) => {
   const key = String(platform || "").trim().toUpperCase();
@@ -142,15 +278,15 @@ const TrendChart = ({
       </div>
 
       {!hasData ? (
-        <div className="pmy-trend-empty">
-          <div className="pmy-trend-empty-icon">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>
-            </svg>
-          </div>
-          <strong>{lang === "pt" ? "Ainda não há dados suficientes neste período" : "Not enough data in this period yet"}</strong>
-          <span>{lang === "pt" ? "Quando entrarem reservas confirmadas, a evolução aparecerá aqui." : "Confirmed bookings will appear here as they arrive."}</span>
-        </div>
+        <DashboardEmptyState
+          icon="chart"
+          title={lang === "pt"
+            ? "Ainda não há evolução para mostrar"
+            : "There is no trend to show yet"}
+          description={lang === "pt"
+            ? "Assim que houver reservas confirmadas neste período, o gráfico exibirá a evolução de reservas e receita real."
+            : "As soon as confirmed bookings exist in this period, the chart will show booking and real revenue trends."}
+        />
       ) : (
         <div className="pmy-trend-chart-wrap">
           {active && (
@@ -1070,6 +1206,15 @@ const ChannelBookingsChart = ({
         </div>
       </div>
 
+      {totalBookings === 0 ? (
+        <DashboardEmptyState
+          icon="bookings"
+          title={lang === 'pt' ? 'Nenhuma reserva confirmada neste recorte' : 'No confirmed bookings in this view'}
+          description={lang === 'pt'
+            ? 'Quando houver reservas no período e nos filtros selecionados, a distribuição por canal aparecerá aqui.'
+            : 'When bookings exist for the selected period and filters, the channel distribution will appear here.'}
+        />
+      ) : (
       <div
         role="img"
         aria-label={lang === 'pt' ? 'Gráfico de reservas confirmadas por canal' : 'Confirmed bookings by channel chart'}
@@ -1219,6 +1364,7 @@ const ChannelBookingsChart = ({
           );
         })}
       </div>
+      )}
 
       <div style={{
         marginTop:'15px',
@@ -1331,6 +1477,17 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
         </div>
       </div>
 
+      {total === 0 ? (
+        <DashboardEmptyState
+          icon="bookings"
+          compact
+          title={lang === 'pt' ? 'Nenhuma reserva classificada neste período' : 'No classified bookings in this period'}
+          description={lang === 'pt'
+            ? 'Os status serão distribuídos aqui assim que as primeiras reservas entrarem na Central.'
+            : 'Booking statuses will be distributed here as soon as the first bookings reach the Central.'}
+        />
+      ) : (
+      <>
       <div style={{
         height:'12px',
         borderRadius:'999px',
@@ -1435,6 +1592,9 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
         })}
       </div>
 
+      </>
+      )}
+
       {unclassified > 0 && (
         <div style={{
           marginTop:'13px',
@@ -1538,18 +1698,13 @@ const UpcomingDeparturesPanel = ({
       </div>
 
       {visibleDepartures.length === 0 ? (
-        <div style={{
-          minHeight:'150px',
-          display:'grid',
-          placeItems:'center',
-          textAlign:'center',
-          color:'#858b86',
-          fontSize:'13px'
-        }}>
-          {lang === 'pt'
-            ? 'Nenhuma saída confirmada ou pendente nos próximos 30 dias.'
-            : 'No confirmed or pending departures in the next 30 days.'}
-        </div>
+        <DashboardEmptyState
+          icon="calendar"
+          title={lang === 'pt' ? 'Nenhuma saída programada nos próximos 30 dias' : 'No departures scheduled in the next 30 days'}
+          description={lang === 'pt'
+            ? 'Saídas confirmadas ou pendentes aparecerão aqui automaticamente com horário, passageiros, canais e vagas.'
+            : 'Confirmed or pending departures will appear here automatically with time, passengers, channels and seats.'}
+        />
       ) : (
         <div style={{ overflowX:'auto' }}>
           <div style={{ minWidth:'920px' }}>
@@ -1953,18 +2108,13 @@ const TourPerformanceRanking = ({
       </div>
 
       {topRows.length === 0 ? (
-        <div style={{
-          minHeight:'150px',
-          display:'grid',
-          placeItems:'center',
-          textAlign:'center',
-          color:'#8b908d',
-          fontSize:'13px'
-        }}>
-          {lang === 'pt'
-            ? 'Ainda não há reservas confirmadas no período para montar o ranking.'
-            : 'There are no confirmed bookings in the period to build the ranking yet.'}
-        </div>
+        <DashboardEmptyState
+          icon="ranking"
+          title={lang === 'pt' ? 'O ranking ainda está começando' : 'The ranking is just getting started'}
+          description={lang === 'pt'
+            ? 'Assim que houver reservas confirmadas neste recorte, os tours serão ordenados por receita real, reservas ou passageiros.'
+            : 'As confirmed bookings arrive in this view, tours will be ranked by real revenue, bookings or passengers.'}
+        />
       ) : (
         <div style={{ display:'grid', gap:'8px' }}>
           {topRows.map((row, index) => {
@@ -2200,6 +2350,9 @@ export default function DashboardTab(props) {
     imageShape
   } = props;
 
+  const navigation = useNavigation();
+  const dashboardIsLoading = navigation.state === "loading";
+
   const [crossFilters, setCrossFilters] = useState({
     channel: null,
     channelLabel: "",
@@ -2311,12 +2464,113 @@ export default function DashboardTab(props) {
   }
 
   const hasCrossFilters = Boolean(crossFilters.channel || crossFilters.tourId);
+  const dashboardHasAnyData =
+    Number(totalSalesCount || 0) > 0 ||
+    Number(canceledCount || 0) > 0 ||
+    Number(upcomingCount || 0) > 0;
+  const dashboardHasLimitedData =
+    Number(totalSalesCount || 0) > 0 &&
+    Number(totalSalesCount || 0) < 5;
+
+  if (activeTab === 'dashboard' && dashboardIsLoading && !dashboardHasAnyData) {
+    return <DashboardLoadingSkeleton lang={lang} />;
+  }
 
   return (
     <>
 {/* ===== TAB: DASHBOARD ===== */}
           {activeTab==='dashboard' && (
             <div className="pmy-dashboard">
+              {dashboardIsLoading && dashboardHasAnyData && (
+                <div
+                  role="status"
+                  style={{
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'8px',
+                    padding:'9px 12px',
+                    marginBottom:'12px',
+                    borderRadius:'12px',
+                    background:'color-mix(in srgb, var(--primary-green) 5%, white)',
+                    border:'1px solid color-mix(in srgb, var(--primary-green) 14%, #e8ece8)',
+                    color:'#5d675f',
+                    fontSize:'12px',
+                    fontWeight:'750'
+                  }}
+                >
+                  <span style={{
+                    width:'7px',
+                    height:'7px',
+                    borderRadius:'50%',
+                    background:'var(--primary-green)'
+                  }} />
+                  {lang === 'pt' ? 'Atualizando os dados do Dashboard…' : 'Updating Dashboard data…'}
+                </div>
+              )}
+
+              {!dashboardHasAnyData && !dashboardIsLoading && (
+                <div
+                  className="pmy-card"
+                  style={{
+                    padding:'18px 20px',
+                    marginBottom:'14px',
+                    border:'1px solid color-mix(in srgb, var(--primary-green) 16%, #e6eae6)',
+                    background:'color-mix(in srgb, var(--primary-green) 4%, white)'
+                  }}
+                >
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
+                    <span style={{
+                      width:'38px',
+                      height:'38px',
+                      borderRadius:'13px',
+                      display:'grid',
+                      placeItems:'center',
+                      flex:'0 0 38px',
+                      background:'#fff',
+                      color:'var(--primary-green)',
+                      border:'1px solid #e5eae5',
+                      fontWeight:'900'
+                    }}>+</span>
+                    <div>
+                      <strong style={{ display:'block', fontSize:'15px', color:'#3f4740', marginBottom:'4px' }}>
+                        {lang === 'pt' ? 'O Dashboard está pronto para receber as primeiras reservas' : 'The Dashboard is ready for the first bookings'}
+                      </strong>
+                      <span style={{ display:'block', fontSize:'13px', color:'#798079', lineHeight:1.5 }}>
+                        {lang === 'pt'
+                          ? 'Os blocos abaixo não estão com erro. Eles serão preenchidos automaticamente conforme reservas, valores e próximas saídas entrarem na Central.'
+                          : 'The sections below are not broken. They will fill automatically as bookings, values and upcoming departures reach the Central.'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {dashboardHasLimitedData && !hasCrossFilters && (
+                <div
+                  style={{
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'9px',
+                    padding:'10px 13px',
+                    marginBottom:'12px',
+                    borderRadius:'12px',
+                    background:'#fff9ec',
+                    border:'1px solid #f0dfb8',
+                    color:'#765d22',
+                    fontSize:'12px',
+                    lineHeight:1.45
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize:'15px' }}>◌</span>
+                  <span>
+                    <strong>{lang === 'pt' ? 'Amostra inicial.' : 'Early sample.'}</strong>{' '}
+                    {lang === 'pt'
+                      ? 'O Dashboard já usa os dados reais disponíveis, e rankings e comparações ganharão mais contexto conforme novas reservas entrarem.'
+                      : 'The Dashboard already uses the available real data, and rankings and comparisons will gain more context as new bookings arrive.'}
+                  </span>
+                </div>
+              )}
+
               {(() => {
                 const confirmedPassengers = realConfirmedBookings.reduce(
                   (total, booking) => total + Number(booking?.totalParticipants || 0),
@@ -2633,7 +2887,14 @@ export default function DashboardTab(props) {
                       </div>
                       <div className={`pmy-accordion-content ${openCategories.includes(cat.name)?'open':''}`}>
                         {cat.toursList.length === 0 ? (
-                          <p style={{ padding:'10px 0', color:'#999', fontSize:'15px' }}>Nenhum passeio nesta categoria.</p>
+                          <DashboardEmptyState
+                            icon="bookings"
+                            compact
+                            title={lang === 'pt' ? 'Nenhum passeio nesta categoria' : 'No tours in this category'}
+                            description={lang === 'pt'
+                              ? 'Quando houver produtos vinculados a esta categoria, o desempenho aparecerá aqui.'
+                              : 'When products are linked to this category, performance will appear here.'}
+                          />
                         ) : cat.toursList.map(tour => {
                           const masterTourId = tour.masterTourId || tour.id;
                           const tourBookings = filteredConfirmedBookings.filter(b => b.tourId === masterTourId);
