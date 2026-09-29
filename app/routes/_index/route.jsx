@@ -3539,20 +3539,33 @@ function CentralDeReservasContent() {
     }
     .pmy-sidebar-collapse {
       position:absolute;
-      right:-14px;
-      top:82px;
-      width:30px;
-      height:30px;
+      right:-19px;
+      top:78px;
+      width:40px;
+      height:40px;
       border-radius:50%;
-      border:1px solid var(--pmy-border);
-      background:#fff;
-      color:var(--primary-green);
+      border:2px solid var(--surface-color);
+      background:var(--primary-green);
+      color:#fff;
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
-      box-shadow:0 8px 18px rgba(24,55,34,.10);
-      z-index:5;
+      box-shadow:0 10px 26px color-mix(in srgb, var(--primary-green) 28%, rgba(0,0,0,.14));
+      z-index:360;
+      font-size:22px;
+      font-weight:900;
+      line-height:1;
+      transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .pmy-sidebar-collapse:hover {
+      transform:scale(1.07);
+      box-shadow:0 12px 30px color-mix(in srgb, var(--primary-green) 36%, rgba(0,0,0,.18));
+      background:color-mix(in srgb, var(--primary-green) 88%, #000 12%);
+    }
+    .pmy-sidebar-collapse:focus-visible {
+      outline:3px solid color-mix(in srgb, var(--primary-green) 22%, transparent);
+      outline-offset:3px;
     }
 
     .pmy-menu { padding:10px 12px 18px; gap:7px; overflow-y:auto; flex:1; min-height:0; }
@@ -3593,9 +3606,9 @@ function CentralDeReservasContent() {
     }
     .pmy-lang-divider { background:var(--sidebar-border); }
     .pmy-sidebar-collapse {
-      border-color:var(--sidebar-border);
-      background:var(--surface-color);
-      color:var(--primary-green);
+      border-color:var(--surface-color);
+      background:var(--primary-green);
+      color:#fff;
     }
     .pmy-menu-icon { width:20px; height:20px; display:grid; place-items:center; flex:0 0 20px; }
     .pmy-menu-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3632,9 +3645,10 @@ function CentralDeReservasContent() {
       padding:0;
     }
     .pmy-content-inner {
-      width:min(100%, 1560px);
-      margin:0 auto;
-      padding:34px clamp(24px, 3.2vw, 54px) 64px;
+      width:100%;
+      max-width:none;
+      margin:0;
+      padding:26px 22px 56px;
     }
     .pmy-header-top {
       min-height:72px;
@@ -3716,20 +3730,20 @@ function CentralDeReservasContent() {
       background:#fff;
     }
 
-    .pmy-grid { gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+    .pmy-grid { gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); }
 
     /* ===== DASHBOARD / KPI SHELL ===== */
-    .pmy-dashboard { display:flex; flex-direction:column; gap:18px; }
+    .pmy-dashboard { display:flex; flex-direction:column; gap:22px; }
     .pmy-dashboard-kpi-grid {
       display:grid;
       grid-template-columns:repeat(6,minmax(0,1fr));
-      gap:14px;
+      gap:16px;
     }
     .pmy-kpi-card {
       appearance:none;
       position:relative;
       min-width:0;
-      min-height:166px;
+      min-height:176px;
       border:1px solid var(--pmy-border);
       border-radius:22px;
       background:var(--surface-color);
@@ -3773,12 +3787,12 @@ function CentralDeReservasContent() {
     .pmy-kpi-expand { color:#9ca3af; transition:color .18s ease, transform .18s ease; }
     .pmy-kpi-card:hover .pmy-kpi-expand { color:var(--primary-green); transform:translate(1px,-1px); }
     .pmy-kpi-label {
-      font-size:11px;
+      font-size:12px;
       text-transform:uppercase;
-      letter-spacing:.08em;
+      letter-spacing:.075em;
       font-weight:800;
       color:var(--text-muted);
-      margin-bottom:7px;
+      margin-bottom:8px;
     }
     .pmy-kpi-value {
       font-family:var(--pmy-heading-font);
@@ -3795,9 +3809,9 @@ function CentralDeReservasContent() {
     }
     .pmy-kpi-detail {
       margin-top:auto;
-      font-size:11px;
-      line-height:1.35;
-      color:#7b817d;
+      font-size:12px;
+      line-height:1.4;
+      color:#737a75;
     }
     .pmy-kpi-gold .pmy-kpi-icon { background:#fff7e8; color:#9a6b13; }
     .pmy-kpi-gold .pmy-kpi-value { color:#8c651c; }
@@ -3829,15 +3843,15 @@ function CentralDeReservasContent() {
       min-width:0;
     }
     .pmy-dashboard-status-item strong {
-      font-size:16px;
+      font-size:18px;
       line-height:1.05;
       color:var(--text-dark);
       font-weight:800;
     }
     .pmy-dashboard-status-item span:not(.pmy-dashboard-status-dot) {
-      font-size:10px;
-      line-height:1.3;
-      color:#7d817e;
+      font-size:11px;
+      line-height:1.35;
+      color:#747a76;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -3871,10 +3885,10 @@ function CentralDeReservasContent() {
       margin-bottom:8px;
     }
     .pmy-trend-eyebrow {
-      font-size:10px;
+      font-size:11px;
       line-height:1;
       text-transform:uppercase;
-      letter-spacing:.14em;
+      letter-spacing:.13em;
       font-weight:800;
       color:var(--primary-green);
       opacity:.74;
@@ -3882,7 +3896,7 @@ function CentralDeReservasContent() {
     }
     .pmy-trend-title {
       font-family:var(--pmy-heading-font);
-      font-size:24px;
+      font-size:27px;
       line-height:1.05;
       color:var(--title-color);
       font-weight:700;
@@ -3890,8 +3904,8 @@ function CentralDeReservasContent() {
       letter-spacing:-.02em;
     }
     .pmy-trend-subtitle {
-      font-size:11px;
-      color:#7b817d;
+      font-size:12px;
+      color:#737a75;
       margin:0;
     }
     .pmy-trend-meta {
@@ -3909,7 +3923,7 @@ function CentralDeReservasContent() {
       border:1px solid color-mix(in srgb, var(--primary-green) 15%, var(--pmy-border));
       background:var(--pmy-green-soft);
       color:var(--primary-green);
-      font-size:10px;
+      font-size:11px;
       font-weight:800;
       letter-spacing:.03em;
     }
@@ -3924,8 +3938,8 @@ function CentralDeReservasContent() {
       display:inline-flex;
       align-items:center;
       gap:6px;
-      font-size:10px;
-      color:#6f7471;
+      font-size:11px;
+      color:#676e69;
       font-weight:700;
     }
     .pmy-legend-bar {
@@ -3977,10 +3991,10 @@ function CentralDeReservasContent() {
     .pmy-trend-axis-label,
     .pmy-trend-x-label {
       fill:color-mix(in srgb, var(--text-dark) 58%, transparent);
-      font-size:10px;
+      font-size:11px;
       font-weight:700;
     }
-    .pmy-trend-x-label { font-size:9px; }
+    .pmy-trend-x-label { font-size:10px; }
     .pmy-trend-bar {
       fill:color-mix(in srgb, var(--primary-green) 24%, transparent);
       stroke:color-mix(in srgb, var(--primary-green) 34%, transparent);
@@ -4025,14 +4039,14 @@ function CentralDeReservasContent() {
       gap:3px;
     }
     .pmy-trend-tooltip strong {
-      font-size:10px;
+      font-size:11px;
       color:var(--text-dark);
       font-weight:800;
       margin-bottom:2px;
     }
     .pmy-trend-tooltip span {
-      font-size:10px;
-      color:#6f7471;
+      font-size:11px;
+      color:#676e69;
       font-weight:700;
     }
     .pmy-trend-axis-captions {
@@ -4041,9 +4055,9 @@ function CentralDeReservasContent() {
       align-items:center;
       margin-top:-6px;
       padding:0 14px 0 8px;
-      font-size:9px;
+      font-size:10px;
       font-weight:800;
-      color:#8b908d;
+      color:#7f8581;
       text-transform:uppercase;
       letter-spacing:.08em;
     }
@@ -4229,7 +4243,7 @@ function CentralDeReservasContent() {
       .pmy-trend-card { padding:20px 18px 14px; }
       .pmy-trend-chart { min-width:760px; }
       .pmy-trend-chart-wrap { overflow-x:auto; padding-bottom:6px; }
-      .pmy-content-inner { padding-inline:24px; }
+      .pmy-content-inner { padding-inline:18px; }
       .pmy-agenda-form-grid { grid-template-columns:1fr; }
       .pmy-media-layout { grid-template-columns:1fr; }
       .pmy-media-upload-panel { position:static; }
