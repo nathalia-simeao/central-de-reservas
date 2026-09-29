@@ -107,83 +107,6 @@ const isLikelyTemporaryUploadUrl = (value) => {
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
-  const requestUrl = new URL(request.url);
-  const logoFileId = String(requestUrl.searchParams.get("pmyLogoFileId") || "").trim();
-  const logoVariant = String(requestUrl.searchParams.get("pmyLogoVariant") || "").trim().toLowerCase();
-  const logoRemoveVariant = String(requestUrl.searchParams.get("pmyLogoRemove") || "").trim().toLowerCase();
-  let logoSelectionMessage = "";
-
-  if (session?.shop && ["light", "dark"].includes(logoRemoveVariant)) {
-    try {
-      const field = logoRemoveVariant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
-      await prisma.businessSetting.upsert({
-        where: { shop: session.shop },
-        create: { shop: session.shop, [field]: null },
-        update: { [field]: null },
-      });
-      logoSelectionMessage = "Logo removida ✓";
-    } catch (error) {
-      console.error("[PMY] logo remove through loader failed:", error);
-      logoSelectionMessage = `Erro: ${error?.message || "não foi possível remover a logo."}`;
-    }
-  }
-
-  if (
-    session?.shop &&
-    logoFileId &&
-    ["light", "dark"].includes(logoVariant)
-  ) {
-    try {
-      if (!logoFileId.startsWith("gid://shopify/MediaImage/")) {
-        throw new Error("Selecione uma imagem válida da biblioteca Shopify.");
-      }
-
-      const selectedFileResponse = await admin.graphql(
-        `query PmySelectedBrandLogo($id: ID!) {
-          node(id: $id) {
-            __typename
-            ... on MediaImage {
-              id
-              image {
-                url
-                width
-                height
-              }
-            }
-          }
-        }`,
-        { variables: { id: logoFileId } },
-      );
-
-      const selectedFilePayload = await selectedFileResponse.json();
-
-      if (selectedFilePayload?.errors?.length) {
-        throw new Error(
-          selectedFilePayload.errors.map((item) => item.message).join("; "),
-        );
-      }
-
-      const selectedFile = selectedFilePayload?.data?.node;
-      const selectedUrl = String(selectedFile?.image?.url || "").trim();
-
-      if (selectedFile?.__typename !== "MediaImage" || !selectedUrl) {
-        throw new Error("A Shopify não devolveu a URL da imagem selecionada.");
-      }
-
-      const field = logoVariant === "dark" ? "logoOnDarkUrl" : "logoOnLightUrl";
-      await prisma.businessSetting.upsert({
-        where: { shop: session.shop },
-        create: { shop: session.shop, [field]: selectedUrl },
-        update: { [field]: selectedUrl },
-      });
-
-      logoSelectionMessage = "Logo salva ✓";
-    } catch (error) {
-      console.error("[PMY] logo select through loader failed:", error);
-      logoSelectionMessage = `Erro: ${error?.message || "não foi possível salvar a logo."}`;
-    }
-  }
-
   // Keep Shopify order webhooks in sync with the installed shop.
   // registerWebhooks is idempotent: it creates missing subscriptions and
   // updates callbacks when needed.
@@ -726,7 +649,6 @@ export const loader = async ({ request }) => {
     gygIntegrationStatus,
     businessSettings,
     platformFieldMappings,
-    logoSelectionMessage,
   });
 };
 
