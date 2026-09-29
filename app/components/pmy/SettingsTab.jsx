@@ -5,9 +5,7 @@ export default function SettingsTab(props) {
     allPlatforms,
     defaultMappings,
     fieldMappings,
-    logoLightInputRef,
-    logoDarkInputRef,
-    handleBrandLogoChange,
+    handleChooseBrandLogo,
     handleRemoveBrandLogo,
     handleThemeChange,
     handleRestoreThemeDefaults,
@@ -62,7 +60,7 @@ export default function SettingsTab(props) {
                   <div>
                     <h3 style={{ marginBottom:'6px' }}>{tr("🖼️ Identidade da Agência", "🖼️ Agency Identity")}</h3>
                     <p style={{ fontSize:'13px', color:'#666', margin:0, maxWidth:'720px', lineHeight:'1.55' }}>
-                      {tr("A logo fica salva no banco da Central. Você configura uma versão para fundo claro e outra para fundo escuro; a barra lateral escolhe automaticamente a correta.", "The logo is saved in the Central database. Configure one version for light backgrounds and another for dark backgrounds; the sidebar automatically chooses the correct one.")}
+                      {tr("Escolha as duas versões diretamente na biblioteca da Shopify. A seleção fica salva na própria instalação do app e a barra lateral usa automaticamente a versão correta.", "Choose both versions directly from Shopify's library. The selection is stored in the app installation and the sidebar automatically uses the correct version.")}
                     </p>
                   </div>
                   <div style={{
@@ -109,22 +107,14 @@ export default function SettingsTab(props) {
                         : <span>{tr("Sem logo clara", "No light-background logo")}</span>}
                     </div>
 
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                      onChange={(event) => handleBrandLogoChange('light', event)}
-                      style={{ display:'none' }}
-                      ref={logoLightInputRef}
-                    />
-
                     <div className="pmy-brand-logo-actions">
                       <button
                         type="button"
                         className="pmy-format-btn"
-                        disabled={logoUploadingVariant === 'light'}
-                        onClick={() => logoLightInputRef.current?.click()}
+                        disabled={logoUploadingVariant !== null}
+                        onClick={() => handleChooseBrandLogo('light')}
                       >
-                        {logoUploadingVariant === 'light' ? tr('⏳ Salvando...', '⏳ Saving...') : tr('📤 Carregar versão clara', '📤 Upload colored version')}
+                        {logoUploadingVariant === 'light' ? tr('⏳ Abrindo biblioteca...', '⏳ Opening library...') : tr('🖼️ Escolher na biblioteca Shopify', '🖼️ Choose from Shopify library')}
                       </button>
                       {logoOnLightUrl && (
                         <button
@@ -156,22 +146,14 @@ export default function SettingsTab(props) {
                           : <span>{tr("Sem logo escura", "No dark-background logo")}</span>}
                     </div>
 
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                      onChange={(event) => handleBrandLogoChange('dark', event)}
-                      style={{ display:'none' }}
-                      ref={logoDarkInputRef}
-                    />
-
                     <div className="pmy-brand-logo-actions">
                       <button
                         type="button"
                         className="pmy-format-btn"
-                        disabled={logoUploadingVariant === 'dark'}
-                        onClick={() => logoDarkInputRef.current?.click()}
+                        disabled={logoUploadingVariant !== null}
+                        onClick={() => handleChooseBrandLogo('dark')}
                       >
-                        {logoUploadingVariant === 'dark' ? tr('⏳ Salvando...', '⏳ Saving...') : tr('📤 Carregar versão branca', '📤 Upload white version')}
+                        {logoUploadingVariant === 'dark' ? tr('⏳ Abrindo biblioteca...', '⏳ Opening library...') : tr('🖼️ Escolher na biblioteca Shopify', '🖼️ Choose from Shopify library')}
                       </button>
                       {logoOnDarkUrl && (
                         <button
