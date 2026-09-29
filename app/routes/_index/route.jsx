@@ -390,6 +390,7 @@ function isDarkThemeColor(value) {
   return false;
 }
 
+// Production recovery baseline 2026-09-29.
 function CentralDeReservasContent() {
   const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
