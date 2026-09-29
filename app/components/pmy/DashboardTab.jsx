@@ -710,41 +710,127 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
 
                   <div style={{
                     display:'grid',
-                    gridTemplateColumns:'1fr 1fr',
-                    gap:'9px',
+                    gridTemplateColumns:'minmax(0,1fr) 26px minmax(0,1fr)',
+                    gap:'8px',
+                    alignItems:'stretch',
                     marginBottom:'12px'
                   }}>
-                    <div style={{
-                      border:'1px solid #e5e5e5',
-                      borderRadius:'11px',
-                      padding:'9px 10px',
-                      background:calendarSelectionStep === "start"
-                        ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
-                        : '#fff'
-                    }}>
-                      <span style={{ display:'block', fontSize:'8px', color:'#999', fontWeight:'850', textTransform:'uppercase', letterSpacing:'.05em' }}>
-                        {lang === 'pt' ? 'De' : 'From'}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarSelectionStep("start");
+                        const anchor = selectedStartDate || new Date();
+                        setCalendarMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+                      }}
+                      style={{
+                        border:calendarSelectionStep === "start"
+                          ? '1.5px solid var(--primary-green)'
+                          : '1px solid #e4e6e4',
+                        borderRadius:'12px',
+                        padding:'9px 10px',
+                        background:calendarSelectionStep === "start"
+                          ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                          : '#fff',
+                        textAlign:'left',
+                        cursor:'pointer',
+                        minWidth:0,
+                        boxShadow:calendarSelectionStep === "start"
+                          ? '0 0 0 3px color-mix(in srgb, var(--primary-green) 7%, transparent)'
+                          : 'none'
+                      }}
+                    >
+                      <span style={{
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'space-between',
+                        gap:'8px',
+                        fontSize:'8px',
+                        color:calendarSelectionStep === "start" ? 'var(--primary-green)' : '#999',
+                        fontWeight:'900',
+                        textTransform:'uppercase',
+                        letterSpacing:'.05em'
+                      }}>
+                        <span>{lang === 'pt' ? 'De' : 'From'}</span>
+                        <span aria-hidden="true" style={{ fontSize:'12px', opacity:.72 }}>📅</span>
                       </span>
-                      <strong style={{ display:'block', marginTop:'3px', fontSize:'11px', color:'#333' }}>
-                        {selectedStartDate ? formatDate(selectedStartDate) : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                      <strong style={{
+                        display:'block',
+                        marginTop:'4px',
+                        fontSize:'12px',
+                        lineHeight:1.2,
+                        color:'#2f2f2f',
+                        whiteSpace:'nowrap'
+                      }}>
+                        {selectedStartDate
+                          ? new Intl.DateTimeFormat(lang === "pt" ? "pt-BR" : "en-GB").format(selectedStartDate)
+                          : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
                       </strong>
+                    </button>
+
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        display:'grid',
+                        placeItems:'center',
+                        color:'#a3aaa4',
+                        fontSize:'15px',
+                        fontWeight:'900'
+                      }}
+                    >
+                      →
                     </div>
 
-                    <div style={{
-                      border:'1px solid #e5e5e5',
-                      borderRadius:'11px',
-                      padding:'9px 10px',
-                      background:calendarSelectionStep === "end"
-                        ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
-                        : '#fff'
-                    }}>
-                      <span style={{ display:'block', fontSize:'8px', color:'#999', fontWeight:'850', textTransform:'uppercase', letterSpacing:'.05em' }}>
-                        {lang === 'pt' ? 'Até' : 'To'}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarSelectionStep("end");
+                        const anchor = selectedEndDate || selectedStartDate || new Date();
+                        setCalendarMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+                      }}
+                      style={{
+                        border:calendarSelectionStep === "end"
+                          ? '1.5px solid var(--primary-green)'
+                          : '1px solid #e4e6e4',
+                        borderRadius:'12px',
+                        padding:'9px 10px',
+                        background:calendarSelectionStep === "end"
+                          ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                          : '#fff',
+                        textAlign:'left',
+                        cursor:'pointer',
+                        minWidth:0,
+                        boxShadow:calendarSelectionStep === "end"
+                          ? '0 0 0 3px color-mix(in srgb, var(--primary-green) 7%, transparent)'
+                          : 'none'
+                      }}
+                    >
+                      <span style={{
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'space-between',
+                        gap:'8px',
+                        fontSize:'8px',
+                        color:calendarSelectionStep === "end" ? 'var(--primary-green)' : '#999',
+                        fontWeight:'900',
+                        textTransform:'uppercase',
+                        letterSpacing:'.05em'
+                      }}>
+                        <span>{lang === 'pt' ? 'Até' : 'To'}</span>
+                        <span aria-hidden="true" style={{ fontSize:'12px', opacity:.72 }}>📅</span>
                       </span>
-                      <strong style={{ display:'block', marginTop:'3px', fontSize:'11px', color:'#333' }}>
-                        {selectedEndDate ? formatDate(selectedEndDate) : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                      <strong style={{
+                        display:'block',
+                        marginTop:'4px',
+                        fontSize:'12px',
+                        lineHeight:1.2,
+                        color:'#2f2f2f',
+                        whiteSpace:'nowrap'
+                      }}>
+                        {selectedEndDate
+                          ? new Intl.DateTimeFormat(lang === "pt" ? "pt-BR" : "en-GB").format(selectedEndDate)
+                          : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
                       </strong>
-                    </div>
+                    </button>
                   </div>
 
                   <div style={{
