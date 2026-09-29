@@ -3492,6 +3492,7 @@ function CentralDeReservasContent() {
       --pmy-border: rgba(28, 47, 34, 0.10);
       --pmy-shadow: 0 18px 45px rgba(22, 44, 29, 0.075);
       --pmy-heading-font: 'Asul', Georgia, serif;
+      --pmy-ui-font: 'Inter', 'Assistant', Arial, sans-serif;
       --pmy-pill: 999px;
     }
 
@@ -4293,6 +4294,131 @@ function CentralDeReservasContent() {
     .pmy-mapping-table { min-width:680px; }
     .pmy-form-box:has(.pmy-prod-table),
     .pmy-form-box:has(.pmy-mapping-table) { overflow-x:auto; }
+
+    /* ===== FINAL DESKTOP READABILITY OVERRIDES ===== */
+    .pmy-app-container,
+    .pmy-sidebar,
+    .pmy-content,
+    .pmy-dashboard,
+    .pmy-dashboard button,
+    .pmy-dashboard input,
+    .pmy-dashboard select,
+    .pmy-dashboard textarea,
+    .pmy-menu-item,
+    .pmy-menu-label,
+    .pmy-date-btn {
+      font-family:var(--pmy-ui-font) !important;
+    }
+
+    .pmy-page-title,
+    .pmy-trend-title {
+      font-family:var(--pmy-heading-font) !important;
+    }
+
+    .pmy-menu-item,
+    .pmy-menu-label {
+      font-size:15px !important;
+      line-height:1.3;
+    }
+
+    .pmy-eyebrow,
+    .pmy-trend-eyebrow {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:12px !important;
+      line-height:1.2;
+    }
+
+    .pmy-kpi-label {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:14px !important;
+      line-height:1.25;
+      letter-spacing:.065em;
+    }
+
+    .pmy-kpi-value {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:clamp(30px, 2vw, 36px) !important;
+      line-height:1.05;
+      font-weight:800;
+    }
+
+    .pmy-kpi-detail {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:14px !important;
+      line-height:1.45;
+      color:#68706a;
+    }
+
+    .pmy-dashboard-status-strip {
+      min-height:66px;
+      border-radius:18px;
+    }
+
+    .pmy-dashboard-status-item {
+      min-height:66px;
+      padding:14px 18px !important;
+      gap:13px;
+    }
+
+    .pmy-dashboard-status-item strong {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:22px !important;
+      line-height:1.05;
+      font-weight:800;
+    }
+
+    .pmy-dashboard-status-item span:not(.pmy-dashboard-status-dot) {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:14px !important;
+      line-height:1.35;
+      font-weight:500;
+      color:#667069;
+    }
+
+    .pmy-dashboard-status-dot {
+      width:10px;
+      height:10px;
+      flex-basis:10px;
+    }
+
+    .pmy-trend-subtitle {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:14px !important;
+      line-height:1.4;
+    }
+
+    .pmy-trend-granularity,
+    .pmy-trend-legend span {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:13px !important;
+    }
+
+    .pmy-trend-axis-label {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:13px !important;
+      font-weight:700;
+    }
+
+    .pmy-trend-x-label {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:12px !important;
+      font-weight:700;
+    }
+
+    .pmy-trend-axis-captions {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:12px !important;
+    }
+
+    .pmy-trend-tooltip strong,
+    .pmy-trend-tooltip span {
+      font-family:var(--pmy-ui-font) !important;
+      font-size:13px !important;
+    }
+
+    .pmy-date-btn {
+      font-size:14px !important;
+    }
 
     @media (max-width: 1180px) {
       .pmy-dashboard-kpi-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
