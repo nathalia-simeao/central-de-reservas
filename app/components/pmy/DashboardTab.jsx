@@ -2578,9 +2578,58 @@ export default function DashboardTab(props) {
                   </div>
                   {categoriesData.map(cat => (
                     <div key={cat.name}>
-                      <div className="pmy-accordion-header" onClick={() => toggleCategory(cat.name)}>
+                      <div
+                        className="pmy-accordion-header"
+                        onClick={() => toggleCategory(cat.name)}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={openCategories.includes(cat.name)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleCategory(cat.name);
+                          }
+                        }}
+                      >
                         <span className="pmy-accordion-title">{cat.name}</span>
-                        <span className="pmy-accordion-arrow">▼</span>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            width:'34px',
+                            height:'34px',
+                            borderRadius:'10px',
+                            border:'1px solid #e8ebe8',
+                            background:openCategories.includes(cat.name)
+                              ? 'color-mix(in srgb, var(--primary-green) 7%, white)'
+                              : '#fff',
+                            color:openCategories.includes(cat.name)
+                              ? 'var(--primary-green)'
+                              : '#7c847d',
+                            display:'grid',
+                            placeItems:'center',
+                            flex:'0 0 34px',
+                            transition:'background .2s ease, border-color .2s ease, color .2s ease'
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{
+                              transform:openCategories.includes(cat.name)
+                                ? 'rotate(180deg)'
+                                : 'rotate(0deg)',
+                              transition:'transform .24s cubic-bezier(.4,0,.2,1)'
+                            }}
+                          >
+                            <path d="M6.5 9.5 12 15l5.5-5.5" />
+                          </svg>
+                        </span>
                       </div>
                       <div className={`pmy-accordion-content ${openCategories.includes(cat.name)?'open':''}`}>
                         {cat.toursList.length === 0 ? (
