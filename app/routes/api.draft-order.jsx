@@ -211,6 +211,11 @@ async function validateVariants(admin, productId, lineItems, selectedTime) {
     if (!variant || variant.product?.id !== productId) {
       throw new Error("Uma variante selecionada não pertence ao tour escolhido.");
     }
+    if (variant.availableForSale === false) {
+      throw new Error(
+        `A variante "${variant.title}" não está disponível para venda no Shopify.`,
+      );
+    }
 
     const variantTime = timeFromTitle(variant.title);
     if (variantTime && selectedTime && variantTime !== selectedTime) {
