@@ -328,7 +328,7 @@ async function requestValidationOrderCancellation(admin, orderId) {
           orderId: $orderId
           notifyCustomer: false
           reason: OTHER
-          restock: false
+          restock: true
           staffNote: "PMY E2E validation cleanup"
         ) {
           job {
@@ -509,8 +509,17 @@ async function validationStatus(admin, orderId = null) {
     shopifyOrder?.cancelledAt || cancellationWebhook?.payload?.cancelled_at,
   );
 
+  const hasRemainingAfterBooking =
+    remainingAfterBooking !== null &&
+    remainingAfterBooking !== undefined &&
+    Number.isFinite(Number(remainingAfterBooking));
+  const hasOccupiedAfterBooking =
+    occupiedAfterBooking !== null &&
+    occupiedAfterBooking !== undefined &&
+    Number.isFinite(Number(occupiedAfterBooking));
+
   const expectedRemainingAfterCancellation =
-    Number.isFinite(Number(remainingAfterBooking))
+    hasRemainingAfterBooking
       ? Math.min(
           Number.isFinite(remainingBefore)
             ? remainingBefore
@@ -522,7 +531,7 @@ async function validationStatus(admin, orderId = null) {
         : null;
 
   const expectedOccupiedAfterCancellation =
-    Number.isFinite(Number(occupiedAfterBooking))
+    hasOccupiedAfterBooking
       ? Math.max(0, Number(occupiedAfterBooking) - participants)
       : Number.isFinite(occupiedBefore)
         ? occupiedBefore
