@@ -16,6 +16,7 @@ export default function GuidesTab(props) {
     activeTab,
     ddiList,
     getFlagUrl,
+    guideAssignments = [],
     guideDdi,
     guideEmail,
     guideName,
@@ -62,20 +63,64 @@ export default function GuidesTab(props) {
     { value: "30d", label: tr("30 dias", "30 days") },
   ];
 
-  const sampleUpcoming =
+  const lisbonDateKey = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Lisbon",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+        .formatToParts(date)
+        .filter((part) => part.type !== "literal")
+        .map((part) => [part.type, part.value]),
+    );
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+
+  const now = new Date();
+  const todayLisbon = lisbonDateKey(now);
+  const filterDays =
     upcomingToursFilter === "today"
-      ? [
-          {
-            name: "Fátima, Batalha e Nazaré",
-            when: tr("Hoje, 14:00 (Guia: Renan)", "Today, 14:00 (Guide: Renan)"),
-            tone: "accent",
-          },
-        ]
-      : [
-          { name: "Fátima, Batalha e Nazaré", when: tr("Amanhã, 09:00", "Tomorrow, 09:00") },
-          { name: "Walking Tour Lisboa", when: tr("Daqui a 3 dias", "In 3 days") },
-          { name: "Sintra e Cascais", when: tr("Daqui a 5 dias", "In 5 days") },
-        ];
+      ? 0
+      : Number.parseInt(upcomingToursFilter, 10) || 7;
+  const filterLimit = new Date(now);
+  filterLimit.setDate(filterLimit.getDate() + filterDays);
+
+  const upcomingAssignments = (guideAssignments || [])
+    .filter((assignment) => assignment?.status === "ASSIGNED")
+    .filter((assignment) => {
+      const start = new Date(assignment.startTime);
+      if (Number.isNaN(start.getTime()) || start < now) return false;
+      if (upcomingToursFilter === "today") {
+        return lisbonDateKey(start) === todayLisbon;
+      }
+      return start <= filterLimit;
+    })
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+  const formatAssignmentWhen = (assignment) => {
+    const start = new Date(assignment.startTime);
+    const datePart = start.toLocaleDateString(
+      lang === "pt" ? "pt-PT" : "en-GB",
+      {
+        timeZone: "Europe/Lisbon",
+        day: "2-digit",
+        month: "short",
+      },
+    );
+    const timePart = start.toLocaleTimeString(
+      lang === "pt" ? "pt-PT" : "en-GB",
+      {
+        timeZone: "Europe/Lisbon",
+        hour: "2-digit",
+        minute: "2-digit",
+      },
+    );
+    return `${datePart} · ${timePart} · ${assignment.guide?.name || tr("Guia não encontrado", "Guide unavailable")}`;
+  };
 
   return (
     <div className="pmy-ds-stack">
@@ -284,17 +329,30 @@ export default function GuidesTab(props) {
         />
 
         <div className="pmy-ds-panel-soft">
-          <div className="pmy-ds-list-plain">
-            {sampleUpcoming.map((tour) => (
-              <div key={`${tour.name}-${tour.when}`} className="pmy-ds-list-plain__row">
-                <span className="pmy-ds-list-plain__title">
-                  <Icon name="calendar" size={17} />
-                  {tour.name}
-                </span>
-                <Badge tone={tour.tone || "neutral"}>{tour.when}</Badge>
-              </div>
-            ))}
-          </div>
+          {upcomingAssignments.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title={tr("Nenhuma escala neste período", "No assignments in this period")}
+              description={tr(
+                "As escalas publicadas na Agenda Central aparecerão aqui automaticamente.",
+                "Assignments published in the Central Agenda will appear here automatically.",
+              )}
+            />
+          ) : (
+            <div className="pmy-ds-list-plain">
+              {upcomingAssignments.map((assignment) => (
+                <div key={assignment.id} className="pmy-ds-list-plain__row">
+                  <span className="pmy-ds-list-plain__title">
+                    <Icon name="calendar" size={17} />
+                    {assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
+                  </span>
+                  <Badge tone={lisbonDateKey(assignment.startTime) === todayLisbon ? "accent" : "neutral"}>
+                    {formatAssignmentWhen(assignment)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </div>
