@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button, Card, Icon, SectionHeader } from "./PmyUI";
 
 
 const ExpandIcon = () => (
@@ -539,389 +540,161 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   ];
 
   return (
-    <section className="pmy-card" style={{ marginBottom:'20px', padding:'20px 22px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'16px', flexWrap:'wrap', marginBottom:'18px' }}>
-        <div>
-          <div className="pmy-trend-eyebrow">
-            {lang === 'pt' ? 'Distribuição por canal' : 'Channel distribution'}
-          </div>
-          <h2 className="pmy-trend-title" style={{ marginBottom:'4px' }}>
-            {lang === 'pt' ? 'Reservas por Canal' : 'Bookings by Channel'}
-          </h2>
-          <div className="pmy-trend-subtitle">
-            {rangeLabel} · {lang === 'pt' ? 'somente reservas confirmadas' : 'confirmed bookings only'}
-          </div>
-        </div>
+    <Card className="pmy-ds-dashboard-card">
+      <div className="pmy-ds-dashboard-header">
+        <SectionHeader
+          eyebrow={lang === "pt" ? "Distribuição por canal" : "Channel distribution"}
+          title={lang === "pt" ? "Reservas por Canal" : "Bookings by Channel"}
+          subtitle={`${rangeLabel} · ${lang === "pt" ? "somente reservas confirmadas" : "confirmed bookings only"}`}
+          className="pmy-u-mb-0"
+        />
 
-        <div style={{ display:'flex', alignItems:'flex-end', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end' }}>
-          <div style={{ position:'relative' }}>
-            <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', fontWeight:'700', marginBottom:'4px' }}>
-              {lang === 'pt' ? 'Período do gráfico' : 'Chart period'}
+        <div className="pmy-ds-dashboard-controls">
+          <div className="pmy-ds-period-control">
+            <div className="pmy-ds-period-label">
+              {lang === "pt" ? "Período do gráfico" : "Chart period"}
             </div>
 
             <button
               type="button"
+              className={`pmy-ds-period-trigger ${periodMenuOpen ? "is-open" : ""}`}
               onClick={() => {
                 if (!periodMenuOpen && selectedRange === "custom") ensureCustomDates();
                 setPeriodMenuOpen((open) => !open);
               }}
-              style={{
-                minWidth:'154px',
-                height:'38px',
-                border:'1px solid var(--dashboard-border)',
-                borderRadius:'12px',
-                background:'var(--surface-color)',
-                padding:'0 12px',
-                display:'flex',
-                alignItems:'center',
-                justifyContent:'space-between',
-                gap:'10px',
-                fontSize:'13px',
-                fontWeight:'800',
-                color:'var(--dashboard-text)',
-                cursor:'pointer',
-                boxShadow:periodMenuOpen ? '0 8px 24px rgba(0,0,0,.08)' : 'none'
-              }}
             >
-              <span style={{ display:'flex', alignItems:'center', gap:'7px' }}>
-                <span aria-hidden="true">📅</span>
+              <span className="pmy-ds-period-trigger__copy">
+                <Icon name="calendar" size={15} />
                 <span>{rangeLabel}</span>
               </span>
-              <span
-                aria-hidden="true"
-                style={{
-                  fontSize:'13px',
-                  transform:periodMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition:'transform .18s ease'
-                }}
-              >
-                ▾
-              </span>
+              <Icon name="chevronDown" size={15} className="pmy-ds-period-trigger__chevron" />
             </button>
 
-            {periodMenuOpen && (
-              <div
-                style={{
-                  position:'absolute',
-                  top:'calc(100% + 8px)',
-                  right:0,
-                  width:'520px',
-                  maxWidth:'min(520px, calc(100vw - 48px))',
-                  display:'grid',
-                  gridTemplateColumns:'168px minmax(0,1fr)',
-                  background:'var(--surface-color)',
-                  border:'1px solid var(--dashboard-border)',
-                  borderRadius:'18px',
-                  boxShadow:'0 20px 55px rgba(29,45,34,.16)',
-                  overflow:'hidden',
-                  zIndex:80
-                }}
-              >
-                <div style={{
-                  padding:'12px',
-                  borderRight:'1px solid var(--dashboard-border)',
-                  background:'var(--dashboard-soft)'
-                }}>
-                  <div style={{
-                    fontSize:'13px',
-                    color:'var(--dashboard-muted)',
-                    fontWeight:'800',
-                    textTransform:'uppercase',
-                    letterSpacing:'.06em',
-                    padding:'3px 8px 8px'
-                  }}>
-                    {lang === 'pt' ? 'Períodos rápidos' : 'Quick ranges'}
+            {periodMenuOpen ? (
+              <div className="pmy-ds-period-menu">
+                <div className="pmy-ds-period-presets">
+                  <div className="pmy-ds-period-presets__label">
+                    {lang === "pt" ? "Períodos rápidos" : "Quick ranges"}
                   </div>
 
-                  <div style={{ display:'grid', gap:'3px' }}>
-                    {presetOptions.map(([value, label]) => {
-                      const active = selectedRange === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => choosePreset(value)}
-                          style={{
-                            border:0,
-                            borderRadius:'10px',
-                            background:active ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))' : 'transparent',
-                            color:active ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
-                            padding:'9px 10px',
-                            textAlign:'left',
-                            fontSize:'13px',
-                            fontWeight:active ? '850' : '700',
-                            cursor:'pointer'
-                          }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
+                  <div className="pmy-ds-period-preset-list">
+                    {presetOptions.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`pmy-ds-period-preset ${selectedRange === value ? "is-active" : ""}`}
+                        onClick={() => choosePreset(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
 
                     <button
                       type="button"
+                      className={`pmy-ds-period-preset ${selectedRange === "custom" ? "is-active" : ""}`}
                       onClick={() => choosePreset("custom")}
-                      style={{
-                        border:0,
-                        borderRadius:'10px',
-                        background:selectedRange === "custom"
-                          ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))'
-                          : 'transparent',
-                        color:selectedRange === "custom" ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
-                        padding:'9px 10px',
-                        textAlign:'left',
-                        fontSize:'13px',
-                        fontWeight:selectedRange === "custom" ? '850' : '700',
-                        cursor:'pointer'
-                      }}
                     >
-                      {lang === 'pt' ? 'Personalizado' : 'Custom'}
+                      {lang === "pt" ? "Personalizado" : "Custom"}
                     </button>
                   </div>
                 </div>
 
-                <div style={{ padding:'17px 18px 16px' }}>
-                  <div style={{
-                    display:'flex',
-                    alignItems:'center',
-                    justifyContent:'space-between',
-                    gap:'12px',
-                    marginBottom:'16px'
-                  }}>
+                <div className="pmy-ds-period-calendar">
+                  <div className="pmy-ds-period-calendar__header">
                     <div>
-                      <div style={{ fontSize:'15px', fontWeight:'900', color:'var(--dashboard-text)' }}>
-                        {lang === 'pt' ? 'Calendário' : 'Calendar'}
+                      <div className="pmy-ds-period-calendar__title">
+                        {lang === "pt" ? "Calendário" : "Calendar"}
                       </div>
-                      <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', marginTop:'2px' }}>
-                        {lang === 'pt'
-                          ? 'Escolha uma data inicial e final'
-                          : 'Choose a start and end date'}
+                      <div className="pmy-ds-period-calendar__subtitle">
+                        {lang === "pt"
+                          ? "Escolha uma data inicial e final"
+                          : "Choose a start and end date"}
                       </div>
                     </div>
-                    <span style={{
-                      width:'34px',
-                      height:'34px',
-                      borderRadius:'10px',
-                      display:'grid',
-                      placeItems:'center',
-                      background:'color-mix(in srgb, var(--dashboard-accent) 9%, var(--surface-color))',
-                      fontSize:'16px'
-                    }}>
-                      📆
+                    <span className="pmy-ds-period-calendar__icon">
+                      <Icon name="calendar" size={17} />
                     </span>
                   </div>
 
-                  <div style={{
-                    display:'grid',
-                    gridTemplateColumns:'minmax(0,1fr) 26px minmax(0,1fr)',
-                    gap:'8px',
-                    alignItems:'stretch',
-                    marginBottom:'12px'
-                  }}>
+                  <div className="pmy-ds-date-range">
                     <button
                       type="button"
+                      className={`pmy-ds-date-box ${calendarSelectionStep === "start" ? "is-active" : ""}`}
                       onClick={() => {
                         setCalendarSelectionStep("start");
                         const anchor = selectedStartDate || new Date();
                         setCalendarMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
                       }}
-                      style={{
-                        border:calendarSelectionStep === "start"
-                          ? '1.5px solid var(--dashboard-accent)'
-                          : '1px solid var(--dashboard-border)',
-                        borderRadius:'12px',
-                        padding:'9px 10px',
-                        background:calendarSelectionStep === "start"
-                          ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
-                          : 'var(--surface-color)',
-                        textAlign:'left',
-                        cursor:'pointer',
-                        minWidth:0,
-                        boxShadow:calendarSelectionStep === "start"
-                          ? '0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 7%, transparent)'
-                          : 'none'
-                      }}
                     >
-                      <span style={{
-                        display:'flex',
-                        alignItems:'center',
-                        justifyContent:'space-between',
-                        gap:'8px',
-                        fontSize:'15px',
-                        color:calendarSelectionStep === "start" ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
-                        fontWeight:'900',
-                        textTransform:'uppercase',
-                        letterSpacing:'.05em'
-                      }}>
-                        <span>{lang === 'pt' ? 'De' : 'From'}</span>
-                        <span aria-hidden="true" style={{ fontSize:'15px', opacity:.72 }}>📅</span>
+                      <span className="pmy-ds-date-box__label">
+                        <span>{lang === "pt" ? "De" : "From"}</span>
+                        <Icon name="calendar" size={14} />
                       </span>
-                      <strong style={{
-                        display:'block',
-                        marginTop:'4px',
-                        fontSize:'15px',
-                        lineHeight:1.2,
-                        color:'var(--dashboard-text)',
-                        whiteSpace:'nowrap'
-                      }}>
+                      <strong className="pmy-ds-date-box__value">
                         {selectedStartDate
                           ? new Intl.DateTimeFormat(lang === "pt" ? "pt-BR" : "en-GB").format(selectedStartDate)
-                          : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                          : (lang === "pt" ? "Escolher data" : "Choose date")}
                       </strong>
                     </button>
 
-                    <div
-                      aria-hidden="true"
-                      style={{
-                        display:'grid',
-                        placeItems:'center',
-                        color:'var(--dashboard-muted)',
-                        fontSize:'15px',
-                        fontWeight:'900'
-                      }}
-                    >
-                      →
+                    <div className="pmy-ds-date-range__arrow" aria-hidden="true">
+                      <Icon name="chevronRight" size={15} />
                     </div>
 
                     <button
                       type="button"
+                      className={`pmy-ds-date-box ${calendarSelectionStep === "end" ? "is-active" : ""}`}
                       onClick={() => {
                         setCalendarSelectionStep("end");
                         const anchor = selectedEndDate || selectedStartDate || new Date();
                         setCalendarMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
                       }}
-                      style={{
-                        border:calendarSelectionStep === "end"
-                          ? '1.5px solid var(--dashboard-accent)'
-                          : '1px solid var(--dashboard-border)',
-                        borderRadius:'12px',
-                        padding:'9px 10px',
-                        background:calendarSelectionStep === "end"
-                          ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
-                          : 'var(--surface-color)',
-                        textAlign:'left',
-                        cursor:'pointer',
-                        minWidth:0,
-                        boxShadow:calendarSelectionStep === "end"
-                          ? '0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 7%, transparent)'
-                          : 'none'
-                      }}
                     >
-                      <span style={{
-                        display:'flex',
-                        alignItems:'center',
-                        justifyContent:'space-between',
-                        gap:'8px',
-                        fontSize:'15px',
-                        color:calendarSelectionStep === "end" ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
-                        fontWeight:'900',
-                        textTransform:'uppercase',
-                        letterSpacing:'.05em'
-                      }}>
-                        <span>{lang === 'pt' ? 'Até' : 'To'}</span>
-                        <span aria-hidden="true" style={{ fontSize:'15px', opacity:.72 }}>📅</span>
+                      <span className="pmy-ds-date-box__label">
+                        <span>{lang === "pt" ? "Até" : "To"}</span>
+                        <Icon name="calendar" size={14} />
                       </span>
-                      <strong style={{
-                        display:'block',
-                        marginTop:'4px',
-                        fontSize:'15px',
-                        lineHeight:1.2,
-                        color:'var(--dashboard-text)',
-                        whiteSpace:'nowrap'
-                      }}>
+                      <strong className="pmy-ds-date-box__value">
                         {selectedEndDate
                           ? new Intl.DateTimeFormat(lang === "pt" ? "pt-BR" : "en-GB").format(selectedEndDate)
-                          : (lang === 'pt' ? 'Escolher data' : 'Choose date')}
+                          : (lang === "pt" ? "Escolher data" : "Choose date")}
                       </strong>
                     </button>
                   </div>
 
-                  <div style={{
-                    border:'1px solid var(--dashboard-border)',
-                    borderRadius:'14px',
-                    padding:'11px',
-                    background:'var(--surface-color)',
-                    marginBottom:'13px'
-                  }}>
-                    <div style={{
-                      display:'flex',
-                      alignItems:'center',
-                      justifyContent:'space-between',
-                      gap:'10px',
-                      marginBottom:'10px'
-                    }}>
-                      <button
-                        type="button"
+                  <div className="pmy-ds-mini-calendar">
+                    <div className="pmy-ds-mini-calendar__nav">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="chevronLeft"
+                        iconOnly
+                        aria-label={lang === "pt" ? "Mês anterior" : "Previous month"}
                         onClick={() => moveCalendarMonth(-1)}
-                        aria-label={lang === 'pt' ? 'Mês anterior' : 'Previous month'}
-                        style={{
-                          width:'30px',
-                          height:'30px',
-                          border:'1px solid var(--dashboard-border)',
-                          borderRadius:'9px',
-                          background:'var(--surface-color)',
-                          cursor:'pointer',
-                          fontSize:'15px',
-                          color:'var(--dashboard-text)'
-                        }}
-                      >
-                        ‹
-                      </button>
-
-                      <strong style={{ fontSize:'13px', color:'var(--dashboard-text)', textTransform:'capitalize' }}>
-                        {calendarMonthLabel}
-                      </strong>
-
-                      <button
-                        type="button"
+                      />
+                      <strong className="pmy-ds-mini-calendar__month">{calendarMonthLabel}</strong>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="chevronRight"
+                        iconOnly
+                        aria-label={lang === "pt" ? "Próximo mês" : "Next month"}
                         onClick={() => moveCalendarMonth(1)}
-                        aria-label={lang === 'pt' ? 'Próximo mês' : 'Next month'}
-                        style={{
-                          width:'30px',
-                          height:'30px',
-                          border:'1px solid var(--dashboard-border)',
-                          borderRadius:'9px',
-                          background:'var(--surface-color)',
-                          cursor:'pointer',
-                          fontSize:'15px',
-                          color:'var(--dashboard-text)'
-                        }}
-                      >
-                        ›
-                      </button>
+                      />
                     </div>
 
-                    <div style={{
-                      display:'grid',
-                      gridTemplateColumns:'repeat(7,1fr)',
-                      gap:'4px',
-                      marginBottom:'4px'
-                    }}>
+                    <div className="pmy-ds-mini-calendar__week">
                       {calendarWeekdays.map((day, index) => (
-                        <div
-                          key={`weekday-${index}`}
-                          style={{
-                            height:'22px',
-                            display:'grid',
-                            placeItems:'center',
-                            fontSize:'15px',
-                            color:'var(--dashboard-muted)',
-                            fontWeight:'850'
-                          }}
-                        >
+                        <div key={`weekday-${index}`} className="pmy-ds-mini-calendar__weekday">
                           {day}
                         </div>
                       ))}
                     </div>
 
-                    <div style={{
-                      display:'grid',
-                      gridTemplateColumns:'repeat(7,1fr)',
-                      gap:'4px'
-                    }}>
+                    <div className="pmy-ds-mini-calendar__days">
                       {calendarDays.map((date, index) => {
                         if (!date) {
-                          return <div key={`empty-${index}`} style={{ height:'30px' }} />;
+                          return <div key={`empty-${index}`} className="pmy-ds-mini-calendar__empty" />;
                         }
 
                         const isStart = sameCalendarDay(date, selectedStartDate);
@@ -937,27 +710,13 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                           <button
                             key={date.toISOString()}
                             type="button"
+                            className={[
+                              "pmy-ds-mini-calendar__day",
+                              isToday ? "is-today" : "",
+                              inRange ? "is-range" : "",
+                              isStart || isEnd ? "is-selected" : "",
+                            ].filter(Boolean).join(" ")}
                             onClick={() => handleCalendarDayClick(date)}
-                            style={{
-                              height:'30px',
-                              border:isToday && !isStart && !isEnd
-                                ? '1px solid color-mix(in srgb, var(--dashboard-accent) 38%, var(--dashboard-border))'
-                                : '1px solid transparent',
-                              borderRadius:'9px',
-                              background:isStart || isEnd
-                                ? 'var(--dashboard-accent)'
-                                : inRange
-                                  ? 'color-mix(in srgb, var(--dashboard-accent) 10%, var(--surface-color))'
-                                  : 'transparent',
-                              color:isStart || isEnd
-                                ? 'var(--dashboard-accent-contrast)'
-                                : inRange
-                                  ? 'var(--dashboard-accent)'
-                                  : 'var(--dashboard-text)',
-                              fontSize:'15px',
-                              fontWeight:isStart || isEnd || isToday ? '850' : '650',
-                              cursor:'pointer'
-                            }}
                           >
                             {date.getDate()}
                           </button>
@@ -966,86 +725,44 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                     </div>
                   </div>
 
-                  <div style={{
-                    padding:'9px 10px',
-                    borderRadius:'10px',
-                    background:'var(--dashboard-soft)',
-                    color:'var(--dashboard-muted)',
-                    fontSize:'13px',
-                    lineHeight:'1.45',
-                    marginBottom:'13px'
-                  }}>
+                  <div className="pmy-ds-period-help">
                     {selectedStartDate && selectedEndDate
                       ? `${formatDate(selectedStartDate)} – ${formatDate(selectedEndDate)}`
                       : calendarSelectionStep === "end"
-                        ? (lang === 'pt' ? 'Agora escolha a data final.' : 'Now choose the end date.')
-                        : (lang === 'pt' ? 'Clique no primeiro dia do período.' : 'Click the first day of the range.')}
+                        ? (lang === "pt" ? "Agora escolha a data final." : "Now choose the end date.")
+                        : (lang === "pt" ? "Clique no primeiro dia do período." : "Click the first day of the range.")}
                   </div>
 
-                  <div style={{ display:'flex', justifyContent:'flex-end', gap:'8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setPeriodMenuOpen(false)}
-                      style={{
-                        height:'34px',
-                        border:'1px solid var(--dashboard-border)',
-                        borderRadius:'10px',
-                        background:'var(--surface-color)',
-                        padding:'0 12px',
-                        fontSize:'15px',
-                        fontWeight:'800',
-                        cursor:'pointer'
-                      }}
-                    >
-                      {lang === 'pt' ? 'Fechar' : 'Close'}
-                    </button>
-                    <button
-                      type="button"
+                  <div className="pmy-ds-period-actions">
+                    <Button variant="secondary" size="sm" onClick={() => setPeriodMenuOpen(false)}>
+                      {lang === "pt" ? "Fechar" : "Close"}
+                    </Button>
+                    <Button
+                      size="sm"
                       disabled={!customStart || !customEnd}
                       onClick={applyCustomRange}
-                      style={{
-                        height:'34px',
-                        border:0,
-                        borderRadius:'10px',
-                        background:'var(--dashboard-accent)',
-                        color:'var(--dashboard-accent-contrast)',
-                        padding:'0 14px',
-                        fontSize:'15px',
-                        fontWeight:'850',
-                        cursor:customStart && customEnd ? 'pointer' : 'not-allowed',
-                        opacity:customStart && customEnd ? 1 : .45
-                      }}
                     >
-                      {lang === 'pt' ? 'Aplicar período' : 'Apply range'}
-                    </button>
+                      {lang === "pt" ? "Aplicar período" : "Apply range"}
+                    </Button>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div style={{
-            minWidth:'118px',
-            padding:'9px 12px',
-            border:'1px solid var(--dashboard-border)',
-            borderRadius:'14px',
-            background:'var(--dashboard-soft)',
-            textAlign:'right'
-          }}>
-            <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
-              {lang === 'pt' ? 'Total no período' : 'Period total'}
-            </div>
-            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--dashboard-accent)', lineHeight:1.1, marginTop:'3px' }}>
-              {totalBookings}
-            </div>
+          <div className="pmy-ds-total-badge">
+            <span className="pmy-ds-total-badge__label">
+              {lang === "pt" ? "Total no período" : "Period total"}
+            </span>
+            <strong className="pmy-ds-total-badge__value">{totalBookings}</strong>
           </div>
         </div>
       </div>
 
       <div
         role="img"
-        aria-label={lang === 'pt' ? 'Gráfico de reservas confirmadas por canal' : 'Confirmed bookings by channel chart'}
-        style={{ display:'grid', gap:'8px' }}
+        aria-label={lang === "pt" ? "Gráfico de reservas confirmadas por canal" : "Confirmed bookings by channel chart"}
+        className="pmy-ds-channel-list"
       >
         {data.map((item) => {
           const share = totalBookings > 0 ? (item.bookings / totalBookings) * 100 : 0;
@@ -1057,124 +774,70 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
           return (
             <div
               key={item.key}
+              className={`pmy-ds-channel-item ${isExpanded ? "is-expanded" : ""}`}
               onMouseEnter={() => setExpandedKey(item.key)}
               onMouseLeave={() => setExpandedKey(null)}
-              style={{
-                border:isExpanded ? '1px solid color-mix(in srgb, var(--dashboard-accent) 22%, var(--dashboard-border))' : '1px solid transparent',
-                borderRadius:'12px',
-                background:isExpanded ? 'color-mix(in srgb, var(--dashboard-accent) 4%, var(--surface-color))' : 'transparent',
-                transition:'background .16s ease, border-color .16s ease'
-              }}
             >
               <button
                 type="button"
+                className="pmy-ds-channel-row"
                 onClick={() => setExpandedKey((current) => current === item.key ? null : item.key)}
                 onFocus={() => setExpandedKey(item.key)}
-                style={{
-                  width:'100%',
-                  border:0,
-                  background:'transparent',
-                  display:'grid',
-                  gridTemplateColumns:'minmax(108px, 145px) minmax(120px, 1fr) 72px',
-                  alignItems:'center',
-                  gap:'12px',
-                  padding:'8px 9px',
-                  textAlign:'left',
-                  cursor:'pointer'
-                }}
               >
-                <div style={{ minWidth:0 }}>
-                  <div style={{
-                    fontSize:'15px',
-                    fontWeight:'850',
-                    color:isExpanded ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
-                    overflow:'hidden',
-                    textOverflow:'ellipsis',
-                    whiteSpace:'nowrap'
-                  }}>
-                    {item.label}
-                  </div>
-                  <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', marginTop:'1px' }}>
-                    {share.toFixed(1)}%
-                  </div>
+                <div className="pmy-ds-channel-copy">
+                  <div className="pmy-ds-channel-name">{item.label}</div>
+                  <div className="pmy-ds-channel-share">{share.toFixed(1)}%</div>
                 </div>
 
-                <div style={{
-                  height:'18px',
-                  borderRadius:'999px',
-                  background:'var(--dashboard-soft)',
-                  overflow:'hidden',
-                  position:'relative'
-                }}>
+                <div className="pmy-ds-channel-track">
                   <div
+                    className="pmy-ds-channel-fill"
                     style={{
-                      width:`${width}%`,
-                      minWidth:item.bookings > 0 ? '6px' : 0,
-                      height:'100%',
-                      borderRadius:'inherit',
-                      background:'var(--dashboard-accent)',
-                      opacity:isExpanded ? 1 : 0.8,
-                      transition:'width .35s ease, opacity .18s ease'
+                      "--pmy-bar-width": `${width}%`,
+                      "--pmy-bar-min": item.bookings > 0 ? "6px" : "0px",
                     }}
                   />
                 </div>
 
-                <div style={{ textAlign:'right' }}>
-                  <strong style={{ fontSize:'15px', color:'var(--dashboard-text)' }}>{item.bookings}</strong>
-                  <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', marginTop:'1px' }}>
-                    {lang === 'pt' ? 'reservas' : 'bookings'}
-                  </span>
+                <div className="pmy-ds-channel-total">
+                  <strong>{item.bookings}</strong>
+                  <span>{lang === "pt" ? "reservas" : "bookings"}</span>
                 </div>
               </button>
 
-              {isExpanded && (
-                <div style={{
-                  margin:'0 9px 9px',
-                  padding:'10px 12px',
-                  borderRadius:'10px',
-                  background:'var(--surface-color)',
-                  border:'1px solid var(--dashboard-border)',
-                  display:'grid',
-                  gridTemplateColumns:'repeat(3,minmax(0,1fr))',
-                  gap:'10px'
-                }}>
+              {isExpanded ? (
+                <div className="pmy-ds-channel-detail">
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
-                      {lang === 'pt' ? 'Reservas' : 'Bookings'}
+                    <span className="pmy-ds-metric-label">
+                      {lang === "pt" ? "Reservas" : "Bookings"}
                     </span>
-                    <strong style={{ fontSize:'15px' }}>{item.bookings}</strong>
+                    <strong className="pmy-ds-metric-value">{item.bookings}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
-                      {lang === 'pt' ? 'Passageiros' : 'Passengers'}
+                    <span className="pmy-ds-metric-label">
+                      {lang === "pt" ? "Passageiros" : "Passengers"}
                     </span>
-                    <strong style={{ fontSize:'15px' }}>{item.passengers}</strong>
+                    <strong className="pmy-ds-metric-value">{item.passengers}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
-                      {lang === 'pt' ? 'Participação' : 'Share'}
+                    <span className="pmy-ds-metric-label">
+                      {lang === "pt" ? "Participação" : "Share"}
                     </span>
-                    <strong style={{ fontSize:'15px' }}>{share.toFixed(1)}%</strong>
+                    <strong className="pmy-ds-metric-value">{share.toFixed(1)}%</strong>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
       </div>
 
-      <div style={{
-        marginTop:'15px',
-        paddingTop:'11px',
-        borderTop:'1px solid var(--dashboard-border)',
-        fontSize:'15px',
-        color:'var(--dashboard-muted)'
-      }}>
-        {lang === 'pt'
-          ? 'Outros agrupa reservas manuais, Central PMY e qualquer origem ainda não classificada.'
-          : 'Other groups manual bookings, Central PMY and any source not yet classified.'}
+      <div className="pmy-ds-card-note">
+        {lang === "pt"
+          ? "Outros agrupa reservas manuais, Central PMY e qualquer origem ainda não classificada."
+          : "Other groups manual bookings, Central PMY and any source not yet classified."}
       </div>
-    </section>
+    </Card>
   );
 };
 
