@@ -412,7 +412,7 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -581,22 +581,79 @@ function CentralDeReservasContent() {
     civitatis:    [],               // preenchido após conectar Civitatis API
   });
 
-  // I. CONEXÕES DE PLATAFORMAS (NOVO)
+  // I. CONEXÕES DE PLATAFORMAS
+  // Uma credencial salva não significa "canal conectado". Viator/Civitatis
+  // só ficam conectados depois que a Supplier API recebe tráfego autenticado real.
+  const initialSecretByProvider = Object.fromEntries(
+    (integrationCredentialStatus?.statuses || []).map((item) => [
+      String(item.provider || "").toUpperCase(),
+      item,
+    ]),
+  );
+  const formatCredentialCheck = (value) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleString("pt-PT", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  };
+  const providerConnectionFromStatus = (provider, environmentConfigured = false) => {
+    const record = initialSecretByProvider[provider] || null;
+    return {
+      connected: record?.status === "CONNECTED",
+      configured: Boolean(record?.hasCredential || environmentConfigured),
+      credentialSource: record?.hasCredential ? "ENCRYPTED" : environmentConfigured ? "ENV" : null,
+      lastValidationStatus: record?.lastValidationStatus || null,
+      lastValidationMessage: record?.lastValidationMessage || null,
+      lastValidatedAt: record?.lastValidatedAt || null,
+      lastSync: formatCredentialCheck(record?.lastValidatedAt) || null,
+      fingerprint: record?.credentialFingerprint || null,
+      environment: record?.environment || null,
+    };
+  };
   const [platformConnections, setPlatformConnections] = useState({
-    shopify:      { connected: true,  accountName: shopName, lastSync: new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"}) },
-    viator:       { connected: false },
+    shopify: {
+      connected: true,
+      configured: true,
+      accountName: shopName,
+      lastSync: new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"}),
+    },
+    viator: providerConnectionFromStatus(
+      "VIATOR",
+      Boolean(integrationCredentialStatus?.environment?.viator?.configured),
+    ),
     getyourguide: {
       connected: Boolean(gygIntegrationStatus?.credentialsReady),
+      configured: Boolean(gygIntegrationStatus?.credentialsReady),
       accountName: "PMY Supplier API v1",
       lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
     },
-    tripadvisor:  { connected: false, contentOnly: true, accountName: "Tripadvisor Terra", lastSync: "Não é canal de reservas" },
-    headout:      { connected: false },
-    civitatis:    { connected: false },
+    tripadvisor: {
+      connected: false,
+      configured: false,
+      contentOnly: true,
+      accountName: "Tripadvisor Terra",
+      lastSync: "Não é canal de reservas",
+    },
+    headout: {
+      connected: false,
+      configured: false,
+      available: false,
+      onboardingPending: true,
+    },
+    civitatis: providerConnectionFromStatus(
+      "CIVITATIS",
+      Boolean(integrationCredentialStatus?.environment?.civitatis?.configured),
+    ),
   });
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [apiSecretInput, setApiSecretInput] = useState("");
+  const [integrationEnvironmentInput, setIntegrationEnvironmentInput] = useState("test");
+  const [integrationCredentialMessage, setIntegrationCredentialMessage] = useState("");
+  const [integrationCredentialLoading, setIntegrationCredentialLoading] = useState(false);
 
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
@@ -2330,26 +2387,151 @@ function CentralDeReservasContent() {
     }
   };
 
-  // HANDLERS DE PLATAFORMAS (NOVO)
+  // HANDLERS DE PLATAFORMAS
+  const applyCredentialStatus = (key, status) => {
+    if (!status) {
+      setPlatformConnections((current) => ({
+        ...current,
+        [key]: {
+          ...(current[key] || {}),
+          connected: false,
+          configured: false,
+          credentialSource: null,
+          lastValidationStatus: null,
+          lastValidationMessage: null,
+          lastValidatedAt: null,
+          lastSync: null,
+          fingerprint: null,
+        },
+      }));
+      return;
+    }
+
+    setPlatformConnections((current) => ({
+      ...current,
+      [key]: {
+        ...(current[key] || {}),
+        connected: status.status === "CONNECTED",
+        configured: Boolean(status.hasCredential),
+        credentialSource: "ENCRYPTED",
+        lastValidationStatus: status.lastValidationStatus || null,
+        lastValidationMessage: status.lastValidationMessage || null,
+        lastValidatedAt: status.lastValidatedAt || null,
+        lastSync: formatCredentialCheck(status.lastValidatedAt),
+        fingerprint: status.credentialFingerprint || null,
+        environment: status.environment || null,
+      },
+    }));
+  };
+
   const handleOpenConnect = (key) => {
     setConnectingPlatform(key);
     setApiKeyInput("");
     setApiSecretInput("");
+    setIntegrationCredentialMessage("");
+    setIntegrationEnvironmentInput(
+      platformConnections[key]?.environment === "live" ? "live" : "test",
+    );
     if (key === "getyourguide") {
       setGygConfigMessage("");
     }
   };
 
-  const handleConfirmConnect = (key) => {
-    if (apiKeyInput.trim()) {
-      setPlatformConnections(p => ({ ...p, [key]: { connected: true, accountName: `Conta ${allPlatforms.find(pl=>pl.key===key)?.name}`, lastSync: "Agora mesmo" } }));
-      setConnectingPlatform(null); setApiKeyInput(""); setApiSecretInput("");
+  const callIntegrationCredentialApi = async (formData) => {
+    const response = await fetch("/api/integration-credentials", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.error || "Não foi possível atualizar a integração.");
+    }
+    return payload;
+  };
+
+  const handleConfirmConnect = async (key) => {
+    if (!["viator", "civitatis"].includes(key)) return;
+
+    setIntegrationCredentialLoading(true);
+    setIntegrationCredentialMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "save");
+      fd.append("provider", key.toUpperCase());
+
+      if (key === "viator") {
+        fd.append("apiKey", apiKeyInput.trim());
+        fd.append("supplierId", apiSecretInput.trim());
+      } else {
+        fd.append("token", apiKeyInput.trim());
+        fd.append("environment", integrationEnvironmentInput);
+      }
+
+      const payload = await callIntegrationCredentialApi(fd);
+      applyCredentialStatus(key, payload.status);
+      setApiKeyInput("");
+      setApiSecretInput("");
+      setIntegrationCredentialMessage(
+        payload.message ||
+          "Credencial salva e validada no backend. Aguardando tráfego real do canal.",
+      );
+    } catch (error) {
+      setIntegrationCredentialMessage(
+        error?.message || "Falha ao salvar e testar a credencial.",
+      );
+    } finally {
+      setIntegrationCredentialLoading(false);
     }
   };
 
-  const handleDisconnect = (key) => {
-    if (window.confirm(`Desconectar ${allPlatforms.find(p=>p.key===key)?.name}?`))
-      setPlatformConnections(p => ({ ...p, [key]: { connected: false } }));
+  const handleTestIntegrationCredential = async (key) => {
+    if (!["viator", "civitatis"].includes(key)) return;
+
+    setIntegrationCredentialLoading(true);
+    setIntegrationCredentialMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "test");
+      fd.append("provider", key.toUpperCase());
+      const payload = await callIntegrationCredentialApi(fd);
+      applyCredentialStatus(key, payload.status);
+      setIntegrationCredentialMessage(
+        "Credencial criptografada validada pela autenticação da Supplier API.",
+      );
+    } catch (error) {
+      setIntegrationCredentialMessage(
+        error?.message || "Falha ao testar a credencial.",
+      );
+    } finally {
+      setIntegrationCredentialLoading(false);
+    }
+  };
+
+  const handleDisconnect = async (key) => {
+    if (!["viator", "civitatis"].includes(key)) return;
+
+    const platformName = allPlatforms.find((item) => item.key === key)?.name || key;
+    if (!window.confirm(`Remover a credencial armazenada de ${platformName}?`)) return;
+
+    setIntegrationCredentialLoading(true);
+    setIntegrationCredentialMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "remove");
+      fd.append("provider", key.toUpperCase());
+      await callIntegrationCredentialApi(fd);
+      applyCredentialStatus(key, null);
+      setApiKeyInput("");
+      setApiSecretInput("");
+      setIntegrationCredentialMessage("Credencial criptografada removida.");
+    } catch (error) {
+      setIntegrationCredentialMessage(
+        error?.message || "Falha ao remover a credencial.",
+      );
+    } finally {
+      setIntegrationCredentialLoading(false);
+    }
   };
 
   const handleUpdateFieldMapping = (platform, field, value) => {
@@ -2426,19 +2608,21 @@ function CentralDeReservasContent() {
     return cells;
   };
 
-  // Instruções específicas de onde achar o token em cada plataforma
+  // Configuração segura por canal. Credenciais só aparecem quando existe
+  // um adapter real capaz de validá-las.
   const platformTokenGuide = {
-    shopify: null, // Shopify não precisa de token — já conectado via app
+    shopify: null,
     viator: {
       steps: [
-        "Acesse o portal de fornecedores: supplier.viator.com",
-        "Faça login com sua conta de operador",
-        "Vá em Account → API Settings → Generate API Key",
-        "Copie a chave e cole no campo abaixo",
+        "Use a API Key e o Supplier ID definidos no onboarding da Viator Supplier API.",
+        "Ao salvar, a Central criptografa os valores no IntegrationSecret.",
+        "O teste valida a mesma autenticação usada pelos endpoints reais da Viator.",
+        "O canal só aparece como conectado depois de uma chamada autenticada real da Viator.",
       ],
-      field1Label: "API Key do Fornecedor Viator",
-      field1Placeholder: "Ex: PARTNER-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      field2Label: null,
+      field1Label: "API Key da Viator Supplier API",
+      field1Placeholder: "Cole a chave recebida no onboarding",
+      field2Label: "Supplier ID",
+      field2Placeholder: "Somente números",
     },
     getyourguide: {
       steps: [
@@ -2452,27 +2636,24 @@ function CentralDeReservasContent() {
     },
     headout: {
       steps: [
-        "Acesse: www.headout.com/partner/login",
-        "Faça login com sua conta de parceiro Headout",
-        "Vá em Settings → Developer → API Keys",
-        "Gere uma nova chave e copie o token",
+        "O onboarding Headout está aguardando acesso/API concedido à conta PMY.",
+        "Enquanto não houver um endpoint verificável, a Central não aceita nem exibe campos de API Key.",
+        "Isso evita marcar o canal como conectado sem uma verificação real.",
       ],
-      field1Label: "API Key Headout",
-      field1Placeholder: "Ex: hdo_live_xxxxxxxxxxxxxxxxxxxxxxxx",
-      field2Label: "Partner ID (obrigatório)",
-      field2Placeholder: "Ex: 4821",
+      field1Label: null,
+      field1Placeholder: null,
+      field2Label: null,
     },
     civitatis: {
       steps: [
-        "Acesse o portal de operadores: operadores.civitatis.com",
-        "Faça login com sua conta de operador Civitatis",
-        "Vá em Mi Cuenta → Configuración → Acceso API",
-        "Copie o Token de Acceso e cole abaixo",
+        "Use o token definido no onboarding da Civitatis/OCTO para a Supplier API da PMY.",
+        "Ao salvar, a Central criptografa o token no IntegrationSecret.",
+        "O teste valida token e ambiente usando o mesmo middleware dos endpoints reais.",
+        "O canal só aparece como conectado depois de uma chamada autenticada real da Civitatis.",
       ],
-      field1Label: "Token de Acceso Civitatis",
-      field1Placeholder: "Ex: civ_live_xxxxxxxxxxxxxxxxxxxx",
-      field2Label: "Operator ID",
-      field2Placeholder: "Ex: OP-2204",
+      field1Label: "Token Civitatis / OCTO",
+      field1Placeholder: "Cole o token recebido no onboarding",
+      field2Label: null,
     },
     tripadvisor: {
       steps: [
@@ -2495,6 +2676,8 @@ function CentralDeReservasContent() {
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
     const isTripadvisor = connectingPlatform === 'tripadvisor';
+    const isManagedCredential = ['viator', 'civitatis'].includes(connectingPlatform);
+    const isHeadout = connectingPlatform === 'headout';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
 
     return (
@@ -2510,8 +2693,20 @@ function CentralDeReservasContent() {
                 {isTripadvisor
                   ? ui("Conteúdo e reputação · não é canal de reservas", "Content and reputation · not a booking channel")
                   : conn.connected
-                    ? (lang === 'en' ? `Connected as: ${conn.accountName} · Last sync: ${conn.lastSync}` : `Conectado como: ${conn.accountName} · Último sync: ${conn.lastSync}`)
-                    : isShopify ? ui("Já conectado automaticamente via Shopify App","Already connected automatically via Shopify App") : ui("Siga as instruções abaixo para conectar","Follow the instructions below to connect")}
+                    ? ui(
+                        `Conexão confirmada por tráfego real${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""}`,
+                        `Connection confirmed by real traffic${conn.lastSync ? ` · last check ${conn.lastSync}` : ""}`,
+                      )
+                    : conn.configured
+                      ? ui(
+                          `Credencial salva e validada${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""} · aguardando tráfego do canal`,
+                          `Credential saved and validated${conn.lastSync ? ` · last check ${conn.lastSync}` : ""} · waiting for channel traffic`,
+                        )
+                      : isHeadout
+                        ? ui("Onboarding técnico pendente · campos de credencial desativados","Technical onboarding pending · credential fields disabled")
+                        : isShopify
+                          ? ui("Já conectado automaticamente via Shopify App","Already connected automatically via Shopify App")
+                          : ui("Configuração segura pendente","Secure configuration pending")}
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
@@ -2738,89 +2933,181 @@ function CentralDeReservasContent() {
               </div>
             )}
 
-            {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
-            {!isShopify && !isGyg && !isTripadvisor && conn.connected && (
+            {/* ── VIATOR / CIVITATIS: credencial real no backend ── */}
+            {isManagedCredential && (
               <div>
-                <div className="pmy-ds-migrated-1bihub7">
-                  <div className="pmy-ds-migrated-v4y6wx">
-                    <span className="pmy-ds-migrated-i9ilnf">✅</span>
-                    <strong className="pmy-ds-migrated-1451bbq">{ui("Integração Ativa", "Integration Active")}</strong>
+                <div className={`pmy-ds-state-panel ${conn.connected ? "is-success" : conn.configured ? "" : "is-warning"}`}>
+                  <div className={`pmy-ds-state-title ${conn.connected ? "is-success" : conn.configured ? "" : "is-warning"}`}>
+                    {conn.connected
+                      ? ui("Canal conectado por tráfego autenticado", "Channel connected by authenticated traffic")
+                      : conn.configured
+                        ? ui("Credencial validada · aguardando tráfego real", "Credential validated · waiting for real traffic")
+                        : ui("Credencial ainda não configurada", "Credential not configured yet")}
                   </div>
-                  <div className="pmy-ds-migrated-vi0mf">
-                    <div>🏢 Conta: <strong>{conn.accountName}</strong></div>
-                    <div>🔄 Último sync: <strong>{conn.lastSync}</strong></div>
-                    <div>📋 Campos mapeados: <strong>11 / 11</strong></div>
+                  <div className="pmy-ds-migrated-zwhy5l">
+                    <div>
+                      {ui("Armazenamento:", "Storage:")} <strong>{conn.credentialSource === "ENCRYPTED" ? "IntegrationSecret · AES-256-GCM" : conn.credentialSource === "ENV" ? ui("Secret do servidor (legado)", "Server secret (legacy)") : ui("não configurado", "not configured")}</strong>
+                    </div>
+                    <div>
+                      {ui("Último teste:", "Last test:")} <strong>{conn.lastSync || ui("ainda não executado", "not run yet")}</strong>
+                    </div>
+                    <div>
+                      {ui("Status do teste:", "Test status:")} <strong>{conn.lastValidationStatus || ui("sem registro", "no record")}</strong>
+                    </div>
+                    {conn.fingerprint && (
+                      <div>
+                        {ui("Fingerprint:", "Fingerprint:")} <code>{conn.fingerprint}</code>
+                      </div>
+                    )}
+                    {conn.lastValidationMessage && (
+                      <div className="pmy-u-mt-2">{conn.lastValidationMessage}</div>
+                    )}
                   </div>
                 </div>
-                <div className="pmy-ds-migrated-12y480p">
-                  <button className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => setConnectingPlatform(null)} >{ui("Fechar", "Close")}</button>
-                  <button onClick={() => { handleDisconnect(connectingPlatform); setConnectingPlatform(null); }}
-                    className="pmy-ds-migrated-1vibuhi">
-                    Desconectar
-                  </button>
-                </div>
+
+                {!integrationCredentialStatus?.encryptionReady ? (
+                  <div className="pmy-ds-state-panel is-warning">
+                    <div className="pmy-ds-state-title is-warning">
+                      {ui("Armazenamento criptografado indisponível", "Encrypted storage unavailable")}
+                    </div>
+                    <div className="pmy-ds-migrated-rhcrii">
+                      {ui(
+                        "Os campos ficam ocultos até INTEGRATION_ENCRYPTION_KEY estar configurada no servidor.",
+                        "Fields stay hidden until INTEGRATION_ENCRYPTION_KEY is configured on the server.",
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="pmy-ds-migrated-10tglp5">
+                      <div className="pmy-ds-migrated-lqsxsk">
+                        {ui("Como esta integração funciona", "How this integration works")}
+                      </div>
+                      <ol className="pmy-ds-migrated-1irya13">
+                        {(guide?.steps || []).map((step, index) => (
+                          <li key={index} className="pmy-ds-migrated-rhcrii">{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    <div className="pmy-ds-migrated-1t8mads">
+                      <div className="pmy-ds-migrated-lqsxsk">
+                        {conn.configured
+                          ? ui("Substituir credencial armazenada", "Replace stored credential")
+                          : ui("Salvar credencial com criptografia", "Save encrypted credential")}
+                      </div>
+
+                      <div className="pmy-form-group pmy-ds-migrated-14ogarx">
+                        <label className="pmy-ds-migrated-18dm9zi">{guide.field1Label}</label>
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          className="pmy-form-input"
+                          placeholder={guide.field1Placeholder}
+                          value={apiKeyInput}
+                          onChange={(event) => setApiKeyInput(event.target.value)}
+                        />
+                      </div>
+
+                      {connectingPlatform === "viator" && (
+                        <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
+                          <label className="pmy-ds-migrated-18dm9zi">{guide.field2Label}</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="pmy-form-input"
+                            placeholder={guide.field2Placeholder}
+                            value={apiSecretInput}
+                            onChange={(event) => setApiSecretInput(event.target.value.replace(/\D/g, ""))}
+                          />
+                        </div>
+                      )}
+
+                      {connectingPlatform === "civitatis" && (
+                        <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
+                          <label className="pmy-ds-migrated-18dm9zi">{ui("Ambiente", "Environment")}</label>
+                          <select
+                            className="pmy-form-input"
+                            value={integrationEnvironmentInput}
+                            onChange={(event) => setIntegrationEnvironmentInput(event.target.value)}
+                          >
+                            <option value="test">test</option>
+                            <option value="live">live</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {integrationCredentialMessage && (
+                      <div className={`pmy-ds-inline-message ${integrationCredentialMessage.toLowerCase().includes("falha") || integrationCredentialMessage.toLowerCase().includes("não ") ? "is-danger" : "is-success"}`}>
+                        {integrationCredentialMessage}
+                      </div>
+                    )}
+
+                    <div className="pmy-ds-actions pmy-u-mt-3">
+                      <button
+                        type="button"
+                        className="pmy-btn-submit"
+                        onClick={() => handleConfirmConnect(connectingPlatform)}
+                        disabled={
+                          integrationCredentialLoading ||
+                          !apiKeyInput.trim() ||
+                          (connectingPlatform === "viator" && !apiSecretInput.trim())
+                        }
+                      >
+                        {integrationCredentialLoading
+                          ? ui("Salvando e testando...", "Saving and testing...")
+                          : ui("Salvar e testar credencial", "Save and test credential")}
+                      </button>
+
+                      {conn.configured && conn.credentialSource === "ENCRYPTED" && (
+                        <>
+                          <button
+                            type="button"
+                            className="pmy-ds-migrated-r8mbti"
+                            onClick={() => handleTestIntegrationCredential(connectingPlatform)}
+                            disabled={integrationCredentialLoading}
+                          >
+                            {ui("Testar novamente", "Test again")}
+                          </button>
+                          <button
+                            type="button"
+                            className="pmy-ds-migrated-1vibuhi"
+                            onClick={() => handleDisconnect(connectingPlatform)}
+                            disabled={integrationCredentialLoading}
+                          >
+                            {ui("Remover credencial", "Remove credential")}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
-            {/* ── OUTRAS PLATAFORMAS: não conectadas — passo a passo ── */}
-            {!isShopify && !isGyg && !isTripadvisor && !conn.connected && guide && (
+            {/* ── HEADOUT: sem adapter verificável, sem campos falsos ── */}
+            {isHeadout && (
               <div>
-                {/* Passo a passo */}
-                <div className="pmy-ds-migrated-10tglp5">
-                  <div className="pmy-ds-migrated-lqsxsk">
-                    📋 Como obter sua chave de API
+                <div className="pmy-ds-state-panel is-warning">
+                  <div className="pmy-ds-state-title is-warning">
+                    {ui("Integração ainda não liberada para credenciais", "Integration not yet enabled for credentials")}
                   </div>
-                  <ol className="pmy-ds-migrated-1irya13">
-                    {guide.steps.map((step, i) => (
-                      <li key={i} className="pmy-ds-migrated-rhcrii">
-                        {step}
-                        {i === 0 && (
-                          <button onClick={() => window.open(platform.oauthUrl, '_blank', 'width=960,height=700')}
-                            className="pmy-ds-migrated-jcbkm6">
-                            Abrir ↗
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="pmy-ds-migrated-rhcrii">
+                    {ui(
+                      "A Central já possui a arquitetura de canal e mapeamento, mas ainda não há uma API Headout concedida à conta PMY que possamos testar. Por isso os campos de API Key foram removidos. O canal não será exibido como conectado até existir uma verificação real.",
+                      "The Central already has the channel and mapping architecture, but PMY has not yet been granted a Headout API that can be tested. API key fields are therefore hidden. The channel will not appear as connected until a real verification exists.",
+                    )}
+                  </div>
                 </div>
-
-                {/* Campos de credencial */}
-                <div className="pmy-ds-migrated-1t8mads">
-                  <div className="pmy-ds-migrated-lqsxsk">
-                    🔑 Cole suas credenciais aqui
-                  </div>
-                  <div className="pmy-form-group pmy-ds-migrated-14ogarx" >
-                    <label className="pmy-ds-migrated-18dm9zi">
-                      {guide.field1Label} <span className="pmy-ds-migrated-1ibouyj">*</span>
-                    </label>
-                    <input type="password" className="pmy-form-input"
-                      placeholder={guide.field1Placeholder}
-                      value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} />
-                  </div>
-                  {guide.field2Label && (
-                    <div className="pmy-form-group pmy-ds-migrated-1x7aa6i" >
-                      <label className="pmy-ds-migrated-18dm9zi">
-                        {guide.field2Label} <span className="pmy-ds-migrated-1ibouyj">*</span>
-                      </label>
-                      <input type="text" className="pmy-form-input"
-                        placeholder={guide.field2Placeholder || ""}
-                        value={apiSecretInput} onChange={e => setApiSecretInput(e.target.value)} />
-                    </div>
-                  )}
-                </div>
-
-                <button className="pmy-btn-submit"
-                  onClick={() => handleConfirmConnect(connectingPlatform)}
-                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}>
-                  ✓ Ativar Integração com {platform.name}
-                </button>
-
-                <div className="pmy-ds-migrated-9t83ue">
-                  <a href={platform.docsUrl} target="_blank" rel="noreferrer"
-                    className="pmy-ds-migrated-m16xnn">
-                    📖 Documentação oficial da API {platform.name} ↗
-                  </a>
+                <div className="pmy-ds-migrated-12y480p">
+                  <button
+                    type="button"
+                    className="pmy-btn-submit pmy-ds-migrated-ckcaff"
+                    onClick={() => setConnectingPlatform(null)}
+                  >
+                    {ui("Fechar", "Close")}
+                  </button>
                 </div>
               </div>
             )}
