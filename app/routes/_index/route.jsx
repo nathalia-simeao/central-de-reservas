@@ -3265,6 +3265,26 @@ function CentralDeReservasContent() {
     );
   };
 
+    const dashboardSurfaceIsDark = isDarkThemeColor(theme.surfaceColor || "#FFFFFF");
+    const dashboardPrimaryIsDark = isDarkThemeColor(theme.primaryColor || "#006600");
+    const dashboardTextIsDark = isDarkThemeColor(theme.textColor || "#2B2B2B");
+    const dashboardTitleIsDark = isDarkThemeColor(theme.titleColor || "#006600");
+
+    const dashboardAccent =
+      dashboardSurfaceIsDark === dashboardPrimaryIsDark
+        ? (dashboardSurfaceIsDark ? "#F5F5F2" : "#111111")
+        : (theme.primaryColor || "#006600");
+
+    const dashboardText =
+      dashboardSurfaceIsDark === dashboardTextIsDark
+        ? (dashboardSurfaceIsDark ? "#F5F5F2" : "#1F1F1F")
+        : (theme.textColor || "#2B2B2B");
+
+    const dashboardTitle =
+      dashboardSurfaceIsDark === dashboardTitleIsDark
+        ? (dashboardSurfaceIsDark ? "#FFFFFF" : "#111111")
+        : (theme.titleColor || "#006600");
+
     const styles = `
     :root {
       --bg-color:${theme.bgColor};
@@ -3286,6 +3306,15 @@ function CentralDeReservasContent() {
       --sidebar-active-bg:${theme.sidebarActiveBg || theme.primaryColor};
       --sidebar-active-text:${theme.sidebarActiveTextColor || "#FFFFFF"};
       --sidebar-border:${theme.sidebarBorderColor || "#E7ECE7"};
+      --dashboard-accent:${dashboardAccent};
+      --dashboard-accent-contrast:${isDarkThemeColor(dashboardAccent) ? "#FFFFFF" : "#111111"};
+      --dashboard-text:${dashboardText};
+      --dashboard-title:${dashboardTitle};
+      --dashboard-muted:${dashboardSurfaceIsDark ? "#B8B8B3" : "#667069"};
+      --dashboard-soft:${dashboardSurfaceIsDark ? "#1F1F1F" : "#F3F5F3"};
+      --dashboard-soft-strong:${dashboardSurfaceIsDark ? "#292929" : "#E9EDE9"};
+      --dashboard-border:${dashboardSurfaceIsDark ? "rgba(255,255,255,0.15)" : "rgba(28,47,34,0.12)"};
+      --dashboard-shadow:${dashboardSurfaceIsDark ? "0 18px 45px rgba(0,0,0,0.28)" : "0 18px 45px rgba(22,44,29,0.075)"};
     }
     * { box-sizing:border-box; margin:0; padding:0; font-family:var(--font-family); font-size:var(--font-size); }
     body, html { overflow-x:hidden; background-color:var(--bg-color); }
@@ -4333,6 +4362,152 @@ function CentralDeReservasContent() {
     .pmy-mapping-table { min-width:680px; }
     .pmy-form-box:has(.pmy-prod-table),
     .pmy-form-box:has(.pmy-mapping-table) { overflow-x:auto; }
+
+    /* ===== DASHBOARD THEME-SAFE COLORS ===== */
+    .pmy-dashboard {
+      color:var(--dashboard-text);
+    }
+
+    .pmy-dashboard .pmy-card,
+    .pmy-dashboard .pmy-kpi-card,
+    .pmy-dashboard .pmy-trend-card {
+      background:var(--surface-color);
+      border-color:var(--dashboard-border);
+      box-shadow:var(--dashboard-shadow);
+      color:var(--dashboard-text);
+    }
+
+    .pmy-dashboard .pmy-kpi-card:hover {
+      border-color:color-mix(in srgb, var(--dashboard-accent) 30%, var(--dashboard-border));
+    }
+
+    .pmy-dashboard .pmy-kpi-card.is-featured {
+      background:
+        radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--dashboard-accent) 13%, transparent) 0, transparent 8rem),
+        var(--surface-color);
+    }
+
+    .pmy-dashboard .pmy-kpi-icon,
+    .pmy-dashboard .pmy-trend-empty-icon {
+      background:color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color));
+      color:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-kpi-expand {
+      color:var(--dashboard-muted);
+    }
+
+    .pmy-dashboard .pmy-kpi-card:hover .pmy-kpi-expand,
+    .pmy-dashboard .pmy-trend-eyebrow,
+    .pmy-dashboard .pmy-trend-granularity {
+      color:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-kpi-label,
+    .pmy-dashboard .pmy-kpi-detail,
+    .pmy-dashboard .pmy-trend-subtitle,
+    .pmy-dashboard .pmy-trend-legend span,
+    .pmy-dashboard .pmy-trend-axis-captions,
+    .pmy-dashboard .pmy-trend-empty,
+    .pmy-dashboard .pmy-dashboard-status-item span:not(.pmy-dashboard-status-dot) {
+      color:var(--dashboard-muted) !important;
+    }
+
+    .pmy-dashboard .pmy-kpi-value,
+    .pmy-dashboard .pmy-dashboard-status-item strong,
+    .pmy-dashboard .pmy-trend-empty strong {
+      color:var(--dashboard-text);
+    }
+
+    .pmy-dashboard .pmy-trend-title,
+    .pmy-dashboard .pmy-accordion-title {
+      color:var(--dashboard-title);
+    }
+
+    .pmy-dashboard .pmy-dashboard-status-strip {
+      border-color:var(--dashboard-border);
+      background:var(--dashboard-border);
+      box-shadow:var(--dashboard-shadow);
+    }
+
+    .pmy-dashboard .pmy-dashboard-status-item {
+      background:color-mix(in srgb, var(--surface-color) 94%, var(--dashboard-soft) 6%);
+    }
+
+    .pmy-dashboard .pmy-trend-granularity {
+      border-color:color-mix(in srgb, var(--dashboard-accent) 24%, var(--dashboard-border));
+      background:color-mix(in srgb, var(--dashboard-accent) 10%, var(--surface-color));
+    }
+
+    .pmy-dashboard .pmy-legend-bar {
+      background:color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
+      border-color:color-mix(in srgb, var(--dashboard-accent) 45%, transparent);
+    }
+
+    .pmy-dashboard .pmy-legend-line {
+      background:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-legend-line::after {
+      background:var(--surface-color);
+      border-color:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-trend-gridline {
+      stroke:color-mix(in srgb, var(--dashboard-text) 12%, transparent);
+    }
+
+    .pmy-dashboard .pmy-trend-axis-label,
+    .pmy-dashboard .pmy-trend-x-label {
+      fill:color-mix(in srgb, var(--dashboard-text) 65%, transparent);
+    }
+
+    .pmy-dashboard .pmy-trend-bar {
+      fill:color-mix(in srgb, var(--dashboard-accent) 28%, transparent);
+      stroke:color-mix(in srgb, var(--dashboard-accent) 48%, transparent);
+    }
+
+    .pmy-dashboard .pmy-trend-line {
+      stroke:var(--dashboard-accent);
+      filter:drop-shadow(0 4px 7px color-mix(in srgb, var(--dashboard-accent) 22%, transparent));
+    }
+
+    .pmy-dashboard .pmy-trend-point {
+      fill:var(--surface-color);
+      stroke:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-trend-hover-line {
+      stroke:color-mix(in srgb, var(--dashboard-accent) 42%, transparent);
+    }
+
+    .pmy-dashboard .pmy-trend-tooltip {
+      border-color:var(--dashboard-border);
+      background:color-mix(in srgb, var(--surface-color) 97%, transparent);
+      box-shadow:var(--dashboard-shadow);
+    }
+
+    .pmy-dashboard .pmy-trend-tooltip strong {
+      color:var(--dashboard-text);
+    }
+
+    .pmy-dashboard .pmy-trend-tooltip span {
+      color:var(--dashboard-muted);
+    }
+
+    .pmy-dashboard .pmy-accordion-header,
+    .pmy-dashboard .pmy-accordion-content {
+      border-color:var(--dashboard-border);
+      color:var(--dashboard-text);
+    }
+
+    .pmy-dashboard .pmy-accordion-header:hover {
+      color:var(--dashboard-accent);
+    }
+
+    .pmy-dashboard .pmy-tour-name {
+      color:var(--dashboard-text);
+    }
 
     /* ===== FINAL DESKTOP READABILITY OVERRIDES ===== */
     .pmy-app-container,
