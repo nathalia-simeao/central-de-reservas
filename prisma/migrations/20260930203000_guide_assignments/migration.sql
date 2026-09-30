@@ -13,8 +13,15 @@ CREATE TABLE "GuideAssignment" (
     CONSTRAINT "GuideAssignment_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "GuideAssignment_tourId_startTime_key" ON "GuideAssignment"("tourId", "startTime");
+-- Only one active guide can own a departure, while cancelled history remains.
+CREATE UNIQUE INDEX "GuideAssignment_active_tour_start_key"
+ON "GuideAssignment"("tourId", "startTime")
+WHERE "status" = 'ASSIGNED';
+
+-- A guide cannot be actively assigned to two tours at the exact same start.
+CREATE UNIQUE INDEX "GuideAssignment_active_guide_start_key"
+ON "GuideAssignment"("guideId", "startTime")
+WHERE "status" = 'ASSIGNED';
 
 -- CreateIndex
 CREATE INDEX "GuideAssignment_guideId_startTime_idx" ON "GuideAssignment"("guideId", "startTime");
