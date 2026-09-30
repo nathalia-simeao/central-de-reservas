@@ -5,7 +5,7 @@ import {
 } from "../utils/viator.server";
 
 export const action = async ({ request }) => {
-  const authError = requireViatorAuth(request, "v1");
+  const authError = await requireViatorAuth(request, "v1");
   if (authError) return authError;
 
   const parsed = await readViatorJson(request, "v1");
