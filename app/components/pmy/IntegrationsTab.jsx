@@ -98,8 +98,8 @@ export default function IntegrationsTab(props) {
                       return (
                         <div key={platform.key} className={[`pmy-int-card-v2 ${conn.connected?'connected':''}`, "pmy-ds-migrated-15s4y9o"].filter(Boolean).join(" ")} >
                           <div className="pmy-int-top">
-                            <span className="pmy-int-logo-v2">{platform.logo}</span>
-                            {conn.connected && <span className="pmy-int-sync-info">🔄 {conn.lastSync}</span>}
+                            <span className="pmy-int-logo-v2"><Icon name={platform.icon} size={22} /></span>
+                            {conn.connected && <span className="pmy-int-sync-info"><Icon name="refresh" size={12} /> {conn.lastSync}</span>}
                           </div>
                           <div className="pmy-ds-migrated-1gcp9k1">
                             <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`}></span>
@@ -112,20 +112,20 @@ export default function IntegrationsTab(props) {
                           <div className="pmy-int-actions">
                             {conn.connected ? (
                               <>
-                                <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>{tr("⚙️ Gerenciar", "⚙️ Manage")}</button>
+                                <Button variant="secondary" size="sm" icon="settings" onClick={()=>handleOpenConnect(platform.key)}>{tr("Gerenciar", "Manage")}</Button>
                                 <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>{tr("Desconectar", "Disconnect")}</button>
                               </>
                             ) : (
-                              <button className="pmy-int-btn-connect" onClick={()=>handleOpenConnect(platform.key)}>
-                                🔗 Conectar {platform.name}
-                              </button>
+                              <Button variant="primary" size="sm" icon="link" onClick={()=>handleOpenConnect(platform.key)}>
+                                {tr("Conectar", "Connect")} {platform.name}
+                              </Button>
                             )}
                           </div>
                         </div>
                       );
                     })}
                     <div className="pmy-ds-migrated-1konp2u">
-                      <div className="pmy-ds-migrated-166ghmy">{tr("🦉 Conteúdo & reputação", "🦉 Content & Reputation")}</div>
+                      <div className="pmy-ds-migrated-166ghmy"><Icon name="star" size={15} /> {tr("Conteúdo & reputação", "Content & Reputation")}</div>
                       <div className="pmy-ds-migrated-htnqm2">{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>
                     </div>
                     {contentPlatforms.map(platform => {
@@ -133,7 +133,7 @@ export default function IntegrationsTab(props) {
                       return (
                         <div key={platform.key} className="pmy-int-card-v2 pmy-ds-migrated-1btvbiy" >
                           <div className="pmy-int-top">
-                            <span className="pmy-int-logo-v2">{platform.logo}</span>
+                            <span className="pmy-int-logo-v2"><Icon name={platform.icon} size={22} /></span>
                             <span className="pmy-int-sync-info">{tr("Conteúdo", "Content")}</span>
                           </div>
                           <div className="pmy-ds-migrated-1gcp9k1">
@@ -145,23 +145,23 @@ export default function IntegrationsTab(props) {
                           <div className="pmy-int-name-v2">{platform.name}</div>
                           <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
                           <div className="pmy-int-actions">
-                            <button className="pmy-int-btn-settings" onClick={()=>handleOpenConnect(platform.key)}>
-                              🦉 Ver integração de conteúdo
-                            </button>
+                            <Button variant="secondary" size="sm" icon="star" onClick={()=>handleOpenConnect(platform.key)}>
+                              {tr("Ver integração de conteúdo", "View content integration")}
+                            </Button>
                           </div>
                         </div>
                       );
                     })}
                     {customIntegrations.map(c => (
                       <div className="pmy-int-card-v2 connected pmy-ds-migrated-15s4y9o" key={c.id} >
-                        <div className="pmy-int-top"><span className="pmy-int-logo-v2">⚙️</span><span className="pmy-int-sync-info">Custom API</span></div>
+                        <div className="pmy-int-top"><span className="pmy-int-logo-v2"><Icon name="settings" size={22} /></span><span className="pmy-int-sync-info">Custom API</span></div>
                         <div className="pmy-int-name-v2">{c.name}</div>
                         <div className="pmy-int-desc-v2 pmy-ds-migrated-tlps5h" >Endpoint: {c.url}</div>
                       </div>
                     ))}
                   </div>
                   <div className="pmy-form-box pmy-ds-migrated-8xzf4b" >
-                    <h3>{tr("🔗 Conectar Nova Plataforma via API", "🔗 Connect New Platform via API")}</h3>
+                    <h3 className="pmy-ds-heading-with-icon"><Icon name="link" size={17} /> {tr("Conectar Nova Plataforma via API", "Connect New Platform via API")}</h3>
                     <form onSubmit={handleAddCustomIntegration}>
                       <div className="pmy-form-group"><label>{tr("Nome da Plataforma:", "Platform Name:")}</label><input type="text" className="pmy-form-input" placeholder={tr('Ex: Agência Parceira LX','E.g. Partner Agency LX')} value={customName} onChange={e=>setCustomName(e.target.value)} required /></div>
                       <div className="pmy-form-group"><label>{tr("Endpoint da API (URL):", "API Endpoint (URL):")}</label><input type="url" className="pmy-form-input" placeholder="https://api.parceiro.com/v1/bookings" value={customUrl} onChange={e=>setCustomUrl(e.target.value)} required /></div>
@@ -177,7 +177,7 @@ export default function IntegrationsTab(props) {
                 <div>
                   <div className="pmy-ds-migrated-1acd7k0">
                     <div>
-                      <h3 className="pmy-ds-migrated-cwjrli">{tr("📡 Log de Sincronização", "📡 Sync Log")}</h3>
+                      <h3 className="pmy-ds-migrated-cwjrli pmy-ds-heading-with-icon"><Icon name="refresh" size={17} /> {tr("Log de Sincronização", "Sync Log")}</h3>
                       <p className="pmy-ds-migrated-j6655o">
                         Acompanhe cada envio por canal, identifique divergências e reenvie falhas sem alterar a reserva original.
                         A tela atualiza automaticamente a cada 15 segundos.
@@ -336,8 +336,8 @@ export default function IntegrationsTab(props) {
                           <tbody>
                             {syncQueueData.jobs.map(job => {
                               const status = syncStatusMeta[job.status] || { icon:'•', label:job.status || '—', bg:'#f5f5f5', color:'#555' };
-                              const provider = syncProviderMeta[job.provider] || { label:job.provider || '—', icon:'🔌' };
-                              const source = syncProviderMeta[job.sourcePlatform] || { label:job.sourcePlatform || 'Central', icon:'🧭' };
+                              const provider = syncProviderMeta[job.provider] || { label:job.provider || '—', icon:'link' };
+                              const source = syncProviderMeta[job.sourcePlatform] || { label:job.sourcePlatform || 'Central', icon:'dashboard' };
                               const detail = job.error || job.result?.reason || job.result?.detail || (job.status === 'COMPLETED' ? 'Sincronização concluída' : '—');
                               const canRetry = ['RETRY','BLOCKED','DEAD'].includes(job.status);
                               return (
@@ -349,8 +349,8 @@ export default function IntegrationsTab(props) {
                                     <div className="pmy-ds-migrated-28a1ij">{syncEventLabel(job.eventType)}</div>
                                     <div className="pmy-ds-migrated-7iqvl9">{job.eventType}</div>
                                   </td>
-                                  <td className="pmy-ds-migrated-1gem2sh">{source.icon} {source.label}</td>
-                                  <td className="pmy-ds-migrated-cegdm0">{provider.icon} {provider.label}</td>
+                                  <td className="pmy-ds-migrated-1gem2sh"><span className="pmy-ds-icon-label"><Icon name={source.icon} size={13} /> {source.label}</span></td>
+                                  <td className="pmy-ds-migrated-cegdm0"><span className="pmy-ds-icon-label"><Icon name={provider.icon} size={13} /> {provider.label}</span></td>
                                   <td className="pmy-ds-migrated-zsxq6o">
                                     <span className={`pmy-ds-sync-status is-${String(job.status || "pending").toLowerCase()}`}>
                                       {status.label}
@@ -407,7 +407,7 @@ export default function IntegrationsTab(props) {
                           onClick={() => conn.connected && setActiveProdPlatform(p.key)}
                           title={!conn.connected ? tr(tr('Plataforma não conectada','Platform not connected'),'Platform not connected') : ''}
                         >
-                          <span className="pmy-ds-migrated-1hxgxx8">{p.logo}</span>
+                          <span className="pmy-ds-migrated-1hxgxx8"><Icon name={p.icon} size={18} /></span>
                           {p.name}
                           {conn.connected && (
                             <span className={`pmy-ds-product-count ${activeProdPlatform===p.key ? "is-active" : ""}`}>{activeCount} {tr('ativos','active')}</span>
@@ -530,7 +530,7 @@ export default function IntegrationsTab(props) {
                     // Plataforma conectada mas sem produtos ainda (ex: Viator recém conectado)
                     if (prods.length === 0) return (
                       <div className="pmy-ds-migrated-1f6juxi">
-                        <div className="pmy-ds-migrated-miwane">{platform?.logo}</div>
+                        <div className="pmy-ds-migrated-miwane"><Icon name={platform?.icon || "ticket"} size={34} /></div>
                         <div className="pmy-ds-migrated-1q7ll21">
                           Nenhum produto sincronizado ainda
                         </div>
@@ -561,7 +561,7 @@ export default function IntegrationsTab(props) {
                         {/* Header da tabela */}
                         <div className="pmy-ds-migrated-8gqr5e">
                           <div className="pmy-ds-migrated-r410jd">
-                            <span className="pmy-ds-migrated-qkuf6f">{platform?.logo}</span>
+                            <span className="pmy-ds-migrated-qkuf6f"><Icon name={platform?.icon || "ticket"} size={24} /></span>
                             <div>
                               <div className="pmy-ds-migrated-gqkgde">{platform?.name}</div>
                               <div className="pmy-ds-migrated-xfo8zj">
