@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, Icon, SectionHeader } from "./PmyUI";
+import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 
 
 const ExpandIcon = () => (
@@ -851,100 +851,52 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
       label: lang === "pt" ? "Confirmadas" : "Confirmed",
       description: lang === "pt" ? "passeios futuros confirmados" : "confirmed upcoming tours",
       value: Number(summary?.confirmed || 0),
-      icon: "✓",
-      color: "#167a35",
-      soft: "#edf8f0",
+      icon: "check",
     },
     {
       key: "pending",
       label: lang === "pt" ? "Pendentes" : "Pending",
       description: lang === "pt" ? "aguardando confirmação" : "awaiting confirmation",
       value: Number(summary?.pending || 0),
-      icon: "⏳",
-      color: "#a46108",
-      soft: "#fff7e7",
+      icon: "clock",
     },
     {
       key: "canceled",
       label: lang === "pt" ? "Canceladas" : "Canceled",
       description: lang === "pt" ? "reservas canceladas" : "canceled bookings",
       value: Number(summary?.canceled || 0),
-      icon: "×",
-      color: "#b42318",
-      soft: "#fff1f0",
+      icon: "canceled",
     },
     {
       key: "completed",
       label: lang === "pt" ? "Concluídas" : "Completed",
       description: lang === "pt" ? "passeios já realizados" : "tours already completed",
       value: Number(summary?.completed || 0),
-      icon: "✓✓",
-      color: "#315a78",
-      soft: "#eef5f9",
+      icon: "check",
     },
   ];
 
   return (
-    <section className="pmy-card" style={{ padding:'22px 24px' }}>
-      <div style={{
-        display:'flex',
-        justifyContent:'space-between',
-        alignItems:'flex-start',
-        gap:'18px',
-        flexWrap:'wrap',
-        marginBottom:'18px'
-      }}>
-        <div>
-          <div className="pmy-trend-eyebrow">
-            {lang === 'pt' ? 'Situação das reservas' : 'Booking status'}
-          </div>
-          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
-            {lang === 'pt' ? 'Status das reservas' : 'Booking status'}
-          </h2>
-          <div className="pmy-trend-subtitle">
-            {periodLabel} · {lang === 'pt'
-              ? 'visão atual das reservas criadas no período'
-              : 'current status of bookings created in the period'}
-          </div>
-        </div>
+    <Card>
+      <div className="pmy-ds-dashboard-header">
+        <SectionHeader
+          eyebrow={lang === "pt" ? "Situação das reservas" : "Booking status"}
+          title={lang === "pt" ? "Status das reservas" : "Booking status"}
+          subtitle={`${periodLabel} · ${lang === "pt"
+            ? "visão atual das reservas criadas no período"
+            : "current status of bookings created in the period"}`}
+          className="pmy-u-mb-0"
+        />
 
-        <div style={{
-          minWidth:'132px',
-          padding:'10px 13px',
-          border:'1px solid var(--dashboard-border)',
-          borderRadius:'14px',
-          background:'var(--dashboard-soft)',
-          textAlign:'right'
-        }}>
-          <div style={{
-            fontSize:'11px',
-            color:'var(--dashboard-muted)',
-            fontWeight:'800',
-            textTransform:'uppercase',
-            letterSpacing:'.05em'
-          }}>
-            {lang === 'pt' ? 'Total classificado' : 'Classified total'}
-          </div>
-          <div style={{
-            fontSize:'25px',
-            fontWeight:'900',
-            color:'var(--dashboard-accent)',
-            lineHeight:1.1,
-            marginTop:'3px'
-          }}>
-            {total}
-          </div>
+        <div className="pmy-ds-status-summary">
+          <span className="pmy-ds-status-summary__label">
+            {lang === "pt" ? "Total classificado" : "Classified total"}
+          </span>
+          <strong className="pmy-ds-status-summary__value">{total}</strong>
         </div>
       </div>
 
-      <div style={{
-        height:'12px',
-        borderRadius:'999px',
-        background:'var(--dashboard-soft)',
-        overflow:'hidden',
-        display:'flex',
-        marginBottom:'18px'
-      }}>
+      <div className="pmy-ds-status-distribution">
         {items.map((item) => {
           const share = total > 0 ? (item.value / total) * 100 : 0;
           if (share <= 0) return null;
@@ -952,109 +904,50 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
           return (
             <div
               key={item.key}
+              className={`pmy-ds-status-segment is-${item.key}`}
               title={`${item.label}: ${item.value} (${share.toFixed(1)}%)`}
               style={{
-                width:`${share}%`,
-                minWidth:item.value > 0 ? '6px' : 0,
-                background:item.color,
-                transition:'width .3s ease'
+                "--pmy-share": `${share}%`,
+                "--pmy-share-min": item.value > 0 ? "6px" : "0px",
               }}
             />
           );
         })}
       </div>
 
-      <div style={{
-        display:'grid',
-        gridTemplateColumns:'repeat(4,minmax(0,1fr))',
-        gap:'12px'
-      }}>
+      <div className="pmy-ds-status-grid">
         {items.map((item) => {
           const share = total > 0 ? (item.value / total) * 100 : 0;
 
           return (
-            <div
-              key={item.key}
-              style={{
-                minWidth:0,
-                border:'1px solid var(--dashboard-border)',
-                borderRadius:'16px',
-                padding:'15px 16px',
-                background:'var(--surface-color)'
-              }}
-            >
-              <div style={{
-                display:'flex',
-                alignItems:'center',
-                justifyContent:'space-between',
-                gap:'10px',
-                marginBottom:'14px'
-              }}>
-                <span style={{
-                  width:'36px',
-                  height:'36px',
-                  borderRadius:'12px',
-                  display:'grid',
-                  placeItems:'center',
-                  background:item.soft,
-                  color:item.color,
-                  fontSize:'14px',
-                  fontWeight:'900'
-                }}>
-                  {item.icon}
+            <div key={item.key} className="pmy-ds-status-card">
+              <div className="pmy-ds-status-card__top">
+                <span className={`pmy-ds-status-icon is-${item.key}`}>
+                  <Icon name={item.icon} size={16} />
                 </span>
-                <span style={{
-                  fontSize:'12px',
-                  fontWeight:'850',
-                  color:item.color
-                }}>
+                <span className={`pmy-ds-status-share is-${item.key}`}>
                   {share.toFixed(1)}%
                 </span>
               </div>
 
-              <div style={{
-                fontSize:'14px',
-                fontWeight:'850',
-                color:'var(--dashboard-text)',
-                marginBottom:'3px'
-              }}>
-                {item.label}
-              </div>
-              <strong style={{
-                display:'block',
-                fontSize:'28px',
-                lineHeight:1,
-                color:item.color,
-                marginBottom:'7px'
-              }}>
+              <div className="pmy-ds-status-label">{item.label}</div>
+              <strong className={`pmy-ds-status-value is-${item.key}`}>
                 {item.value}
               </strong>
-              <div style={{
-                fontSize:'12px',
-                lineHeight:1.35,
-                color:'var(--dashboard-muted)'
-              }}>
-                {item.description}
-              </div>
+              <div className="pmy-ds-status-description">{item.description}</div>
             </div>
           );
         })}
       </div>
 
-      {unclassified > 0 && (
-        <div style={{
-          marginTop:'13px',
-          paddingTop:'11px',
-          borderTop:'1px solid var(--dashboard-border)',
-          fontSize:'12px',
-          color:'var(--dashboard-muted)'
-        }}>
-          {lang === 'pt'
+      {unclassified > 0 ? (
+        <div className="pmy-ds-status-note">
+          {lang === "pt"
             ? `${unclassified} reserva(s) possui(em) status ainda não classificado pela Central.`
             : `${unclassified} booking(s) have a status not yet classified by the Central.`}
         </div>
-      )}
-    </section>
+      ) : null}
+    </Card>
   );
 };
 
@@ -1091,93 +984,44 @@ const UpcomingDeparturesPanel = ({
   };
 
   return (
-    <section className="pmy-card" style={{ padding:'22px 24px' }}>
-      <div style={{
-        display:'flex',
-        justifyContent:'space-between',
-        alignItems:'flex-start',
-        gap:'16px',
-        flexWrap:'wrap',
-        marginBottom:'18px'
-      }}>
-        <div>
-          <div className="pmy-trend-eyebrow">
-            {lang === 'pt' ? 'Operação dos próximos 30 dias' : 'Next 30 days operations'}
-          </div>
-          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
-            {lang === 'pt' ? 'Próximas saídas' : 'Upcoming departures'}
-          </h2>
-          <div className="pmy-trend-subtitle">
-            {lang === 'pt'
-              ? 'Tour, data, horário, passageiros, canais e vagas disponíveis'
-              : 'Tour, date, time, passengers, channels and available seats'}
-          </div>
-        </div>
+    <Card>
+      <div className="pmy-ds-dashboard-header">
+        <SectionHeader
+          eyebrow={lang === "pt" ? "Operação dos próximos 30 dias" : "Next 30 days operations"}
+          title={lang === "pt" ? "Próximas saídas" : "Upcoming departures"}
+          subtitle={lang === "pt"
+            ? "Tour, data, horário, passageiros, canais e vagas disponíveis"
+            : "Tour, date, time, passengers, channels and available seats"}
+          className="pmy-u-mb-0"
+        />
 
-        <div style={{
-          minWidth:'120px',
-          padding:'10px 13px',
-          border:'1px solid var(--dashboard-border)',
-          borderRadius:'14px',
-          background:'var(--dashboard-soft)',
-          textAlign:'right'
-        }}>
-          <div style={{
-            fontSize:'11px',
-            color:'var(--dashboard-muted)',
-            fontWeight:'800',
-            textTransform:'uppercase',
-            letterSpacing:'.05em'
-          }}>
-            {lang === 'pt' ? 'Saídas' : 'Departures'}
-          </div>
-          <strong style={{
-            display:'block',
-            marginTop:'2px',
-            fontSize:'24px',
-            lineHeight:1,
-            color:'var(--dashboard-accent)'
-          }}>
-            {departures.length}
-          </strong>
+        <div className="pmy-ds-departure-summary">
+          <span className="pmy-ds-departure-summary__label">
+            {lang === "pt" ? "Saídas" : "Departures"}
+          </span>
+          <strong className="pmy-ds-departure-summary__value">{departures.length}</strong>
         </div>
       </div>
 
       {visibleDepartures.length === 0 ? (
-        <div style={{
-          minHeight:'150px',
-          display:'grid',
-          placeItems:'center',
-          textAlign:'center',
-          color:'var(--dashboard-muted)',
-          fontSize:'13px'
-        }}>
-          {lang === 'pt'
-            ? 'Nenhuma saída confirmada ou pendente nos próximos 30 dias.'
-            : 'No confirmed or pending departures in the next 30 days.'}
-        </div>
+        <EmptyState
+          icon="calendar"
+          title={lang === "pt" ? "Nenhuma saída nos próximos 30 dias" : "No departures in the next 30 days"}
+          description={lang === "pt"
+            ? "As saídas confirmadas ou pendentes aparecerão aqui automaticamente."
+            : "Confirmed or pending departures will appear here automatically."}
+        />
       ) : (
-        <div style={{ overflowX:'auto' }}>
-          <div style={{ minWidth:'920px' }}>
-            <div style={{
-              display:'grid',
-              gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
-              gap:'12px',
-              padding:'0 12px 9px',
-              borderBottom:'1px solid #eceeec',
-              color:'var(--dashboard-muted)',
-              fontSize:'11px',
-              fontWeight:'850',
-              textTransform:'uppercase',
-              letterSpacing:'.05em'
-            }}>
+        <div className="pmy-ds-departure-table">
+          <div className="pmy-ds-departure-table__inner">
+            <div className="pmy-ds-departure-head">
               <span>Tour</span>
-              <span>{lang === 'pt' ? 'Data' : 'Date'}</span>
-              <span>{lang === 'pt' ? 'Horário' : 'Time'}</span>
-              <span>{lang === 'pt' ? 'Passageiros' : 'Passengers'}</span>
-              <span>{lang === 'pt' ? 'Canais' : 'Channels'}</span>
-              <span style={{ textAlign:'right' }}>
-                {lang === 'pt' ? 'Vagas disponíveis' : 'Available seats'}
+              <span>{lang === "pt" ? "Data" : "Date"}</span>
+              <span>{lang === "pt" ? "Horário" : "Time"}</span>
+              <span>{lang === "pt" ? "Passageiros" : "Passengers"}</span>
+              <span>{lang === "pt" ? "Canais" : "Channels"}</span>
+              <span className="pmy-ds-departure-head__end">
+                {lang === "pt" ? "Vagas disponíveis" : "Available seats"}
               </span>
             </div>
 
@@ -1189,144 +1033,62 @@ const UpcomingDeparturesPanel = ({
                 : 0;
               const isFull = capacity > 0 && available === 0;
               const isTight = !isFull && capacity > 0 && occupancy >= 80;
-              const seatColor = isFull ? '#b42318' : isTight ? '#a46108' : '#167a35';
-              const seatBg = isFull ? '#fff1f0' : isTight ? '#fff7e7' : '#edf8f0';
 
               return (
-                <div
-                  key={departure.key}
-                  style={{
-                    display:'grid',
-                    gridTemplateColumns:'minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px',
-                    gap:'12px',
-                    alignItems:'center',
-                    minHeight:'74px',
-                    padding:'10px 12px',
-                    borderBottom:'1px solid var(--dashboard-border)'
-                  }}
-                >
-                  <div style={{
-                    minWidth:0,
-                    display:'flex',
-                    alignItems:'center',
-                    gap:'11px'
-                  }}>
+                <div key={departure.key} className="pmy-ds-departure-row">
+                  <div className="pmy-ds-departure-tour">
                     {departure.image ? (
                       <img
                         src={departure.image}
                         alt={departure.imageAlt || departure.tourTitle}
-                        className={imageShape}
-                        style={{
-                          width:'46px',
-                          height:'46px',
-                          flex:'0 0 46px',
-                          objectFit:'cover'
-                        }}
+                        className={`pmy-ds-departure-image ${imageShape}`}
                       />
                     ) : (
-                      <div style={{
-                        width:'46px',
-                        height:'46px',
-                        flex:'0 0 46px',
-                        borderRadius:'12px',
-                        background:'var(--dashboard-soft)',
-                        display:'grid',
-                        placeItems:'center',
-                        fontSize:'18px'
-                      }}>
-                        🧭
+                      <div className="pmy-ds-departure-placeholder">
+                        <Icon name="calendar" size={18} />
                       </div>
                     )}
 
-                    <div style={{ minWidth:0 }}>
-                      <div style={{
-                        fontSize:'14px',
-                        fontWeight:'850',
-                        color:'var(--dashboard-text)',
-                        overflow:'hidden',
-                        textOverflow:'ellipsis',
-                        whiteSpace:'nowrap'
-                      }}>
-                        {departure.tourTitle}
-                      </div>
-                      <div style={{
-                        marginTop:'3px',
-                        fontSize:'11px',
-                        color:'var(--dashboard-muted)'
-                      }}>
-                        {departure.bookings} {lang === 'pt' ? 'reserva(s)' : 'booking(s)'}
+                    <div className="pmy-ds-departure-copy">
+                      <div className="pmy-ds-departure-title">{departure.tourTitle}</div>
+                      <div className="pmy-ds-departure-meta">
+                        {departure.bookings} {lang === "pt" ? "reserva(s)" : "booking(s)"}
                       </div>
                     </div>
                   </div>
 
-                  <strong style={{ fontSize:'13px', color:'var(--dashboard-text)' }}>
+                  <strong className="pmy-ds-departure-date">
                     {formatDate(departure.startTime)}
                   </strong>
 
-                  <strong style={{ fontSize:'14px', color:'var(--dashboard-text)' }}>
+                  <strong className="pmy-ds-departure-time">
                     {formatTime(departure.startTime)}
                   </strong>
 
-                  <div>
-                    <strong style={{
-                      display:'block',
-                      fontSize:'17px',
-                      color:'var(--dashboard-text)'
-                    }}>
-                      {departure.passengers}
-                    </strong>
-                    <span style={{ fontSize:'11px', color:'var(--dashboard-muted)' }}>
-                      pax
-                    </span>
+                  <div className="pmy-ds-departure-pax">
+                    <strong>{departure.passengers}</strong>
+                    <span>pax</span>
                   </div>
 
-                  <div style={{
-                    display:'flex',
-                    flexWrap:'wrap',
-                    gap:'5px'
-                  }}>
+                  <div className="pmy-ds-departure-channels">
                     {(departure.platforms || []).map((platform) => (
-                      <span
-                        key={platform}
-                        style={{
-                          padding:'5px 8px',
-                          borderRadius:'999px',
-                          background:'var(--dashboard-soft)',
-                          color:'var(--dashboard-muted)',
-                          fontSize:'11px',
-                          fontWeight:'750'
-                        }}
-                      >
-                        {platform}
-                      </span>
+                      <Badge key={platform}>{platform}</Badge>
                     ))}
                   </div>
 
-                  <div style={{ textAlign:'right' }}>
-                    <span style={{
-                      display:'inline-flex',
-                      alignItems:'center',
-                      justifyContent:'center',
-                      minWidth:'58px',
-                      minHeight:'34px',
-                      padding:'7px 10px',
-                      borderRadius:'11px',
-                      background:seatBg,
-                      color:seatColor,
-                      fontSize:'16px',
-                      fontWeight:'900'
-                    }}>
+                  <div className="pmy-ds-departure-seats">
+                    <span className={[
+                      "pmy-ds-seat-count",
+                      isFull ? "is-full" : "",
+                      isTight ? "is-tight" : "",
+                    ].filter(Boolean).join(" ")}>
                       {available}
                     </span>
-                    <div style={{
-                      marginTop:'4px',
-                      fontSize:'10px',
-                      color:'var(--dashboard-muted)'
-                    }}>
-                      {lang === 'pt' ? `de ${capacity} vagas` : `of ${capacity} seats`}
+                    <div className="pmy-ds-seat-meta">
+                      {lang === "pt" ? `de ${capacity} vagas` : `of ${capacity} seats`}
                       {departure.capacitySource === "DEFAULT"
-                        ? (lang === 'pt' ? ' · padrão' : ' · default')
-                        : ''}
+                        ? (lang === "pt" ? " · padrão" : " · default")
+                        : ""}
                     </div>
                   </div>
                 </div>
@@ -1336,35 +1098,22 @@ const UpcomingDeparturesPanel = ({
         </div>
       )}
 
-      {departures.length > 8 && (
-        <div style={{
-          display:'flex',
-          justifyContent:'center',
-          paddingTop:'15px'
-        }}>
-          <button
-            type="button"
+      {departures.length > 8 ? (
+        <div className="pmy-ds-show-more">
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setShowAll((current) => !current)}
-            style={{
-              border:'1px solid var(--dashboard-border)',
-              borderRadius:'999px',
-              background:'var(--surface-color)',
-              padding:'8px 14px',
-              color:'var(--dashboard-accent)',
-              fontSize:'12px',
-              fontWeight:'850',
-              cursor:'pointer'
-            }}
           >
             {showAll
-              ? (lang === 'pt' ? 'Mostrar menos' : 'Show less')
-              : (lang === 'pt'
+              ? (lang === "pt" ? "Mostrar menos" : "Show less")
+              : (lang === "pt"
                 ? `Ver todas as ${departures.length} saídas`
                 : `View all ${departures.length} departures`)}
-          </button>
+          </Button>
         </div>
-      )}
-    </section>
+      ) : null}
+    </Card>
   );
 };
 
@@ -1499,78 +1248,41 @@ const TourPerformanceRanking = ({
   ];
 
   return (
-    <section className="pmy-card" style={{ padding:'22px 24px' }}>
-      <div style={{
-        display:'flex',
-        justifyContent:'space-between',
-        alignItems:'flex-start',
-        gap:'16px',
-        flexWrap:'wrap',
-        marginBottom:'18px'
-      }}>
-        <div>
-          <div className="pmy-trend-eyebrow">
-            {lang === 'pt' ? 'Performance dos tours' : 'Tour performance'}
-          </div>
-          <h2 className="pmy-trend-title" style={{ marginBottom:'5px' }}>
-            {lang === 'pt' ? 'Ranking de tours' : 'Tour ranking'}
-          </h2>
-          <div className="pmy-trend-subtitle">
-            {periodLabel} · {lang === 'pt'
-              ? 'reservas confirmadas, passageiros e receita real'
-              : 'confirmed bookings, passengers and real revenue'}
-          </div>
-        </div>
+    <Card>
+      <div className="pmy-ds-dashboard-header">
+        <SectionHeader
+          eyebrow={lang === "pt" ? "Performance dos tours" : "Tour performance"}
+          title={lang === "pt" ? "Ranking de tours" : "Tour ranking"}
+          subtitle={`${periodLabel} · ${lang === "pt"
+            ? "reservas confirmadas, passageiros e receita real"
+            : "confirmed bookings, passengers and real revenue"}`}
+          className="pmy-u-mb-0"
+        />
 
-        <div style={{
-          display:'flex',
-          gap:'5px',
-          padding:'4px',
-          borderRadius:'999px',
-          background:'var(--dashboard-soft)',
-          border:'1px solid var(--dashboard-border)'
-        }}>
-          {metricOptions.map((option) => {
-            const active = rankingMetric === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setRankingMetric(option.key)}
-                style={{
-                  border:0,
-                  borderRadius:'999px',
-                  padding:'8px 12px',
-                  background:active ? 'var(--surface-color)' : 'transparent',
-                  color:active ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
-                  fontSize:'12px',
-                  fontWeight:'850',
-                  cursor:'pointer',
-                  boxShadow:active ? '0 2px 8px rgba(28,47,34,.08)' : 'none'
-                }}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+        <div className="pmy-ds-ranking-controls">
+          {metricOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={`pmy-ds-ranking-control ${rankingMetric === option.key ? "is-active" : ""}`}
+              onClick={() => setRankingMetric(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {topRows.length === 0 ? (
-        <div style={{
-          minHeight:'150px',
-          display:'grid',
-          placeItems:'center',
-          textAlign:'center',
-          color:'var(--dashboard-muted)',
-          fontSize:'13px'
-        }}>
-          {lang === 'pt'
-            ? 'Ainda não há reservas confirmadas no período para montar o ranking.'
-            : 'There are no confirmed bookings in the period to build the ranking yet.'}
-        </div>
+        <EmptyState
+          icon="ranking"
+          title={lang === "pt" ? "Ainda não há ranking para este período" : "There is no ranking for this period yet"}
+          description={lang === "pt"
+            ? "O ranking aparecerá quando houver reservas confirmadas no período selecionado."
+            : "The ranking will appear when confirmed bookings exist in the selected period."}
+        />
       ) : (
-        <div style={{ display:'grid', gap:'8px' }}>
+        <div className="pmy-ds-ranking-list">
           {topRows.map((row, index) => {
             const metricValue =
               rankingMetric === "bookings"
@@ -1586,151 +1298,64 @@ const TourPerformanceRanking = ({
             return (
               <div
                 key={row.id}
-                style={{
-                  display:'grid',
-                  gridTemplateColumns:'46px minmax(230px,1.6fr) minmax(120px,1fr) 112px 112px 150px',
-                  alignItems:'center',
-                  gap:'12px',
-                  minHeight:'72px',
-                  padding:'10px 12px',
-                  border:'1px solid #eceeec',
-                  borderRadius:'15px',
-                  background:index === 0
-                    ? 'color-mix(in srgb, var(--dashboard-accent) 4%, var(--surface-color))'
-                    : '#fff'
-                }}
+                className={`pmy-ds-ranking-row ${index === 0 ? "is-first" : ""}`}
               >
-                <div style={{
-                  width:'34px',
-                  height:'34px',
-                  borderRadius:'11px',
-                  display:'grid',
-                  placeItems:'center',
-                  background:index === 0 ? 'var(--dashboard-accent)' : 'var(--dashboard-soft)',
-                  color:index === 0 ? 'var(--dashboard-accent-contrast)' : 'var(--dashboard-muted)',
-                  fontSize:'13px',
-                  fontWeight:'900'
-                }}>
-                  {index + 1}
-                </div>
+                <div className="pmy-ds-ranking-position">{index + 1}</div>
 
-                <div style={{
-                  minWidth:0,
-                  display:'flex',
-                  alignItems:'center',
-                  gap:'11px'
-                }}>
+                <div className="pmy-ds-ranking-tour">
                   {row.image ? (
                     <img
                       src={row.image}
                       alt={row.imageAlt}
-                      className={imageShape}
-                      style={{
-                        width:'44px',
-                        height:'44px',
-                        objectFit:'cover',
-                        flex:'0 0 44px'
-                      }}
+                      className={`pmy-ds-ranking-image ${imageShape}`}
                     />
                   ) : (
-                    <div style={{
-                      width:'44px',
-                      height:'44px',
-                      flex:'0 0 44px',
-                      borderRadius:'12px',
-                      background:'var(--dashboard-soft)',
-                      display:'grid',
-                      placeItems:'center',
-                      fontSize:'18px'
-                    }}>
-                      🧭
+                    <div className="pmy-ds-ranking-placeholder">
+                      <Icon name="ranking" size={18} />
                     </div>
                   )}
 
-                  <div style={{ minWidth:0 }}>
-                    <div style={{
-                      fontSize:'14px',
-                      fontWeight:'850',
-                      color:'var(--dashboard-text)',
-                      overflow:'hidden',
-                      textOverflow:'ellipsis',
-                      whiteSpace:'nowrap'
-                    }}>
-                      {row.title}
-                    </div>
-                    {row.missingRevenue > 0 && (
-                      <div style={{
-                        fontSize:'11px',
-                        color:'#9a6700',
-                        marginTop:'3px'
-                      }}>
-                        {lang === 'pt'
+                  <div className="pmy-ds-ranking-copy">
+                    <div className="pmy-ds-ranking-name">{row.title}</div>
+                    {row.missingRevenue > 0 ? (
+                      <div className="pmy-ds-ranking-warning">
+                        {lang === "pt"
                           ? `${row.missingRevenue} reserva(s) sem receita comparável`
                           : `${row.missingRevenue} booking(s) without comparable revenue`}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
-                <div style={{
-                  height:'10px',
-                  borderRadius:'999px',
-                  background:'var(--dashboard-soft)',
-                  overflow:'hidden'
-                }}>
-                  <div style={{
-                    width:`${barWidth}%`,
-                    minWidth:metricValue > 0 ? '5px' : 0,
-                    height:'100%',
-                    borderRadius:'inherit',
-                    background:'var(--dashboard-accent)'
-                  }} />
+                <div className="pmy-ds-ranking-track">
+                  <div
+                    className="pmy-ds-ranking-fill"
+                    style={{
+                      "--pmy-bar-width": `${barWidth}%`,
+                      "--pmy-bar-min": metricValue > 0 ? "5px" : "0px",
+                    }}
+                  />
                 </div>
 
-                <div>
-                  <span style={{
-                    display:'block',
-                    fontSize:'10px',
-                    color:'var(--dashboard-muted)',
-                    fontWeight:'800',
-                    textTransform:'uppercase',
-                    letterSpacing:'.04em'
-                  }}>
-                    {lang === 'pt' ? 'Reservas' : 'Bookings'}
+                <div className="pmy-ds-ranking-metric">
+                  <span className="pmy-ds-ranking-metric__label">
+                    {lang === "pt" ? "Reservas" : "Bookings"}
                   </span>
-                  <strong style={{ fontSize:'18px', color:'var(--dashboard-text)' }}>{row.bookings}</strong>
+                  <strong className="pmy-ds-ranking-metric__value">{row.bookings}</strong>
                 </div>
 
-                <div>
-                  <span style={{
-                    display:'block',
-                    fontSize:'10px',
-                    color:'var(--dashboard-muted)',
-                    fontWeight:'800',
-                    textTransform:'uppercase',
-                    letterSpacing:'.04em'
-                  }}>
-                    {lang === 'pt' ? 'Passageiros' : 'Passengers'}
+                <div className="pmy-ds-ranking-metric">
+                  <span className="pmy-ds-ranking-metric__label">
+                    {lang === "pt" ? "Passageiros" : "Passengers"}
                   </span>
-                  <strong style={{ fontSize:'18px', color:'var(--dashboard-text)' }}>{row.passengers}</strong>
+                  <strong className="pmy-ds-ranking-metric__value">{row.passengers}</strong>
                 </div>
 
-                <div style={{ textAlign:'right' }}>
-                  <span style={{
-                    display:'block',
-                    fontSize:'10px',
-                    color:'var(--dashboard-muted)',
-                    fontWeight:'800',
-                    textTransform:'uppercase',
-                    letterSpacing:'.04em'
-                  }}>
-                    {lang === 'pt' ? 'Receita real' : 'Real revenue'}
+                <div className="pmy-ds-ranking-revenue">
+                  <span className="pmy-ds-ranking-metric__label">
+                    {lang === "pt" ? "Receita real" : "Real revenue"}
                   </span>
-                  <strong style={{
-                    display:'block',
-                    fontSize:'17px',
-                    color:'var(--dashboard-accent)'
-                  }}>
+                  <strong className="pmy-ds-ranking-metric__value">
                     {formatMoney(row.revenue, dashboardCurrency)}
                   </strong>
                 </div>
@@ -1740,18 +1365,12 @@ const TourPerformanceRanking = ({
         </div>
       )}
 
-      <div style={{
-        marginTop:'14px',
-        paddingTop:'11px',
-        borderTop:'1px solid var(--dashboard-border)',
-        fontSize:'12px',
-        color:'var(--dashboard-muted)'
-      }}>
-        {lang === 'pt'
+      <div className="pmy-ds-ranking-note">
+        {lang === "pt"
           ? `Receita considera apenas valores reais na moeda ${dashboardCurrency}. Reservas sem valor ou em outra moeda não são convertidas nem estimadas.`
           : `Revenue includes only real values in ${dashboardCurrency}. Bookings without value or in another currency are not converted or estimated.`}
       </div>
-    </section>
+    </Card>
   );
 };
 
