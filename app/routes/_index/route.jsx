@@ -412,7 +412,7 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -497,6 +497,11 @@ function CentralDeReservasContent() {
   // E. MODAL DO CALENDÁRIO
   const [modalSelectedTour, setModalSelectedTour] = useState("");
   const [modalAvailableHours, setModalAvailableHours] = useState(["09:00", "14:00"]);
+  const [modalSelectedHour, setModalSelectedHour] = useState("09:00");
+  const [modalSelectedGuide, setModalSelectedGuide] = useState("");
+  const [guideAssignmentSaving, setGuideAssignmentSaving] = useState(false);
+  const [guideAssignmentMessage, setGuideAssignmentMessage] = useState("");
+  const [guideAssignmentsList, setGuideAssignmentsList] = useState(guideAssignments || []);
   const [isFormAllocating, setIsFormAllocating] = useState(false);
 
   // F. NAVEGAÇÃO DO CALENDÁRIO
@@ -1107,7 +1112,18 @@ function CentralDeReservasContent() {
         active: p.active, variants: p.variants, collections: p.collections,
         scheduleSlots: p.scheduleSlots, description: p.description,
       }))
-    : (tours || []).map(t => ({ id: t.id, title: t.title, price: null, sku: null, image: null, collections: [], scheduleSlots: [] }));
+    : (tours || []).map(t => ({
+        id: t.id,
+        masterTourId: t.id,
+        title: t.title,
+        price: null,
+        sku: null,
+        image: null,
+        collections: [],
+        scheduleSlots: t.scheduleSlots || [],
+        variants: t.variants || [],
+        maxCapacity: Number(t.maxCapacity ?? 20),
+      }));
 
   const dashboardUpcomingDepartures = upcomingDepartures.map((departure) => {
     const canonicalTour = (tours || []).find((tour) => tour.id === departure.tourId) || null;
@@ -2053,11 +2069,14 @@ function CentralDeReservasContent() {
 
   const handleModalTourChange = (id) => {
     setModalSelectedTour(id);
+    setGuideAssignmentMessage("");
     const tour = tourOptions.find(t => t.id === id);
 
     // 1. Metafield
     if (tour?.scheduleSlots?.length > 0) {
-      setModalAvailableHours(tour.scheduleSlots);
+      const hours = [...tour.scheduleSlots].sort();
+      setModalAvailableHours(hours);
+      setModalSelectedHour(hours[0] || "");
       return;
     }
 
@@ -2076,11 +2095,83 @@ function CentralDeReservasContent() {
     }
 
     if (timesFromVariants.size > 0) {
-      setModalAvailableHours([...timesFromVariants].sort());
+      const hours = [...timesFromVariants].sort();
+      setModalAvailableHours(hours);
+      setModalSelectedHour(hours[0] || "");
       return;
     }
 
     setModalAvailableHours(["09:00", "14:00"]);
+    setModalSelectedHour("09:00");
+  };
+
+  const guideAssignmentDateKey = (day = selectedCalendarDay) => {
+    const month = String(currentMonth + 1).padStart(2, "0");
+    const date = String(day).padStart(2, "0");
+    return `${currentYear}-${month}-${date}`;
+  };
+
+  const handleSaveGuideAssignment = async () => {
+    if (!modalSelectedTour || !modalSelectedHour || !modalSelectedGuide) {
+      setGuideAssignmentMessage("Selecione tour, horário e guia.");
+      return;
+    }
+
+    setGuideAssignmentSaving(true);
+    setGuideAssignmentMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveGuideAssignment");
+      fd.append("tourId", modalSelectedTour);
+      fd.append("guideId", modalSelectedGuide);
+      fd.append("date", guideAssignmentDateKey());
+      fd.append("time", modalSelectedHour);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setGuideAssignmentMessage(result.error || "Não foi possível publicar a escala.");
+        return;
+      }
+
+      setGuideAssignmentsList((current) => [
+        ...current.filter((item) => item.id !== result.assignment.id),
+        result.assignment,
+      ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
+      setGuideAssignmentMessage(result.message || "Escala publicada.");
+      setIsFormAllocating(false);
+      setModalSelectedTour("");
+      setModalSelectedGuide("");
+    } catch (error) {
+      setGuideAssignmentMessage(error?.message || "Erro ao publicar a escala.");
+    } finally {
+      setGuideAssignmentSaving(false);
+    }
+  };
+
+  const handleRemoveGuideAssignment = async (id) => {
+    if (!window.confirm("Remover esta escala de guia?")) return;
+
+    setGuideAssignmentSaving(true);
+    setGuideAssignmentMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "removeGuideAssignment");
+      fd.append("id", id);
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setGuideAssignmentMessage(result.error || "Não foi possível remover a escala.");
+        return;
+      }
+
+      setGuideAssignmentsList((current) => current.filter((item) => item.id !== id));
+      setGuideAssignmentMessage(result.message || "Escala removida.");
+    } catch (error) {
+      setGuideAssignmentMessage(error?.message || "Erro ao remover a escala.");
+    } finally {
+      setGuideAssignmentSaving(false);
+    }
   };
 
   const handleCreateBlock = async (e) => {
@@ -2221,6 +2312,17 @@ function CentralDeReservasContent() {
       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   };
 
+  const getCalendarDayAssignments = (day) => {
+    const dateKey = guideAssignmentDateKey(day);
+    return (guideAssignmentsList || [])
+      .filter((assignment) => assignment?.status === "ASSIGNED")
+      .filter(
+        (assignment) =>
+          getLisbonBookingParts(assignment.startTime)?.dateKey === dateKey,
+      )
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  };
+
   const getCalendarDayStats = (day) => {
     const dayBookings = getCalendarDayBookings(day);
     const slots = new Map();
@@ -2249,8 +2351,12 @@ function CentralDeReservasContent() {
     const capacity = [...slots.values()].reduce((sum, slot) => sum + slot.capacity, 0);
     const remaining = Math.max(0, capacity - occupied);
 
+    const dayAssignments = getCalendarDayAssignments(day);
+
     return {
       bookings: dayBookings,
+      assignments: dayAssignments,
+      assignmentCount: dayAssignments.length,
       bookingCount: dayBookings.length,
       tourCount: new Set(dayBookings.map(booking => booking.tourId)).size,
       passengers: occupied,
@@ -2579,11 +2685,12 @@ function CentralDeReservasContent() {
     const renderDayCell = (day, weekdayLabel, key) => {
       const stats = getCalendarDayStats(day);
       const hasBookings = stats.bookingCount > 0;
+      const hasAssignments = stats.assignmentCount > 0;
       const hasBlocks = getCalendarDayBlocks(day).length > 0;
 
       return (
         <div key={key} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
-          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
+          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setModalSelectedGuide(""); setGuideAssignmentMessage(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
           <div className="pmy-cal-date-line">{day} - {weekdayLabel}</div>
           <div className="pmy-cal-info-line">
             🏰 {stats.tourCount} {stats.tourCount===1 ? 'Tour com reserva' : 'Tours com reserva'}
@@ -2593,7 +2700,12 @@ function CentralDeReservasContent() {
               ? `👥 Vagas: ${stats.remaining}/${stats.capacity} · ${stats.passengers} pax`
               : '👥 Nenhuma reserva'}
           </div>
-          {(hasBookings || hasBlocks) && <div className="pmy-calendar-dot"></div>}
+          {hasAssignments && (
+            <div className="pmy-cal-info-line">
+              🧭 {stats.assignmentCount} {stats.assignmentCount === 1 ? ui("escala de guia", "guide assignment") : ui("escalas de guia", "guide assignments")}
+            </div>
+          )}
+          {(hasBookings || hasAssignments || hasBlocks) && <div className="pmy-calendar-dot"></div>}
         </div>
       );
     };
@@ -3155,6 +3267,7 @@ function CentralDeReservasContent() {
         : `📅 Grade do Dia ${selectedCalendarDay} de ${currentMonthLabel} de ${currentYear}`;
       const dayBlocks = getCalendarDayBlocks(selectedCalendarDay);
       const dayBookings = getCalendarDayBookings(selectedCalendarDay);
+      const dayAssignments = getCalendarDayAssignments(selectedCalendarDay);
       const dayStats = getCalendarDayStats(selectedCalendarDay);
       const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
       content = (
@@ -3219,6 +3332,37 @@ function CentralDeReservasContent() {
             )}
           </div>
           <hr className="pmy-ds-migrated-1gk8eya" />
+          <h4 className="pmy-ds-migrated-rg4op4">
+            {ui("Escala de guias:", "Guide assignments:")}
+          </h4>
+          <div className="pmy-ds-migrated-1iaao15">
+            {dayAssignments.length > 0 ? dayAssignments.map((assignment) => {
+              const parts = getLisbonBookingParts(assignment.startTime);
+              return (
+                <div key={assignment.id} className="pmy-list-item">
+                  <div>
+                    <strong>{assignment.tour?.title || ui("Tour", "Tour")}</strong>
+                    <div className="pmy-ds-migrated-1imkwof">
+                      🕒 {parts?.timeKey || "—"} · 🧑‍🏫 {assignment.guide?.name || ui("Guia", "Guide")}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="pmy-int-btn-disconnect"
+                    disabled={guideAssignmentSaving}
+                    onClick={() => handleRemoveGuideAssignment(assignment.id)}
+                  >
+                    {ui("Remover escala", "Remove assignment")}
+                  </button>
+                </div>
+              );
+            }) : (
+              <p className="pmy-ds-migrated-en208m">
+                {ui("Nenhum guia escalado para este dia.", "No guide assigned for this day.")}
+              </p>
+            )}
+          </div>
+          <hr className="pmy-ds-migrated-1gk8eya" />
           {dayBlocks.length > 0 && (
             <div className="pmy-ds-migrated-9ru3fj">
               🔒 {dayBlocks.length} regra{dayBlocks.length===1?'':'s'} de disponibilidade ativa{dayBlocks.length===1?'':'s'} neste dia.
@@ -3246,18 +3390,41 @@ function CentralDeReservasContent() {
                   {modalSelectedTour && (
                     <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                       <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Horário:", "Select Time:")}</label>
-                      <select className="pmy-form-input">
+                      <select
+                        className="pmy-form-input"
+                        value={modalSelectedHour}
+                        onChange={(event) => setModalSelectedHour(event.target.value)}
+                      >
                         {modalAvailableHours.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                   )}
                   <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                     <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Guia:", "Select Guide:")}</label>
-                    <select className="pmy-form-input">
+                    <select
+                      className="pmy-form-input"
+                      value={modalSelectedGuide}
+                      onChange={(event) => setModalSelectedGuide(event.target.value)}
+                    >
+                      <option value="">{ui("-- Selecione o Guia --", "-- Select Guide --")}</option>
                       {guidesList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="pmy-btn-submit" onClick={() => { setActiveModal(null); setIsFormAllocating(false); }}>{ui("Confirmar e Publicar Escala", "Confirm and Publish Schedule")}</button>
+                  {guideAssignmentMessage && (
+                    <div className={`pmy-ds-inline-message ${guideAssignmentMessage.toLowerCase().includes("erro") || guideAssignmentMessage.toLowerCase().includes("já está") || guideAssignmentMessage.toLowerCase().includes("não foi") ? "is-danger" : "is-success"}`}>
+                      {guideAssignmentMessage}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="pmy-btn-submit"
+                    disabled={guideAssignmentSaving || !modalSelectedTour || !modalSelectedHour || !modalSelectedGuide}
+                    onClick={handleSaveGuideAssignment}
+                  >
+                    {guideAssignmentSaving
+                      ? ui("Publicando escala...", "Publishing assignment...")
+                      : ui("Confirmar e Publicar Escala", "Confirm and Publish Schedule")}
+                  </button>
                 </div>
               )}
             </div>
@@ -3295,14 +3462,40 @@ function CentralDeReservasContent() {
           </div>
           <h4 className="pmy-ds-migrated-uzos4w">{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
           <div className="pmy-ds-migrated-1iaao15">
-            <div className="pmy-list-item pmy-ds-migrated-16en88k" ><span>🏰 Sintra e Cascais Completo</span><strong>{ui("Amanhã, 09:00", "Tomorrow, 09:00")}</strong></div>
-            <div className="pmy-list-item pmy-ds-migrated-16en88k" ><span>🏰 Fátima, Batalha e Nazaré</span><strong>28/Maio, 08:30</strong></div>
-            <div className="pmy-list-item pmy-ds-migrated-1huynzl" ><span>🚶‍♂️ Lisboa Walking Tour (Baixa)</span><strong>30/Maio, 14:00</strong></div>
-          </div>
-          <h4 className="pmy-ds-migrated-1tu9ok4">{ui("Horários Disponíveis Padrão:", "Default Available Hours:")}</h4>
-          <div className="pmy-ds-migrated-aauppd">
-            <span className="pmy-tag pmy-ds-migrated-1djmfvs" >{ui("Segunda a Sábado", "Monday to Saturday")}</span>
-            <span className="pmy-tag pmy-ds-migrated-1djmfvs" >08:00 - 18:00</span>
+            {guideAssignmentsList
+              .filter((assignment) =>
+                assignment.guideId === selectedGuideInfo.id &&
+                assignment.status === "ASSIGNED" &&
+                new Date(assignment.startTime) >= new Date()
+              )
+              .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+              .slice(0, 7)
+              .map((assignment) => (
+                <div className="pmy-list-item pmy-ds-migrated-16en88k" key={assignment.id}>
+                  <span>🧭 {assignment.tour?.title || ui("Tour", "Tour")}</span>
+                  <strong>
+                    {new Date(assignment.startTime).toLocaleString(
+                      lang === "pt" ? "pt-PT" : "en-GB",
+                      {
+                        timeZone: "Europe/Lisbon",
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </strong>
+                </div>
+              ))}
+            {guideAssignmentsList.filter((assignment) =>
+              assignment.guideId === selectedGuideInfo.id &&
+              assignment.status === "ASSIGNED" &&
+              new Date(assignment.startTime) >= new Date()
+            ).length === 0 && (
+              <p className="pmy-ds-migrated-en208m">
+                {ui("Nenhuma escala futura atribuída a este guia.", "No future assignment for this guide.")}
+              </p>
+            )}
           </div>
 
           {selectedGuideInfo?.utmId && (
@@ -5279,7 +5472,8 @@ function CentralDeReservasContent() {
           }} />
 
           <GuidesTab {...{
-            activeTab, ddiList, getFlagUrl, guideDdi, guideEmail, guideName, guidePhoto,
+            activeTab, ddiList, getFlagUrl, guideAssignments: guideAssignmentsList,
+            guideDdi, guideEmail, guideName, guidePhoto,
             guidePhotoRef, guideUtmId, guideWhatsapp, guidesList, handleAddGuide,
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
             openShopifyFilePicker, setActiveModal, setGuideDdi, setGuideEmail,
