@@ -2474,7 +2474,7 @@ function CentralDeReservasContent() {
       setApiSecretInput("");
       setIntegrationCredentialMessage(
         payload.message ||
-          "Credencial salva e validada no backend. Aguardando tráfego real do canal.",
+          "Credencial salva · teste local concluído no backend. Aguardando tráfego real do canal.",
       );
     } catch (error) {
       setIntegrationCredentialMessage(
@@ -2497,7 +2497,7 @@ function CentralDeReservasContent() {
       const payload = await callIntegrationCredentialApi(fd);
       applyCredentialStatus(key, payload.status);
       setIntegrationCredentialMessage(
-        "Credencial criptografada validada pela autenticação da Supplier API.",
+        "Teste técnico local concluído. A conexão continua aguardando tráfego autenticado real do canal.",
       );
     } catch (error) {
       setIntegrationCredentialMessage(
@@ -2699,8 +2699,8 @@ function CentralDeReservasContent() {
                       )
                     : conn.configured
                       ? ui(
-                          `Credencial salva e validada${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""} · aguardando tráfego do canal`,
-                          `Credential saved and validated${conn.lastSync ? ` · last check ${conn.lastSync}` : ""} · waiting for channel traffic`,
+                          `Credencial salva · teste local concluído${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""} · aguardando tráfego do canal`,
+                          `Credential saved · local check completed${conn.lastSync ? ` · last check ${conn.lastSync}` : ""} · waiting for channel traffic`,
                         )
                       : isHeadout
                         ? ui("Onboarding técnico pendente · campos de credencial desativados","Technical onboarding pending · credential fields disabled")
@@ -2941,7 +2941,7 @@ function CentralDeReservasContent() {
                     {conn.connected
                       ? ui("Canal conectado por tráfego autenticado", "Channel connected by authenticated traffic")
                       : conn.configured
-                        ? ui("Credencial validada · aguardando tráfego real", "Credential validated · waiting for real traffic")
+                        ? ui("Credencial configurada · aguardando tráfego real", "Credential configured · waiting for real traffic")
                         : ui("Credencial ainda não configurada", "Credential not configured yet")}
                   </div>
                   <div className="pmy-ds-migrated-zwhy5l">
