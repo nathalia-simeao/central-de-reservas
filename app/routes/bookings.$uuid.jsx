@@ -5,22 +5,22 @@ import {
   validateCivitatisCapabilities,
 } from "../utils/civitatis.server";
 
-function validate(request) {
+async function validate(request) {
   return (
-    requireCivitatisAuth(request) ||
+    (await requireCivitatisAuth(request)) ||
     validateCivitatisCapabilities(request)
   );
 }
 
 export const loader = async ({ request, params }) => {
-  const validationError = validate(request);
+  const validationError = await validate(request);
   if (validationError) return validationError;
 
   return civitatisGetBooking(params.uuid);
 };
 
 export const action = async ({ request, params }) => {
-  const validationError = validate(request);
+  const validationError = await validate(request);
   if (validationError) return validationError;
 
   if (request.method !== "DELETE") {
