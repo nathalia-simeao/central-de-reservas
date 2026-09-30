@@ -17,9 +17,6 @@ CREATE TABLE "GuideAssignment" (
 CREATE UNIQUE INDEX "GuideAssignment_tourId_startTime_key" ON "GuideAssignment"("tourId", "startTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GuideAssignment_guideId_startTime_key" ON "GuideAssignment"("guideId", "startTime");
-
--- CreateIndex
 CREATE INDEX "GuideAssignment_guideId_startTime_idx" ON "GuideAssignment"("guideId", "startTime");
 
 -- CreateIndex
