@@ -172,7 +172,6 @@ model GuideAssignment {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([tourId, startTime], map: "GuideAssignment_tourId_startTime_key")
-  @@unique([guideId, startTime], map: "GuideAssignment_guideId_startTime_key")
   @@index([guideId, startTime])
   @@index([tourId, startTime])
   @@index([status, startTime])
