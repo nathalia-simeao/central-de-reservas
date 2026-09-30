@@ -238,7 +238,7 @@ export async function updateIntegrationValidation(
   const connectionStatus =
     validationStatus === "CONNECTED"
       ? "CONNECTED"
-      : validationStatus === "VALIDATED" || validationStatus === "CONFIGURED"
+      : ["VALIDATED", "CONFIGURED", "LOCAL_CHECK"].includes(validationStatus)
         ? "CONFIGURED"
         : "ERROR";
 
