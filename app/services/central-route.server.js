@@ -1140,15 +1140,24 @@ export const action = async ({ request }) => {
         );
       }
 
-      const guideConflict = await prisma.guideAssignment.findFirst({
-        where: {
-          guideId,
-          startTime,
-          status: "ASSIGNED",
-          tourId: { not: tour.id },
-        },
-        include: { tour: { select: { title: true } } },
-      });
+      const [guideConflict, departureAssignment] = await Promise.all([
+        prisma.guideAssignment.findFirst({
+          where: {
+            guideId,
+            startTime,
+            status: "ASSIGNED",
+            tourId: { not: tour.id },
+          },
+          include: { tour: { select: { title: true } } },
+        }),
+        prisma.guideAssignment.findFirst({
+          where: {
+            tourId: tour.id,
+            startTime,
+            status: "ASSIGNED",
+          },
+        }),
+      ]);
 
       if (guideConflict) {
         return json(
@@ -1161,38 +1170,48 @@ export const action = async ({ request }) => {
         );
       }
 
-      const assignment = await prisma.guideAssignment.upsert({
-        where: {
-          tourId_startTime: {
-            tourId: tour.id,
-            startTime,
-          },
-        },
-        create: {
-          guideId,
-          tourId: tour.id,
-          startTime,
-          status: "ASSIGNED",
-          source: "MANUAL",
-        },
-        update: {
-          guideId,
-          status: "ASSIGNED",
-          source: "MANUAL",
-        },
-        include: {
-          guide: true,
-          tour: {
-            select: {
-              id: true,
-              title: true,
-              shopifyProductId: true,
-              timezone: true,
-              durationMinutes: true,
+      const assignment = departureAssignment
+        ? await prisma.guideAssignment.update({
+            where: { id: departureAssignment.id },
+            data: {
+              guideId,
+              status: "ASSIGNED",
+              source: "MANUAL",
             },
-          },
-        },
-      });
+            include: {
+              guide: true,
+              tour: {
+                select: {
+                  id: true,
+                  title: true,
+                  shopifyProductId: true,
+                  timezone: true,
+                  durationMinutes: true,
+                },
+              },
+            },
+          })
+        : await prisma.guideAssignment.create({
+            data: {
+              guideId,
+              tourId: tour.id,
+              startTime,
+              status: "ASSIGNED",
+              source: "MANUAL",
+            },
+            include: {
+              guide: true,
+              tour: {
+                select: {
+                  id: true,
+                  title: true,
+                  shopifyProductId: true,
+                  timezone: true,
+                  durationMinutes: true,
+                },
+              },
+            },
+          });
 
       return json({
         success: true,
@@ -1201,6 +1220,17 @@ export const action = async ({ request }) => {
       });
     } catch (error) {
       console.error("[PMY] saveGuideAssignment failed:", error);
+      if (error?.code === "P2002") {
+        return json(
+          {
+            success: false,
+            code: "GUIDE_ASSIGNMENT_CONFLICT",
+            error:
+              "A saída ou o guia acabou de receber outra escala neste horário. Atualize a Agenda e tente novamente.",
+          },
+          { status: 409 },
+        );
+      }
       return json(
         {
           success: false,
