@@ -501,12 +501,18 @@ export const action = async ({ request }) => {
       },
     });
 
+    const checkoutUrl = new URL(
+      `/checkout/hold/${checkoutHold.id}`,
+      request.url,
+    ).toString();
+
     return json({
       success: true,
       draftOrder: {
         id: draftOrder.id,
         name: draftOrder.name,
         invoiceUrl: draftOrder.invoiceUrl,
+        checkoutUrl,
         status: draftOrder.status,
         total: draftOrder.totalPriceSet?.shopMoney?.amount || null,
         currency: draftOrder.totalPriceSet?.shopMoney?.currencyCode || null,
