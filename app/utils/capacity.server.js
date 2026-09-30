@@ -4,6 +4,7 @@ import {
   getDatePartsInTimeZone,
   normalizePlatform,
 } from "./availability.server";
+import { classifyCommercialSource } from "./commercial-source.server";
 
 const ACTIVE_BOOKING_STATUSES = ["CONFIRMED", "PENDING"];
 
@@ -311,6 +312,9 @@ export async function createBookingWithCapacityGuard(
           tourId,
           startTime,
           platform: bookingPlatform,
+          commercialSource:
+            bookingData?.commercialSource ||
+            classifyCommercialSource({ platform: bookingPlatform }),
           totalParticipants: seats,
         },
       });
