@@ -4613,3 +4613,24 @@
   background: var(--pmy-warning-soft);
   color: var(--pmy-warning);
 }
+
+
+.pmy-ds-state-panel.is-danger {
+  background: var(--pmy-danger-soft);
+  border-color: color-mix(in srgb, var(--pmy-danger) 24%, var(--pmy-ds-border));
+}
+.pmy-ds-state-title.is-danger,
+.pmy-ds-connection-state.is-error {
+  color: var(--pmy-danger);
+}
+.pmy-int-status-dot.error {
+  background: var(--pmy-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pmy-danger) 12%, transparent);
+}
+.pmy-int-card-v2.is-error {
+  border-color: color-mix(in srgb, var(--pmy-danger) 28%, var(--pmy-ds-border));
+}
+.pmy-int-connection-note.is-error {
+  background: var(--pmy-danger-soft);
+  color: var(--pmy-danger);
+}
