@@ -336,7 +336,7 @@ export default function AgendaTab(props) {
           {generatedLink ? (
             <div className="pmy-ds-success-panel">
               <div className="pmy-ds-success-panel__title">
-                {tr("Draft Order criado no Shopify", "Draft Order created in Shopify")}
+                {tr("Checkout criado e vagas reservadas", "Checkout created and seats held")}
                 {draftOrderInfo?.name ? ` · ${draftOrderInfo.name}` : ""}
               </div>
 
@@ -347,6 +347,26 @@ export default function AgendaTab(props) {
                 </div>
               ) : null}
 
+              {draftOrderInfo?.holdExpiresAt ? (
+                <div className="pmy-ds-success-panel__meta">
+                  {tr("Vagas reservadas até", "Seats held until")}{" "}
+                  <strong>
+                    {new Date(draftOrderInfo.holdExpiresAt).toLocaleTimeString(
+                      lang === "pt" ? "pt-PT" : "en-GB",
+                      {
+                        timeZone: "Europe/Lisbon",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </strong>{" "}
+                  {tr(
+                    `(${draftOrderInfo.holdMinutes || 15} min). Depois disso, a Central libera a capacidade automaticamente.`,
+                    `(${draftOrderInfo.holdMinutes || 15} min). After that, the Central releases capacity automatically.`,
+                  )}
+                </div>
+              ) : null}
+
               <a href={generatedLink} target="_blank" rel="noreferrer" className="pmy-ds-link">
                 {tr("Abrir checkout seguro do Shopify", "Open secure Shopify checkout")}
                 <Icon name="external" size={14} />
@@ -354,8 +374,8 @@ export default function AgendaTab(props) {
 
               <div className="pmy-ds-success-panel__meta">
                 {tr(
-                  "O link acima é o invoiceUrl real devolvido pela API de Draft Orders do Shopify.",
-                  "The link above is the real invoiceUrl returned by the Shopify Draft Orders API.",
+                  "Este link passa primeiro pela Central: se o hold já tiver expirado, o checkout é bloqueado e um novo link precisa ser gerado.",
+                  "This link first checks the Central: if the hold has expired, checkout is blocked and a new link must be generated.",
                 )}
               </div>
             </div>
