@@ -277,9 +277,9 @@ async function createAndCompleteValidationOrder(admin) {
   return baseline;
 }
 
-async function validationStatus(orderId = null) {
-  const validationEvent = orderId
-    ? await db.integrationEvent.findUnique({
+async function findValidationEvent(orderId = null) {
+  return orderId
+    ? db.integrationEvent.findUnique({
         where: {
           provider_externalEventId: {
             provider: VALIDATION_PROVIDER,
@@ -287,10 +287,87 @@ async function validationStatus(orderId = null) {
           },
         },
       })
-    : await db.integrationEvent.findFirst({
+    : db.integrationEvent.findFirst({
         where: { provider: VALIDATION_PROVIDER, topic: "E2E_ORDER_TEST" },
         orderBy: { receivedAt: "desc" },
       });
+}
+
+async function fetchShopifyOrderState(admin, orderId) {
+  if (!admin || !orderId) return null;
+
+  const response = await admin.graphql(
+    `#graphql
+      query PmyValidationOrderState($id: ID!) {
+        node(id: $id) {
+          ... on Order {
+            id
+            name
+            cancelledAt
+            displayFinancialStatus
+          }
+        }
+      }
+    `,
+    { variables: { id: orderId } },
+  );
+
+  const payload = await response.json();
+  if (payload?.errors?.length) {
+    throw new Error(payload.errors.map((item) => item.message).join("; "));
+  }
+
+  return payload?.data?.node || null;
+}
+
+async function requestValidationOrderCancellation(admin, orderId) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation PmyValidationOrderCancel($orderId: ID!) {
+        orderCancel(
+          orderId: $orderId
+          notifyCustomer: false
+          reason: OTHER
+          restock: true
+          staffNote: "PMY E2E validation cleanup"
+        ) {
+          job {
+            id
+            done
+          }
+          orderCancelUserErrors {
+            code
+            field
+            message
+          }
+        }
+      }
+    `,
+    { variables: { orderId } },
+  );
+
+  const payload = await response.json();
+  if (payload?.errors?.length) {
+    throw new Error(payload.errors.map((item) => item.message).join("; "));
+  }
+
+  const mutation = payload?.data?.orderCancel;
+  const errors = mutation?.orderCancelUserErrors || [];
+  if (errors.length) {
+    const error = new Error(errors.map((item) => item.message).join("; "));
+    error.code = errors[0]?.code || "ORDER_CANCEL_FAILED";
+    throw error;
+  }
+
+  if (!mutation?.job?.id) {
+    throw new Error("O Shopify aceitou o cancelamento, mas não retornou o job de acompanhamento.");
+  }
+
+  return mutation.job;
+}
+
+async function validationStatus(admin, orderId = null) {
+  const validationEvent = await findValidationEvent(orderId);
 
   if (!validationEvent) {
     return {
@@ -304,11 +381,23 @@ async function validationStatus(orderId = null) {
         agendaReady: false,
         capacityReduced: false,
       },
+      cancellation: {
+        requested: false,
+        steps: {
+          orderCancelled: false,
+          webhookReceived: false,
+          bookingCancelled: false,
+          capacityRestored: false,
+        },
+      },
     };
   }
 
   const baseline = validationEvent.payload || {};
-  const externalOrderId = clean(baseline.orderId || validationEvent.externalEventId);
+  const previousResult = validationEvent.result || {};
+  const externalOrderId = clean(
+    baseline.orderId || validationEvent.externalEventId,
+  );
 
   const booking = externalOrderId
     ? await db.booking.findFirst({
@@ -333,57 +422,175 @@ async function validationStatus(orderId = null) {
       },
     },
     orderBy: { receivedAt: "desc" },
-    take: 50,
+    take: 100,
   });
 
-  const webhookEvent =
-    recentWebhookEvents.find(
-      (event) => orderIdFromWebhookEvent(event) === externalOrderId,
-    ) || null;
+  const matchingWebhooks = recentWebhookEvents.filter(
+    (event) => orderIdFromWebhookEvent(event) === externalOrderId,
+  );
 
-  let availabilityAfter = null;
+  const creationWebhook =
+    matchingWebhooks.find((event) => event.topic === "ORDERS_CREATE") ||
+    matchingWebhooks.find((event) => event.topic !== "ORDERS_CANCELLED") ||
+    null;
+
+  const cancellationWebhook =
+    matchingWebhooks.find((event) => event.topic === "ORDERS_CANCELLED") ||
+    null;
+
+  let availabilityCurrent = null;
   if (baseline.tourId && baseline.startTime) {
     try {
-      availabilityAfter = await getCentralAvailability(db, {
+      availabilityCurrent = await getCentralAvailability(db, {
         tourId: baseline.tourId,
         startTime: new Date(baseline.startTime),
         platform: "SHOPIFY",
         requestedSeats: 0,
       });
     } catch {
-      availabilityAfter = null;
+      availabilityCurrent = null;
     }
   }
 
-  const participants = Number(booking?.totalParticipants || baseline.participants || 1);
-  const remainingBefore = Number(baseline.remainingBefore);
-  const capacityReduced =
-    Boolean(booking && availabilityAfter) &&
-    Number.isFinite(remainingBefore) &&
-    availabilityAfter.remainingSeats <= Math.max(0, remainingBefore - participants);
+  let shopifyOrder = null;
+  if (externalOrderId) {
+    try {
+      shopifyOrder = await fetchShopifyOrderState(admin, externalOrderId);
+    } catch (error) {
+      console.error("[PMY] Shopify E2E order-state check failed:", error);
+    }
+  }
 
+  const participants = Number(
+    booking?.totalParticipants || baseline.participants || 1,
+  );
+  const remainingBefore = Number(baseline.remainingBefore);
+  const occupiedBefore = Number(baseline.occupiedBefore);
+
+  const capacityReducedNow =
+    Boolean(booking && availabilityCurrent) &&
+    !["CANCELED", "CANCELLED"].includes(
+      String(booking?.status || "").toUpperCase(),
+    ) &&
+    Number.isFinite(remainingBefore) &&
+    availabilityCurrent.remainingSeats <=
+      Math.max(0, remainingBefore - participants);
+
+  const priorSteps = previousResult?.steps || {};
   const steps = {
-    orderCreated: Boolean(externalOrderId),
-    webhookReceived: Boolean(webhookEvent),
-    bookingCreated: Boolean(booking),
-    agendaReady: Boolean(booking),
-    capacityReduced,
+    orderCreated:
+      Boolean(priorSteps.orderCreated) || Boolean(externalOrderId),
+    webhookReceived:
+      Boolean(priorSteps.webhookReceived) || Boolean(creationWebhook),
+    bookingCreated:
+      Boolean(priorSteps.bookingCreated) || Boolean(booking),
+    agendaReady:
+      Boolean(priorSteps.agendaReady) || Boolean(booking),
+    capacityReduced:
+      Boolean(priorSteps.capacityReduced) || capacityReducedNow,
   };
 
-  const complete = Object.values(steps).every(Boolean);
-  const hasWebhookFailure = webhookEvent?.status === "FAILED";
-  const status = complete
-    ? "PASSED"
-    : hasWebhookFailure
-      ? "FAILED"
-      : "WAITING";
+  const firstPhaseComplete = Object.values(steps).every(Boolean);
+  const previousSlot = previousResult?.slot || {};
+  const remainingAfterBooking =
+    previousSlot.remainingAfterBooking ??
+    previousSlot.remainingAfter ??
+    (capacityReducedNow ? availabilityCurrent?.remainingSeats : null);
+  const occupiedAfterBooking =
+    previousSlot.occupiedAfterBooking ??
+    previousSlot.occupiedAfter ??
+    (capacityReducedNow ? availabilityCurrent?.occupiedSeats : null);
+
+  const cancellationRequestedAt = clean(baseline.cancellationRequestedAt);
+  const bookingStatus = String(booking?.status || "").toUpperCase();
+  const bookingCancelled = ["CANCELED", "CANCELLED"].includes(bookingStatus);
+  const orderCancelled = Boolean(
+    shopifyOrder?.cancelledAt || cancellationWebhook?.payload?.cancelled_at,
+  );
+  const historicalCancellationObserved =
+    !cancellationRequestedAt && orderCancelled;
+  const cancellationRequested =
+    Boolean(cancellationRequestedAt) || historicalCancellationObserved;
+
+  const hasRemainingAfterBooking =
+    remainingAfterBooking !== null &&
+    remainingAfterBooking !== undefined &&
+    Number.isFinite(Number(remainingAfterBooking));
+  const hasOccupiedAfterBooking =
+    occupiedAfterBooking !== null &&
+    occupiedAfterBooking !== undefined &&
+    Number.isFinite(Number(occupiedAfterBooking));
+
+  const expectedRemainingAfterCancellation =
+    hasRemainingAfterBooking
+      ? Math.min(
+          Number.isFinite(remainingBefore)
+            ? remainingBefore
+            : Number(availabilityCurrent?.capacity || 0),
+          Number(remainingAfterBooking) + participants,
+        )
+      : Number.isFinite(remainingBefore)
+        ? remainingBefore
+        : null;
+
+  const expectedOccupiedAfterCancellation =
+    hasOccupiedAfterBooking
+      ? Math.max(0, Number(occupiedAfterBooking) - participants)
+      : Number.isFinite(occupiedBefore)
+        ? occupiedBefore
+        : null;
+
+  const capacityRestored =
+    Boolean(cancellationRequested && bookingCancelled && availabilityCurrent) &&
+    expectedRemainingAfterCancellation !== null &&
+    availabilityCurrent.remainingSeats >= expectedRemainingAfterCancellation &&
+    (expectedOccupiedAfterCancellation === null ||
+      availabilityCurrent.occupiedSeats <= expectedOccupiedAfterCancellation);
+
+  const cancellationSteps = {
+    orderCancelled,
+    webhookReceived: Boolean(cancellationWebhook),
+    bookingCancelled,
+    capacityRestored,
+  };
+
+  const cancellationComplete =
+    cancellationRequested &&
+    Object.values(cancellationSteps).every(Boolean);
+
+  const creationWebhookFailed = creationWebhook?.status === "FAILED";
+  const cancellationWebhookFailed =
+    cancellationWebhook?.status === "FAILED";
+
+  let status = "WAITING";
+  const historicalCancellationIncomplete =
+    historicalCancellationObserved && !cancellationComplete;
+
+  if (
+    creationWebhookFailed ||
+    cancellationWebhookFailed ||
+    historicalCancellationIncomplete
+  ) {
+    status = "FAILED";
+  } else if (cancellationRequested) {
+    status = cancellationComplete ? "FULLY_PASSED" : "CANCELLATION_WAITING";
+  } else if (firstPhaseComplete) {
+    status = "PASSED";
+  }
 
   const result = {
     steps,
+    firstPhasePassedAt:
+      previousResult?.firstPhasePassedAt ||
+      (firstPhaseComplete ? new Date().toISOString() : null),
     order: {
       id: externalOrderId,
-      name: baseline.orderName || null,
-      financialStatus: baseline.financialStatus || null,
+      name: shopifyOrder?.name || baseline.orderName || null,
+      financialStatus:
+        shopifyOrder?.displayFinancialStatus ||
+        baseline.financialStatus ||
+        null,
+      cancelledAt: shopifyOrder?.cancelledAt || null,
     },
     draftOrder: {
       id: baseline.draftOrderId || null,
@@ -391,15 +598,20 @@ async function validationStatus(orderId = null) {
     },
     slot: {
       tourId: baseline.tourId || null,
-      tourTitle: baseline.tourTitle || booking?.tour?.title || null,
+      tourTitle:
+        baseline.tourTitle || booking?.tour?.title || null,
       date: baseline.date || null,
       time: baseline.time || null,
       startTime: baseline.startTime || booking?.startTime || null,
-      capacity: baseline.capacity ?? booking?.tour?.maxCapacity ?? null,
+      capacity:
+        baseline.capacity ?? booking?.tour?.maxCapacity ?? null,
       occupiedBefore: baseline.occupiedBefore ?? null,
       remainingBefore: baseline.remainingBefore ?? null,
-      occupiedAfter: availabilityAfter?.occupiedSeats ?? null,
-      remainingAfter: availabilityAfter?.remainingSeats ?? null,
+      occupiedAfterBooking,
+      remainingAfterBooking,
+      occupiedCurrent: availabilityCurrent?.occupiedSeats ?? null,
+      remainingCurrent: availabilityCurrent?.remainingSeats ?? null,
+      expectedRemainingAfterCancellation,
     },
     booking: booking
       ? {
@@ -411,36 +623,83 @@ async function validationStatus(orderId = null) {
           totalPrice: booking.totalPrice,
           currency: booking.currency,
           createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
         }
       : null,
-    webhook: webhookEvent
+    webhook: creationWebhook
       ? {
-          id: webhookEvent.id,
-          topic: webhookEvent.topic,
-          status: webhookEvent.status,
-          receivedAt: webhookEvent.receivedAt,
-          processedAt: webhookEvent.processedAt,
-          error: webhookEvent.error,
+          id: creationWebhook.id,
+          topic: creationWebhook.topic,
+          status: creationWebhook.status,
+          receivedAt: creationWebhook.receivedAt,
+          processedAt: creationWebhook.processedAt,
+          error: creationWebhook.error,
         }
       : null,
+    cancellation: {
+      requested: cancellationRequested,
+      requestedAt:
+        cancellationRequestedAt ||
+        (historicalCancellationObserved ? shopifyOrder?.cancelledAt || null : null),
+      jobId: clean(baseline.cancellationJobId) || null,
+      jobDoneAtRequest:
+        typeof baseline.cancellationJobDoneAtRequest === "boolean"
+          ? baseline.cancellationJobDoneAtRequest
+          : null,
+      steps: cancellationSteps,
+      webhook: cancellationWebhook
+        ? {
+            id: cancellationWebhook.id,
+            topic: cancellationWebhook.topic,
+            status: cancellationWebhook.status,
+            receivedAt: cancellationWebhook.receivedAt,
+            processedAt: cancellationWebhook.processedAt,
+            error: cancellationWebhook.error,
+          }
+        : null,
+      fullyPassedAt:
+        previousResult?.cancellation?.fullyPassedAt ||
+        (cancellationComplete ? new Date().toISOString() : null),
+    },
   };
 
-  if (complete || hasWebhookFailure) {
-    await db.integrationEvent.update({
-      where: {
-        provider_externalEventId: {
-          provider: VALIDATION_PROVIDER,
-          externalEventId: validationEvent.externalEventId,
-        },
+  const errorMessage = creationWebhookFailed
+    ? creationWebhook?.error || "Webhook Shopify de criação falhou."
+    : cancellationWebhookFailed
+      ? cancellationWebhook?.error ||
+        "Webhook Shopify de cancelamento falhou."
+      : historicalCancellationIncomplete
+        ? "O pedido de um teste antigo já foi cancelado, mas não há evidência completa do ciclo cancelamento → Booking cancelado → vaga devolvida. Execute um novo teste."
+        : null;
+
+  const eventStatus =
+    status === "FULLY_PASSED"
+      ? "PROCESSED"
+      : status === "FAILED"
+        ? "FAILED"
+        : status === "PASSED"
+          ? "READY_FOR_CANCELLATION"
+          : status === "CANCELLATION_WAITING"
+            ? "AWAITING_CANCELLATION_WEBHOOK"
+            : "AWAITING_WEBHOOK";
+
+  await db.integrationEvent.update({
+    where: {
+      provider_externalEventId: {
+        provider: VALIDATION_PROVIDER,
+        externalEventId: validationEvent.externalEventId,
       },
-      data: {
-        status: complete ? "PROCESSED" : "FAILED",
-        result,
-        error: hasWebhookFailure ? webhookEvent?.error || "Webhook Shopify falhou." : null,
-        processedAt: new Date(),
-      },
-    });
-  }
+    },
+    data: {
+      status: eventStatus,
+      result,
+      error: errorMessage,
+      processedAt:
+        ["FULLY_PASSED", "FAILED"].includes(status)
+          ? new Date()
+          : null,
+    },
+  });
 
   return {
     success: true,
@@ -453,22 +712,132 @@ async function validationStatus(orderId = null) {
 }
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
   const url = new URL(request.url);
-  return json(await validationStatus(url.searchParams.get("orderId")));
+  return json(
+    await validationStatus(admin, url.searchParams.get("orderId")),
+  );
 };
 
 export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const action = clean(formData.get("_action"));
+  const orderId = clean(formData.get("orderId")) || null;
 
   if (action === "status") {
-    return json(await validationStatus(clean(formData.get("orderId")) || null));
+    return json(await validationStatus(admin, orderId));
+  }
+
+  if (action === "cancel") {
+    try {
+      const current = await validationStatus(admin, orderId);
+      if (!current?.exists || !current?.order?.id) {
+        return json(
+          {
+            success: false,
+            error: "Nenhum pedido E2E Shopify disponível para cancelar.",
+          },
+          { status: 404 },
+        );
+      }
+
+      if (current.status === "FULLY_PASSED") {
+        return json(current);
+      }
+
+      if (current.status !== "PASSED") {
+        return json(
+          {
+            success: false,
+            error:
+              "O cancelamento só é liberado depois que Pedido → Webhook → Booking → Agenda → Vagas estiver 100% verde.",
+          },
+          { status: 409 },
+        );
+      }
+
+      const validationEvent = await findValidationEvent(current.order.id);
+      const baseline = validationEvent?.payload || {};
+
+      if (baseline.cancellationRequestedAt) {
+        return json(
+          await validationStatus(admin, current.order.id),
+        );
+      }
+
+      const job = await requestValidationOrderCancellation(
+        admin,
+        current.order.id,
+      );
+      const requestedAt = new Date().toISOString();
+
+      await db.integrationEvent.update({
+        where: {
+          provider_externalEventId: {
+            provider: VALIDATION_PROVIDER,
+            externalEventId: current.order.id,
+          },
+        },
+        data: {
+          status: "AWAITING_CANCELLATION_WEBHOOK",
+          payload: {
+            ...baseline,
+            cancellationRequestedAt: requestedAt,
+            cancellationJobId: job.id,
+            cancellationJobDoneAtRequest: Boolean(job.done),
+          },
+          processedAt: null,
+          error: null,
+        },
+      });
+
+      return json(
+        await validationStatus(admin, current.order.id),
+      );
+    } catch (error) {
+      console.error("[PMY] Shopify E2E cancellation failed:", error);
+      const message = error?.message || "Falha ao cancelar pedido E2E Shopify.";
+      const missingScope =
+        /write_orders|access denied|access scope/i.test(message);
+
+      return json(
+        {
+          success: false,
+          code: missingScope
+            ? "WRITE_ORDERS_SCOPE_REQUIRED"
+            : error?.code || "E2E_CANCEL_FAILED",
+          error: missingScope
+            ? "O app precisa do escopo write_orders para cancelar o pedido de teste. Reautorize a Central no Shopify após o deploy."
+            : message,
+        },
+        { status: missingScope ? 403 : 500 },
+      );
+    }
   }
 
   if (action !== "start") {
     return json({ success: false, error: "Ação inválida." }, { status: 400 });
+  }
+
+  const currentValidation = await validationStatus(admin);
+  if (
+    currentValidation?.exists &&
+    ["WAITING", "PASSED", "CANCELLATION_WAITING"].includes(
+      currentValidation.status,
+    )
+  ) {
+    return json(
+      {
+        success: false,
+        code: "E2E_TEST_ALREADY_ACTIVE",
+        error:
+          currentValidation.status === "PASSED"
+            ? "O teste atual já validou a entrada. Cancele esse pedido e valide a devolução da vaga antes de iniciar outro."
+            : "Já existe um teste Shopify E2E em andamento. Aguarde a validação atual terminar.",
+      },
+      { status: 409 },
+    );
   }
 
   const webhookStatus = await ensureShopifyOrderWebhooks(

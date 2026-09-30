@@ -12,6 +12,7 @@ import prisma from "./db.server";
 const configuredScopes = [
   "read_products",
   "read_orders",
+  "write_orders",
   "write_draft_orders",
   "write_files",
 ];

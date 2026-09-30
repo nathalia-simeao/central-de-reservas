@@ -44,6 +44,8 @@ export default function IntegrationsTab(props) {
     shopifyValidation,
     shopifyValidationError,
     shopifyValidationLoading,
+    shopifyValidationCancelLoading,
+    cancelShopifyValidation,
     loadShopifyValidation,
     startShopifyValidation,
     t,
@@ -203,14 +205,14 @@ export default function IntegrationsTab(props) {
                     <Toast tone="danger" className="pmy-u-mb-4">{syncQueueError}</Toast>
                   )}
 
-                  <div className={`pmy-ds-validation-panel ${shopifyValidation?.status === 'PASSED' ? "is-passed" : ""}`}>
+                  <div className={`pmy-ds-validation-panel ${shopifyValidation?.status === 'FULLY_PASSED' ? "is-passed" : ""}`}>
                     <div className="pmy-ds-migrated-wwbjgp">
                       <div>
                         <div className="pmy-ds-migrated-vz949o">
-                          🧪 Validação real Shopify → Webhook → Booking → Agenda → Vagas
+                          🧪 Validação real Shopify → Webhook → Booking → Agenda → Vagas → Cancelamento
                         </div>
                         <div className="pmy-ds-migrated-t4mqfp">
-                          Cria um Draft Order de teste com 1 participante, converte em pedido Shopify com pagamento pendente e acompanha automaticamente se o webhook entrou, se o Booking foi criado e se a disponibilidade caiu.
+                          Cria um pedido Shopify de teste com 1 participante e pagamento pendente, comprova os cinco passos de entrada e, em seguida, cancela o mesmo pedido para validar Booking cancelado e vaga devolvida.
                         </div>
                       </div>
                       <div className="pmy-ds-migrated-11c3s9p">
@@ -218,9 +220,25 @@ export default function IntegrationsTab(props) {
                           className="pmy-ds-migrated-r8mbti">
                           🔄 Verificar
                         </button>
-                        <button type="button" onClick={startShopifyValidation} disabled={shopifyValidationLoading || shopifyValidation?.status === 'WAITING'}
-                          className="pmy-btn-submit pmy-ds-compact-action">
-                          {shopifyValidationLoading ? tr('⏳ Criando pedido...','⏳ Creating order...') : shopifyValidation?.status === 'WAITING' ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...') : tr('▶ Executar teste real','▶ Run real test')}
+                        <button
+                          type="button"
+                          onClick={startShopifyValidation}
+                          disabled={
+                            shopifyValidationLoading ||
+                            shopifyValidationCancelLoading ||
+                            ['WAITING', 'PASSED', 'CANCELLATION_WAITING'].includes(shopifyValidation?.status)
+                          }
+                          className="pmy-btn-submit pmy-ds-compact-action"
+                        >
+                          {shopifyValidationLoading
+                            ? tr('⏳ Criando pedido...','⏳ Creating order...')
+                            : shopifyValidation?.status === 'WAITING'
+                              ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...')
+                              : shopifyValidation?.status === 'PASSED'
+                                ? tr('↩ Cancele o teste atual','↩ Cancel current test')
+                                : shopifyValidation?.status === 'CANCELLATION_WAITING'
+                                  ? tr('⏳ Validando cancelamento...','⏳ Validating cancellation...')
+                                  : tr('▶ Executar teste real','▶ Run real test')}
                         </button>
                       </div>
                     </div>
@@ -252,31 +270,93 @@ export default function IntegrationsTab(props) {
                         <div className="pmy-ds-migrated-tyzer6">
                           <div className="pmy-ds-migrated-hd5qqp">
                             <strong>{tr("Pedido:", "Order:")}</strong> {shopifyValidation.order?.name || '—'}<br/>
-                            <span className="pmy-ds-migrated-19kf531">{shopifyValidation.order?.financialStatus || tr('status financeiro pendente','pending financial status')}</span>
+                            <span className="pmy-ds-migrated-19kf531">
+                              {shopifyValidation.order?.cancelledAt
+                                ? tr('cancelado no Shopify','cancelled in Shopify')
+                                : shopifyValidation.order?.financialStatus || tr('status financeiro pendente','pending financial status')}
+                            </span>
                           </div>
                           <div className="pmy-ds-migrated-hd5qqp">
                             <strong>{tr("Tour:", "Tour:")}</strong> {shopifyValidation.slot?.tourTitle || '—'}<br/>
                             <span className="pmy-ds-migrated-19kf531">{shopifyValidation.slot?.date || '—'} · {shopifyValidation.slot?.time || '—'}</span>
                           </div>
                           <div className="pmy-ds-migrated-hd5qqp">
-                            <strong>{tr("Vagas:", "Availability:")}</strong> {shopifyValidation.slot?.remainingBefore ?? '—'} → {shopifyValidation.slot?.remainingAfter ?? '—'}<br/>
-                            <span className="pmy-ds-migrated-19kf531">ocupadas: {shopifyValidation.slot?.occupiedBefore ?? '—'} → {shopifyValidation.slot?.occupiedAfter ?? '—'}</span>
+                            <strong>{tr("Vagas:", "Availability:")}</strong>{' '}
+                            {shopifyValidation.slot?.remainingBefore ?? '—'} → {shopifyValidation.slot?.remainingAfterBooking ?? '—'}
+                            {shopifyValidation.cancellation?.requested && (
+                              <> → {shopifyValidation.slot?.remainingCurrent ?? '—'}</>
+                            )}
+                            <br/>
+                            <span className="pmy-ds-migrated-19kf531">
+                              {tr('antes → após Booking','before → after Booking')}
+                              {shopifyValidation.cancellation?.requested ? tr(' → após cancelamento',' → after cancellation') : ''}
+                            </span>
                           </div>
                         </div>
 
                         {shopifyValidation.status === 'PASSED' && (
-                          <div className="pmy-ds-migrated-1hlsfhi">
-                            ✅ Fluxo validado de ponta a ponta. O pedido Shopify chegou por webhook, virou Booking, entrou na Agenda e reduziu a disponibilidade.
+                          <>
+                            <div className="pmy-ds-migrated-1hlsfhi">
+                              ✅ Entrada validada: Pedido → Webhook → Booking → Agenda → redução de vagas está 100% verde.
+                            </div>
+                            <div className="pmy-ds-migrated-11c3s9p">
+                              <button
+                                type="button"
+                                onClick={cancelShopifyValidation}
+                                disabled={shopifyValidationCancelLoading}
+                                className="pmy-btn-submit pmy-ds-compact-action"
+                              >
+                                {shopifyValidationCancelLoading
+                                  ? tr('⏳ Cancelando teste...','⏳ Cancelling test...')
+                                  : tr('↩ Cancelar teste e validar devolução','↩ Cancel test and validate restoration')}
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {shopifyValidation.cancellation?.requested && (
+                          <div className="pmy-u-mt-4">
+                            <div className="pmy-ds-migrated-vz949o">
+                              {tr('Fase 2 · Cancelamento e devolução da vaga','Phase 2 · Cancellation and seat restoration')}
+                            </div>
+                            <div className="pmy-ds-migrated-2blvc1">
+                              {[
+                                [tr('Pedido cancelado Shopify','Shopify order cancelled'), shopifyValidation.cancellation?.steps?.orderCancelled],
+                                [tr('Webhook de cancelamento','Cancellation webhook'), shopifyValidation.cancellation?.steps?.webhookReceived],
+                                [tr('Booking cancelado','Booking cancelled'), shopifyValidation.cancellation?.steps?.bookingCancelled],
+                                [tr('Vaga devolvida','Seat restored'), shopifyValidation.cancellation?.steps?.capacityRestored],
+                              ].map(([label,ok]) => (
+                                <div key={label} className={`pmy-ds-validation-step ${ok ? "is-complete" : ""}`}>
+                                  <div className={`pmy-ds-validation-step__label ${ok ? "is-complete" : ""}`}>
+                                    <Icon name={ok ? "check" : "clock"} size={13} /> {label}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
+
                         {shopifyValidation.status === 'WAITING' && (
                           <div className="pmy-ds-migrated-bpj82y">
                             ⏳ O pedido já foi criado. A Central verifica o webhook automaticamente a cada poucos segundos.
                           </div>
                         )}
+
+                        {shopifyValidation.status === 'CANCELLATION_WAITING' && (
+                          <div className="pmy-ds-migrated-bpj82y">
+                            ⏳ Cancelamento solicitado ao Shopify. A Central aguarda o webhook, o Booking cancelado e a devolução da vaga.
+                          </div>
+                        )}
+
+                        {shopifyValidation.status === 'FULLY_PASSED' && (
+                          <div className="pmy-ds-migrated-1hlsfhi">
+                            ✅ Shopify validado de ponta a ponta, incluindo cancelamento: o pedido entrou, ocupou a vaga, foi cancelado e a capacidade voltou à Central.
+                          </div>
+                        )}
+
                         {shopifyValidation.status === 'FAILED' && (
                           <div className="pmy-ds-migrated-1a0iuii">
-                            ❌ O teste encontrou uma falha no processamento do webhook. Veja o Log de Sincronização abaixo.
+                            ❌ O teste encontrou uma falha no processamento Shopify. Veja o Log de Sincronização abaixo.
                           </div>
                         )}
                       </div>
@@ -284,11 +364,10 @@ export default function IntegrationsTab(props) {
 
                     {!shopifyValidation?.exists && !shopifyValidationError && (
                       <div className="pmy-ds-migrated-jhr15n">
-                        Nenhum teste end-to-end executado ainda. O teste usa uma reserva de 1 participante e não cobra cliente.
+                        Nenhum teste end-to-end executado ainda. O teste usa uma reserva de 1 participante, pagamento pendente e não cobra cliente.
                       </div>
                     )}
                   </div>
-
                   {(() => {
                     const stats = syncQueueData.stats || {};
                     const divergent = Number(stats.retry || 0) + Number(stats.blocked || 0) + Number(stats.dead || 0);

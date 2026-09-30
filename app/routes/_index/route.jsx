@@ -569,6 +569,7 @@ function CentralDeReservasContent() {
   const [syncQueueLastLoaded, setSyncQueueLastLoaded] = useState(null);
   const [shopifyValidation, setShopifyValidation] = useState(null);
   const [shopifyValidationLoading, setShopifyValidationLoading] = useState(false);
+  const [shopifyValidationCancelLoading, setShopifyValidationCancelLoading] = useState(false);
   const [shopifyValidationError, setShopifyValidationError] = useState("");
   // platformProducts: Shopify vem do loader (dados reais).
   // Demais plataformas ficam vazias até que a integração via API seja configurada.
@@ -1224,6 +1225,41 @@ function CentralDeReservasContent() {
     }
   }, [loadShopifyValidation, requestResourceJson]);
 
+  const cancelShopifyValidation = useCallback(async () => {
+    const orderId = shopifyValidation?.order?.id;
+    if (!orderId) {
+      setShopifyValidationError("Nenhum pedido E2E Shopify disponível para cancelar.");
+      return;
+    }
+
+    setShopifyValidationCancelLoading(true);
+    setShopifyValidationError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("_action", "cancel");
+      formData.append("orderId", orderId);
+
+      const payload = await requestResourceJson(
+        "/api/shopify-validation",
+        formData,
+      );
+
+      setShopifyValidation(payload);
+      window.setTimeout(loadShopifyValidation, 1800);
+    } catch (error) {
+      setShopifyValidationError(
+        error?.message || "Erro ao cancelar o pedido de teste Shopify.",
+      );
+    } finally {
+      setShopifyValidationCancelLoading(false);
+    }
+  }, [
+    loadShopifyValidation,
+    requestResourceJson,
+    shopifyValidation?.order?.id,
+  ]);
+
   const loadSyncQueue = useCallback(async () => {
     setSyncQueueLoading(true);
     try {
@@ -1250,7 +1286,7 @@ function CentralDeReservasContent() {
     const queueTimer = window.setInterval(loadSyncQueue, 15000);
     const validationTimer = window.setInterval(() => {
       loadShopifyValidation();
-    }, shopifyValidation?.status === "WAITING" ? 3000 : 15000);
+    }, ["WAITING", "CANCELLATION_WAITING"].includes(shopifyValidation?.status) ? 3000 : 15000);
 
     return () => {
       window.clearInterval(queueTimer);
@@ -4924,6 +4960,7 @@ function CentralDeReservasContent() {
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
             syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,
             shopifyValidation, shopifyValidationError, shopifyValidationLoading,
+            shopifyValidationCancelLoading, cancelShopifyValidation,
             loadShopifyValidation, startShopifyValidation, t, tours
           }} />
 
