@@ -103,7 +103,7 @@ export default function IntegrationsTab(props) {
                       const statusLabel = conn.connected
                         ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
                         : isConfigured
-                          ? tr("CREDENCIAL VALIDADA", "CREDENTIAL VALIDATED")
+                          ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
                           : isPendingOnboarding
                             ? tr("ONBOARDING PENDENTE", "ONBOARDING PENDING")
                             : tr("NÃO CONFIGURADO", "NOT CONFIGURED");
@@ -153,8 +153,8 @@ export default function IntegrationsTab(props) {
                           {isConfigured && !conn.connected && (
                             <div className="pmy-int-connection-note">
                               {tr(
-                                "A credencial foi testada no backend. O canal só vira conectado quando a Central receber uma chamada autenticada real.",
-                                "The credential was tested on the backend. The channel becomes connected only after the Central receives a real authenticated request.",
+                                "A credencial está salva no backend e o caminho técnico local foi testado. O canal só vira conectado quando a Central receber uma chamada autenticada real.",
+                                "The credential is stored on the backend and the local technical path was tested. The channel becomes connected only after the Central receives a real authenticated request.",
                               )}
                             </div>
                           )}
