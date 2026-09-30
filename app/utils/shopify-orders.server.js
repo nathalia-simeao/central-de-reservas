@@ -315,6 +315,135 @@ function safeDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function orderMoney(payload) {
+  const raw =
+    payload?.current_total_price ??
+    payload?.total_price ??
+    payload?.currentTotalPriceSet?.shopMoney?.amount ??
+    payload?.totalPriceSet?.shopMoney?.amount ??
+    null;
+  const amount = raw === null || raw === undefined ? null : Number(raw);
+  return Number.isFinite(amount) ? amount.toFixed(2) : null;
+}
+
+function orderCurrency(payload) {
+  return (
+    asString(payload?.currency) ||
+    asString(payload?.current_currency) ||
+    asString(payload?.currentTotalPriceSet?.shopMoney?.currencyCode) ||
+    asString(payload?.totalPriceSet?.shopMoney?.currencyCode)
+  )
+    .toUpperCase()
+    .slice(0, 3) || null;
+}
+
+function purchaseItems(payload) {
+  const lineItems = Array.isArray(payload?.line_items)
+    ? payload.line_items
+    : Array.isArray(payload?.lineItems)
+      ? payload.lineItems
+      : [];
+
+  return lineItems.map((lineItem) => ({
+    item_id:
+      asString(lineItem?.variant_id ?? lineItem?.variant?.id) ||
+      asString(lineItem?.product_id ?? lineItem?.product?.id) ||
+      asString(lineItem?.sku),
+    item_name: asString(lineItem?.title ?? lineItem?.name),
+    item_variant: asString(lineItem?.variant_title ?? lineItem?.variantTitle),
+    quantity: Math.max(1, Number.parseInt(lineItem?.quantity ?? 1, 10) || 1),
+    price: lineItemPrice(lineItem).toFixed(2),
+  }));
+}
+
+function purchaseAttribution(payload) {
+  const orderAttrs = attributesToMap(
+    payload?.note_attributes || payload?.customAttributes || [],
+  );
+  return orderAttribution(orderAttrs);
+}
+
+async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
+  const orderId = externalOrderId(payload);
+  if (!orderId) {
+    throw new Error("Cannot record purchase without Shopify order ID.");
+  }
+
+  const transactionId =
+    asString(payload?.name) ||
+    stripGid(orderId) ||
+    orderId;
+  const externalEventId = `purchase:${orderId}`;
+  const attribution = purchaseAttribution(payload);
+  const eventPayload = {
+    event: "purchase",
+    transaction_id: transactionId,
+    shopify_order_id: orderId,
+    value: orderMoney(payload),
+    currency: orderCurrency(payload),
+    financial_status: asString(payload?.financial_status).toLowerCase() || "paid",
+    processed_at: asString(payload?.processed_at) || null,
+    attribution,
+    items: purchaseItems(payload),
+    source_webhook_id: asString(webhookId) || null,
+  };
+
+  const existing = await prisma.integrationEvent.findUnique({
+    where: {
+      provider_externalEventId: {
+        provider: "PMY_ANALYTICS",
+        externalEventId,
+      },
+    },
+  });
+
+  if (existing?.status === "PROCESSED") {
+    return {
+      duplicate: true,
+      integrationEventId: existing.id,
+      payload: existing.payload || eventPayload,
+    };
+  }
+
+  const event = await prisma.integrationEvent.upsert({
+    where: {
+      provider_externalEventId: {
+        provider: "PMY_ANALYTICS",
+        externalEventId,
+      },
+    },
+    create: {
+      provider: "PMY_ANALYTICS",
+      externalEventId,
+      topic: "purchase",
+      status: "PROCESSED",
+      payload: eventPayload,
+      result: {
+        rule: "SHOPIFY_ORDERS_PAID_ONLY",
+        dispatched: true,
+      },
+      processedAt: new Date(),
+    },
+    update: {
+      topic: "purchase",
+      status: "PROCESSED",
+      payload: eventPayload,
+      result: {
+        rule: "SHOPIFY_ORDERS_PAID_ONLY",
+        dispatched: true,
+      },
+      error: null,
+      processedAt: new Date(),
+    },
+  });
+
+  return {
+    duplicate: false,
+    integrationEventId: event.id,
+    payload: eventPayload,
+  };
+}
+
 export async function buildShopifyBookingGroups(prisma, payload) {
   const orderAttrs = attributesToMap(
     payload?.note_attributes || payload?.customAttributes || [],
@@ -635,6 +764,7 @@ export async function processShopifyOrderWebhook(
   const status = orderStatus(payload, topic);
   const orderId = externalOrderId(payload);
   const orderName = asString(payload?.name) || orderId;
+  let purchaseEvent = null;
 
   if (!orderId) {
     throw new Error("Shopify order payload is missing an order ID.");
@@ -705,6 +835,14 @@ export async function processShopifyOrderWebhook(
       issues: [],
       ignored: [],
     };
+  }
+
+  if (topic === "ORDERS_PAID") {
+    purchaseEvent = await recordCanonicalPurchaseEvent(
+      prisma,
+      payload,
+      sourceEventId,
+    );
   }
 
   const built = await buildShopifyBookingGroups(prisma, payload);
@@ -808,6 +946,7 @@ export async function processShopifyOrderWebhook(
     cancelledRemovedBookings: removed.length,
     issues: built.issues,
     ignored: built.ignored,
+    purchaseEvent,
   };
 }
 
