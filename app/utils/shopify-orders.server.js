@@ -388,6 +388,7 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
     currency: orderCurrency(payload),
     financial_status: asString(payload?.financial_status).toLowerCase() || "paid",
     processed_at: asString(payload?.processed_at) || null,
+    pmy_session_id: attribution.sessionId || null,
     attribution,
     items: purchaseItems(payload),
     source_webhook_id: asString(webhookId) || null,
