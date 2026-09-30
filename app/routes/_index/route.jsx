@@ -9,6 +9,7 @@ import GuidesTab from "../../components/pmy/GuidesTab";
 import AutomationsTab from "../../components/pmy/AutomationsTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import MediaTab from "../../components/pmy/MediaTab";
+import { Icon } from "../../components/pmy/PmyUI";
 
 export { loader, action } from "../../services/central-route.server";
 
@@ -151,8 +152,8 @@ const ddiList = [
 
 const translations = {
   pt: {
-    menu_dashboard: "📊 Dashboard", menu_agenda: "📅 Agenda Central", menu_integrations: "🔗 Integrações",
-    menu_guides: "👥 Guias", menu_automations: "🤖 Automações", menu_settings: "⚙️ Configurações",
+    menu_dashboard: "Dashboard", menu_agenda: "Agenda Central", menu_integrations: "Integrações",
+    menu_guides: "Guias", menu_automations: "Automações", menu_settings: "Configurações",
     dash_title: "Visão Geral", dash_total_sales: "Total de Vendas", dash_vs_last_month: "no período selecionado",
     dash_revenue_confirmed: "Receita Confirmada", dash_revenue_estimated: "Receita Estimada",
     dash_canceled_tours: "Tours Cancelados", dash_upcoming: "Próximos Tours", dash_performance: "Desempenho por Passeio",
@@ -165,12 +166,12 @@ const translations = {
     source_site: "Site Próprio", source_viator: "Viator", source_gyg: "GetYourGuide", source_manual: "Manual",
     modal_sales_details: "Detalhamento de Vendas", modal_confirmed_details: "Detalhamento da Receita Confirmada",
     modal_estimated_details: "Detalhamento da Receita Estimada", modal_canceled_details: "Motivos de Cancelamento",
-    modal_upcoming_details: "Lista de Próximos Tours", views: "visualizações", btn_format: "⚙️ Formato",
-    form_new_booking: "🎟️ Inserir Nova Reserva", form_new_block: "🔒 Inserir Bloqueio Manual",
+    modal_upcoming_details: "Lista de Próximos Tours", views: "visualizações", btn_format: "Formato",
+    form_new_booking: "Inserir Nova Reserva", form_new_block: "Inserir Bloqueio Manual",
     form_select_tour: "Selecione o Tour", form_customer: "Nome do Cliente (Obrigatório):",
     form_email: "E-mail (Opcional):", form_phone: "Telefone / WhatsApp (Opcional):",
     form_lang: "Idioma Base do Tour:", form_qty: "Quantidade de Ingressos:",
-    form_date_time: "Data do Bloqueio Específica:", form_btn_link: "🔗 Gerar Link de Pagamento",
+    form_date_time: "Data do Bloqueio Específica:", form_btn_link: "Gerar Link de Pagamento",
     form_btn_block: "Bloquear Vagas / Horários", tour_capacity: "Capacidade Máxima de Vagas:",
     guide_assigned: "Guia Escalado:", no_guide: "Sem guia atribuído", registered_guides: "Equipe de Guias",
     form_new_guide: "Cadastrar Novo Guia", form_guide_name: "Nome e Sobrenome:", form_guide_email: "E-mail do Guia:",
@@ -180,15 +181,15 @@ const translations = {
     int_connected: "Conectado", int_configure: "Configurar Conexão", int_connect: "Vincular Conta",
     int_desc_viator: "Sincronize horários, vagas e passageiros.", int_desc_gyg: "Puxe reservas e atualize a disponibilidade.",
     int_desc_ta: "Importe suas avaliações e sincronize widgets.", int_desc_shopify: "Pedidos feitos no site caem aqui na hora.",
-    int_custom_title: "🔗 Conectar Nova Plataforma via API", int_custom_name: "Nome da Plataforma:",
+    int_custom_title: "Conectar Nova Plataforma via API", int_custom_name: "Nome da Plataforma:",
     int_custom_url: "Endpoint da API (URL):", int_custom_key: "Chave da API / Token de Acesso:",
     int_custom_btn: "Ativar Integração Customizada",
     block_days_week: "Dias da Semana Bloqueados Sempre (ex: 0, 1, 2):", block_select_hour: "Horário para Bloqueio:",
     view_1d: "1 dia", view_3d: "3 dias", view_7d: "7 dias", view_month: "Mês todo"
   },
   en: {
-    menu_dashboard: "📊 Dashboard", menu_agenda: "📅 Central Agenda", menu_integrations: "🔗 Integrations",
-    menu_guides: "👥 Guides", menu_automations: "🤖 Automations", menu_settings: "⚙️ Settings",
+    menu_dashboard: "Dashboard", menu_agenda: "Central Agenda", menu_integrations: "Integrations",
+    menu_guides: "Guides", menu_automations: "Automations", menu_settings: "Settings",
     dash_title: "Overview", dash_total_sales: "Total Sales", dash_vs_last_month: "in selected period",
     dash_revenue_confirmed: "Confirmed Revenue", dash_revenue_estimated: "Estimated Revenue",
     dash_canceled_tours: "Canceled Tours", dash_upcoming: "Upcoming Tours", dash_performance: "Tour Performance",
@@ -201,12 +202,12 @@ const translations = {
     source_site: "Own Website", source_viator: "Viator", source_gyg: "GetYourGuide", source_manual: "Manual",
     modal_sales_details: "Sales Breakdown", modal_confirmed_details: "Confirmed Revenue Breakdown",
     modal_estimated_details: "Estimated Revenue Breakdown", modal_canceled_details: "Cancellation Details",
-    modal_upcoming_details: "Upcoming Tours List", views: "views", btn_format: "⚙️ Shape",
-    form_new_booking: "🎟️ Insert New Booking", form_new_block: "🔒 Insert Manual Block",
+    modal_upcoming_details: "Upcoming Tours List", views: "views", btn_format: "Shape",
+    form_new_booking: "Insert New Booking", form_new_block: "Insert Manual Block",
     form_select_tour: "Select Tour", form_customer: "Customer Name (Required):",
     form_email: "Email (Optional):", form_phone: "Phone / WhatsApp (Optional):",
     form_lang: "Tour Language:", form_qty: "Ticket Quantity:",
-    form_date_time: "Specific Block Date:", form_btn_link: "🔗 Generate Payment Link",
+    form_date_time: "Specific Block Date:", form_btn_link: "Generate Payment Link",
     form_btn_block: "Block Slots / Times", tour_capacity: "Max Capacity Slots:",
     guide_assigned: "Assigned Guide:", no_guide: "No guide assigned", registered_guides: "Guides Staff",
     form_new_guide: "Register New Guide", form_guide_name: "Full Name:", form_guide_email: "Guide Email:",
@@ -216,7 +217,7 @@ const translations = {
     int_connected: "Connected", int_configure: "Configure Connection", int_connect: "Link Account",
     int_desc_viator: "Sync schedules, availability, and travelers.", int_desc_gyg: "Fetch bookings and update availability.",
     int_desc_ta: "Reviews, ratings, photos and reputation content.", int_desc_shopify: "Website orders appear here instantly.",
-    int_custom_title: "🔗 Connect New Platform via API", int_custom_name: "Platform Name:",
+    int_custom_title: "Connect New Platform via API", int_custom_name: "Platform Name:",
     int_custom_url: "API Endpoint (URL):", int_custom_key: "API Key / Access Token:",
     int_custom_btn: "Activate Custom Integration",
     block_days_week: "Always Blocked Weekdays (e.g., 0, 1, 2):", block_select_hour: "Time slot to Block:",
@@ -225,27 +226,27 @@ const translations = {
 };
 
 const allPlatforms = [
-  { key: "shopify", logo: "🛍️", name: "Shopify Store",
+  { key: "shopify", icon: "store", name: "Shopify Store",
     desc: { pt: "Pedidos do site caem aqui na hora. Canal de venda próprio.", en: "Website orders appear here instantly. Your own sales channel." },
     authType: "oauth", oauthLabel: "Entrar com Shopify", oauthUrl: "https://accounts.shopify.com/",
     docsUrl: "https://shopify.dev/docs/api/admin-rest" },
-  { key: "viator", logo: "🧡", name: "Viator",
+  { key: "viator", icon: "ticket", name: "Viator",
     desc: { pt: "Sincronize horários, vagas e passageiros automaticamente.", en: "Sync schedules, availability and travelers automatically." },
     authType: "api", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
     docsUrl: "https://docs.viator.com/partner-api/" },
-  { key: "getyourguide", logo: "💛", name: "GetYourGuide",
+  { key: "getyourguide", icon: "bookings", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
     docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
-  { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
+  { key: "tripadvisor", icon: "star", name: "TripAdvisor",
     desc: { pt: "Conteúdo e reputação: reviews, ratings, fotos e dados de localização. As reservas de experiências são distribuídas pela Viator.", en: "Content and reputation: reviews, ratings, photos and location data. Experience bookings are distributed through Viator." },
     authType: "content", oauthLabel: "Acessar Tripadvisor", oauthUrl: "https://www.tripadvisor.com/Owners",
     docsUrl: "https://docs.terra.tripadvisor.com/docs/overview" },
-  { key: "headout", logo: "🌍", name: "Headout",
+  { key: "headout", icon: "globe", name: "Headout",
     desc: { pt: "Distribua seus tours para milhões de viajantes globais.", en: "Distribute your tours to millions of global travelers." },
     authType: "api", oauthLabel: "Acessar Portal Headout", oauthUrl: "https://www.headout.com/partner/login",
     docsUrl: "https://developer.headout.com/" },
-  { key: "civitatis", logo: "🏛️", name: "Civitatis",
+  { key: "civitatis", icon: "building", name: "Civitatis",
     desc: { pt: "Alcance viajantes de língua hispânica. Sincronize atividades e reservas.", en: "Reach Spanish-speaking travelers. Sync activities and bookings." },
     authType: "api", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
     docsUrl: "https://www.civitatis.com/en/partners/" },
@@ -336,7 +337,7 @@ function PickerModalContent({ allImages, onSelect }) {
 
       {/* Campo de busca */}
       <div className="pmy-ds-migrated-5ojkha">
-        <span className="pmy-ds-migrated-w4fura">🔍</span>
+        <span className="pmy-ds-migrated-w4fura"><Icon name="search" size={15} /></span>
         <input
           type="text"
           placeholder="Buscar por nome da imagem..."
@@ -382,32 +383,6 @@ function PickerModalContent({ allImages, onSelect }) {
       </div>
     </div>
   );
-}
-
-function PmyNavIcon({ name }) {
-  const common = {
-    width: 19,
-    height: 19,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    "aria-hidden": true,
-  };
-
-  const paths = {
-    dashboard: <><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
-    agenda: <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></>,
-    integracoes: <><path d="M8.5 14.5l-2 2a3.5 3.5 0 105 5l2-2"/><path d="M15.5 9.5l2-2a3.5 3.5 0 10-5-5l-2 2"/><path d="M9 15l6-6"/></>,
-    guias: <><path d="M16 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></>,
-    automacoes: <><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/><circle cx="12" cy="12" r="4"/></>,
-    midias: <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5L5 20"/></>,
-    configuracoes: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1V21h-4v-.1A1.7 1.7 0 008.6 19.4a1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4H3v-4h.1A1.7 1.7 0 004.6 8.6a1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1V3h4v.1A1.7 1.7 0 0015.4 4.6a1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 9c.16.38.4.72.72 1 .3.27.7.41 1.1.4H21v4h-.1a1.7 1.7 0 00-1.5.6z"/></>,
-  };
-
-  return <svg {...common}>{paths[name] || paths.dashboard}</svg>;
 }
 
 function isDarkThemeColor(value) {
@@ -656,11 +631,11 @@ function CentralDeReservasContent() {
   const ui = (pt, en) => lang === "en" ? en : pt;
   const navItems = [
     { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Dashboard" : "Dashboard" },
-    { key: "agenda", icon: "agenda", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
-    { key: "integracoes", icon: "integracoes", label: lang === "pt" ? "Integrações" : "Integrations" },
-    { key: "guias", icon: "guias", label: lang === "pt" ? "Guias" : "Guides" },
-    { key: "automacoes", icon: "automacoes", label: lang === "pt" ? "Automações" : "Automations" },
-    { key: "midias", icon: "midias", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
+    { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
+    { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
+    { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
+    { key: "automacoes", icon: "automation", label: lang === "pt" ? "Automações" : "Automations" },
+    { key: "midias", icon: "media", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
   ];
 
   const openNavigationTab = (key) => {
@@ -1365,23 +1340,23 @@ function CentralDeReservasContent() {
   };
 
   const syncProviderMeta = {
-    SHOPIFY: { label: "Shopify", icon: "🛍️" },
-    GETYOURGUIDE: { label: "GetYourGuide", icon: "🎟️" },
-    VIATOR: { label: "Viator", icon: "🟢" },
-    CIVITATIS: { label: "Civitatis", icon: "🔴" },
-    HEADOUT: { label: "Headout", icon: "🌍" },
-    CENTRAL: { label: "Central PMY", icon: "🧭" },
-    MANUAL: { label: "Manual", icon: "✍️" },
+    SHOPIFY: { label: "Shopify", icon: "store" },
+    GETYOURGUIDE: { label: "GetYourGuide", icon: "bookings" },
+    VIATOR: { label: "Viator", icon: "ticket" },
+    CIVITATIS: { label: "Civitatis", icon: "building" },
+    HEADOUT: { label: "Headout", icon: "globe" },
+    CENTRAL: { label: "Central PMY", icon: "dashboard" },
+    MANUAL: { label: "Manual", icon: "file" },
   };
 
   const syncStatusMeta = {
-    COMPLETED: { icon: "✅", label: "Sincronizado", bg: "#ecfdf3", color: "#166534" },
-    SKIPPED: { icon: "↪️", label: "Ignorado", bg: "#eff6ff", color: "#1d4ed8" },
-    PENDING: { icon: "⏳", label: "Pendente", bg: "#fff7ed", color: "#9a3412" },
-    PROCESSING: { icon: "🔄", label: "Processando", bg: "#eff6ff", color: "#1d4ed8" },
-    RETRY: { icon: "🟠", label: "Nova tentativa", bg: "#fff7ed", color: "#c2410c" },
-    BLOCKED: { icon: "⚠️", label: "Bloqueado", bg: "#fffbeb", color: "#92400e" },
-    DEAD: { icon: "❌", label: "Falhou", bg: "#fef2f2", color: "#b91c1c" },
+    COMPLETED: { label: "Sincronizado" },
+    SKIPPED: { label: "Ignorado" },
+    PENDING: { label: "Pendente" },
+    PROCESSING: { label: "Processando" },
+    RETRY: { label: "Nova tentativa" },
+    BLOCKED: { label: "Bloqueado" },
+    DEAD: { label: "Falhou" },
   };
 
   const formatSyncTime = (value) => {
@@ -2490,7 +2465,7 @@ function CentralDeReservasContent() {
           {/* Header */}
           <div className="pmy-ds-migrated-551uiq">
             <div className="pmy-ds-migrated-p1kt1o">
-              <span className="pmy-ds-migrated-1o512c8">{platform.logo}</span>
+              <span className="pmy-ds-migrated-1o512c8"><Icon name={platform.icon} size={24} /></span>
               <div className="pmy-ds-migrated-aeaxj9">{platform.name}</div>
               <div className="pmy-ds-migrated-6r8r3f">
                 {isTripadvisor
@@ -4723,7 +4698,7 @@ function CentralDeReservasContent() {
       .pmy-card-value { font-size:28px; }
       .pmy-date-wrapper { flex-shrink:0; }
       .pmy-date-btn { width:42px; height:42px; overflow:hidden; padding:0; justify-content:center; font-size:0; }
-      .pmy-date-btn::before { content:'📅'; font-size:17px; }
+      .pmy-date-btn::before { content:none; }
       .pmy-date-dropdown { position:fixed; left:14px; right:14px; top:76px; width:auto; max-height:calc(100dvh - 96px); overflow:auto; }
       .pmy-date-custom-inputs { flex-direction:column; align-items:stretch; }
       .pmy-date-custom-inputs > span { display:none; }
@@ -4831,7 +4806,7 @@ function CentralDeReservasContent() {
                 onClick={() => openNavigationTab(item.key)}
                 title={sidebarCollapsed ? item.label : undefined}
               >
-                <span className="pmy-menu-icon"><PmyNavIcon name={item.icon} /></span>
+                <span className="pmy-menu-icon"><Icon name={item.icon} size={19} /></span>
                 <span className="pmy-menu-label">{item.label}</span>
               </button>
             ))}
@@ -4844,7 +4819,7 @@ function CentralDeReservasContent() {
               onClick={() => openNavigationTab("configuracoes")}
               title={sidebarCollapsed ? (lang === "pt" ? "Configurações" : "Settings") : undefined}
             >
-              <span className="pmy-menu-icon"><PmyNavIcon name="configuracoes" /></span>
+              <span className="pmy-menu-icon"><Icon name="settings" size={19} /></span>
               <span className="pmy-menu-label">{lang === "pt" ? "Configurações" : "Settings"}</span>
             </button>
 
@@ -4867,9 +4842,7 @@ function CentralDeReservasContent() {
                 onClick={() => setMobileNavOpen(true)}
                 aria-label={lang === "pt" ? "Abrir menu" : "Open menu"}
               >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M4 7h16M4 12h16M4 17h16"/>
-                </svg>
+                <Icon name="menu" size={19} strokeWidth={2} />
               </button>
               <div className="pmy-header-copy">
                 <div className="pmy-eyebrow">{lang === 'pt' ? 'Portugal Me & You · Central de Reservas' : 'Portugal Me & You · Booking Hub'}</div>
@@ -4886,7 +4859,7 @@ function CentralDeReservasContent() {
             </div>
             {activeTab==='dashboard' && (
               <div className="pmy-date-wrapper">
-                <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}>📅 {getPeriodLabel()} ▾</button>
+                <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
                   <>
                     <div className="pmy-date-overlay" onClick={() => setIsDateMenuOpen(false)}></div>
