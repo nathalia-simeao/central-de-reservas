@@ -314,6 +314,16 @@ export async function convertBookingHoldWithCapacityGuard(
       const activeHold =
         hold.status === "PENDING" &&
         (!expiresAt || expiresAt > now);
+      const nextStatus = bookingData?.status || "CONFIRMED";
+
+      if (!activeHold && nextStatus !== "CONFIRMED") {
+        return {
+          accepted: false,
+          reason: "HOLD_EXPIRED",
+          message: "The checkout hold expired before payment was confirmed.",
+          hold,
+        };
+      }
 
       let availability = null;
 
@@ -341,7 +351,6 @@ export async function convertBookingHoldWithCapacityGuard(
         }
       }
 
-      const nextStatus = bookingData?.status || "CONFIRMED";
       const booking = await tx.booking.update({
         where: { id: hold.id },
         data: {
