@@ -369,16 +369,21 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
     throw new Error("Cannot record purchase without Shopify order ID.");
   }
 
+  // One immutable Shopify order identifier is used everywhere:
+  // analytics transaction_id, PMY idempotency key and duplicate lookup.
   const transactionId =
-    asString(payload?.name) ||
     stripGid(orderId) ||
+    asString(payload?.id) ||
     orderId;
-  const externalEventId = `purchase:${orderId}`;
+  const externalEventId = `purchase:${transactionId}`;
+  const legacyExternalEventId = `purchase:${orderId}`;
   const attribution = purchaseAttribution(payload);
   const eventPayload = {
     event: "purchase",
     transaction_id: transactionId,
+    idempotency_key: transactionId,
     shopify_order_id: orderId,
+    shopify_order_name: asString(payload?.name) || null,
     value: orderMoney(payload),
     currency: orderCurrency(payload),
     financial_status: asString(payload?.financial_status).toLowerCase() || "paid",
@@ -388,11 +393,11 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
     source_webhook_id: asString(webhookId) || null,
   };
 
-  const existing = await prisma.integrationEvent.findUnique({
+  const existing = await prisma.integrationEvent.findFirst({
     where: {
-      provider_externalEventId: {
-        provider: "PMY_ANALYTICS",
-        externalEventId,
+      provider: "PMY_ANALYTICS",
+      externalEventId: {
+        in: [...new Set([externalEventId, legacyExternalEventId])],
       },
     },
   });
@@ -420,6 +425,8 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
       payload: eventPayload,
       result: {
         rule: "SHOPIFY_ORDERS_PAID_ONLY",
+        deduplication: "TRANSACTION_ID",
+        transaction_id: transactionId,
         dispatched: true,
       },
       processedAt: new Date(),
@@ -430,6 +437,8 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
       payload: eventPayload,
       result: {
         rule: "SHOPIFY_ORDERS_PAID_ONLY",
+        deduplication: "TRANSACTION_ID",
+        transaction_id: transactionId,
         dispatched: true,
       },
       error: null,
