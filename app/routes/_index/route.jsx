@@ -3834,6 +3834,7 @@ function CentralDeReservasContent() {
     const guide = guidesList.find(g => g.id === editingGuide);
     if (!guide) return null;
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
+    const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
       <div className="pmy-modal-overlay" onClick={() => setEditingGuide(null)}>
         <div className="pmy-ds-migrated-zuczkc" onClick={e => e.stopPropagation()}>
@@ -3842,24 +3843,57 @@ function CentralDeReservasContent() {
               <div className="pmy-ds-migrated-otectg">
                 <img src={editGuidePhoto || guide.photo} alt={guide.name}
                   className="pmy-ds-migrated-1sos9w" />
-                <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
-                  title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
-                  className="pmy-ds-migrated-1canwv8">📷</button>
-                <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                {!shopifyManaged && (
+                  <>
+                    <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
+                      title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
+                      className="pmy-ds-migrated-1canwv8"><Icon name="media" size={16} /></button>
+                    <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                  </>
+                )}
               </div>
               <div>
-                <div className="pmy-ds-migrated-1w8jk2f">{ui("Editando guia", "Editing guide")}</div>
+                <div className="pmy-ds-migrated-1w8jk2f">
+                  {shopifyManaged
+                    ? ui("Dados operacionais do guia", "Guide operational data")
+                    : ui("Editando guia", "Editing guide")}
+                </div>
                 <div className="pmy-ds-migrated-16qi501">{guide.name}</div>
               </div>
             </div>
             <button onClick={() => setEditingGuide(null)}
               className="pmy-ds-migrated-6cymc4">&times;</button>
           </div>
+          {shopifyManaged && (
+            <div className="pmy-ds-state-panel pmy-u-mx-4 pmy-u-mt-3">
+              <div className="pmy-ds-state-title">
+                {ui("Perfil sincronizado do Shopify", "Profile synced from Shopify")}
+              </div>
+              <div className="pmy-ds-migrated-rhcrii">
+                {ui(
+                  "Nome, foto, descrição, vídeo, passeio exclusivo e galeria são gerenciados no metaobjeto Guias. Aqui ficam apenas e-mail, WhatsApp, UTM e escala.",
+                  "Name, photo, description, video, exclusive tour and gallery are managed in the Guides metaobject. Only email, WhatsApp, UTM and scheduling are managed here.",
+                )}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSaveEditGuide} className="pmy-ds-migrated-bp52w">
             <div className="pmy-ds-migrated-kxbe7g">
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>{ui("Nome e Sobrenome", "Full Name")}</label>
-                <input type="text" className="pmy-form-input" value={editGuideName} onChange={e => setEditGuideName(e.target.value)} required />
+                <input
+                  type="text"
+                  className="pmy-form-input"
+                  value={shopifyManaged ? guide.name : editGuideName}
+                  onChange={e => setEditGuideName(e.target.value)}
+                  disabled={shopifyManaged}
+                  required
+                />
+                {shopifyManaged && (
+                  <div className="pmy-ds-code-note">
+                    {ui("Alterações de nome são feitas no Shopify.", "Name changes are made in Shopify.")}
+                  </div>
+                )}
               </div>
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>E-mail</label>
@@ -3874,7 +3908,7 @@ function CentralDeReservasContent() {
                       {ddiList.map((d,i) => <option key={i} value={d.code}>{d.code}</option>)}
                     </select>
                   </div>
-                  <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} required />
+                  <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} />
                 </div>
               </div>
 
@@ -3899,9 +3933,15 @@ function CentralDeReservasContent() {
               </div>
             </div>
             <div className="pmy-ds-migrated-y37ip1">
-              <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff" >{ui("💾 Salvar Alterações", "💾 Save Changes")}</button>
-              <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
-                className="pmy-ds-migrated-138e6nr">🗑️</button>
+              <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff">
+                {ui("Salvar dados operacionais", "Save operational data")}
+              </button>
+              {!shopifyManaged && (
+                <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
+                  className="pmy-ds-migrated-138e6nr" aria-label={ui("Excluir guia", "Delete guide")}>
+                  <Icon name="trash" size={16} />
+                </button>
+              )}
               <button type="button" onClick={() => setEditingGuide(null)}
                 className="pmy-ds-migrated-2o86xe">{ui("Cancelar", "Cancel")}</button>
             </div>
