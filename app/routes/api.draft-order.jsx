@@ -301,7 +301,7 @@ export const action = async ({ request }) => {
     const holdResult = await createBookingWithCapacityGuard(db, {
       tourId: masterTour.id,
       startTime,
-      platform: "CENTRAL",
+      platform: "SHOPIFY",
       requestedSeats,
       bookingData: {
         customerName: customerName || "Checkout PMY",
