@@ -1394,3 +1394,16 @@
   .pmy-ds-theme-preview__sidebar { width: 100%; max-width: 220px; }
   .pmy-ds-staff-row { align-items: flex-start; flex-wrap: wrap; }
 }
+
+
+.pmy-ds-mapping-arrow-col { width: 30px; }
+.pmy-ds-mapping-type-col { width: 100px; }
+.pmy-ds-theme-field-select { margin-top: 6px; }
+.pmy-ds-theme-shape-tabs { margin-top: var(--pmy-space-2); }
+.pmy-ds-team-note { margin-top: var(--pmy-space-5); }
+.pmy-ds-settings-actions {
+  display: flex;
+  gap: var(--pmy-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--pmy-space-5);
+}
