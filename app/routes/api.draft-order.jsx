@@ -1,5 +1,6 @@
 import { data } from "react-router";
 import { authenticate } from "../shopify.server";
+import { classifyCommercialSource } from "../utils/commercial-source.server";
 
 const json = (body, init) => data(body, init);
 
@@ -8,6 +9,7 @@ function clean(value) {
 }
 
 const ATTRIBUTION_FIELDS = [
+  "commercial_source",
   "session_id",
   "order_referrer_source",
   "order_referrer_name",
@@ -201,6 +203,11 @@ export const action = async ({ request }) => {
   const bookingPlatforms = clean(formData.get("bookingPlatforms"));
   const attribution = parseAttribution(formData.get("attribution"));
   const attributionMeta = attributionAttributes(attribution);
+  const commercialSource = classifyCommercialSource({
+    platform: "CENTRAL",
+    attribution,
+    commercialSource: attribution.commercial_source,
+  });
   let lineItems;
 
   try {
@@ -236,6 +243,7 @@ export const action = async ({ request }) => {
       { key: "time", value: time },
       { key: "language", value: language },
       { key: "source", value: attributionMeta.name },
+      { key: "PMY Commercial Source", value: commercialSource },
       ...attributionMeta.attributes,
       { key: "PMY Product ID", value: productId },
       {
@@ -286,6 +294,7 @@ export const action = async ({ request }) => {
         `Idioma: ${language}`,
         customerName ? `Cliente: ${customerName}` : null,
         `Origem: ${attributionMeta.name}`,
+        `Origem comercial: ${commercialSource}`,
         `Canal: ${attributionMeta.channel}`,
         `Sessão PMY: ${attributionMeta.sessionId}`,
       ]
@@ -367,7 +376,9 @@ export const action = async ({ request }) => {
         date,
         time,
         language,
+        commercialSource,
         attribution: {
+          commercialSource,
           sessionId: attributionMeta.sessionId,
           source: attributionMeta.source,
           name: attributionMeta.name,
