@@ -1,3 +1,5 @@
+import { Button, EmptyState, Icon, Tabs, Toast } from "./PmyUI";
+
 export default function IntegrationsTab(props) {
   const {
     activeTab,
@@ -56,11 +58,17 @@ export default function IntegrationsTab(props) {
           {activeTab==='integracoes' && (
             <div>
               {/* Sub-tabs */}
-              <div className="pmy-int-subtab-bar">
-                <button className={`pmy-int-subtab ${intSubTab==='conexoes'?'active':''}`} onClick={()=>setIntSubTab('conexoes')}>{tr("🔗 Conexões", "🔗 Connections")}</button>
-                <button className={`pmy-int-subtab ${intSubTab==='produtos'?'active':''}`} onClick={()=>setIntSubTab('produtos')}>{tr("📦 Produtos por Plataforma", "📦 Products by Platform")}</button>
-                <button className={`pmy-int-subtab ${intSubTab==='logs'?'active':''}`} onClick={()=>setIntSubTab('logs')}>{tr("📡 Log de Sincronização", "📡 Sync Log")}</button>
-              </div>
+              <Tabs
+                items={[
+                  { value: "conexoes", label: tr("Conexões", "Connections"), icon: "link" },
+                  { value: "produtos", label: tr("Produtos por Plataforma", "Products by Platform"), icon: "ticket" },
+                  { value: "logs", label: tr("Log de Sincronização", "Sync Log"), icon: "refresh" },
+                ]}
+                value={intSubTab}
+                onChange={setIntSubTab}
+                ariaLabel={tr("Seções de integrações", "Integration sections")}
+                className="pmy-u-mb-5"
+              />
 
               {/* ── SUB-TAB: CONEXÕES ── */}
               {intSubTab==='conexoes' && (
@@ -95,7 +103,7 @@ export default function IntegrationsTab(props) {
                           </div>
                           <div className="pmy-ds-migrated-1gcp9k1">
                             <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`}></span>
-                            <span style={{ fontSize:'11px', fontWeight:'700', color:conn.connected?'#22c55e':'#aaa' }}>
+                            <span className={`pmy-ds-connection-state ${conn.connected ? "is-connected" : ""}`}>
                               {conn.connected ? tr('CONECTADO','CONNECTED') : tr('NÃO CONECTADO','NOT CONNECTED')}
                             </span>
                           </div>
@@ -181,10 +189,9 @@ export default function IntegrationsTab(props) {
                           Atualizado {syncQueueLastLoaded.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}
                         </span>
                       )}
-                      <button type="button" onClick={loadSyncQueue} disabled={syncQueueLoading}
-                        style={{ border:'1px solid #ddd', background:'#fff', borderRadius:'8px', padding:'9px 13px', cursor:syncQueueLoading?'wait':'pointer', fontWeight:'700', fontSize:'12px', color:'#555' }}>
-                        {syncQueueLoading ? tr('⏳ Atualizando...','⏳ Refreshing...') : tr('🔄 Atualizar','🔄 Refresh')}
-                      </button>
+                      <Button type="button" variant="secondary" size="sm" icon="refresh" onClick={loadSyncQueue} disabled={syncQueueLoading}>
+                        {syncQueueLoading ? tr('Atualizando...','Refreshing...') : tr('Atualizar','Refresh')}
+                      </Button>
                       <button type="button" onClick={runSyncQueueNow} disabled={syncQueueActionId==='run'}
                         className="pmy-btn-submit pmy-ds-migrated-15y797" >
                         {syncQueueActionId==='run' ? tr('⏳ Processando...','⏳ Processing...') : tr('▶ Processar fila agora','▶ Process queue now')}
@@ -193,18 +200,10 @@ export default function IntegrationsTab(props) {
                   </div>
 
                   {syncQueueError && (
-                    <div className="pmy-ds-migrated-14g0aa5">
-                      ❌ {syncQueueError}
-                    </div>
+                    <Toast tone="danger" className="pmy-u-mb-4">{syncQueueError}</Toast>
                   )}
 
-                  <div style={{
-                    background: shopifyValidation?.status === 'PASSED' ? '#f0fdf4' : '#fff',
-                    border: shopifyValidation?.status === 'PASSED' ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
-                    borderRadius:'12px',
-                    padding:'16px 18px',
-                    marginBottom:'18px'
-                  }}>
+                  <div className={`pmy-ds-validation-panel ${shopifyValidation?.status === 'PASSED' ? "is-passed" : ""}`}>
                     <div className="pmy-ds-migrated-wwbjgp">
                       <div>
                         <div className="pmy-ds-migrated-vz949o">
@@ -220,7 +219,7 @@ export default function IntegrationsTab(props) {
                           🔄 Verificar
                         </button>
                         <button type="button" onClick={startShopifyValidation} disabled={shopifyValidationLoading || shopifyValidation?.status === 'WAITING'}
-                          className="pmy-btn-submit" style={{ width:'auto', padding:'8px 13px', fontSize:'11px', opacity:(shopifyValidationLoading || shopifyValidation?.status === 'WAITING')?0.6:1 }}>
+                          className="pmy-btn-submit pmy-ds-compact-action">
                           {shopifyValidationLoading ? tr('⏳ Criando pedido...','⏳ Creating order...') : shopifyValidation?.status === 'WAITING' ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...') : tr('▶ Executar teste real','▶ Run real test')}
                         </button>
                       </div>
@@ -242,14 +241,9 @@ export default function IntegrationsTab(props) {
                             [tr('Agenda abastecida','Agenda updated'), shopifyValidation.steps?.agendaReady],
                             [tr('Vagas reduzidas','Availability reduced'), shopifyValidation.steps?.capacityReduced],
                           ].map(([label,ok]) => (
-                            <div key={label} style={{
-                              background:ok?'#ecfdf3':'#f8fafc',
-                              border:`1px solid ${ok?'#bbf7d0':'#e5e7eb'}`,
-                              borderRadius:'8px',
-                              padding:'9px 10px'
-                            }}>
-                              <div style={{ fontSize:'11px', fontWeight:'800', color:ok?'#166534':'#6b7280' }}>
-                                {ok?'✅':'⏳'} {label}
+                            <div key={label} className={`pmy-ds-validation-step ${ok ? "is-complete" : ""}`}>
+                              <div className={`pmy-ds-validation-step__label ${ok ? "is-complete" : ""}`}>
+                                <Icon name={ok ? "check" : "clock"} size={13} /> {label}
                               </div>
                             </div>
                           ))}
@@ -299,17 +293,17 @@ export default function IntegrationsTab(props) {
                     const stats = syncQueueData.stats || {};
                     const divergent = Number(stats.retry || 0) + Number(stats.blocked || 0) + Number(stats.dead || 0);
                     const cards = [
-                      ['✅', tr('Concluídos','Completed'), stats.completed || 0, '#166534', '#ecfdf3'],
-                      ['⏳', tr('Pendentes','Pending'), (stats.pending || 0) + (stats.processing || 0), '#9a3412', '#fff7ed'],
-                      ['🟠', tr('Em nova tentativa','Retrying'), stats.retry || 0, '#c2410c', '#fff7ed'],
-                      ['⚠️', tr('Divergências','Mismatches'), divergent, divergent > 0 ? '#b91c1c' : '#166534', divergent > 0 ? '#fef2f2' : '#ecfdf3'],
+                      { icon: 'check', label: tr('Concluídos','Completed'), value: stats.completed || 0, tone: 'success' },
+                      { icon: 'clock', label: tr('Pendentes','Pending'), value: (stats.pending || 0) + (stats.processing || 0), tone: 'warning' },
+                      { icon: 'refresh', label: tr('Em nova tentativa','Retrying'), value: stats.retry || 0, tone: 'warning' },
+                      { icon: 'warning', label: tr('Divergências','Mismatches'), value: divergent, tone: divergent > 0 ? 'danger' : 'success' },
                     ];
                     return (
                       <div className="pmy-ds-migrated-87tlda">
-                        {cards.map(([icon,label,value,color,bg]) => (
-                          <div key={label} style={{ background:bg, border:'1px solid rgba(0,0,0,0.06)', borderRadius:'12px', padding:'14px 16px' }}>
-                            <div className="pmy-ds-migrated-nd1yb6">{icon} {label}</div>
-                            <div style={{ fontSize:'24px', fontWeight:'900', color }}>{value}</div>
+                        {cards.map(({icon,label,value,tone}) => (
+                          <div key={label} className={`pmy-ds-sync-metric is-${tone}`}>
+                            <div className="pmy-ds-sync-metric__label"><Icon name={icon} size={14} /> {label}</div>
+                            <div className="pmy-ds-sync-metric__value">{value}</div>
                           </div>
                         ))}
                       </div>
@@ -320,11 +314,15 @@ export default function IntegrationsTab(props) {
                     {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
                       <div className="pmy-ds-migrated-1htyqwv">{tr("⏳ Carregando histórico de sincronização...", "⏳ Loading sync history...")}</div>
                     ) : syncQueueData.jobs.length === 0 ? (
-                      <div className="pmy-ds-migrated-1htyqwv">
-                        <div className="pmy-ds-migrated-12lta4n">📭</div>
-                        <strong className="pmy-ds-migrated-9rem7x">{tr("Nenhum evento de sincronização registrado ainda", "No sync events recorded yet")}</strong>
-                        Os próximos bloqueios, reservas, cancelamentos e alterações de capacidade aparecerão aqui.
-                      </div>
+                      <EmptyState
+                        icon="refresh"
+                        compact
+                        title={tr("Nenhum evento de sincronização registrado ainda", "No sync events recorded yet")}
+                        description={tr(
+                          "Os próximos bloqueios, reservas, cancelamentos e alterações de capacidade aparecerão aqui.",
+                          "Upcoming blocks, bookings, cancellations, and capacity changes will appear here."
+                        )}
+                      />
                     ) : (
                       <div className="pmy-ds-migrated-13izxgm">
                         <table className="pmy-ds-migrated-sq1wms">
@@ -343,7 +341,7 @@ export default function IntegrationsTab(props) {
                               const detail = job.error || job.result?.reason || job.result?.detail || (job.status === 'COMPLETED' ? 'Sincronização concluída' : '—');
                               const canRetry = ['RETRY','BLOCKED','DEAD'].includes(job.status);
                               return (
-                                <tr key={job.id} style={{ borderBottom:'1px solid #f1f1f1', background:['RETRY','BLOCKED','DEAD'].includes(job.status) ? '#fffdfd' : '#fff' }}>
+                                <tr key={job.id} className={['RETRY','BLOCKED','DEAD'].includes(job.status) ? "pmy-ds-sync-row is-problem" : "pmy-ds-sync-row"}>
                                   <td className="pmy-ds-migrated-1c9koyg">
                                     {formatSyncTime(job.lastAttemptAt || job.updatedAt || job.createdAt)}
                                   </td>
@@ -354,22 +352,21 @@ export default function IntegrationsTab(props) {
                                   <td className="pmy-ds-migrated-1gem2sh">{source.icon} {source.label}</td>
                                   <td className="pmy-ds-migrated-cegdm0">{provider.icon} {provider.label}</td>
                                   <td className="pmy-ds-migrated-zsxq6o">
-                                    <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:status.bg, color:status.color, padding:'5px 8px', borderRadius:'20px', fontSize:'11px', fontWeight:'800', whiteSpace:'nowrap' }}>
-                                      {status.icon} {status.label}
+                                    <span className={`pmy-ds-sync-status is-${String(job.status || "pending").toLowerCase()}`}>
+                                      {status.label}
                                     </span>
                                   </td>
                                   <td className="pmy-ds-migrated-1l3cbus">
                                     {job.attempts || 0}/{job.maxAttempts || 8}
                                   </td>
-                                  <td style={{ padding:'12px 14px', fontSize:'11px', color:job.error?'#b91c1c':'#666', maxWidth:'290px' }}>
+                                  <td className={`pmy-ds-sync-detail ${job.error ? "is-error" : ""}`}>
                                     <div title={String(detail)} className="pmy-ds-migrated-1v5n4uc">{String(detail)}</div>
                                   </td>
                                   <td className="pmy-ds-migrated-1nr18vm">
                                     {canRetry ? (
-                                      <button type="button" onClick={()=>handleRequeueSyncJob(job.id)} disabled={syncQueueActionId===job.id}
-                                        style={{ border:'1px solid #f59e0b', background:'#fff7ed', color:'#9a3412', borderRadius:'7px', padding:'7px 10px', fontSize:'11px', fontWeight:'800', cursor:syncQueueActionId===job.id?'wait':'pointer' }}>
-                                        {syncQueueActionId===job.id ? '⏳ Reenviando' : '↻ Reenviar'}
-                                      </button>
+                                      <Button type="button" variant="secondary" size="sm" icon="refresh" onClick={()=>handleRequeueSyncJob(job.id)} disabled={syncQueueActionId===job.id}>
+                                        {syncQueueActionId===job.id ? tr('Reenviando','Retrying') : tr('Reenviar','Retry')}
+                                      </Button>
                                     ) : (
                                       <span className="pmy-ds-migrated-1q9f6mz">—</span>
                                     )}
@@ -413,11 +410,7 @@ export default function IntegrationsTab(props) {
                           <span className="pmy-ds-migrated-1hxgxx8">{p.logo}</span>
                           {p.name}
                           {conn.connected && (
-                            <span style={{
-                              fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'10px',
-                              background: activeProdPlatform===p.key ? 'rgba(255,255,255,0.25)' : '#e6f2e6',
-                              color: activeProdPlatform===p.key ? '#fff' : 'var(--primary-green)'
-                            }}>{activeCount} {tr('ativos','active')}</span>
+                            <span className={`pmy-ds-product-count ${activeProdPlatform===p.key ? "is-active" : ""}`}>{activeCount} {tr('ativos','active')}</span>
                           )}
                           {!conn.connected && (
                             <span className="pmy-ds-migrated-1cryxg8">{tr('desconectado','disconnected')}</span>
@@ -428,13 +421,7 @@ export default function IntegrationsTab(props) {
                   </div>
 
                   {(manualSyncError || (manualSyncResult?.platform === activeProdPlatform)) && (
-                    <div style={{
-                      marginBottom:'18px',
-                      border: manualSyncError ? '1px solid #fecaca' : '1px solid #d8e6dc',
-                      background: manualSyncError ? '#fef2f2' : '#f7fbf8',
-                      borderRadius:'12px',
-                      padding:'16px 18px'
-                    }}>
+                    <div className={`pmy-ds-manual-sync-result ${manualSyncError ? "is-error" : "is-success"}`}>
                       {manualSyncError ? (
                         <div className="pmy-ds-migrated-8gdtsu">
                           ❌ {manualSyncError}
@@ -477,9 +464,9 @@ export default function IntegrationsTab(props) {
                                 <div className="pmy-ds-migrated-1hnqsny">{availability.checked ?? 0}</div>
                                 <div className="pmy-ds-migrated-1a8zem5">{tr("tours verificados", "tours checked")}</div>
                               </div>
-                              <div style={{ background:differences?'#fff7ed':'#ecfdf3', border:`1px solid ${differences?'#fed7aa':'#bbf7d0'}`, borderRadius:'9px', padding:'10px 12px' }}>
-                                <div className="pmy-ds-migrated-4zzezf">{tr("🔎 DIFERENÇAS", "🔎 MISMATCHES")}</div>
-                                <div style={{ fontSize:'18px', fontWeight:'900', marginTop:'3px', color:differences?'#c2410c':'#166534' }}>{differences}</div>
+                              <div className={`pmy-ds-mismatch-card ${differences ? "is-warning" : "is-success"}`}>
+                                <div className="pmy-ds-migrated-4zzezf">{tr("Diferenças", "Mismatches")}</div>
+                                <div className={`pmy-ds-mismatch-card__value ${differences ? "is-warning" : "is-success"}`}>{differences}</div>
                                 <div className="pmy-ds-migrated-1a8zem5">{tr("itens que pedem atenção", "items needing attention")}</div>
                               </div>
                             </div>
@@ -587,12 +574,14 @@ export default function IntegrationsTab(props) {
                             </div>
                           </div>
                           <div className="pmy-ds-migrated-1yhy4bd">
-                            <button type="button"
+                            <Button type="button"
+                              variant="secondary"
+                              size="sm"
+                              icon="refresh"
                               onClick={() => handleSyncPlatformNow(platform?.key)}
-                              disabled={manualSyncPlatform===platform?.key}
-                              style={{ border:'1px solid #b9d2c0', background:'#f3faf5', color:'#245936', borderRadius:'8px', padding:'8px 13px', fontSize:'12px', fontWeight:'800', cursor:manualSyncPlatform===platform?.key?'wait':'pointer' }}>
-                              {manualSyncPlatform===platform?.key ? tr('⏳ Consultando...','⏳ Checking...') : tr('🔄 Sincronizar agora','🔄 Sync now')}
-                            </button>
+                              disabled={manualSyncPlatform===platform?.key}>
+                              {manualSyncPlatform===platform?.key ? tr('Consultando...','Checking...') : tr('Sincronizar agora','Sync now')}
+                            </Button>
                             <button className="pmy-btn-submit pmy-ds-migrated-1wmgly4" 
                               onClick={()=>alert(tr('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.','To add a new product, create it in Shopify first and it will be synced automatically.'))}>
                               + Adicionar Produto
