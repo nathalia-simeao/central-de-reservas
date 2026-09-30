@@ -3557,7 +3557,7 @@ function CentralDeReservasContent() {
                 {selectedGuideInfo.exclusiveProducts.map((product) => (
                   <div className="pmy-ds-list-plain__row" key={product.id}>
                     <span className="pmy-ds-list-plain__title">
-                      <Icon name="map" size={17} />
+                      <Icon name="mapPin" size={17} />
                       {product.title}
                     </span>
                     <span className="pmy-tag">Shopify</span>
