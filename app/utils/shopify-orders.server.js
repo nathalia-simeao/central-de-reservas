@@ -1,4 +1,5 @@
 import { createBookingWithCapacityGuard, getCentralAvailability } from "./capacity.server";
+import { classifyCommercialSource } from "./commercial-source.server";
 import {
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
@@ -93,6 +94,7 @@ const EMAIL_KEYS = ["email", "e-mail"];
 const PHONE_KEYS = ["phone", "telefone", "telephone", "whatsapp", "mobile"];
 
 const ATTRIBUTION_KEYS = {
+  commercialSource: ["PMY Commercial Source", "commercial_source"],
   sessionId: ["PMY Session", "session_id"],
   source: ["order_referrer_source", "PMY Last Source", "PMY First Source", "source"],
   name: ["order_referrer_name"],
@@ -378,6 +380,11 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
   const externalEventId = `purchase:${transactionId}`;
   const legacyExternalEventId = `purchase:${orderId}`;
   const attribution = purchaseAttribution(payload);
+  const commercialSource = classifyCommercialSource({
+    platform: SHOPIFY_PLATFORM,
+    attribution,
+    commercialSource: attribution.commercialSource,
+  });
   const eventPayload = {
     event: "purchase",
     transaction_id: transactionId,
@@ -389,6 +396,7 @@ async function recordCanonicalPurchaseEvent(prisma, payload, webhookId = null) {
     financial_status: asString(payload?.financial_status).toLowerCase() || "paid",
     processed_at: asString(payload?.processed_at) || null,
     pmy_session_id: attribution.sessionId || null,
+    commercial_source: commercialSource,
     attribution,
     items: purchaseItems(payload),
     source_webhook_id: asString(webhookId) || null,
@@ -459,6 +467,11 @@ export async function buildShopifyBookingGroups(prisma, payload) {
     payload?.note_attributes || payload?.customAttributes || [],
   );
   const attribution = orderAttribution(orderAttrs);
+  const commercialSource = classifyCommercialSource({
+    platform: SHOPIFY_PLATFORM,
+    attribution,
+    commercialSource: attribution.commercialSource,
+  });
   const customer = orderCustomer(payload, orderAttrs);
   const orderId = externalOrderId(payload);
   const orderName = asString(payload?.name) || orderId;
@@ -569,6 +582,7 @@ export async function buildShopifyBookingGroups(prisma, payload) {
         totalPrice: 0,
         currency,
         customer,
+        commercialSource,
         attribution,
       });
     }
@@ -621,6 +635,7 @@ async function createForcedShopifyBooking(prisma, group, payload, status, syncSt
         language: group.language,
         startTime: group.startTime,
         platform: SHOPIFY_PLATFORM,
+        commercialSource: group.commercialSource,
         status,
         bookingRef: group.bookingRef,
         externalBookingId: group.externalBookingId,
@@ -686,6 +701,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
         customerPhone: group.customer.customerPhone,
         language: group.language,
         startTime: group.startTime,
+        commercialSource: group.commercialSource,
         status,
         bookingRef: group.bookingRef,
         externalOrderId: group.externalOrderId,
@@ -720,6 +736,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
       customerEmail: group.customer.customerEmail,
       customerPhone: group.customer.customerPhone,
       language: group.language,
+      commercialSource: group.commercialSource,
       status,
       bookingRef: group.bookingRef,
       externalBookingId: group.externalBookingId,
@@ -884,6 +901,7 @@ export async function processShopifyOrderWebhook(
         orderId,
         syncStatus: result.syncStatus,
         attribution: group.attribution || {},
+        commercialSource: group.commercialSource,
       },
     });
   }
