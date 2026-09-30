@@ -80,14 +80,14 @@ export default function IntegrationsTab(props) {
                   </p>
                   <div className="pmy-ds-migrated-148qhts">
                     <div className="pmy-ds-migrated-1c2aa5v">
-                      <span className="pmy-ds-migrated-i9ilnf">🟢</span>
+                      <span className="pmy-ds-connection-counter-icon is-connected"><Icon name="check" size={18} /></span>
                       <div>
                         <div className="pmy-ds-migrated-m37lxr">{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected).length}</div>
                         <div className="pmy-ds-migrated-htnqm2">{tr("Conectadas", "Connected")}</div>
                       </div>
                     </div>
                     <div className="pmy-ds-migrated-1c2aa5v">
-                      <span className="pmy-ds-migrated-i9ilnf">⚫</span>
+                      <span className="pmy-ds-connection-counter-icon"><Icon name="clock" size={18} /></span>
                       <div>
                         <div className="pmy-ds-migrated-1ppuvw4">{reservationPlatforms.filter(p=>!platformConnections[p.key]?.connected).length}</div>
                         <div className="pmy-ds-migrated-htnqm2">{tr("Pendentes", "Pending")}</div>
@@ -176,7 +176,7 @@ export default function IntegrationsTab(props) {
 
               {/* ── SUB-TAB: LOG DE SINCRONIZAÇÃO ── */}
               {intSubTab==='logs' && (
-                <div>
+                <div className="pmy-sync-log">
                   <div className="pmy-ds-migrated-1acd7k0">
                     <div>
                       <h3 className="pmy-ds-migrated-cwjrli pmy-ds-heading-with-icon"><Icon name="refresh" size={17} /> {tr("Log de Sincronização", "Sync Log")}</h3>
@@ -196,7 +196,7 @@ export default function IntegrationsTab(props) {
                       </Button>
                       <button type="button" onClick={runSyncQueueNow} disabled={syncQueueActionId==='run'}
                         className="pmy-btn-submit pmy-ds-migrated-15y797" >
-                        {syncQueueActionId==='run' ? tr('⏳ Processando...','⏳ Processing...') : tr('▶ Processar fila agora','▶ Process queue now')}
+                        {syncQueueActionId==='run' ? tr('Processando...','Processing...') : tr('Processar fila agora','Process queue now')}
                       </button>
                     </div>
                   </div>
@@ -208,18 +208,18 @@ export default function IntegrationsTab(props) {
                   <div className={`pmy-ds-validation-panel ${shopifyValidation?.status === 'FULLY_PASSED' ? "is-passed" : ""}`}>
                     <div className="pmy-ds-migrated-wwbjgp">
                       <div>
-                        <div className="pmy-ds-migrated-vz949o">
-                          🧪 Validação real Shopify → Webhook → Booking → Agenda → Vagas → Cancelamento
+                        <div className="pmy-validation-heading">
+                          <span className="pmy-validation-heading__icon"><Icon name="store" size={18} /></span>
+                          <span>{tr('Validação Shopify de ponta a ponta','Shopify end-to-end validation')}</span>
                         </div>
-                        <div className="pmy-ds-migrated-t4mqfp">
+                        <div className="pmy-validation-copy">
                           Cria um pedido Shopify de teste com 1 participante e pagamento pendente, comprova os cinco passos de entrada e, em seguida, cancela o mesmo pedido para validar Booking cancelado e vaga devolvida.
                         </div>
                       </div>
-                      <div className="pmy-ds-migrated-11c3s9p">
-                        <button type="button" onClick={loadShopifyValidation}
-                          className="pmy-ds-migrated-r8mbti">
-                          🔄 Verificar
-                        </button>
+                      <div className="pmy-validation-actions">
+                        <Button type="button" variant="secondary" size="sm" icon="refresh" onClick={loadShopifyValidation}>
+                          {tr('Verificar','Check')}
+                        </Button>
                         <button
                           type="button"
                           onClick={startShopifyValidation}
@@ -231,21 +231,25 @@ export default function IntegrationsTab(props) {
                           className="pmy-btn-submit pmy-ds-compact-action"
                         >
                           {shopifyValidationLoading
-                            ? tr('⏳ Criando pedido...','⏳ Creating order...')
+                            ? tr('Criando pedido...','Creating order...')
                             : shopifyValidation?.status === 'WAITING'
-                              ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...')
+                              ? tr('Aguardando webhook...','Waiting for webhook...')
                               : shopifyValidation?.status === 'PASSED'
-                                ? tr('↩ Cancele o teste atual','↩ Cancel current test')
+                                ? tr('Cancele o teste atual','Cancel current test')
                                 : shopifyValidation?.status === 'CANCELLATION_WAITING'
-                                  ? tr('⏳ Validando cancelamento...','⏳ Validating cancellation...')
-                                  : tr('▶ Executar teste real','▶ Run real test')}
+                                  ? tr('Validando cancelamento...','Validating cancellation...')
+                                  : tr('Executar teste real','Run real test')}
                         </button>
                       </div>
                     </div>
 
                     {shopifyValidationError && (
-                      <div className="pmy-ds-migrated-1jl3hj0">
-                        ❌ {shopifyValidationError}
+                      <div className="pmy-validation-message is-danger" role="alert">
+                        <Icon name="warning" size={18} />
+                        <div>
+                          <strong>{tr('Não foi possível iniciar a validação','Validation could not be started')}</strong>
+                          <span>{shopifyValidationError}</span>
+                        </div>
                       </div>
                     )}
 
@@ -296,8 +300,12 @@ export default function IntegrationsTab(props) {
 
                         {shopifyValidation.status === 'PASSED' && (
                           <>
-                            <div className="pmy-ds-migrated-1hlsfhi">
-                              ✅ Entrada validada: Pedido → Webhook → Booking → Agenda → redução de vagas está 100% verde.
+                            <div className="pmy-validation-message is-success">
+                              <Icon name="check" size={18} />
+                              <div>
+                                <strong>{tr('Entrada validada','Inbound flow validated')}</strong>
+                                <span>{tr('Pedido, webhook, Booking, Agenda e redução de vagas concluídos.','Order, webhook, Booking, Agenda and availability reduction completed.')}</span>
+                              </div>
                             </div>
                             <div className="pmy-ds-migrated-11c3s9p">
                               <button
@@ -307,8 +315,8 @@ export default function IntegrationsTab(props) {
                                 className="pmy-btn-submit pmy-ds-compact-action"
                               >
                                 {shopifyValidationCancelLoading
-                                  ? tr('⏳ Cancelando teste...','⏳ Cancelling test...')
-                                  : tr('↩ Cancelar teste e validar devolução','↩ Cancel test and validate restoration')}
+                                  ? tr('Cancelando teste...','Cancelling test...')
+                                  : tr('Cancelar teste e validar devolução','Cancel test and validate restoration')}
                               </button>
                             </div>
                           </>
@@ -316,7 +324,7 @@ export default function IntegrationsTab(props) {
 
                         {shopifyValidation.cancellation?.requested && (
                           <div className="pmy-u-mt-4">
-                            <div className="pmy-ds-migrated-vz949o">
+                            <div className="pmy-validation-subheading">
                               {tr('Fase 2 · Cancelamento e devolução da vaga','Phase 2 · Cancellation and seat restoration')}
                             </div>
                             <div className="pmy-ds-migrated-2blvc1">
@@ -337,34 +345,41 @@ export default function IntegrationsTab(props) {
                         )}
 
                         {shopifyValidation.status === 'WAITING' && (
-                          <div className="pmy-ds-migrated-bpj82y">
-                            ⏳ O pedido já foi criado. A Central verifica o webhook automaticamente a cada poucos segundos.
+                          <div className="pmy-validation-message is-info">
+                            <Icon name="clock" size={18} />
+                            <span>{tr('Pedido criado. A Central está aguardando e conferindo o webhook automaticamente.','Order created. The Central is waiting for and checking the webhook automatically.')}</span>
                           </div>
                         )}
 
                         {shopifyValidation.status === 'CANCELLATION_WAITING' && (
-                          <div className="pmy-ds-migrated-bpj82y">
-                            ⏳ Cancelamento solicitado ao Shopify. A Central aguarda o webhook, o Booking cancelado e a devolução da vaga.
+                          <div className="pmy-validation-message is-info">
+                            <Icon name="clock" size={18} />
+                            <span>{tr('Cancelamento solicitado. A Central aguarda o webhook, o Booking cancelado e a devolução da vaga.','Cancellation requested. The Central is waiting for the webhook, cancelled Booking and restored availability.')}</span>
                           </div>
                         )}
 
                         {shopifyValidation.status === 'FULLY_PASSED' && (
-                          <div className="pmy-ds-migrated-1hlsfhi">
-                            ✅ Shopify validado de ponta a ponta, incluindo cancelamento: o pedido entrou, ocupou a vaga, foi cancelado e a capacidade voltou à Central.
+                          <div className="pmy-validation-message is-success">
+                            <Icon name="check" size={18} />
+                            <div>
+                              <strong>{tr('Validação concluída','Validation complete')}</strong>
+                              <span>{tr('O pedido ocupou a vaga, foi cancelado e a capacidade voltou à Central.','The order consumed availability, was cancelled and the capacity returned to the Central.')}</span>
+                            </div>
                           </div>
                         )}
 
                         {shopifyValidation.status === 'FAILED' && (
-                          <div className="pmy-ds-migrated-1a0iuii">
-                            ❌ O teste encontrou uma falha no processamento Shopify. Veja o Log de Sincronização abaixo.
+                          <div className="pmy-validation-message is-danger">
+                            <Icon name="warning" size={18} />
+                            <span>{tr('A validação encontrou uma falha no processamento do Shopify. Consulte o log abaixo para o detalhe técnico.','The validation found a Shopify processing failure. Check the log below for technical details.')}</span>
                           </div>
                         )}
                       </div>
                     )}
 
                     {!shopifyValidation?.exists && !shopifyValidationError && (
-                      <div className="pmy-ds-migrated-jhr15n">
-                        Nenhum teste end-to-end executado ainda. O teste usa uma reserva de 1 participante, pagamento pendente e não cobra cliente.
+                      <div className="pmy-validation-empty">
+                        {tr('Nenhum teste executado ainda. A validação usa 1 participante, pagamento pendente e não realiza cobrança ao cliente.','No test has been run yet. Validation uses 1 participant, pending payment and does not charge a customer.')}
                       </div>
                     )}
                   </div>
@@ -391,7 +406,7 @@ export default function IntegrationsTab(props) {
 
                   <div className="pmy-form-box pmy-ds-migrated-q9arce" >
                     {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
-                      <div className="pmy-ds-migrated-1htyqwv">{tr("⏳ Carregando histórico de sincronização...", "⏳ Loading sync history...")}</div>
+                      <div className="pmy-ds-migrated-1htyqwv">{tr("Carregando histórico de sincronização...", "Loading sync history...")}</div>
                     ) : syncQueueData.jobs.length === 0 ? (
                       <EmptyState
                         icon="refresh"
@@ -461,7 +476,7 @@ export default function IntegrationsTab(props) {
 
                   <div className="pmy-ds-migrated-kewd2o">
                     <strong className="pmy-ds-migrated-1sbb1if">{tr("Como ler:", "How to read:")}</strong> cada linha representa o envio de um mesmo evento para um canal.
-                    Se um canal estiver ✅ e outro ❌/🟠, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
+                    Se um canal estiver e outro falha ou nova tentativa, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
                   </div>
                 </div>
               )}
@@ -502,8 +517,9 @@ export default function IntegrationsTab(props) {
                   {(manualSyncError || (manualSyncResult?.platform === activeProdPlatform)) && (
                     <div className={`pmy-ds-manual-sync-result ${manualSyncError ? "is-error" : "is-success"}`}>
                       {manualSyncError ? (
-                        <div className="pmy-ds-migrated-8gdtsu">
-                          ❌ {manualSyncError}
+                        <div className="pmy-validation-message is-danger">
+                          <Icon name="warning" size={17} />
+                          <span>{manualSyncError}</span>
                         </div>
                       ) : (() => {
                         const result = manualSyncResult;
@@ -516,7 +532,7 @@ export default function IntegrationsTab(props) {
                             <div className="pmy-ds-migrated-168v0lw">
                               <div>
                                 <div className="pmy-ds-migrated-onxnsb">
-                                  {differences === 0 ? tr('✅ Canais consistentes nesta verificação','✅ Channels are consistent in this check') : `⚠️ ${differences} diferença${differences===1?'':'s'} encontrada${differences===1?'':'s'}`}
+                                  {differences === 0 ? tr('Canais consistentes nesta verificação','Channels are consistent in this check') : `${differences} diferença${differences===1?'':'s'} encontrada${differences===1?'':'s'}`}
                                 </div>
                                 <div className="pmy-ds-migrated-19rbnr9">
                                   {result?.scopeNote}
@@ -529,17 +545,17 @@ export default function IntegrationsTab(props) {
 
                             <div className="pmy-ds-migrated-fkpu3p">
                               <div className="pmy-ds-migrated-14p0zei">
-                                <div className="pmy-ds-migrated-4zzezf">{tr("📦 PRODUTOS", "📦 PRODUCTS")}</div>
+                                <div className="pmy-ds-migrated-4zzezf"><><Icon name="store" size={13} /> {tr("PRODUTOS", "PRODUCTS")}</></div>
                                 <div className="pmy-ds-migrated-1hnqsny">{products.remote ?? products.centralAfter ?? 0}</div>
                                 <div className="pmy-ds-migrated-1a8zem5">{tr("canal / cadastro verificado", "channel / record checked")}</div>
                               </div>
                               <div className="pmy-ds-migrated-14p0zei">
-                                <div className="pmy-ds-migrated-4zzezf">{tr("🎟️ RESERVAS", "🎟️ BOOKINGS")}</div>
+                                <div className="pmy-ds-migrated-4zzezf"><><Icon name="ticket" size={13} /> {tr("RESERVAS", "BOOKINGS")}</></div>
                                 <div className="pmy-ds-migrated-1hnqsny">{reservations.remoteChecked ?? reservations.centralAfter ?? 0}</div>
                                 <div className="pmy-ds-migrated-1a8zem5">{reservations.remoteChecked != null ? tr('pedidos consultados','orders checked') : tr('reservas recebidas na Central','bookings received by the Central')}</div>
                               </div>
                               <div className="pmy-ds-migrated-14p0zei">
-                                <div className="pmy-ds-migrated-4zzezf">{tr("🕒 DISPONIBILIDADE", "🕒 AVAILABILITY")}</div>
+                                <div className="pmy-ds-migrated-4zzezf"><><Icon name="clock" size={13} /> {tr("DISPONIBILIDADE", "AVAILABILITY")}</></div>
                                 <div className="pmy-ds-migrated-1hnqsny">{availability.checked ?? 0}</div>
                                 <div className="pmy-ds-migrated-1a8zem5">{tr("tours verificados", "tours checked")}</div>
                               </div>
@@ -595,7 +611,7 @@ export default function IntegrationsTab(props) {
                     const conn = platformConnections[activeProdPlatform];
                     if (!conn?.connected) return (
                       <div className="pmy-ds-migrated-s6nf5g">
-                        <span className="pmy-ds-migrated-u0nbu1">⚠️</span>
+                        <span className="pmy-ds-migrated-u0nbu1"><Icon name="warning" size={24} /></span>
                         <div>
                           <strong className="pmy-ds-migrated-jgrvw9">{tr("Plataforma não conectada", "Platform not connected")}</strong>
                           <span className="pmy-ds-migrated-1g1y4zs">Conecte esta plataforma na aba <strong>{tr("Conexões", "Connections")}</strong> para gerenciar seus produtos aqui.</span>
@@ -623,7 +639,7 @@ export default function IntegrationsTab(props) {
                           <button className="pmy-btn-submit pmy-ds-migrated-akz04o" 
                             disabled={manualSyncPlatform===platform?.key}
                             onClick={() => handleSyncPlatformNow(platform?.key)}>
-                            {manualSyncPlatform===platform?.key ? tr('⏳ Consultando canal...','⏳ Checking channel...') : tr('🔄 Sincronizar Agora','🔄 Sync Now')}
+                            {manualSyncPlatform===platform?.key ? tr('Consultando canal...','Checking channel...') : tr('Sincronizar agora','Sync now')}
                           </button>
                         )}
                         {platform?.key === 'shopify' && (
@@ -693,7 +709,7 @@ export default function IntegrationsTab(props) {
                                   <td className="pmy-ds-migrated-h64zcu">{prod.price}</td>
                                   <td>
                                     {prod.synced
-                                      ? <span className="pmy-ds-migrated-xjumd6">{tr("✓ Sincronizado", "✓ Synced")}</span>
+                                      ? <span className="pmy-ds-migrated-xjumd6">{tr("Sincronizado", "Synced")}</span>
                                       : <span className="pmy-ds-migrated-8f66dt">{tr("— Pendente", "— Pending")}</span>
                                     }
                                   </td>
