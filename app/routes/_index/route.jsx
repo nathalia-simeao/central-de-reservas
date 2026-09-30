@@ -604,6 +604,10 @@ function CentralDeReservasContent() {
     return {
       connected: record?.status === "CONNECTED",
       configured: Boolean(record?.hasCredential || environmentConfigured),
+      status: record?.status || (environmentConfigured ? "CONFIGURED" : null),
+      validationError:
+        record?.status === "ERROR" ||
+        String(record?.lastValidationStatus || "").toUpperCase() === "ERROR",
       credentialSource: record?.hasCredential ? "ENCRYPTED" : environmentConfigured ? "ENV" : null,
       lastValidationStatus: record?.lastValidationStatus || null,
       lastValidationMessage: record?.lastValidationMessage || null,
@@ -2396,6 +2400,8 @@ function CentralDeReservasContent() {
           ...(current[key] || {}),
           connected: false,
           configured: false,
+          status: null,
+          validationError: false,
           credentialSource: null,
           lastValidationStatus: null,
           lastValidationMessage: null,
@@ -2413,6 +2419,10 @@ function CentralDeReservasContent() {
         ...(current[key] || {}),
         connected: status.status === "CONNECTED",
         configured: Boolean(status.hasCredential),
+        status: status.status || null,
+        validationError:
+          status.status === "ERROR" ||
+          String(status.lastValidationStatus || "").toUpperCase() === "ERROR",
         credentialSource: "ENCRYPTED",
         lastValidationStatus: status.lastValidationStatus || null,
         lastValidationMessage: status.lastValidationMessage || null,
@@ -2444,7 +2454,11 @@ function CentralDeReservasContent() {
     });
     const payload = await response.json();
     if (!response.ok || !payload?.success) {
-      throw new Error(payload?.error || "Não foi possível atualizar a integração.");
+      const error = new Error(
+        payload?.error || "Não foi possível atualizar a integração.",
+      );
+      error.integrationStatus = payload?.status || null;
+      throw error;
     }
     return payload;
   };
@@ -2477,6 +2491,9 @@ function CentralDeReservasContent() {
           "Credencial salva · teste local concluído no backend. Aguardando tráfego real do canal.",
       );
     } catch (error) {
+      if (error?.integrationStatus) {
+        applyCredentialStatus(key, error.integrationStatus);
+      }
       setIntegrationCredentialMessage(
         error?.message || "Falha ao salvar e testar a credencial.",
       );
@@ -2500,6 +2517,9 @@ function CentralDeReservasContent() {
         "Teste técnico local concluído. A conexão continua aguardando tráfego autenticado real do canal.",
       );
     } catch (error) {
+      if (error?.integrationStatus) {
+        applyCredentialStatus(key, error.integrationStatus);
+      }
       setIntegrationCredentialMessage(
         error?.message || "Falha ao testar a credencial.",
       );
@@ -2697,11 +2717,16 @@ function CentralDeReservasContent() {
                         `Conexão confirmada por tráfego real${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""}`,
                         `Connection confirmed by real traffic${conn.lastSync ? ` · last check ${conn.lastSync}` : ""}`,
                       )
-                    : conn.configured
+                    : conn.validationError
                       ? ui(
-                          `Credencial salva · teste local concluído${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""} · aguardando tráfego do canal`,
-                          `Credential saved · local check completed${conn.lastSync ? ` · last check ${conn.lastSync}` : ""} · waiting for channel traffic`,
+                          `Erro no último teste${conn.lastSync ? ` · ${conn.lastSync}` : ""}`,
+                          `Last test failed${conn.lastSync ? ` · ${conn.lastSync}` : ""}`,
                         )
+                      : conn.configured
+                        ? ui(
+                            `Credencial salva · teste local concluído${conn.lastSync ? ` · último teste ${conn.lastSync}` : ""} · aguardando tráfego do canal`,
+                            `Credential saved · local check completed${conn.lastSync ? ` · last check ${conn.lastSync}` : ""} · waiting for channel traffic`,
+                          )
                       : isHeadout
                         ? ui("Onboarding técnico pendente · campos de credencial desativados","Technical onboarding pending · credential fields disabled")
                         : isShopify
@@ -2936,13 +2961,15 @@ function CentralDeReservasContent() {
             {/* ── VIATOR / CIVITATIS: credencial real no backend ── */}
             {isManagedCredential && (
               <div>
-                <div className={`pmy-ds-state-panel ${conn.connected ? "is-success" : conn.configured ? "" : "is-warning"}`}>
-                  <div className={`pmy-ds-state-title ${conn.connected ? "is-success" : conn.configured ? "" : "is-warning"}`}>
+                <div className={`pmy-ds-state-panel ${conn.connected ? "is-success" : conn.validationError ? "is-danger" : conn.configured ? "" : "is-warning"}`}>
+                  <div className={`pmy-ds-state-title ${conn.connected ? "is-success" : conn.validationError ? "is-danger" : conn.configured ? "" : "is-warning"}`}>
                     {conn.connected
                       ? ui("Canal conectado por tráfego autenticado", "Channel connected by authenticated traffic")
-                      : conn.configured
-                        ? ui("Credencial configurada · aguardando tráfego real", "Credential configured · waiting for real traffic")
-                        : ui("Credencial ainda não configurada", "Credential not configured yet")}
+                      : conn.validationError
+                        ? ui("Erro no último teste da credencial", "Credential last test failed")
+                        : conn.configured
+                          ? ui("Credencial configurada · aguardando tráfego real", "Credential configured · waiting for real traffic")
+                          : ui("Credencial ainda não configurada", "Credential not configured yet")}
                   </div>
                   <div className="pmy-ds-migrated-zwhy5l">
                     <div>
