@@ -183,15 +183,29 @@ export async function syncShopifyGuideMetaobjects(prisma, admin) {
   );
 
   // A consulta ao Shopify terminou com sucesso. Só agora desativamos registros
-  // que deixaram de existir no metaobjeto, evitando falsos "inativos" em caso
-  // de indisponibilidade temporária da API.
+  // que realmente deixaram de existir no metaobjeto. Não fazemos o ciclo
+  // "inativa tudo + reativa tudo", evitando UPDATEs em cada carregamento.
+  const activeMetaobjectIds = shopifyGuides.map(
+    (guide) => guide.shopifyMetaobjectId,
+  );
+  const staleWhere = {
+    shopifyMetaobjectId: { not: null },
+    shopifyActive: true,
+  };
+  if (activeMetaobjectIds.length > 0) {
+    staleWhere.shopifyMetaobjectId = {
+      not: null,
+      notIn: activeMetaobjectIds,
+    };
+  }
   await prisma.guide.updateMany({
-    where: { shopifyMetaobjectId: { not: null } },
+    where: staleWhere,
     data: { shopifyActive: false },
   });
 
   let created = 0;
   let updated = 0;
+  let unchanged = 0;
 
   for (const shopifyGuide of shopifyGuides) {
     let existing = byMetaobjectId.get(shopifyGuide.shopifyMetaobjectId) || null;
@@ -219,6 +233,23 @@ export async function syncShopifyGuideMetaobjects(prisma, admin) {
     };
 
     if (existing) {
+      const previousUpdatedAt = existing.shopifyUpdatedAt
+        ? new Date(existing.shopifyUpdatedAt).getTime()
+        : null;
+      const incomingUpdatedAt = shopifyGuide.shopifyUpdatedAt
+        ? new Date(shopifyGuide.shopifyUpdatedAt).getTime()
+        : null;
+      const isAlreadyCurrent =
+        existing.shopifyMetaobjectId === shopifyGuide.shopifyMetaobjectId &&
+        existing.shopifyActive === true &&
+        previousUpdatedAt !== null &&
+        previousUpdatedAt === incomingUpdatedAt;
+
+      if (isAlreadyCurrent) {
+        unchanged += 1;
+        continue;
+      }
+
       const saved = await prisma.guide.update({
         where: { id: existing.id },
         data: editorialData,
@@ -244,5 +275,6 @@ export async function syncShopifyGuideMetaobjects(prisma, admin) {
     total: shopifyGuides.length,
     created,
     updated,
+    unchanged,
   };
 }
