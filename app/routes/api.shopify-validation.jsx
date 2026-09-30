@@ -1,5 +1,5 @@
 import { data } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticate, unauthenticated } from "../shopify.server";
 import db from "../db.server";
 import { getCentralAvailability } from "../utils/capacity.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
@@ -10,6 +10,58 @@ const VALIDATION_PROVIDER = "SHOPIFY_VALIDATION";
 
 function clean(value) {
   return String(value ?? "").trim();
+}
+
+async function getServiceAdmin(fallbackAdmin, session) {
+  const shop = clean(session?.shop);
+  if (!shop) return fallbackAdmin;
+
+  try {
+    const offline = await unauthenticated.admin(shop);
+    return offline?.admin || fallbackAdmin;
+  } catch (error) {
+    console.warn(
+      "[PMY] Shopify offline admin unavailable; using authenticated admin session:",
+      error?.message || error,
+    );
+    return fallbackAdmin;
+  }
+}
+
+function friendlyShopifyValidationError(error) {
+  const message = clean(error?.message);
+
+  if (
+    /draftOrderCreate/i.test(message) &&
+    /access denied|manage draft orders|write_draft_orders|write_quick_sale/i.test(
+      message,
+    )
+  ) {
+    return {
+      code: "DRAFT_ORDER_PERMISSION_REQUIRED",
+      status: 403,
+      error:
+        "A Central ainda não tem autorização efetiva para criar o pedido de teste no Shopify. Atualize as permissões do app e tente novamente.",
+      technicalDetail: message,
+    };
+  }
+
+  if (/write_orders|orderCancel|access denied/i.test(message)) {
+    return {
+      code: "WRITE_ORDERS_SCOPE_REQUIRED",
+      status: 403,
+      error:
+        "A Central precisa da permissão de pedidos do Shopify para concluir o cancelamento do teste. Atualize as permissões do app e tente novamente.",
+      technicalDetail: message,
+    };
+  }
+
+  return {
+    code: error?.code || "SHOPIFY_E2E_FAILED",
+    status: Number(error?.status) || 500,
+    error: message || "Não foi possível concluir a validação do Shopify.",
+    technicalDetail: message || null,
+  };
 }
 
 function normalizeTime(value) {
@@ -366,7 +418,7 @@ async function requestValidationOrderCancellation(admin, orderId) {
   return mutation.job;
 }
 
-async function validationStatus(admin, orderId = null) {
+async function validationStatus(serviceAdmin, orderId = null) {
   const validationEvent = await findValidationEvent(orderId);
 
   if (!validationEvent) {
@@ -712,26 +764,28 @@ async function validationStatus(admin, orderId = null) {
 }
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const serviceAdmin = await getServiceAdmin(admin, session);
   const url = new URL(request.url);
   return json(
-    await validationStatus(admin, url.searchParams.get("orderId")),
+    await validationStatus(serviceAdmin, url.searchParams.get("orderId")),
   );
 };
 
 export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const serviceAdmin = await getServiceAdmin(admin, session);
   const formData = await request.formData();
   const action = clean(formData.get("_action"));
   const orderId = clean(formData.get("orderId")) || null;
 
   if (action === "status") {
-    return json(await validationStatus(admin, orderId));
+    return json(await validationStatus(serviceAdmin, orderId));
   }
 
   if (action === "cancel") {
     try {
-      const current = await validationStatus(admin, orderId);
+      const current = await validationStatus(serviceAdmin, orderId);
       if (!current?.exists || !current?.order?.id) {
         return json(
           {
@@ -762,12 +816,12 @@ export const action = async ({ request }) => {
 
       if (baseline.cancellationRequestedAt) {
         return json(
-          await validationStatus(admin, current.order.id),
+          await validationStatus(serviceAdmin, current.order.id),
         );
       }
 
       const job = await requestValidationOrderCancellation(
-        admin,
+        serviceAdmin,
         current.order.id,
       );
       const requestedAt = new Date().toISOString();
@@ -793,25 +847,19 @@ export const action = async ({ request }) => {
       });
 
       return json(
-        await validationStatus(admin, current.order.id),
+        await validationStatus(serviceAdmin, current.order.id),
       );
     } catch (error) {
       console.error("[PMY] Shopify E2E cancellation failed:", error);
-      const message = error?.message || "Falha ao cancelar pedido E2E Shopify.";
-      const missingScope =
-        /write_orders|access denied|access scope/i.test(message);
-
+      const friendly = friendlyShopifyValidationError(error);
       return json(
         {
           success: false,
-          code: missingScope
-            ? "WRITE_ORDERS_SCOPE_REQUIRED"
-            : error?.code || "E2E_CANCEL_FAILED",
-          error: missingScope
-            ? "O app precisa do escopo write_orders para cancelar o pedido de teste. Reautorize a Central no Shopify após o deploy."
-            : message,
+          code: friendly.code,
+          error: friendly.error,
+          technicalDetail: friendly.technicalDetail,
         },
-        { status: missingScope ? 403 : 500 },
+        { status: friendly.status },
       );
     }
   }
@@ -820,7 +868,7 @@ export const action = async ({ request }) => {
     return json({ success: false, error: "Ação inválida." }, { status: 400 });
   }
 
-  const currentValidation = await validationStatus(admin);
+  const currentValidation = await validationStatus(serviceAdmin);
   if (
     currentValidation?.exists &&
     ["WAITING", "PASSED", "CANCELLATION_WAITING"].includes(
@@ -841,7 +889,7 @@ export const action = async ({ request }) => {
   }
 
   const webhookStatus = await ensureShopifyOrderWebhooks(
-    admin,
+    serviceAdmin,
     process.env.SHOPIFY_APP_URL,
   );
 
@@ -859,7 +907,7 @@ export const action = async ({ request }) => {
   }
 
   try {
-    const test = await createAndCompleteValidationOrder(admin);
+    const test = await createAndCompleteValidationOrder(serviceAdmin);
     return json({
       success: true,
       started: true,
@@ -868,12 +916,15 @@ export const action = async ({ request }) => {
     });
   } catch (error) {
     console.error("[PMY] Shopify E2E validation failed:", error);
+    const friendly = friendlyShopifyValidationError(error);
     return json(
       {
         success: false,
-        error: error?.message || "Falha ao iniciar validação Shopify.",
+        code: friendly.code,
+        error: friendly.error,
+        technicalDetail: friendly.technicalDetail,
       },
-      { status: 500 },
+      { status: friendly.status },
     );
   }
 };
