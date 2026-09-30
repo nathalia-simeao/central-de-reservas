@@ -511,7 +511,6 @@ export const action = async ({ request }) => {
       draftOrder: {
         id: draftOrder.id,
         name: draftOrder.name,
-        invoiceUrl: draftOrder.invoiceUrl,
         checkoutUrl,
         status: draftOrder.status,
         total: draftOrder.totalPriceSet?.shopMoney?.amount || null,
