@@ -16,6 +16,7 @@ const ICON_PATHS = {
   chevronRight: <path d="m9 5 7 7-7 7"/>,
   close: <><path d="M6 6l12 12M18 6 6 18"/></>,
   plus: <><path d="M12 5v14M5 12h14"/></>,
+  minus: <path d="M5 12h14"/>,
   check: <path d="m5 12 4 4 10-10"/>,
   warning: <><path d="M12 3 2.8 19h18.4L12 3Z"/><path d="M12 9v4M12 17h.01"/></>,
   info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></>,
