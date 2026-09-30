@@ -152,8 +152,8 @@ const TrendChart = ({
           >
             <defs>
               <linearGradient id="pmyRevenueArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary-green)" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="var(--primary-green)" stopOpacity="0.01" />
+                <stop offset="0%" stopColor="var(--dashboard-accent)" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="var(--dashboard-accent)" stopOpacity="0.01" />
               </linearGradient>
             </defs>
 
@@ -555,7 +555,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
 
         <div style={{ display:'flex', alignItems:'flex-end', gap:'10px', flexWrap:'wrap', justifyContent:'flex-end' }}>
           <div style={{ position:'relative' }}>
-            <div style={{ fontSize:'15px', color:'#777', fontWeight:'700', marginBottom:'4px' }}>
+            <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', fontWeight:'700', marginBottom:'4px' }}>
               {lang === 'pt' ? 'Período do gráfico' : 'Chart period'}
             </div>
 
@@ -568,9 +568,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               style={{
                 minWidth:'154px',
                 height:'38px',
-                border:'1px solid #dedede',
+                border:'1px solid var(--dashboard-border)',
                 borderRadius:'12px',
-                background:'#fff',
+                background:'var(--surface-color)',
                 padding:'0 12px',
                 display:'flex',
                 alignItems:'center',
@@ -578,7 +578,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                 gap:'10px',
                 fontSize:'13px',
                 fontWeight:'800',
-                color:'#333',
+                color:'var(--dashboard-text)',
                 cursor:'pointer',
                 boxShadow:periodMenuOpen ? '0 8px 24px rgba(0,0,0,.08)' : 'none'
               }}
@@ -609,8 +609,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   maxWidth:'min(520px, calc(100vw - 48px))',
                   display:'grid',
                   gridTemplateColumns:'168px minmax(0,1fr)',
-                  background:'#fff',
-                  border:'1px solid #e5e5e5',
+                  background:'var(--surface-color)',
+                  border:'1px solid var(--dashboard-border)',
                   borderRadius:'18px',
                   boxShadow:'0 20px 55px rgba(29,45,34,.16)',
                   overflow:'hidden',
@@ -620,11 +620,11 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                 <div style={{
                   padding:'12px',
                   borderRight:'1px solid #ededed',
-                  background:'#fbfbfb'
+                  background:'var(--dashboard-soft)'
                 }}>
                   <div style={{
                     fontSize:'13px',
-                    color:'#999',
+                    color:'var(--dashboard-muted)',
                     fontWeight:'800',
                     textTransform:'uppercase',
                     letterSpacing:'.06em',
@@ -644,8 +644,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                           style={{
                             border:0,
                             borderRadius:'10px',
-                            background:active ? 'color-mix(in srgb, var(--primary-green) 11%, white)' : 'transparent',
-                            color:active ? 'var(--primary-green)' : '#444',
+                            background:active ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))' : 'transparent',
+                            color:active ? 'var(--dashboard-accent)' : '#444',
                             padding:'9px 10px',
                             textAlign:'left',
                             fontSize:'13px',
@@ -665,9 +665,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         border:0,
                         borderRadius:'10px',
                         background:selectedRange === "custom"
-                          ? 'color-mix(in srgb, var(--primary-green) 11%, white)'
+                          ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))'
                           : 'transparent',
-                        color:selectedRange === "custom" ? 'var(--primary-green)' : '#444',
+                        color:selectedRange === "custom" ? 'var(--dashboard-accent)' : '#444',
                         padding:'9px 10px',
                         textAlign:'left',
                         fontSize:'13px',
@@ -689,10 +689,10 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                     marginBottom:'16px'
                   }}>
                     <div>
-                      <div style={{ fontSize:'15px', fontWeight:'900', color:'#2e2e2e' }}>
+                      <div style={{ fontSize:'15px', fontWeight:'900', color:'var(--dashboard-text)' }}>
                         {lang === 'pt' ? 'Calendário' : 'Calendar'}
                       </div>
-                      <div style={{ fontSize:'15px', color:'#999', marginTop:'2px' }}>
+                      <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', marginTop:'2px' }}>
                         {lang === 'pt'
                           ? 'Escolha uma data inicial e final'
                           : 'Choose a start and end date'}
@@ -704,7 +704,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       borderRadius:'10px',
                       display:'grid',
                       placeItems:'center',
-                      background:'color-mix(in srgb, var(--primary-green) 9%, white)',
+                      background:'color-mix(in srgb, var(--dashboard-accent) 9%, var(--surface-color))',
                       fontSize:'16px'
                     }}>
                       📆
@@ -727,18 +727,18 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       }}
                       style={{
                         border:calendarSelectionStep === "start"
-                          ? '1.5px solid var(--primary-green)'
-                          : '1px solid #e4e6e4',
+                          ? '1.5px solid var(--dashboard-accent)'
+                          : '1px solid var(--dashboard-border)',
                         borderRadius:'12px',
                         padding:'9px 10px',
                         background:calendarSelectionStep === "start"
-                          ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                          ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
                           : '#fff',
                         textAlign:'left',
                         cursor:'pointer',
                         minWidth:0,
                         boxShadow:calendarSelectionStep === "start"
-                          ? '0 0 0 3px color-mix(in srgb, var(--primary-green) 7%, transparent)'
+                          ? '0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 7%, transparent)'
                           : 'none'
                       }}
                     >
@@ -748,7 +748,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         justifyContent:'space-between',
                         gap:'8px',
                         fontSize:'15px',
-                        color:calendarSelectionStep === "start" ? 'var(--primary-green)' : '#999',
+                        color:calendarSelectionStep === "start" ? 'var(--dashboard-accent)' : '#999',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
@@ -761,7 +761,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         marginTop:'4px',
                         fontSize:'15px',
                         lineHeight:1.2,
-                        color:'#2f2f2f',
+                        color:'var(--dashboard-text)',
                         whiteSpace:'nowrap'
                       }}>
                         {selectedStartDate
@@ -792,18 +792,18 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       }}
                       style={{
                         border:calendarSelectionStep === "end"
-                          ? '1.5px solid var(--primary-green)'
-                          : '1px solid #e4e6e4',
+                          ? '1.5px solid var(--dashboard-accent)'
+                          : '1px solid var(--dashboard-border)',
                         borderRadius:'12px',
                         padding:'9px 10px',
                         background:calendarSelectionStep === "end"
-                          ? 'color-mix(in srgb, var(--primary-green) 6%, white)'
+                          ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
                           : '#fff',
                         textAlign:'left',
                         cursor:'pointer',
                         minWidth:0,
                         boxShadow:calendarSelectionStep === "end"
-                          ? '0 0 0 3px color-mix(in srgb, var(--primary-green) 7%, transparent)'
+                          ? '0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 7%, transparent)'
                           : 'none'
                       }}
                     >
@@ -813,7 +813,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         justifyContent:'space-between',
                         gap:'8px',
                         fontSize:'15px',
-                        color:calendarSelectionStep === "end" ? 'var(--primary-green)' : '#999',
+                        color:calendarSelectionStep === "end" ? 'var(--dashboard-accent)' : '#999',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
@@ -826,7 +826,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         marginTop:'4px',
                         fontSize:'15px',
                         lineHeight:1.2,
-                        color:'#2f2f2f',
+                        color:'var(--dashboard-text)',
                         whiteSpace:'nowrap'
                       }}>
                         {selectedEndDate
@@ -837,10 +837,10 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   </div>
 
                   <div style={{
-                    border:'1px solid #ececec',
+                    border:'1px solid var(--dashboard-border)',
                     borderRadius:'14px',
                     padding:'11px',
-                    background:'#fff',
+                    background:'var(--surface-color)',
                     marginBottom:'13px'
                   }}>
                     <div style={{
@@ -857,18 +857,18 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         style={{
                           width:'30px',
                           height:'30px',
-                          border:'1px solid #e8e8e8',
+                          border:'1px solid var(--dashboard-border)',
                           borderRadius:'9px',
-                          background:'#fff',
+                          background:'var(--surface-color)',
                           cursor:'pointer',
                           fontSize:'15px',
-                          color:'#555'
+                          color:'var(--dashboard-text)'
                         }}
                       >
                         ‹
                       </button>
 
-                      <strong style={{ fontSize:'13px', color:'#333', textTransform:'capitalize' }}>
+                      <strong style={{ fontSize:'13px', color:'var(--dashboard-text)', textTransform:'capitalize' }}>
                         {calendarMonthLabel}
                       </strong>
 
@@ -879,12 +879,12 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         style={{
                           width:'30px',
                           height:'30px',
-                          border:'1px solid #e8e8e8',
+                          border:'1px solid var(--dashboard-border)',
                           borderRadius:'9px',
-                          background:'#fff',
+                          background:'var(--surface-color)',
                           cursor:'pointer',
                           fontSize:'15px',
-                          color:'#555'
+                          color:'var(--dashboard-text)'
                         }}
                       >
                         ›
@@ -905,7 +905,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             display:'grid',
                             placeItems:'center',
                             fontSize:'15px',
-                            color:'#999',
+                            color:'var(--dashboard-muted)',
                             fontWeight:'850'
                           }}
                         >
@@ -941,18 +941,18 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             style={{
                               height:'30px',
                               border:isToday && !isStart && !isEnd
-                                ? '1px solid color-mix(in srgb, var(--primary-green) 38%, #ddd)'
+                                ? '1px solid color-mix(in srgb, var(--dashboard-accent) 38%, #ddd)'
                                 : '1px solid transparent',
                               borderRadius:'9px',
                               background:isStart || isEnd
-                                ? 'var(--primary-green)'
+                                ? 'var(--dashboard-accent)'
                                 : inRange
-                                  ? 'color-mix(in srgb, var(--primary-green) 10%, white)'
+                                  ? 'color-mix(in srgb, var(--dashboard-accent) 10%, var(--surface-color))'
                                   : 'transparent',
                               color:isStart || isEnd
-                                ? '#fff'
+                                ? 'var(--dashboard-accent-contrast)'
                                 : inRange
-                                  ? 'var(--primary-green)'
+                                  ? 'var(--dashboard-accent)'
                                   : '#444',
                               fontSize:'15px',
                               fontWeight:isStart || isEnd || isToday ? '850' : '650',
@@ -969,8 +969,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   <div style={{
                     padding:'9px 10px',
                     borderRadius:'10px',
-                    background:'#f7f8f7',
-                    color:'#777',
+                    background:'var(--dashboard-soft)',
+                    color:'var(--dashboard-muted)',
                     fontSize:'13px',
                     lineHeight:'1.45',
                     marginBottom:'13px'
@@ -988,9 +988,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       onClick={() => setPeriodMenuOpen(false)}
                       style={{
                         height:'34px',
-                        border:'1px solid #dedede',
+                        border:'1px solid var(--dashboard-border)',
                         borderRadius:'10px',
-                        background:'#fff',
+                        background:'var(--surface-color)',
                         padding:'0 12px',
                         fontSize:'15px',
                         fontWeight:'800',
@@ -1007,8 +1007,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         height:'34px',
                         border:0,
                         borderRadius:'10px',
-                        background:'var(--primary-green)',
-                        color:'#fff',
+                        background:'var(--dashboard-accent)',
+                        color:'var(--dashboard-accent-contrast)',
                         padding:'0 14px',
                         fontSize:'15px',
                         fontWeight:'850',
@@ -1027,15 +1027,15 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
           <div style={{
             minWidth:'118px',
             padding:'9px 12px',
-            border:'1px solid #e8e8e8',
+            border:'1px solid var(--dashboard-border)',
             borderRadius:'14px',
-            background:'#fafafa',
+            background:'var(--dashboard-soft)',
             textAlign:'right'
           }}>
-            <div style={{ fontSize:'15px', color:'#888', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
+            <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', fontWeight:'700', textTransform:'uppercase', letterSpacing:'.04em' }}>
               {lang === 'pt' ? 'Total no período' : 'Period total'}
             </div>
-            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)', lineHeight:1.1, marginTop:'3px' }}>
+            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--dashboard-accent)', lineHeight:1.1, marginTop:'3px' }}>
               {totalBookings}
             </div>
           </div>
@@ -1060,9 +1060,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               onMouseEnter={() => setExpandedKey(item.key)}
               onMouseLeave={() => setExpandedKey(null)}
               style={{
-                border:isExpanded ? '1px solid color-mix(in srgb, var(--primary-green) 22%, #e7e7e7)' : '1px solid transparent',
+                border:isExpanded ? '1px solid color-mix(in srgb, var(--dashboard-accent) 22%, var(--dashboard-border))' : '1px solid transparent',
                 borderRadius:'12px',
-                background:isExpanded ? 'color-mix(in srgb, var(--primary-green) 4%, white)' : 'transparent',
+                background:isExpanded ? 'color-mix(in srgb, var(--dashboard-accent) 4%, var(--surface-color))' : 'transparent',
                 transition:'background .16s ease, border-color .16s ease'
               }}
             >
@@ -1087,14 +1087,14 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   <div style={{
                     fontSize:'15px',
                     fontWeight:'850',
-                    color:isExpanded ? 'var(--primary-green)' : '#2f2f2f',
+                    color:isExpanded ? 'var(--dashboard-accent)' : '#2f2f2f',
                     overflow:'hidden',
                     textOverflow:'ellipsis',
                     whiteSpace:'nowrap'
                   }}>
                     {item.label}
                   </div>
-                  <div style={{ fontSize:'15px', color:'#999', marginTop:'1px' }}>
+                  <div style={{ fontSize:'15px', color:'var(--dashboard-muted)', marginTop:'1px' }}>
                     {share.toFixed(1)}%
                   </div>
                 </div>
@@ -1102,7 +1102,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                 <div style={{
                   height:'18px',
                   borderRadius:'999px',
-                  background:'#f1f2f1',
+                  background:'var(--dashboard-soft)',
                   overflow:'hidden',
                   position:'relative'
                 }}>
@@ -1112,7 +1112,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       minWidth:item.bookings > 0 ? '6px' : 0,
                       height:'100%',
                       borderRadius:'inherit',
-                      background:'var(--primary-green)',
+                      background:'var(--dashboard-accent)',
                       opacity:isExpanded ? 1 : 0.8,
                       transition:'width .35s ease, opacity .18s ease'
                     }}
@@ -1120,8 +1120,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                 </div>
 
                 <div style={{ textAlign:'right' }}>
-                  <strong style={{ fontSize:'15px', color:'#222' }}>{item.bookings}</strong>
-                  <span style={{ display:'block', fontSize:'13px', color:'#999', marginTop:'1px' }}>
+                  <strong style={{ fontSize:'15px', color:'var(--dashboard-text)' }}>{item.bookings}</strong>
+                  <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', marginTop:'1px' }}>
                     {lang === 'pt' ? 'reservas' : 'bookings'}
                   </span>
                 </div>
@@ -1132,26 +1132,26 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   margin:'0 9px 9px',
                   padding:'10px 12px',
                   borderRadius:'10px',
-                  background:'#fff',
-                  border:'1px solid #ececec',
+                  background:'var(--surface-color)',
+                  border:'1px solid var(--dashboard-border)',
                   display:'grid',
                   gridTemplateColumns:'repeat(3,minmax(0,1fr))',
                   gap:'10px'
                 }}>
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Reservas' : 'Bookings'}
                     </span>
                     <strong style={{ fontSize:'15px' }}>{item.bookings}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Passageiros' : 'Passengers'}
                     </span>
                     <strong style={{ fontSize:'15px' }}>{item.passengers}</strong>
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:'13px', color:'#999', textTransform:'uppercase', fontWeight:'800' }}>
+                    <span style={{ display:'block', fontSize:'13px', color:'var(--dashboard-muted)', textTransform:'uppercase', fontWeight:'800' }}>
                       {lang === 'pt' ? 'Participação' : 'Share'}
                     </span>
                     <strong style={{ fontSize:'15px' }}>{share.toFixed(1)}%</strong>
@@ -1166,9 +1166,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
       <div style={{
         marginTop:'15px',
         paddingTop:'11px',
-        borderTop:'1px solid #efefef',
+        borderTop:'1px solid var(--dashboard-border)',
         fontSize:'15px',
-        color:'#999'
+        color:'var(--dashboard-muted)'
       }}>
         {lang === 'pt'
           ? 'Outros agrupa reservas manuais, Central PMY e qualquer origem ainda não classificada.'
@@ -1248,14 +1248,14 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
         <div style={{
           minWidth:'132px',
           padding:'10px 13px',
-          border:'1px solid #e8e8e8',
+          border:'1px solid var(--dashboard-border)',
           borderRadius:'14px',
-          background:'#fafafa',
+          background:'var(--dashboard-soft)',
           textAlign:'right'
         }}>
           <div style={{
             fontSize:'11px',
-            color:'#888',
+            color:'var(--dashboard-muted)',
             fontWeight:'800',
             textTransform:'uppercase',
             letterSpacing:'.05em'
@@ -1265,7 +1265,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
           <div style={{
             fontSize:'25px',
             fontWeight:'900',
-            color:'var(--primary-green)',
+            color:'var(--dashboard-accent)',
             lineHeight:1.1,
             marginTop:'3px'
           }}>
@@ -1277,7 +1277,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
       <div style={{
         height:'12px',
         borderRadius:'999px',
-        background:'#f0f1f0',
+        background:'var(--dashboard-soft)',
         overflow:'hidden',
         display:'flex',
         marginBottom:'18px'
@@ -1314,10 +1314,10 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
               key={item.key}
               style={{
                 minWidth:0,
-                border:'1px solid #ececec',
+                border:'1px solid var(--dashboard-border)',
                 borderRadius:'16px',
                 padding:'15px 16px',
-                background:'#fff'
+                background:'var(--surface-color)'
               }}
             >
               <div style={{
@@ -1352,7 +1352,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
               <div style={{
                 fontSize:'14px',
                 fontWeight:'850',
-                color:'#363936',
+                color:'var(--dashboard-text)',
                 marginBottom:'3px'
               }}>
                 {item.label}
@@ -1382,7 +1382,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
         <div style={{
           marginTop:'13px',
           paddingTop:'11px',
-          borderTop:'1px solid #efefef',
+          borderTop:'1px solid var(--dashboard-border)',
           fontSize:'12px',
           color:'#8a8f8b'
         }}>
@@ -1454,14 +1454,14 @@ const UpcomingDeparturesPanel = ({
         <div style={{
           minWidth:'120px',
           padding:'10px 13px',
-          border:'1px solid #e8e8e8',
+          border:'1px solid var(--dashboard-border)',
           borderRadius:'14px',
-          background:'#fafafa',
+          background:'var(--dashboard-soft)',
           textAlign:'right'
         }}>
           <div style={{
             fontSize:'11px',
-            color:'#888',
+            color:'var(--dashboard-muted)',
             fontWeight:'800',
             textTransform:'uppercase',
             letterSpacing:'.05em'
@@ -1473,7 +1473,7 @@ const UpcomingDeparturesPanel = ({
             marginTop:'2px',
             fontSize:'24px',
             lineHeight:1,
-            color:'var(--primary-green)'
+            color:'var(--dashboard-accent)'
           }}>
             {departures.length}
           </strong>
@@ -1486,7 +1486,7 @@ const UpcomingDeparturesPanel = ({
           display:'grid',
           placeItems:'center',
           textAlign:'center',
-          color:'#858b86',
+          color:'var(--dashboard-muted)',
           fontSize:'13px'
         }}>
           {lang === 'pt'
@@ -1502,7 +1502,7 @@ const UpcomingDeparturesPanel = ({
               gap:'12px',
               padding:'0 12px 9px',
               borderBottom:'1px solid #eceeec',
-              color:'#8a908b',
+              color:'var(--dashboard-muted)',
               fontSize:'11px',
               fontWeight:'850',
               textTransform:'uppercase',
@@ -1539,7 +1539,7 @@ const UpcomingDeparturesPanel = ({
                     alignItems:'center',
                     minHeight:'74px',
                     padding:'10px 12px',
-                    borderBottom:'1px solid #f0f1f0'
+                    borderBottom:'1px solid var(--dashboard-border)'
                   }}
                 >
                   <div style={{
@@ -1566,7 +1566,7 @@ const UpcomingDeparturesPanel = ({
                         height:'46px',
                         flex:'0 0 46px',
                         borderRadius:'12px',
-                        background:'#f4f5f4',
+                        background:'var(--dashboard-soft)',
                         display:'grid',
                         placeItems:'center',
                         fontSize:'18px'
@@ -1579,7 +1579,7 @@ const UpcomingDeparturesPanel = ({
                       <div style={{
                         fontSize:'14px',
                         fontWeight:'850',
-                        color:'#343734',
+                        color:'var(--dashboard-text)',
                         overflow:'hidden',
                         textOverflow:'ellipsis',
                         whiteSpace:'nowrap'
@@ -1589,18 +1589,18 @@ const UpcomingDeparturesPanel = ({
                       <div style={{
                         marginTop:'3px',
                         fontSize:'11px',
-                        color:'#858b86'
+                        color:'var(--dashboard-muted)'
                       }}>
                         {departure.bookings} {lang === 'pt' ? 'reserva(s)' : 'booking(s)'}
                       </div>
                     </div>
                   </div>
 
-                  <strong style={{ fontSize:'13px', color:'#444' }}>
+                  <strong style={{ fontSize:'13px', color:'var(--dashboard-text)' }}>
                     {formatDate(departure.startTime)}
                   </strong>
 
-                  <strong style={{ fontSize:'14px', color:'#444' }}>
+                  <strong style={{ fontSize:'14px', color:'var(--dashboard-text)' }}>
                     {formatTime(departure.startTime)}
                   </strong>
 
@@ -1608,11 +1608,11 @@ const UpcomingDeparturesPanel = ({
                     <strong style={{
                       display:'block',
                       fontSize:'17px',
-                      color:'#333'
+                      color:'var(--dashboard-text)'
                     }}>
                       {departure.passengers}
                     </strong>
-                    <span style={{ fontSize:'11px', color:'#8a908b' }}>
+                    <span style={{ fontSize:'11px', color:'var(--dashboard-muted)' }}>
                       pax
                     </span>
                   </div>
@@ -1628,8 +1628,8 @@ const UpcomingDeparturesPanel = ({
                         style={{
                           padding:'5px 8px',
                           borderRadius:'999px',
-                          background:'#f3f5f3',
-                          color:'#5d665f',
+                          background:'var(--dashboard-soft)',
+                          color:'var(--dashboard-muted)',
                           fontSize:'11px',
                           fontWeight:'750'
                         }}
@@ -1658,7 +1658,7 @@ const UpcomingDeparturesPanel = ({
                     <div style={{
                       marginTop:'4px',
                       fontSize:'10px',
-                      color:'#8a908b'
+                      color:'var(--dashboard-muted)'
                     }}>
                       {lang === 'pt' ? `de ${capacity} vagas` : `of ${capacity} seats`}
                       {departure.capacitySource === "DEFAULT"
@@ -1683,11 +1683,11 @@ const UpcomingDeparturesPanel = ({
             type="button"
             onClick={() => setShowAll((current) => !current)}
             style={{
-              border:'1px solid #dfe4df',
+              border:'1px solid var(--dashboard-border)',
               borderRadius:'999px',
-              background:'#fff',
+              background:'var(--surface-color)',
               padding:'8px 14px',
-              color:'var(--primary-green)',
+              color:'var(--dashboard-accent)',
               fontSize:'12px',
               fontWeight:'850',
               cursor:'pointer'
@@ -1864,8 +1864,8 @@ const TourPerformanceRanking = ({
           gap:'5px',
           padding:'4px',
           borderRadius:'999px',
-          background:'#f3f4f3',
-          border:'1px solid #e7e9e7'
+          background:'var(--dashboard-soft)',
+          border:'1px solid var(--dashboard-border)'
         }}>
           {metricOptions.map((option) => {
             const active = rankingMetric === option.key;
@@ -1878,8 +1878,8 @@ const TourPerformanceRanking = ({
                   border:0,
                   borderRadius:'999px',
                   padding:'8px 12px',
-                  background:active ? '#fff' : 'transparent',
-                  color:active ? 'var(--primary-green)' : '#737873',
+                  background:active ? 'var(--surface-color)' : 'transparent',
+                  color:active ? 'var(--dashboard-accent)' : '#737873',
                   fontSize:'12px',
                   fontWeight:'850',
                   cursor:'pointer',
@@ -1899,7 +1899,7 @@ const TourPerformanceRanking = ({
           display:'grid',
           placeItems:'center',
           textAlign:'center',
-          color:'#8b908d',
+          color:'var(--dashboard-muted)',
           fontSize:'13px'
         }}>
           {lang === 'pt'
@@ -1933,7 +1933,7 @@ const TourPerformanceRanking = ({
                   border:'1px solid #eceeec',
                   borderRadius:'15px',
                   background:index === 0
-                    ? 'color-mix(in srgb, var(--primary-green) 4%, white)'
+                    ? 'color-mix(in srgb, var(--dashboard-accent) 4%, var(--surface-color))'
                     : '#fff'
                 }}
               >
@@ -1943,8 +1943,8 @@ const TourPerformanceRanking = ({
                   borderRadius:'11px',
                   display:'grid',
                   placeItems:'center',
-                  background:index === 0 ? 'var(--primary-green)' : '#f2f3f2',
-                  color:index === 0 ? '#fff' : '#6e746f',
+                  background:index === 0 ? 'var(--dashboard-accent)' : '#f2f3f2',
+                  color:index === 0 ? 'var(--dashboard-accent-contrast)' : '#6e746f',
                   fontSize:'13px',
                   fontWeight:'900'
                 }}>
@@ -1975,7 +1975,7 @@ const TourPerformanceRanking = ({
                       height:'44px',
                       flex:'0 0 44px',
                       borderRadius:'12px',
-                      background:'#f5f3f3',
+                      background:'var(--dashboard-soft)',
                       display:'grid',
                       placeItems:'center',
                       fontSize:'18px'
@@ -1988,7 +1988,7 @@ const TourPerformanceRanking = ({
                     <div style={{
                       fontSize:'14px',
                       fontWeight:'850',
-                      color:'#333',
+                      color:'var(--dashboard-text)',
                       overflow:'hidden',
                       textOverflow:'ellipsis',
                       whiteSpace:'nowrap'
@@ -2012,7 +2012,7 @@ const TourPerformanceRanking = ({
                 <div style={{
                   height:'10px',
                   borderRadius:'999px',
-                  background:'#f0f1f0',
+                  background:'var(--dashboard-soft)',
                   overflow:'hidden'
                 }}>
                   <div style={{
@@ -2020,7 +2020,7 @@ const TourPerformanceRanking = ({
                     minWidth:metricValue > 0 ? '5px' : 0,
                     height:'100%',
                     borderRadius:'inherit',
-                    background:'var(--primary-green)'
+                    background:'var(--dashboard-accent)'
                   }} />
                 </div>
 
@@ -2028,35 +2028,35 @@ const TourPerformanceRanking = ({
                   <span style={{
                     display:'block',
                     fontSize:'10px',
-                    color:'#929792',
+                    color:'var(--dashboard-muted)',
                     fontWeight:'800',
                     textTransform:'uppercase',
                     letterSpacing:'.04em'
                   }}>
                     {lang === 'pt' ? 'Reservas' : 'Bookings'}
                   </span>
-                  <strong style={{ fontSize:'18px', color:'#333' }}>{row.bookings}</strong>
+                  <strong style={{ fontSize:'18px', color:'var(--dashboard-text)' }}>{row.bookings}</strong>
                 </div>
 
                 <div>
                   <span style={{
                     display:'block',
                     fontSize:'10px',
-                    color:'#929792',
+                    color:'var(--dashboard-muted)',
                     fontWeight:'800',
                     textTransform:'uppercase',
                     letterSpacing:'.04em'
                   }}>
                     {lang === 'pt' ? 'Passageiros' : 'Passengers'}
                   </span>
-                  <strong style={{ fontSize:'18px', color:'#333' }}>{row.passengers}</strong>
+                  <strong style={{ fontSize:'18px', color:'var(--dashboard-text)' }}>{row.passengers}</strong>
                 </div>
 
                 <div style={{ textAlign:'right' }}>
                   <span style={{
                     display:'block',
                     fontSize:'10px',
-                    color:'#929792',
+                    color:'var(--dashboard-muted)',
                     fontWeight:'800',
                     textTransform:'uppercase',
                     letterSpacing:'.04em'
@@ -2066,7 +2066,7 @@ const TourPerformanceRanking = ({
                   <strong style={{
                     display:'block',
                     fontSize:'17px',
-                    color:'var(--primary-green)'
+                    color:'var(--dashboard-accent)'
                   }}>
                     {formatMoney(row.revenue, dashboardCurrency)}
                   </strong>
@@ -2080,9 +2080,9 @@ const TourPerformanceRanking = ({
       <div style={{
         marginTop:'14px',
         paddingTop:'11px',
-        borderTop:'1px solid #efefef',
+        borderTop:'1px solid var(--dashboard-border)',
         fontSize:'12px',
-        color:'#858b86'
+        color:'var(--dashboard-muted)'
       }}>
         {lang === 'pt'
           ? `Receita considera apenas valores reais na moeda ${dashboardCurrency}. Reservas sem valor ou em outra moeda não são convertidas nem estimadas.`
@@ -2284,7 +2284,7 @@ export default function DashboardTab(props) {
 
               <div className="pmy-grid" style={{ gridTemplateColumns:'1fr' }}>
                 <div className="pmy-card" style={{ padding:'0 25px 25px 25px' }}>
-                  <div style={{ padding:'25px 0 14px 0', borderBottom:'1px solid #f0f0f0' }}>
+                  <div style={{ padding:'25px 0 14px 0', borderBottom:'1px solid var(--dashboard-border)' }}>
                     <div className="pmy-trend-eyebrow">
                       {lang === 'pt' ? 'Performance dos produtos' : 'Product performance'}
                     </div>
@@ -2303,7 +2303,7 @@ export default function DashboardTab(props) {
                       </div>
                       <div className={`pmy-accordion-content ${openCategories.includes(cat.name)?'open':''}`}>
                         {cat.toursList.length === 0 ? (
-                          <p style={{ padding:'10px 0', color:'#999', fontSize:'15px' }}>Nenhum passeio nesta categoria.</p>
+                          <p style={{ padding:'10px 0', color:'var(--dashboard-muted)', fontSize:'15px' }}>Nenhum passeio nesta categoria.</p>
                         ) : cat.toursList.map(tour => {
                           const masterTourId = tour.masterTourId || tour.id;
                           const tourBookings = realConfirmedBookings.filter(b => b.tourId === masterTourId);
@@ -2318,7 +2318,7 @@ export default function DashboardTab(props) {
                               }
                               <div className="pmy-tour-details">
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
-                                {tour.price && <div style={{ fontSize:'15px', color:'var(--primary-green)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
+                                {tour.price && <div style={{ fontSize:'15px', color:'var(--dashboard-accent)', fontWeight:'700', marginBottom:'4px' }}>{tour.price}</div>}
                                 <div className="pmy-tag-row">
                                   <span className="pmy-tag site">{t.source_site}: {shopifyB} reservas</span>
                                   <span className="pmy-tag viator">{t.source_viator}: {viatorB} reservas</span>
