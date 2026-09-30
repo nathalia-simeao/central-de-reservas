@@ -1457,6 +1457,8 @@ function CentralDeReservasContent() {
       formData.append("productId", tour.id);
       formData.append("tourTitle", tour.title || "");
       formData.append("customerName", custName);
+      formData.append("customerEmail", custEmail || "");
+      formData.append("customerPhone", custPhone || "");
       formData.append("date", bookingDate);
       formData.append("time", bookingTime);
       formData.append("language", custLang);
@@ -1467,11 +1469,12 @@ function CentralDeReservasContent() {
       const payload = await requestResourceJson("/api/draft-order", formData);
       const draftOrder = payload?.draftOrder;
 
-      if (!draftOrder?.invoiceUrl) {
+      const checkoutUrl = draftOrder?.checkoutUrl || draftOrder?.invoiceUrl;
+      if (!checkoutUrl) {
         throw new Error("O Shopify não devolveu um link de checkout.");
       }
 
-      setGeneratedLink(draftOrder.invoiceUrl);
+      setGeneratedLink(checkoutUrl);
       setDraftOrderInfo(draftOrder);
     } catch (error) {
       setDraftOrderError(error?.message || "Erro ao criar o Draft Order no Shopify.");
