@@ -8,6 +8,10 @@ import {
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
 import {
+  getIntegrationCredentials,
+  updateIntegrationValidation,
+} from "./integration-secrets.server";
+import {
   enqueueAvailabilitySync,
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
@@ -41,11 +45,65 @@ function sameSecret(a, b) {
   );
 }
 
-export function requireViatorAuth(request, version = "v2") {
-  const configured = String(process.env.VIATOR_API_KEY || "").trim();
+let runtimeSupplierId = String(
+  process.env.VIATOR_SUPPLIER_ID || "",
+).trim();
+
+async function viatorCredentialSource() {
+  try {
+    const stored = await getIntegrationCredentials(prisma, VIATOR_PLATFORM);
+    const apiKey = String(stored?.credentials?.apiKey || "").trim();
+    const supplierId = String(stored?.credentials?.supplierId || "").trim();
+
+    if (supplierId) runtimeSupplierId = supplierId;
+    if (apiKey) {
+      return {
+        apiKey,
+        record: stored.record,
+        source: "INTEGRATION_SECRET",
+      };
+    }
+  } catch (error) {
+    console.error("[VIATOR] encrypted credential read failed", error);
+  }
+
+  const apiKey = String(process.env.VIATOR_API_KEY || "").trim();
+  return apiKey
+    ? { apiKey, record: null, source: "ENV" }
+    : { apiKey: "", record: null, source: "NONE" };
+}
+
+export async function requireViatorAuth(
+  request,
+  version = "v2",
+  { recordTraffic = true } = {},
+) {
+  const configured = await viatorCredentialSource();
   const supplied = String(request.headers.get("X-Api-Key") || "").trim();
 
-  if (configured && sameSecret(configured, supplied)) return null;
+  if (configured.apiKey && sameSecret(configured.apiKey, supplied)) {
+    if (recordTraffic && configured.record) {
+      const last = configured.record.lastValidatedAt
+        ? new Date(configured.record.lastValidatedAt).getTime()
+        : 0;
+      const shouldRefresh =
+        configured.record.status !== "CONNECTED" ||
+        Date.now() - last > 5 * 60 * 1000;
+
+      if (shouldRefresh) {
+        try {
+          await updateIntegrationValidation(prisma, VIATOR_PLATFORM, {
+            status: "CONNECTED",
+            message:
+              "Requisição autenticada do canal Viator recebida pela Supplier API.",
+          });
+        } catch (error) {
+          console.error("[VIATOR] credential traffic status update failed", error);
+        }
+      }
+    }
+    return null;
+  }
 
   if (version === "v1") {
     return viatorV1ErrorResponse(
@@ -95,7 +153,9 @@ export async function readViatorJson(request, version = "v2") {
 }
 
 function configuredSupplierId() {
-  const value = String(process.env.VIATOR_SUPPLIER_ID || "").trim();
+  const value =
+    String(runtimeSupplierId || "").trim() ||
+    String(process.env.VIATOR_SUPPLIER_ID || "").trim();
   return /^\d+$/.test(value) ? Number(value) : null;
 }
 
