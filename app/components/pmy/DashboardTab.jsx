@@ -261,25 +261,38 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   });
   const [calendarSelectionStep, setCalendarSelectionStep] = useState("start");
 
-  const classifyChannel = (platform) => {
-    const key = String(platform || "").trim().toUpperCase();
+  const classifyChannel = (booking) => {
+    const explicit = String(booking?.commercialSource || "").trim();
+    if (explicit) return explicit;
 
-    if (key === "SHOPIFY") return "SHOPIFY";
-    if (key === "VIATOR") return "VIATOR";
-    if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(key)) return "GETYOURGUIDE";
-    if (key === "CIVITATIS") return "CIVITATIS";
-    if (key === "HEADOUT") return "HEADOUT";
-
-    return "OTHER";
+    const platform = String(booking?.platform || "").trim().toUpperCase();
+    if (platform === "VIATOR") return "Viator";
+    if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(platform)) return "GetYourGuide";
+    if (platform === "CIVITATIS") return "Civitatis";
+    if (platform === "HEADOUT") return "Headout";
+    if (["MANUAL", "CENTRAL"].includes(platform)) return "Manual";
+    if (platform === "SHOPIFY") return "Site";
+    return "Outro";
   };
 
   const baseChannels = [
-    { key: "SHOPIFY", label: "Shopify" },
-    { key: "VIATOR", label: "Viator" },
-    { key: "GETYOURGUIDE", label: "GetYourGuide" },
-    { key: "CIVITATIS", label: "Civitatis" },
-    { key: "HEADOUT", label: "Headout" },
-    { key: "OTHER", label: lang === "pt" ? "Outros" : "Other" },
+    { key: "Site", label: "Site" },
+    { key: "Google Ads", label: "Google Ads" },
+    { key: "Google Organic", label: "Google Organic" },
+    { key: "Instagram", label: "Instagram" },
+    { key: "Facebook", label: "Facebook" },
+    { key: "WhatsApp", label: "WhatsApp" },
+    { key: "Email", label: "Email" },
+    { key: "Parceiro", label: lang === "pt" ? "Parceiro" : "Partner" },
+    { key: "Viator", label: "Viator" },
+    { key: "GetYourGuide", label: "GetYourGuide" },
+    { key: "Headout", label: "Headout" },
+    { key: "Civitatis", label: "Civitatis" },
+    { key: "TikTok", label: "TikTok" },
+    { key: "Microsoft Ads", label: "Microsoft Ads" },
+    { key: "Referência", label: lang === "pt" ? "Referência" : "Referral" },
+    { key: "Manual", label: lang === "pt" ? "Manual" : "Manual" },
+    { key: "Outro", label: lang === "pt" ? "Outros" : "Other" },
   ];
 
   const endOfDay = (value) => {
@@ -350,7 +363,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   });
 
   const totals = confirmedBookings.reduce((acc, booking) => {
-    const key = classifyChannel(booking?.platform);
+    const key = classifyChannel(booking);
 
     if (!acc[key]) {
       acc[key] = { bookings: 0, passengers: 0 };
@@ -512,8 +525,8 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
     <Card className="pmy-ds-dashboard-card">
       <div className="pmy-ds-dashboard-header">
         <SectionHeader
-          eyebrow={lang === "pt" ? "Distribuição por canal" : "Channel distribution"}
-          title={lang === "pt" ? "Reservas por Canal" : "Bookings by Channel"}
+          eyebrow={lang === "pt" ? "Origem comercial" : "Commercial source"}
+          title={lang === "pt" ? "Reservas por Origem Comercial" : "Bookings by Commercial Source"}
           subtitle={`${rangeLabel} · ${lang === "pt" ? "somente reservas confirmadas" : "confirmed bookings only"}`}
           className="pmy-u-mb-0"
         />
@@ -730,7 +743,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
 
       <div
         role="img"
-        aria-label={lang === "pt" ? "Gráfico de reservas confirmadas por canal" : "Confirmed bookings by channel chart"}
+        aria-label={lang === "pt" ? "Gráfico de reservas confirmadas por origem comercial" : "Confirmed bookings by commercial source chart"}
         className="pmy-ds-channel-list"
       >
         {data.map((item) => {
