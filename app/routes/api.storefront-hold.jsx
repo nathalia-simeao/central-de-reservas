@@ -159,12 +159,6 @@ function validateGroup(group, index) {
   const language = clean(group?.language, 80) || null;
   const rawItems = Array.isArray(group?.items) ? group.items : [];
 
-  if (!productId) {
-    const error = new Error("A Shopify product ID is required for every booking group.");
-    error.status = 400;
-    error.code = "INVALID_PRODUCT_ID";
-    throw error;
-  }
   if (!date || !time) {
     const error = new Error("A valid tour date and time are required before checkout.");
     error.status = 400;
@@ -209,6 +203,94 @@ function validateGroup(group, index) {
   return { key, productId, date, time, language, items, requestedSeats };
 }
 
+async function resolveMasterTour(group) {
+  if (group.productId) {
+    const byProduct = await resolveTourByPlatformId(
+      db,
+      "SHOPIFY",
+      group.productId,
+    );
+    if (byProduct) return byProduct;
+  }
+
+  const firstVariantId = group.items?.[0]?.variantId;
+  if (!firstVariantId) return null;
+
+  const gid = shopifyGid("ProductVariant", firstVariantId);
+  const numericId = stripShopifyId(firstVariantId);
+  const mappedVariant = await db.tourVariant.findFirst({
+    where: {
+      OR: [
+        ...(gid ? [{ shopifyVariantId: gid }] : []),
+        ...(numericId ? [{ shopifyVariantId: numericId }] : []),
+      ],
+    },
+    include: {
+      tour: {
+        include: { variants: true },
+      },
+    },
+  });
+
+  return mappedVariant?.tour || null;
+}
+
+async function canonicalizeGroups(groups) {
+  const merged = new Map();
+
+  for (const group of groups) {
+    const masterTour = await resolveMasterTour(group);
+    if (!masterTour) {
+      const error = new Error(
+        "This experience is not mapped to PMY Central capacity and cannot start checkout.",
+      );
+      error.status = 409;
+      error.code = "TOUR_CAPACITY_NOT_CONFIGURED";
+      throw error;
+    }
+
+    const canonicalKey = `${masterTour.id}|${group.date}|${group.time}`;
+    if (!merged.has(canonicalKey)) {
+      merged.set(canonicalKey, {
+        ...group,
+        masterTour,
+        keys: [],
+        items: [],
+        productId:
+          shopifyGid("Product", masterTour.shopifyProductId) ||
+          masterTour.shopifyProductId ||
+          group.productId ||
+          null,
+      });
+    }
+
+    const canonical = merged.get(canonicalKey);
+    canonical.keys.push(group.key);
+    canonical.items.push(...group.items);
+    if (!canonical.language && group.language) canonical.language = group.language;
+  }
+
+  return [...merged.values()].map((group) => {
+    const requestedSeats = group.items.reduce(
+      (total, item) => total + Number(item.quantity || 0),
+      0,
+    );
+
+    if (requestedSeats < 1 || requestedSeats > MAX_SEATS_PER_GROUP) {
+      const error = new Error("Traveler quantity is outside the supported range.");
+      error.status = 400;
+      error.code = "INVALID_PARTICIPANT_COUNT";
+      throw error;
+    }
+
+    return {
+      ...group,
+      keys: [...new Set(group.keys)],
+      requestedSeats,
+    };
+  });
+}
+
 async function reserveGroup({
   group,
   requestId,
@@ -216,11 +298,9 @@ async function reserveGroup({
   attribution,
   holdExpiresAt,
 }) {
-  const masterTour = await resolveTourByPlatformId(db, "SHOPIFY", group.productId);
+  const masterTour = group.masterTour;
   if (!masterTour) {
-    const error = new Error(
-      "This experience is not mapped to PMY Central capacity and cannot start checkout.",
-    );
+    const error = new Error("PMY Central tour mapping is missing.");
     error.status = 409;
     error.code = "TOUR_CAPACITY_NOT_CONFIGURED";
     throw error;
@@ -296,7 +376,11 @@ async function reserveGroup({
       status: "PENDING",
       bookingRef: null,
       externalBookingId,
-      externalProductId: group.productId,
+      externalProductId:
+        shopifyGid("Product", masterTour.shopifyProductId) ||
+        masterTour.shopifyProductId ||
+        group.productId ||
+        null,
       externalVariantId:
         group.items.length === 1 ? group.items[0].variantId : null,
       ...counts,
@@ -306,11 +390,15 @@ async function reserveGroup({
       rawPayload: {
         kind: "STOREFRONT_CHECKOUT_HOLD",
         requestId,
-        groupKey: group.key,
+        groupKeys: group.keys,
         date: group.date,
         time: group.time,
         language: group.language,
-        productId: group.productId,
+        productId:
+          shopifyGid("Product", masterTour.shopifyProductId) ||
+          masterTour.shopifyProductId ||
+          group.productId ||
+          null,
         items: group.items,
         attribution: attribution || {},
       },
@@ -343,10 +431,15 @@ async function reserveGroup({
   await notifyAvailability(booking, "STOREFRONT_HOLD_CREATED");
 
   return {
-    key: group.key,
+    key: group.keys[0],
+    keys: group.keys,
     holdId: booking.id,
     expiresAt: booking.holdExpiresAt?.toISOString?.() || holdExpiresAt.toISOString(),
-    productId: group.productId,
+    productId:
+      shopifyGid("Product", masterTour.shopifyProductId) ||
+      masterTour.shopifyProductId ||
+      group.productId ||
+      null,
     tourId: masterTour.id,
     date: group.date,
     time: group.time,
@@ -429,7 +522,7 @@ export const action = async ({ request }) => {
       );
     }
 
-    const groups = rawGroups.map(validateGroup);
+    const groups = await canonicalizeGroups(rawGroups.map(validateGroup));
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
     const holds = [];
 
