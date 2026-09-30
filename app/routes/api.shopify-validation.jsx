@@ -797,6 +797,26 @@ export const action = async ({ request }) => {
     return json({ success: false, error: "Ação inválida." }, { status: 400 });
   }
 
+  const currentValidation = await validationStatus(admin);
+  if (
+    currentValidation?.exists &&
+    ["WAITING", "PASSED", "CANCELLATION_WAITING"].includes(
+      currentValidation.status,
+    )
+  ) {
+    return json(
+      {
+        success: false,
+        code: "E2E_TEST_ALREADY_ACTIVE",
+        error:
+          currentValidation.status === "PASSED"
+            ? "O teste atual já validou a entrada. Cancele esse pedido e valide a devolução da vaga antes de iniciar outro."
+            : "Já existe um teste Shopify E2E em andamento. Aguarde a validação atual terminar.",
+      },
+      { status: 409 },
+    );
+  }
+
   const webhookStatus = await ensureShopifyOrderWebhooks(
     admin,
     process.env.SHOPIFY_APP_URL,
