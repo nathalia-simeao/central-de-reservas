@@ -4365,3 +4365,211 @@
   align-items: center;
   gap: 7px;
 }
+
+
+/* Integration operations: readable density without decorative emoji */
+.pmy-sync-log {
+  font-size: var(--pmy-type-md);
+  line-height: 1.5;
+}
+
+.pmy-sync-log .pmy-ds-migrated-j6655o {
+  max-width: 880px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--pmy-ds-muted);
+}
+
+.pmy-sync-log .pmy-ds-migrated-vinc8y {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pmy-sync-log .pmy-ds-compact-action {
+  min-height: 38px;
+  padding: 9px 15px;
+  font-size: 13px;
+}
+
+.pmy-validation-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--pmy-ds-text);
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.pmy-validation-heading__icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  border-radius: var(--pmy-radius-sm);
+  color: var(--pmy-ds-accent);
+  background: color-mix(in srgb, var(--pmy-ds-accent) 9%, var(--pmy-ds-surface));
+  border: 1px solid color-mix(in srgb, var(--pmy-ds-accent) 18%, var(--pmy-ds-border));
+}
+
+.pmy-validation-copy {
+  max-width: 860px;
+  margin-top: 5px;
+  color: var(--pmy-ds-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.pmy-validation-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.pmy-validation-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: var(--pmy-radius-sm);
+  color: var(--pmy-ds-text);
+  background: var(--pmy-ds-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pmy-validation-message > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.pmy-validation-message > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pmy-validation-message strong {
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.pmy-validation-message.is-danger {
+  color: var(--pmy-danger);
+  background: var(--pmy-danger-soft);
+  border-color: color-mix(in srgb, var(--pmy-danger) 28%, var(--pmy-ds-border));
+}
+
+.pmy-validation-message.is-success {
+  color: var(--pmy-success);
+  background: var(--pmy-success-soft);
+  border-color: color-mix(in srgb, var(--pmy-success) 24%, var(--pmy-ds-border));
+}
+
+.pmy-validation-message.is-info {
+  color: var(--pmy-info);
+  background: var(--pmy-info-soft);
+  border-color: color-mix(in srgb, var(--pmy-info) 22%, var(--pmy-ds-border));
+}
+
+.pmy-validation-subheading {
+  margin-bottom: 9px;
+  color: var(--pmy-ds-text);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.pmy-validation-empty {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pmy-ds-border);
+  color: var(--pmy-ds-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pmy-sync-log .pmy-ds-validation-panel {
+  padding: 20px 22px;
+}
+
+.pmy-sync-log .pmy-ds-validation-step {
+  padding: 10px 12px;
+}
+
+.pmy-sync-log .pmy-ds-validation-step__label {
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.pmy-sync-log .pmy-ds-migrated-tyzer6 {
+  margin-top: 12px;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pmy-sync-log .pmy-ds-migrated-19kf531 {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.pmy-sync-log .pmy-ds-sync-metric__label {
+  font-size: 13px;
+}
+
+.pmy-sync-log .pmy-ds-sync-detail,
+.pmy-sync-log .pmy-ds-sync-status {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.pmy-sync-log table {
+  font-size: 13px;
+}
+
+.pmy-sync-log table th {
+  font-size: 12px;
+}
+
+.pmy-sync-log .pmy-ds-migrated-kewd2o {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.pmy-ds-connection-counter-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pmy-radius-sm);
+  color: var(--pmy-ds-muted);
+  background: var(--pmy-ds-soft);
+  border: 1px solid var(--pmy-ds-border);
+}
+
+.pmy-ds-connection-counter-icon.is-connected {
+  color: var(--pmy-success);
+  background: var(--pmy-success-soft);
+  border-color: color-mix(in srgb, var(--pmy-success) 22%, var(--pmy-ds-border));
+}
+
+@media (max-width: 720px) {
+  .pmy-validation-actions {
+    width: 100%;
+  }
+
+  .pmy-validation-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .pmy-sync-log .pmy-ds-validation-panel {
+    padding: 16px;
+  }
+}
