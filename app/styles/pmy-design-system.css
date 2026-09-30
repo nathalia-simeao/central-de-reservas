@@ -4348,3 +4348,20 @@
 .pmy-ds-mismatch-card__value { margin-top: 3px; font-size: 18px; font-weight: 850; }
 .pmy-ds-mismatch-card__value.is-success { color: var(--pmy-success); }
 .pmy-ds-mismatch-card__value.is-warning { color: var(--pmy-warning); }
+
+.pmy-ds-heading-with-icon,
+.pmy-ds-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pmy-space-2);
+}
+.pmy-int-sync-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pmy-date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
