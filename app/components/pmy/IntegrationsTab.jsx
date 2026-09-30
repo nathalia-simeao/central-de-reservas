@@ -96,31 +96,105 @@ export default function IntegrationsTab(props) {
                   </div>
                   <div className="pmy-ds-migrated-xqzku2">
                     {reservationPlatforms.map(platform => {
-                      const conn = platformConnections[platform.key];
+                      const conn = platformConnections[platform.key] || {};
+                      const isPendingOnboarding =
+                        conn.onboardingPending || conn.available === false;
+                      const isConfigured = Boolean(conn.configured);
+                      const statusLabel = conn.connected
+                        ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
+                        : conn.validationError
+                          ? tr("ERRO NA CREDENCIAL", "CREDENTIAL ERROR")
+                          : isConfigured
+                            ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
+                          : isPendingOnboarding
+                            ? tr("ONBOARDING PENDENTE", "ONBOARDING PENDING")
+                            : tr("NÃO CONFIGURADO", "NOT CONFIGURED");
+                      const statusClass = conn.connected
+                        ? "is-connected"
+                        : conn.validationError
+                          ? "is-error"
+                          : isConfigured
+                            ? "is-configured"
+                          : isPendingOnboarding
+                            ? "is-pending"
+                            : "";
+                      const actionLabel = conn.connected
+                        ? tr("Gerenciar integração", "Manage integration")
+                        : isConfigured
+                          ? tr("Gerenciar credencial", "Manage credential")
+                          : isPendingOnboarding
+                            ? tr("Ver status", "View status")
+                            : tr("Configurar", "Configure");
+
                       return (
-                        <div key={platform.key} className={[`pmy-int-card-v2 ${conn.connected?'connected':''}`, "pmy-ds-migrated-15s4y9o"].filter(Boolean).join(" ")} >
+                        <div
+                          key={platform.key}
+                          className={[
+                            `pmy-int-card-v2 ${conn.connected ? "connected" : ""}`,
+                            conn.validationError ? "is-error" : "",
+                            isConfigured && !conn.connected && !conn.validationError ? "is-configured" : "",
+                            isPendingOnboarding ? "is-pending" : "",
+                            "pmy-ds-migrated-15s4y9o",
+                          ].filter(Boolean).join(" ")}
+                        >
                           <div className="pmy-int-top">
                             <span className="pmy-int-logo-v2"><Icon name={platform.icon} size={22} /></span>
-                            {conn.connected && <span className="pmy-int-sync-info"><Icon name="refresh" size={12} /> {conn.lastSync}</span>}
+                            {conn.lastSync && (
+                              <span className="pmy-int-sync-info">
+                                <Icon name="clock" size={12} /> {conn.lastSync}
+                              </span>
+                            )}
                           </div>
                           <div className="pmy-ds-migrated-1gcp9k1">
-                            <span className={`pmy-int-status-dot ${conn.connected?'on':'off'}`}></span>
-                            <span className={`pmy-ds-connection-state ${conn.connected ? "is-connected" : ""}`}>
-                              {conn.connected ? tr('CONECTADO','CONNECTED') : tr('NÃO CONECTADO','NOT CONNECTED')}
+                            <span
+                              className={`pmy-int-status-dot ${conn.connected ? "on" : conn.validationError ? "error" : isConfigured ? "configured" : isPendingOnboarding ? "pending" : "off"}`}
+                            ></span>
+                            <span className={`pmy-ds-connection-state ${statusClass}`}>
+                              {statusLabel}
                             </span>
                           </div>
                           <div className="pmy-int-name-v2">{platform.name}</div>
                           <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
+                          {conn.validationError && (
+                            <div className="pmy-int-connection-note is-error">
+                              {conn.lastValidationMessage || tr(
+                                "O último teste da credencial falhou. Abra a integração para revisar ou substituir os dados.",
+                                "The last credential test failed. Open the integration to review or replace the data.",
+                              )}
+                            </div>
+                          )}
+                          {isConfigured && !conn.connected && !conn.validationError && (
+                            <div className="pmy-int-connection-note">
+                              {tr(
+                                "A credencial está salva no backend e o caminho técnico local foi testado. O canal só vira conectado quando a Central receber uma chamada autenticada real.",
+                                "The credential is stored on the backend and the local technical path was tested. The channel becomes connected only after the Central receives a real authenticated request.",
+                              )}
+                            </div>
+                          )}
+                          {isPendingOnboarding && (
+                            <div className="pmy-int-connection-note">
+                              {tr(
+                                "Campos de credencial ocultos até existir uma API verificável para a conta PMY.",
+                                "Credential fields are hidden until PMY has an API that can be verified.",
+                              )}
+                            </div>
+                          )}
                           <div className="pmy-int-actions">
-                            {conn.connected ? (
-                              <>
-                                <Button variant="secondary" size="sm" icon="settings" onClick={()=>handleOpenConnect(platform.key)}>{tr("Gerenciar", "Manage")}</Button>
-                                <button className="pmy-int-btn-disconnect" onClick={()=>handleDisconnect(platform.key)}>{tr("Desconectar", "Disconnect")}</button>
-                              </>
-                            ) : (
-                              <Button variant="primary" size="sm" icon="link" onClick={()=>handleOpenConnect(platform.key)}>
-                                {tr("Conectar", "Connect")} {platform.name}
-                              </Button>
+                            <Button
+                              variant={conn.connected || isConfigured || isPendingOnboarding ? "secondary" : "primary"}
+                              size="sm"
+                              icon={isPendingOnboarding ? "clock" : "settings"}
+                              onClick={()=>handleOpenConnect(platform.key)}
+                            >
+                              {actionLabel}
+                            </Button>
+                            {conn.connected && ["viator", "civitatis"].includes(platform.key) && (
+                              <button
+                                className="pmy-int-btn-disconnect"
+                                onClick={()=>handleDisconnect(platform.key)}
+                              >
+                                {tr("Remover credencial", "Remove credential")}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -476,7 +550,7 @@ export default function IntegrationsTab(props) {
 
                   <div className="pmy-ds-migrated-kewd2o">
                     <strong className="pmy-ds-migrated-1sbb1if">{tr("Como ler:", "How to read:")}</strong> cada linha representa o envio de um mesmo evento para um canal.
-                    Se um canal estiver e outro falha ou nova tentativa, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
+                    Se o mesmo evento tiver status diferentes entre os canais, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
                   </div>
                 </div>
               )}

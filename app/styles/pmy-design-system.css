@@ -4573,3 +4573,64 @@
     padding: 16px;
   }
 }
+
+
+/* Truthful integration connection states */
+.pmy-ds-connection-state.is-configured {
+  color: var(--pmy-info);
+}
+.pmy-ds-connection-state.is-pending {
+  color: var(--pmy-warning);
+}
+.pmy-int-status-dot.configured {
+  background: var(--pmy-info);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pmy-info) 12%, transparent);
+}
+.pmy-int-status-dot.pending {
+  background: var(--pmy-warning);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pmy-warning) 12%, transparent);
+}
+.pmy-int-card-v2.is-configured {
+  border-color: color-mix(in srgb, var(--pmy-info) 24%, var(--pmy-ds-border));
+}
+.pmy-int-card-v2.is-pending {
+  border-color: color-mix(in srgb, var(--pmy-warning) 24%, var(--pmy-ds-border));
+}
+.pmy-int-connection-note {
+  margin-top: var(--pmy-space-3);
+  padding: 9px 10px;
+  border-radius: var(--pmy-radius-xs);
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.pmy-int-card-v2.is-configured .pmy-int-connection-note {
+  background: var(--pmy-info-soft);
+  color: var(--pmy-info);
+}
+.pmy-int-card-v2.is-pending .pmy-int-connection-note {
+  background: var(--pmy-warning-soft);
+  color: var(--pmy-warning);
+}
+
+
+.pmy-ds-state-panel.is-danger {
+  background: var(--pmy-danger-soft);
+  border-color: color-mix(in srgb, var(--pmy-danger) 24%, var(--pmy-ds-border));
+}
+.pmy-ds-state-title.is-danger,
+.pmy-ds-connection-state.is-error {
+  color: var(--pmy-danger);
+}
+.pmy-int-status-dot.error {
+  background: var(--pmy-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pmy-danger) 12%, transparent);
+}
+.pmy-int-card-v2.is-error {
+  border-color: color-mix(in srgb, var(--pmy-danger) 28%, var(--pmy-ds-border));
+}
+.pmy-int-connection-note.is-error {
+  background: var(--pmy-danger-soft);
+  color: var(--pmy-danger);
+}

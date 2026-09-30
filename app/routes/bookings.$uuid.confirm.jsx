@@ -6,7 +6,7 @@ import {
 } from "../utils/civitatis.server";
 
 export const action = async ({ request, params }) => {
-  const authError = requireCivitatisAuth(request);
+  const authError = await requireCivitatisAuth(request);
   if (authError) return authError;
 
   const capabilityError = validateCivitatisCapabilities(request);

@@ -8,6 +8,10 @@ import {
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
 import {
+  getIntegrationCredentials,
+  updateIntegrationValidation,
+} from "./integration-secrets.server";
+import {
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
 } from "./sync-queue.server";
@@ -32,14 +36,6 @@ function errorResponse(status, code, message) {
   return json({ error: code, message }, status);
 }
 
-function configuredToken() {
-  return String(
-    process.env.CIVITATIS_OCTO_TOKEN ||
-      process.env.CIVITATIS_API_KEY ||
-      "",
-  ).trim();
-}
-
 function constantTimeEqual(leftValue, rightValue) {
   const left = Buffer.from(String(leftValue || ""));
   const right = Buffer.from(String(rightValue || ""));
@@ -54,17 +50,56 @@ function requestEnvironment(request) {
   return String(request.headers.get("Env") || "").trim().toLowerCase();
 }
 
-function configuredEnvironment() {
-  return String(process.env.CIVITATIS_ENV || "test").trim().toLowerCase();
+async function civitatisCredentialSource() {
+  try {
+    const stored = await getIntegrationCredentials(prisma, PLATFORM);
+    const token = String(stored?.credentials?.token || "").trim();
+    const environment = String(
+      stored?.credentials?.environment || stored?.record?.environment || "",
+    )
+      .trim()
+      .toLowerCase();
+
+    if (token) {
+      return {
+        token,
+        environment: ["test", "live"].includes(environment)
+          ? environment
+          : "test",
+        record: stored.record,
+        source: "INTEGRATION_SECRET",
+      };
+    }
+  } catch (error) {
+    console.error("[CIVITATIS] encrypted credential read failed", error);
+  }
+
+  const token = String(
+    process.env.CIVITATIS_OCTO_TOKEN ||
+      process.env.CIVITATIS_API_KEY ||
+      "",
+  ).trim();
+
+  return {
+    token,
+    environment: String(process.env.CIVITATIS_ENV || "test")
+      .trim()
+      .toLowerCase(),
+    record: null,
+    source: token ? "ENV" : "NONE",
+  };
 }
 
-export function requireCivitatisAuth(request) {
-  const token = configuredToken();
+export async function requireCivitatisAuth(
+  request,
+  { recordTraffic = true } = {},
+) {
+  const configured = await civitatisCredentialSource();
   const authorization = String(request.headers.get("Authorization") || "").trim();
   const match = authorization.match(/^Bearer\s+(.+)$/i);
   const supplied = match?.[1]?.trim() || "";
 
-  if (!token || !constantTimeEqual(token, supplied)) {
+  if (!configured.token || !constantTimeEqual(configured.token, supplied)) {
     return errorResponse(401, "UNAUTHORIZED", "Invalid Bearer token.");
   }
 
@@ -73,13 +108,33 @@ export function requireCivitatisAuth(request) {
     return errorResponse(400, "INVALID_ENV", "Env header must be test or live.");
   }
 
-  const configured = configuredEnvironment();
-  if (configured && env !== configured) {
+  if (configured.environment && env !== configured.environment) {
     return errorResponse(
       403,
       "ENV_NOT_ALLOWED",
-      `This server is configured for the ${configured} environment.`,
+      `This server is configured for the ${configured.environment} environment.`,
     );
+  }
+
+  if (recordTraffic && configured.record) {
+    const last = configured.record.lastValidatedAt
+      ? new Date(configured.record.lastValidatedAt).getTime()
+      : 0;
+    const shouldRefresh =
+      configured.record.status !== "CONNECTED" ||
+      Date.now() - last > 5 * 60 * 1000;
+
+    if (shouldRefresh) {
+      try {
+        await updateIntegrationValidation(prisma, PLATFORM, {
+          status: "CONNECTED",
+          message:
+            "Requisição autenticada do canal Civitatis recebida pela Supplier API.",
+        });
+      } catch (error) {
+        console.error("[CIVITATIS] credential traffic status update failed", error);
+      }
+    }
   }
 
   return null;

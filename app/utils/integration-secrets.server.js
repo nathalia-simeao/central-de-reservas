@@ -233,12 +233,21 @@ export async function updateIntegrationValidation(
   { status, message },
 ) {
   const normalizedProvider = normalizeProvider(provider);
+  const validationStatus = String(status || "").trim().toUpperCase();
+
+  const connectionStatus =
+    validationStatus === "CONNECTED"
+      ? "CONNECTED"
+      : ["VALIDATED", "CONFIGURED", "LOCAL_CHECK"].includes(validationStatus)
+        ? "CONFIGURED"
+        : "ERROR";
+
   const record = await prisma.integrationSecret.update({
     where: { provider: normalizedProvider },
     data: {
-      status: status === "CONNECTED" ? "CONNECTED" : "ERROR",
+      status: connectionStatus,
       lastValidatedAt: new Date(),
-      lastValidationStatus: status,
+      lastValidationStatus: validationStatus || "ERROR",
       lastValidationMessage: message || null,
     },
   });
