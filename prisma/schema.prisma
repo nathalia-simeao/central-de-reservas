@@ -100,6 +100,7 @@ model Booking {
   language            String?
   startTime           DateTime
   platform            String
+  commercialSource    String    @default("Outro")
   status              String    @default("CONFIRMED")
 
   // Referências externas e idempotência multicanal
@@ -140,6 +141,7 @@ model Booking {
   @@index([externalOrderId])
   @@index([tourId, startTime])
   @@index([platform, status])
+  @@index([commercialSource])
   @@index([platform, externalOrderId])
 }
 
