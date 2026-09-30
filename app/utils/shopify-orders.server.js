@@ -92,6 +92,34 @@ const LANGUAGE_KEYS = [
 const EMAIL_KEYS = ["email", "e-mail"];
 const PHONE_KEYS = ["phone", "telefone", "telephone", "whatsapp", "mobile"];
 
+const ATTRIBUTION_KEYS = {
+  sessionId: ["PMY Session", "session_id"],
+  source: ["order_referrer_source", "PMY Last Source", "PMY First Source", "source"],
+  name: ["order_referrer_name"],
+  channel: ["order_referrer_channel"],
+  utmSource: ["PMY UTM Source", "utm_source"],
+  utmMedium: ["PMY UTM Medium", "utm_medium"],
+  utmCampaign: ["PMY UTM Campaign", "utm_campaign"],
+  utmTerm: ["PMY UTM Term", "utm_term"],
+  utmContent: ["PMY UTM Content", "utm_content"],
+  utmId: ["PMY UTM ID", "utm_id"],
+  gclid: ["PMY GCLID", "gclid"],
+  gbraid: ["PMY GBRAID", "gbraid"],
+  wbraid: ["PMY WBRAID", "wbraid"],
+  fbclid: ["PMY FBCLID", "fbclid"],
+  msclkid: ["PMY MSCLKID", "msclkid"],
+  ttclid: ["PMY TTCLID", "ttclid"],
+};
+
+function orderAttribution(orderAttrs) {
+  const result = {};
+  for (const [field, keys] of Object.entries(ATTRIBUTION_KEYS)) {
+    const value = firstAttribute([orderAttrs], keys);
+    if (value) result[field] = value;
+  }
+  return result;
+}
+
 function normalizeDateKey(value) {
   const raw = asString(value);
   if (!raw) return null;
@@ -291,6 +319,7 @@ export async function buildShopifyBookingGroups(prisma, payload) {
   const orderAttrs = attributesToMap(
     payload?.note_attributes || payload?.customAttributes || [],
   );
+  const attribution = orderAttribution(orderAttrs);
   const customer = orderCustomer(payload, orderAttrs);
   const orderId = externalOrderId(payload);
   const orderName = asString(payload?.name) || orderId;
@@ -401,6 +430,7 @@ export async function buildShopifyBookingGroups(prisma, payload) {
         totalPrice: 0,
         currency,
         customer,
+        attribution,
       });
     }
 
@@ -705,6 +735,7 @@ export async function processShopifyOrderWebhook(
       payload: {
         orderId,
         syncStatus: result.syncStatus,
+        attribution: group.attribution || {},
       },
     });
   }
