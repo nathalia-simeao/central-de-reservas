@@ -1,4 +1,8 @@
-import { createBookingWithCapacityGuard, getCentralAvailability } from "./capacity.server";
+import {
+  convertBookingHoldWithCapacityGuard,
+  createBookingWithCapacityGuard,
+  getCentralAvailability,
+} from "./capacity.server";
 import { classifyCommercialSource } from "./commercial-source.server";
 import {
   enqueueBookingSync,
@@ -92,6 +96,7 @@ const LANGUAGE_KEYS = [
 
 const EMAIL_KEYS = ["email", "e-mail"];
 const PHONE_KEYS = ["phone", "telefone", "telephone", "whatsapp", "mobile"];
+const HOLD_ID_KEYS = ["PMY Hold ID", "_PMY Hold ID", "pmy_hold_id", "hold_id"];
 
 const ATTRIBUTION_KEYS = {
   commercialSource: ["PMY Commercial Source", "commercial_source"],
@@ -467,6 +472,7 @@ export async function buildShopifyBookingGroups(prisma, payload) {
     payload?.note_attributes || payload?.customAttributes || [],
   );
   const attribution = orderAttribution(orderAttrs);
+  const orderHoldId = firstAttribute([orderAttrs], HOLD_ID_KEYS);
   const commercialSource = classifyCommercialSource({
     platform: SHOPIFY_PLATFORM,
     attribution,
@@ -528,6 +534,10 @@ export async function buildShopifyBookingGroups(prisma, payload) {
 
     const language =
       firstAttribute([lineAttrs, orderAttrs], LANGUAGE_KEYS) || null;
+    const holdId =
+      firstAttribute([lineAttrs, orderAttrs], HOLD_ID_KEYS) ||
+      orderHoldId ||
+      null;
 
     if (!dateKey || !timeKey) {
       issues.push({
@@ -584,6 +594,7 @@ export async function buildShopifyBookingGroups(prisma, payload) {
         customer,
         commercialSource,
         attribution,
+        holdId,
       });
     }
 
@@ -679,6 +690,18 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
   });
 
   if (existing) {
+    if (
+      existing.syncStatus === "EXPIRED" &&
+      existing.status === "CANCELED" &&
+      status === "PENDING"
+    ) {
+      return {
+        booking: existing,
+        syncStatus: "EXPIRED",
+        updated: false,
+      };
+    }
+
     const availability = await getCentralAvailability(prisma, {
       tourId: group.tour.id,
       startTime: group.startTime,
@@ -687,11 +710,20 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
       excludeBookingId: existing.id,
     });
 
+    const latePayment =
+      existing.syncStatus === "EXPIRED" &&
+      existing.status === "CANCELED" &&
+      status === "CONFIRMED";
+
     const syncStatus = availability.canAccept
       ? "SYNCED"
       : availability.blocked
-        ? "SHOPIFY_ORDER_ON_BLOCKED_SLOT"
-        : "OVERBOOKED";
+        ? latePayment
+          ? "LATE_PAYMENT_BLOCKED_SLOT"
+          : "SHOPIFY_ORDER_ON_BLOCKED_SLOT"
+        : latePayment
+          ? "LATE_PAYMENT_OVERBOOKED"
+          : "OVERBOOKED";
 
     const booking = await prisma.booking.update({
       where: { id: existing.id },
@@ -716,6 +748,8 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
         totalPrice: group.totalPrice,
         currency: group.currency,
         syncStatus,
+        holdExpiresAt: status === "CONFIRMED" ? null : existing.holdExpiresAt,
+        cancelReason: null,
         lastSyncedAt: new Date(),
         externalUpdatedAt: safeDate(payload?.updated_at) || new Date(),
         rawPayload: payload,
@@ -723,6 +757,65 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
     });
 
     return { booking, syncStatus, updated: true };
+  }
+
+  if (group.holdId) {
+    const convertedHold = await convertBookingHoldWithCapacityGuard(prisma, {
+      holdId: group.holdId,
+      tourId: group.tour.id,
+      startTime: group.startTime,
+      platform: SHOPIFY_PLATFORM,
+      externalBookingId: group.externalBookingId,
+      requestedSeats: group.totalParticipants,
+      bookingData: {
+        customerName: group.customer.customerName,
+        customerEmail: group.customer.customerEmail,
+        customerPhone: group.customer.customerPhone,
+        language: group.language,
+        commercialSource: group.commercialSource,
+        status,
+        bookingRef: group.bookingRef,
+        externalOrderId: group.externalOrderId,
+        externalLineItemIds: group.externalLineItemIds,
+        externalProductId: group.tour.shopifyProductId,
+        externalVariantId: group.externalVariantId,
+        adults: group.adults,
+        children: group.children,
+        youths: group.youths,
+        seniors: group.seniors,
+        totalPrice: group.totalPrice,
+        currency: group.currency,
+        syncStatus:
+          status === "CONFIRMED" ? "SYNCED" : "CHECKOUT_HOLD_BOUND",
+        lastSyncedAt: new Date(),
+        externalCreatedAt: safeDate(payload?.created_at),
+        externalUpdatedAt: safeDate(payload?.updated_at),
+        rawPayload: payload,
+      },
+    });
+
+    if (convertedHold.accepted) {
+      return {
+        booking: convertedHold.booking,
+        syncStatus: convertedHold.booking.syncStatus,
+        updated: true,
+        reusedHold: true,
+      };
+    }
+
+    if (convertedHold.reason === "HOLD_EXPIRED" && convertedHold.hold) {
+      return {
+        booking: convertedHold.hold,
+        syncStatus: convertedHold.hold.syncStatus || "EXPIRED",
+        updated: false,
+        reusedHold: false,
+        skipSync: true,
+      };
+    }
+
+    console.warn(
+      `[SHOPIFY] Checkout hold ${group.holdId} could not be reused: ${convertedHold.reason}`,
+    );
   }
 
   const guarded = await createBookingWithCapacityGuard(prisma, {
@@ -887,23 +980,25 @@ export async function processShopifyOrderWebhook(
       syncStatus: result.syncStatus,
       totalParticipants: group.totalParticipants,
     });
-    await enqueueBookingSync(prisma, {
-      eventId: sourceEventId
-        ? `${sourceEventId}:${result.updated ? "updated" : "created"}:${result.booking.id}`
-        : undefined,
-      eventType: result.updated
-        ? SYNC_EVENT_TYPES.BOOKING_UPDATED
-        : SYNC_EVENT_TYPES.BOOKING_CREATED,
-      booking: result.booking,
-      sourcePlatform: SHOPIFY_PLATFORM,
-      force: true,
-      payload: {
-        orderId,
-        syncStatus: result.syncStatus,
-        attribution: group.attribution || {},
-        commercialSource: group.commercialSource,
-      },
-    });
+    if (!result.skipSync) {
+      await enqueueBookingSync(prisma, {
+        eventId: sourceEventId
+          ? `${sourceEventId}:${result.updated ? "updated" : "created"}:${result.booking.id}`
+          : undefined,
+        eventType: result.updated
+          ? SYNC_EVENT_TYPES.BOOKING_UPDATED
+          : SYNC_EVENT_TYPES.BOOKING_CREATED,
+        booking: result.booking,
+        sourcePlatform: SHOPIFY_PLATFORM,
+        force: true,
+        payload: {
+          orderId,
+          syncStatus: result.syncStatus,
+          attribution: group.attribution || {},
+          commercialSource: group.commercialSource,
+        },
+      });
+    }
   }
 
   // If an order was edited and a tour line disappeared, release its old seats.
