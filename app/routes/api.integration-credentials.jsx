@@ -263,10 +263,12 @@ export const action = async ({ request }) => {
         }
       } catch {}
 
+      const status = await getSafeIntegrationSecretStatus(db, provider).catch(() => null);
       return json(
         {
           success: false,
           error: error?.message || "Falha ao salvar e validar credencial.",
+          status,
         },
         { status: 500 },
       );
@@ -286,10 +288,12 @@ export const action = async ({ request }) => {
         });
       } catch {}
 
+      const status = await getSafeIntegrationSecretStatus(db, provider).catch(() => null);
       return json(
         {
           success: false,
           error: error?.message || "Falha ao testar credencial.",
+          status,
         },
         { status: 400 },
       );
