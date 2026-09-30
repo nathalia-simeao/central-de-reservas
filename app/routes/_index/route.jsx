@@ -2520,7 +2520,7 @@ function CentralDeReservasContent() {
                     <div>⚙️ Método: <strong>Shopify Admin API (OAuth interno do app)</strong></div>
                     <div className="pmy-ds-migrated-j0srg2">
                       📡 Pedidos em tempo real:{' '}
-                      <strong style={{ color: shopifyWebhookStatus?.ok ? '#006600' : '#b45309' }}>
+                      <strong className={shopifyWebhookStatus?.ok ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
                         {shopifyWebhookStatus?.ok ? 'Webhooks ativos' : 'Configuração pendente'}
                       </strong>
                     </div>
@@ -2555,14 +2555,8 @@ function CentralDeReservasContent() {
             {/* ── GETYOURGUIDE: Supplier API v1 real ── */}
             {isGyg && (
               <div>
-                <div style={{
-                  background: gygIntegrationStatus?.credentialsReady ? '#f0fdf4' : '#fffbeb',
-                  border: `1px solid ${gygIntegrationStatus?.credentialsReady ? '#b8e6b8' : '#fcd34d'}`,
-                  borderRadius:'12px',
-                  padding:'18px',
-                  marginBottom:'16px'
-                }}>
-                  <div style={{ fontSize:'15px', fontWeight:'900', color:gygIntegrationStatus?.credentialsReady?'#006600':'#92400e', marginBottom:'10px' }}>
+                <div className={`pmy-ds-state-panel ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
+                  <div className={`pmy-ds-state-title ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
                     {gygIntegrationStatus?.credentialsReady ? '✅ Backend GYG pronto para testes' : '🟡 Credenciais do Integrator Portal pendentes'}
                   </div>
                   <div className="pmy-ds-migrated-zwhy5l">
@@ -2665,13 +2659,12 @@ function CentralDeReservasContent() {
                       </label>
 
                       {gygConfigMessage && (
-                        <div style={{ fontSize:'11px', color:gygConfigMessage.includes('salva')?'#006600':'#a40000', marginTop:'10px' }}>
+                        <div className={`pmy-ds-inline-message ${gygConfigMessage.includes('salva') ? "is-success" : "is-danger"}`}>
                           {gygConfigMessage}
                         </div>
                       )}
 
-                      <button type="button" className="pmy-btn-submit" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}
-                        style={{ marginTop:'12px', opacity:gygConfigSaving?0.6:1 }}>
+                      <button type="button" className="pmy-btn-submit pmy-u-mt-3" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}>
                         {gygConfigSaving ? ui('Salvando...','Saving...') : ui('💾 Salvar configuração GYG','💾 Save GYG configuration')}
                       </button>
                     </>
@@ -2805,8 +2798,7 @@ function CentralDeReservasContent() {
 
                 <button className="pmy-btn-submit"
                   onClick={() => handleConfirmConnect(connectingPlatform)}
-                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}
-                  style={{ opacity: (!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())) ? 0.5 : 1 }}>
+                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}>
                   ✓ Ativar Integração com {platform.name}
                 </button>
 
@@ -2869,14 +2861,7 @@ function CentralDeReservasContent() {
                     booking.platform || 'Central';
 
                   return (
-                    <div key={booking.id} style={{
-                      display:'grid',
-                      gridTemplateColumns:'1fr auto',
-                      gap:'12px',
-                      alignItems:'center',
-                      padding:'11px 0',
-                      borderBottom:i===dayBookings.length-1?'none':'1px solid #eee'
-                    }}>
+                    <div key={booking.id} className={`pmy-ds-booking-row ${i === dayBookings.length - 1 ? "is-last" : ""}`}>
                       <div>
                         <div className="pmy-ds-migrated-1i4hdds">
                           {tour?.title || 'Tour'}
@@ -2892,14 +2877,7 @@ function CentralDeReservasContent() {
                           {booking.seniors > 0 ? `Senior ${booking.seniors}` : ''}
                         </div>
                       </div>
-                      <span style={{
-                        fontSize:'10px',
-                        fontWeight:'800',
-                        padding:'5px 8px',
-                        borderRadius:'12px',
-                        background:booking.status==='CONFIRMED'?'#eaf8ea':'#fff4d6',
-                        color:booking.status==='CONFIRMED'?'#087a08':'#9a6700'
-                      }}>
+                      <span className={`pmy-ds-booking-status ${booking.status === 'CONFIRMED' ? "is-confirmed" : "is-pending"}`}>
                         {booking.status==='CONFIRMED'?ui('CONFIRMADA','CONFIRMED'):ui('PENDENTE','PENDING')}
                       </span>
                     </div>
@@ -3126,7 +3104,7 @@ function CentralDeReservasContent() {
                         {platformLabel(b.platform)} · {new Date(b.startTime).toLocaleDateString(lang==='pt'?'pt-PT':'en-GB')} · {Number(b.totalParticipants || 0)} pax
                       </div>
                     </div>
-                    <span style={{ color:moneyValue(b)!==null&&bookingCurrency(b)?'var(--primary-green)':'#b45309', fontWeight:'800' }}>
+                    <span className={moneyValue(b)!==null&&bookingCurrency(b) ? "pmy-ds-state-text is-success pmy-u-extrabold" : "pmy-ds-state-text is-warning pmy-u-extrabold"}>
                       {moneyValue(b)!==null&&bookingCurrency(b) ? formatMoney(moneyValue(b), bookingCurrency(b)) : (lang==='pt'?'Sem valor':'No value')}
                     </span>
                   </div>
@@ -3152,8 +3130,8 @@ function CentralDeReservasContent() {
               <div className="pmy-ds-migrated-1edjp0n">{pricedConfirmedBookings.length}</div>
               <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'reservas usadas no cálculo':'bookings used in calculation'}</div>
             </div>
-            <div style={{ background:missingFinancialBookings.length?'#fff7ed':'#f0fdf4', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'12px' }}>
-              <div style={{ fontSize:'20px', fontWeight:'900', color:missingFinancialBookings.length?'#c2410c':'#166534' }}>{missingFinancialBookings.length}</div>
+            <div className={`pmy-ds-metric-state ${missingFinancialBookings.length ? "is-warning" : "is-success"}`}>
+              <div className={`pmy-ds-metric-state__value ${missingFinancialBookings.length ? "is-warning" : "is-success"}`}>{missingFinancialBookings.length}</div>
               <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'reservas sem valor':'bookings without value'}</div>
             </div>
           </div>
