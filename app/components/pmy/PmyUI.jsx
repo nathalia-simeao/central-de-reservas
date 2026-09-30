@@ -206,7 +206,7 @@ export function EmptyState({
         <span className="pmy-ds-empty__icon"><Icon name={icon} size={compact ? 19 : 22} /></span>
         <strong className="pmy-ds-empty__title">{title}</strong>
         {description ? <span className="pmy-ds-empty__description">{description}</span> : null}
-        {action ? <div className="pmy-ds-row" style={{ justifyContent: "center", marginTop: 14 }}>{action}</div> : null}
+        {action ? <div className="pmy-ds-empty__actions">{action}</div> : null}
       </div>
     </div>
   );
