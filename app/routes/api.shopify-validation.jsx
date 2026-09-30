@@ -502,12 +502,15 @@ async function validationStatus(admin, orderId = null) {
     (capacityReducedNow ? availabilityCurrent?.occupiedSeats : null);
 
   const cancellationRequestedAt = clean(baseline.cancellationRequestedAt);
-  const cancellationRequested = Boolean(cancellationRequestedAt);
   const bookingStatus = String(booking?.status || "").toUpperCase();
   const bookingCancelled = ["CANCELED", "CANCELLED"].includes(bookingStatus);
   const orderCancelled = Boolean(
     shopifyOrder?.cancelledAt || cancellationWebhook?.payload?.cancelled_at,
   );
+  const historicalCancellationObserved =
+    !cancellationRequestedAt && orderCancelled;
+  const cancellationRequested =
+    Boolean(cancellationRequestedAt) || historicalCancellationObserved;
 
   const hasRemainingAfterBooking =
     remainingAfterBooking !== null &&
@@ -560,7 +563,14 @@ async function validationStatus(admin, orderId = null) {
     cancellationWebhook?.status === "FAILED";
 
   let status = "WAITING";
-  if (creationWebhookFailed || cancellationWebhookFailed) {
+  const historicalCancellationIncomplete =
+    historicalCancellationObserved && !cancellationComplete;
+
+  if (
+    creationWebhookFailed ||
+    cancellationWebhookFailed ||
+    historicalCancellationIncomplete
+  ) {
     status = "FAILED";
   } else if (cancellationRequested) {
     status = cancellationComplete ? "FULLY_PASSED" : "CANCELLATION_WAITING";
@@ -628,7 +638,9 @@ async function validationStatus(admin, orderId = null) {
       : null,
     cancellation: {
       requested: cancellationRequested,
-      requestedAt: cancellationRequestedAt || null,
+      requestedAt:
+        cancellationRequestedAt ||
+        (historicalCancellationObserved ? shopifyOrder?.cancelledAt || null : null),
       jobId: clean(baseline.cancellationJobId) || null,
       jobDoneAtRequest:
         typeof baseline.cancellationJobDoneAtRequest === "boolean"
@@ -656,7 +668,9 @@ async function validationStatus(admin, orderId = null) {
     : cancellationWebhookFailed
       ? cancellationWebhook?.error ||
         "Webhook Shopify de cancelamento falhou."
-      : null;
+      : historicalCancellationIncomplete
+        ? "O pedido de um teste antigo já foi cancelado, mas não há evidência completa do ciclo cancelamento → Booking cancelado → vaga devolvida. Execute um novo teste."
+        : null;
 
   const eventStatus =
     status === "FULLY_PASSED"
