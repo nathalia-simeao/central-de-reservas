@@ -4634,3 +4634,28 @@
   background: var(--pmy-danger-soft);
   color: var(--pmy-danger);
 }
+
+
+/* Shopify-sourced guide profile media */
+.pmy-guide-profile-video {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  border-radius: var(--pmy-radius-sm);
+  object-fit: contain;
+}
+
+.pmy-guide-profile-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--pmy-space-3);
+}
+
+.pmy-guide-profile-gallery img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--pmy-radius-sm);
+  border: 1px solid var(--pmy-ds-border);
+}
