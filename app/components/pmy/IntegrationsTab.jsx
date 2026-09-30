@@ -226,7 +226,7 @@ export default function IntegrationsTab(props) {
                           disabled={
                             shopifyValidationLoading ||
                             shopifyValidationCancelLoading ||
-                            ['WAITING', 'CANCELLATION_WAITING'].includes(shopifyValidation?.status)
+                            ['WAITING', 'PASSED', 'CANCELLATION_WAITING'].includes(shopifyValidation?.status)
                           }
                           className="pmy-btn-submit pmy-ds-compact-action"
                         >
@@ -234,9 +234,11 @@ export default function IntegrationsTab(props) {
                             ? tr('⏳ Criando pedido...','⏳ Creating order...')
                             : shopifyValidation?.status === 'WAITING'
                               ? tr('⏳ Aguardando webhook...','⏳ Waiting for webhook...')
-                              : shopifyValidation?.status === 'CANCELLATION_WAITING'
-                                ? tr('⏳ Validando cancelamento...','⏳ Validating cancellation...')
-                                : tr('▶ Executar teste real','▶ Run real test')}
+                              : shopifyValidation?.status === 'PASSED'
+                                ? tr('↩ Cancele o teste atual','↩ Cancel current test')
+                                : shopifyValidation?.status === 'CANCELLATION_WAITING'
+                                  ? tr('⏳ Validando cancelamento...','⏳ Validating cancellation...')
+                                  : tr('▶ Executar teste real','▶ Run real test')}
                         </button>
                       </div>
                     </div>
