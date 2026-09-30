@@ -129,6 +129,30 @@ export function Tabs({ items = [], value, onChange, ariaLabel = "Tabs", classNam
   );
 }
 
+export function Switch({
+  checked,
+  onChange,
+  label,
+  meta,
+  className = "",
+  ...props
+}) {
+  return (
+    <label className={["pmy-ds-switch", className].filter(Boolean).join(" ")}>
+      <input
+        type="checkbox"
+        className="pmy-ds-switch__input"
+        checked={checked}
+        onChange={(event) => onChange?.(event.target.checked, event)}
+        {...props}
+      />
+      <span className="pmy-ds-switch__track" aria-hidden="true" />
+      {label ? <span className="pmy-ds-switch__label">{label}</span> : null}
+      {meta ? <span className="pmy-ds-switch__meta">{meta}</span> : null}
+    </label>
+  );
+}
+
 export function FormField({
   label,
   hint,
