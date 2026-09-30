@@ -225,6 +225,209 @@ async function lockTourCapacity(tx, tourId) {
   `;
 }
 
+
+export async function convertBookingHoldWithCapacityGuard(
+  prisma,
+  {
+    holdId,
+    tourId,
+    startTime,
+    platform = "SHOPIFY",
+    externalBookingId = null,
+    requestedSeats,
+    bookingData,
+  },
+) {
+  const seats = positiveInt(requestedSeats, 0);
+  const bookingPlatform = String(platform || "SHOPIFY").trim().toUpperCase();
+
+  if (!holdId) {
+    return {
+      accepted: false,
+      reason: "HOLD_ID_REQUIRED",
+      message: "A checkout hold ID is required.",
+    };
+  }
+
+  if (seats < 1) {
+    return {
+      accepted: false,
+      reason: "INVALID_PARTICIPANT_COUNT",
+      message: "Reservation must contain at least one participant.",
+    };
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      await lockTourCapacity(tx, tourId);
+
+      if (externalBookingId) {
+        const existingOrderBooking = await tx.booking.findFirst({
+          where: {
+            platform: bookingPlatform,
+            externalBookingId,
+          },
+        });
+
+        if (existingOrderBooking) {
+          return {
+            accepted: true,
+            idempotent: true,
+            reusedHold: existingOrderBooking.id === holdId,
+            booking: existingOrderBooking,
+          };
+        }
+      }
+
+      const hold = await tx.booking.findUnique({
+        where: { id: holdId },
+      });
+
+      if (!hold) {
+        return {
+          accepted: false,
+          reason: "HOLD_NOT_FOUND",
+          message: "The checkout hold no longer exists.",
+        };
+      }
+
+      const holdStart = new Date(hold.startTime);
+      const requestedStart = new Date(startTime);
+      const sameSlot =
+        hold.tourId === tourId &&
+        !Number.isNaN(holdStart.getTime()) &&
+        !Number.isNaN(requestedStart.getTime()) &&
+        Math.abs(holdStart.getTime() - requestedStart.getTime()) < 60 * 1000;
+      const sameSeats = bookingSeatCount(hold) === seats || hold.totalParticipants === seats;
+
+      if (!sameSlot || !sameSeats) {
+        return {
+          accepted: false,
+          reason: "HOLD_MISMATCH",
+          message: "The paid order does not match the reserved checkout hold.",
+          hold,
+        };
+      }
+
+      const now = new Date();
+      const expiresAt = hold.holdExpiresAt ? new Date(hold.holdExpiresAt) : null;
+      const activeHold =
+        hold.status === "PENDING" &&
+        (!expiresAt || expiresAt > now);
+
+      let availability = null;
+
+      if (!activeHold) {
+        availability = await getCentralAvailability(tx, {
+          tourId,
+          startTime,
+          platform: bookingPlatform,
+          requestedSeats: seats,
+          excludeBookingId: hold.id,
+        });
+
+        if (!availability.canAccept) {
+          return {
+            accepted: false,
+            reason: availability.blocked
+              ? "HOLD_EXPIRED_SLOT_BLOCKED"
+              : "HOLD_EXPIRED_INSUFFICIENT_CAPACITY",
+            message: availability.blocked
+              ? "The checkout hold expired and the slot is now blocked."
+              : `The checkout hold expired and only ${availability.remainingSeats} seat(s) remain.`,
+            availability,
+            hold,
+          };
+        }
+      }
+
+      const nextStatus = bookingData?.status || "CONFIRMED";
+      const booking = await tx.booking.update({
+        where: { id: hold.id },
+        data: {
+          ...bookingData,
+          tourId,
+          startTime,
+          platform: bookingPlatform,
+          externalBookingId:
+            externalBookingId || bookingData?.externalBookingId || hold.externalBookingId,
+          totalParticipants: seats,
+          holdExpiresAt:
+            nextStatus === "CONFIRMED"
+              ? null
+              : activeHold
+                ? hold.holdExpiresAt
+                : null,
+          cancelReason: null,
+        },
+      });
+
+      return {
+        accepted: true,
+        idempotent: false,
+        reusedHold: true,
+        reacquiredCapacity: !activeHold,
+        booking,
+        availability,
+      };
+    },
+    {
+      maxWait: 5000,
+      timeout: 10000,
+    },
+  );
+}
+
+export async function releaseBookingHold(
+  prisma,
+  holdId,
+  reason = "checkout_hold_released",
+) {
+  if (!holdId) return { released: false, booking: null };
+
+  const current = await prisma.booking.findUnique({
+    where: { id: holdId },
+  });
+
+  if (!current || current.status !== "PENDING") {
+    return { released: false, booking: current || null };
+  }
+
+  const now = new Date();
+  const updated = await prisma.booking.updateMany({
+    where: {
+      id: holdId,
+      status: "PENDING",
+    },
+    data: {
+      status: "CANCELED",
+      syncStatus: "HOLD_RELEASED",
+      holdExpiresAt: now,
+      cancelReason: reason,
+      lastSyncedAt: now,
+    },
+  });
+
+  if (updated.count !== 1) {
+    return {
+      released: false,
+      booking: await prisma.booking.findUnique({ where: { id: holdId } }),
+    };
+  }
+
+  return {
+    released: true,
+    booking: {
+      ...current,
+      status: "CANCELED",
+      syncStatus: "HOLD_RELEASED",
+      holdExpiresAt: now,
+      cancelReason: reason,
+      lastSyncedAt: now,
+    },
+  };
+}
+
 export async function createBookingWithCapacityGuard(
   prisma,
   {
