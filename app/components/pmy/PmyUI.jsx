@@ -36,6 +36,16 @@ const ICON_PATHS = {
   refresh: <><path d="M20 6v5h-5"/><path d="M4 18v-5h5"/><path d="M18 9a7 7 0 0 0-12-2L4 11M6 15a7 7 0 0 0 12 2l2-4"/></>,
   filter: <><path d="M4 6h16M7 12h10M10 18h4"/></>,
   eye: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></>,
+  store: <><path d="M4 9v11h16V9"/><path d="M3 9l2-5h14l2 5"/><path d="M8 20v-6h8v6"/><path d="M3 9c0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0"/></>,
+  globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></>,
+  building: <><path d="M4 21V7l8-4 8 4v14M8 10h2M14 10h2M8 14h2M14 14h2M10 21v-4h4v4"/></>,
+  star: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.9-5.4 2.9 1-6-4.4-4.3 6.1-.9L12 3Z"/>,
+  mapPin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1116 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
+  mail: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
+  phone: <path d="M7 3H4a1 1 0 00-1 1c0 9.4 7.6 17 17 17a1 1 0 001-1v-3l-4-2-2 2c-3.5-1.5-6.5-4.5-8-8l2-2-2-4Z"/>,
+  camera: <><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></>,
+  save: <><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></>,
+  menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
 };
 
 export function Icon({ name, size = 18, strokeWidth = 1.8, className = "", ...props }) {
@@ -206,7 +216,7 @@ export function EmptyState({
         <span className="pmy-ds-empty__icon"><Icon name={icon} size={compact ? 19 : 22} /></span>
         <strong className="pmy-ds-empty__title">{title}</strong>
         {description ? <span className="pmy-ds-empty__description">{description}</span> : null}
-        {action ? <div className="pmy-ds-row" style={{ justifyContent: "center", marginTop: 14 }}>{action}</div> : null}
+        {action ? <div className="pmy-ds-empty__actions">{action}</div> : null}
       </div>
     </div>
   );

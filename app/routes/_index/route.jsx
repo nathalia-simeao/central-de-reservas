@@ -9,6 +9,7 @@ import GuidesTab from "../../components/pmy/GuidesTab";
 import AutomationsTab from "../../components/pmy/AutomationsTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import MediaTab from "../../components/pmy/MediaTab";
+import { Icon } from "../../components/pmy/PmyUI";
 
 export { loader, action } from "../../services/central-route.server";
 
@@ -151,8 +152,8 @@ const ddiList = [
 
 const translations = {
   pt: {
-    menu_dashboard: "📊 Dashboard", menu_agenda: "📅 Agenda Central", menu_integrations: "🔗 Integrações",
-    menu_guides: "👥 Guias", menu_automations: "🤖 Automações", menu_settings: "⚙️ Configurações",
+    menu_dashboard: "Dashboard", menu_agenda: "Agenda Central", menu_integrations: "Integrações",
+    menu_guides: "Guias", menu_automations: "Automações", menu_settings: "Configurações",
     dash_title: "Visão Geral", dash_total_sales: "Total de Vendas", dash_vs_last_month: "no período selecionado",
     dash_revenue_confirmed: "Receita Confirmada", dash_revenue_estimated: "Receita Estimada",
     dash_canceled_tours: "Tours Cancelados", dash_upcoming: "Próximos Tours", dash_performance: "Desempenho por Passeio",
@@ -165,12 +166,12 @@ const translations = {
     source_site: "Site Próprio", source_viator: "Viator", source_gyg: "GetYourGuide", source_manual: "Manual",
     modal_sales_details: "Detalhamento de Vendas", modal_confirmed_details: "Detalhamento da Receita Confirmada",
     modal_estimated_details: "Detalhamento da Receita Estimada", modal_canceled_details: "Motivos de Cancelamento",
-    modal_upcoming_details: "Lista de Próximos Tours", views: "visualizações", btn_format: "⚙️ Formato",
-    form_new_booking: "🎟️ Inserir Nova Reserva", form_new_block: "🔒 Inserir Bloqueio Manual",
+    modal_upcoming_details: "Lista de Próximos Tours", views: "visualizações", btn_format: "Formato",
+    form_new_booking: "Inserir Nova Reserva", form_new_block: "Inserir Bloqueio Manual",
     form_select_tour: "Selecione o Tour", form_customer: "Nome do Cliente (Obrigatório):",
     form_email: "E-mail (Opcional):", form_phone: "Telefone / WhatsApp (Opcional):",
     form_lang: "Idioma Base do Tour:", form_qty: "Quantidade de Ingressos:",
-    form_date_time: "Data do Bloqueio Específica:", form_btn_link: "🔗 Gerar Link de Pagamento",
+    form_date_time: "Data do Bloqueio Específica:", form_btn_link: "Gerar Link de Pagamento",
     form_btn_block: "Bloquear Vagas / Horários", tour_capacity: "Capacidade Máxima de Vagas:",
     guide_assigned: "Guia Escalado:", no_guide: "Sem guia atribuído", registered_guides: "Equipe de Guias",
     form_new_guide: "Cadastrar Novo Guia", form_guide_name: "Nome e Sobrenome:", form_guide_email: "E-mail do Guia:",
@@ -180,15 +181,15 @@ const translations = {
     int_connected: "Conectado", int_configure: "Configurar Conexão", int_connect: "Vincular Conta",
     int_desc_viator: "Sincronize horários, vagas e passageiros.", int_desc_gyg: "Puxe reservas e atualize a disponibilidade.",
     int_desc_ta: "Importe suas avaliações e sincronize widgets.", int_desc_shopify: "Pedidos feitos no site caem aqui na hora.",
-    int_custom_title: "🔗 Conectar Nova Plataforma via API", int_custom_name: "Nome da Plataforma:",
+    int_custom_title: "Conectar Nova Plataforma via API", int_custom_name: "Nome da Plataforma:",
     int_custom_url: "Endpoint da API (URL):", int_custom_key: "Chave da API / Token de Acesso:",
     int_custom_btn: "Ativar Integração Customizada",
     block_days_week: "Dias da Semana Bloqueados Sempre (ex: 0, 1, 2):", block_select_hour: "Horário para Bloqueio:",
     view_1d: "1 dia", view_3d: "3 dias", view_7d: "7 dias", view_month: "Mês todo"
   },
   en: {
-    menu_dashboard: "📊 Dashboard", menu_agenda: "📅 Central Agenda", menu_integrations: "🔗 Integrations",
-    menu_guides: "👥 Guides", menu_automations: "🤖 Automations", menu_settings: "⚙️ Settings",
+    menu_dashboard: "Dashboard", menu_agenda: "Central Agenda", menu_integrations: "Integrations",
+    menu_guides: "Guides", menu_automations: "Automations", menu_settings: "Settings",
     dash_title: "Overview", dash_total_sales: "Total Sales", dash_vs_last_month: "in selected period",
     dash_revenue_confirmed: "Confirmed Revenue", dash_revenue_estimated: "Estimated Revenue",
     dash_canceled_tours: "Canceled Tours", dash_upcoming: "Upcoming Tours", dash_performance: "Tour Performance",
@@ -201,12 +202,12 @@ const translations = {
     source_site: "Own Website", source_viator: "Viator", source_gyg: "GetYourGuide", source_manual: "Manual",
     modal_sales_details: "Sales Breakdown", modal_confirmed_details: "Confirmed Revenue Breakdown",
     modal_estimated_details: "Estimated Revenue Breakdown", modal_canceled_details: "Cancellation Details",
-    modal_upcoming_details: "Upcoming Tours List", views: "views", btn_format: "⚙️ Shape",
-    form_new_booking: "🎟️ Insert New Booking", form_new_block: "🔒 Insert Manual Block",
+    modal_upcoming_details: "Upcoming Tours List", views: "views", btn_format: "Shape",
+    form_new_booking: "Insert New Booking", form_new_block: "Insert Manual Block",
     form_select_tour: "Select Tour", form_customer: "Customer Name (Required):",
     form_email: "Email (Optional):", form_phone: "Phone / WhatsApp (Optional):",
     form_lang: "Tour Language:", form_qty: "Ticket Quantity:",
-    form_date_time: "Specific Block Date:", form_btn_link: "🔗 Generate Payment Link",
+    form_date_time: "Specific Block Date:", form_btn_link: "Generate Payment Link",
     form_btn_block: "Block Slots / Times", tour_capacity: "Max Capacity Slots:",
     guide_assigned: "Assigned Guide:", no_guide: "No guide assigned", registered_guides: "Guides Staff",
     form_new_guide: "Register New Guide", form_guide_name: "Full Name:", form_guide_email: "Guide Email:",
@@ -216,7 +217,7 @@ const translations = {
     int_connected: "Connected", int_configure: "Configure Connection", int_connect: "Link Account",
     int_desc_viator: "Sync schedules, availability, and travelers.", int_desc_gyg: "Fetch bookings and update availability.",
     int_desc_ta: "Reviews, ratings, photos and reputation content.", int_desc_shopify: "Website orders appear here instantly.",
-    int_custom_title: "🔗 Connect New Platform via API", int_custom_name: "Platform Name:",
+    int_custom_title: "Connect New Platform via API", int_custom_name: "Platform Name:",
     int_custom_url: "API Endpoint (URL):", int_custom_key: "API Key / Access Token:",
     int_custom_btn: "Activate Custom Integration",
     block_days_week: "Always Blocked Weekdays (e.g., 0, 1, 2):", block_select_hour: "Time slot to Block:",
@@ -225,27 +226,27 @@ const translations = {
 };
 
 const allPlatforms = [
-  { key: "shopify", logo: "🛍️", name: "Shopify Store",
+  { key: "shopify", icon: "store", name: "Shopify Store",
     desc: { pt: "Pedidos do site caem aqui na hora. Canal de venda próprio.", en: "Website orders appear here instantly. Your own sales channel." },
     authType: "oauth", oauthLabel: "Entrar com Shopify", oauthUrl: "https://accounts.shopify.com/",
     docsUrl: "https://shopify.dev/docs/api/admin-rest" },
-  { key: "viator", logo: "🧡", name: "Viator",
+  { key: "viator", icon: "ticket", name: "Viator",
     desc: { pt: "Sincronize horários, vagas e passageiros automaticamente.", en: "Sync schedules, availability and travelers automatically." },
     authType: "api", oauthLabel: "Acessar Portal Viator", oauthUrl: "https://supplier.viator.com/",
     docsUrl: "https://docs.viator.com/partner-api/" },
-  { key: "getyourguide", logo: "💛", name: "GetYourGuide",
+  { key: "getyourguide", icon: "bookings", name: "GetYourGuide",
     desc: { pt: "Puxe reservas e atualize disponibilidade em tempo real.", en: "Fetch bookings and sync availability in real time." },
     authType: "api", oauthLabel: "Acessar Portal GYG", oauthUrl: "https://supplier.getyourguide.com/",
     docsUrl: "https://integrator.getyourguide.com/documentation/overview" },
-  { key: "tripadvisor", logo: "🦉", name: "TripAdvisor",
+  { key: "tripadvisor", icon: "star", name: "TripAdvisor",
     desc: { pt: "Conteúdo e reputação: reviews, ratings, fotos e dados de localização. As reservas de experiências são distribuídas pela Viator.", en: "Content and reputation: reviews, ratings, photos and location data. Experience bookings are distributed through Viator." },
     authType: "content", oauthLabel: "Acessar Tripadvisor", oauthUrl: "https://www.tripadvisor.com/Owners",
     docsUrl: "https://docs.terra.tripadvisor.com/docs/overview" },
-  { key: "headout", logo: "🌍", name: "Headout",
+  { key: "headout", icon: "globe", name: "Headout",
     desc: { pt: "Distribua seus tours para milhões de viajantes globais.", en: "Distribute your tours to millions of global travelers." },
     authType: "api", oauthLabel: "Acessar Portal Headout", oauthUrl: "https://www.headout.com/partner/login",
     docsUrl: "https://developer.headout.com/" },
-  { key: "civitatis", logo: "🏛️", name: "Civitatis",
+  { key: "civitatis", icon: "building", name: "Civitatis",
     desc: { pt: "Alcance viajantes de língua hispânica. Sincronize atividades e reservas.", en: "Reach Spanish-speaking travelers. Sync activities and bookings." },
     authType: "api", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
     docsUrl: "https://www.civitatis.com/en/partners/" },
@@ -330,84 +331,58 @@ function PickerModalContent({ allImages, onSelect }) {
   return (
     <div>
       {/* Header */}
-      <div style={{ fontSize:'13px', color:'#666', marginBottom:'14px' }}>
+      <div className="pmy-ds-migrated-k855nz">
         Busque e clique em uma imagem para selecioná-la.
       </div>
 
       {/* Campo de busca */}
-      <div style={{ position:'relative', marginBottom:'14px' }}>
-        <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', fontSize:'14px', pointerEvents:'none' }}>🔍</span>
+      <div className="pmy-ds-migrated-5ojkha">
+        <span className="pmy-ds-migrated-w4fura"><Icon name="search" size={15} /></span>
         <input
           type="text"
           placeholder="Buscar por nome da imagem..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           autoFocus
-          style={{ width:'100%', padding:'9px 12px 9px 36px', border:'1.5px solid #ddd', borderRadius:'8px', fontSize:'13px', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+          className="pmy-ds-migrated-bitygt"
           onFocus={e => e.target.style.borderColor = '#006600'}
           onBlur={e  => e.target.style.borderColor = '#ddd'}
         />
         {search && (
           <button onClick={() => setSearch("")}
-            style={{ position:'absolute', right:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#aaa', lineHeight:1 }}>×</button>
+            className="pmy-ds-migrated-142l1o3">×</button>
         )}
       </div>
 
       {/* Contador */}
-      <div style={{ fontSize:'12px', color:'#aaa', marginBottom:'10px' }}>
+      <div className="pmy-ds-migrated-16q5nnv">
         {filtered.length} de {allImages.length} imagens
         {search && <span> para "<strong>{search}</strong>"</span>}
       </div>
 
       {/* Grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', maxHeight:'360px', overflowY:'auto' }}>
+      <div className="pmy-ds-migrated-1j056d9">
         {filtered.map(img => (
           <div key={img.id || img.url} onClick={() => onSelect(img.url)}
-            style={{ cursor:'pointer', borderRadius:'10px', overflow:'hidden', border:'2px solid #eee', transition:'0.15s' }}
+            className="pmy-ds-migrated-1vqm17k"
             onMouseOver={e => e.currentTarget.style.borderColor = '#006600'}
             onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
             <img src={img.url} alt={img.label || img.filename}
-              style={{ width:'100%', height:'80px', objectFit:'cover', display:'block' }}
+              className="pmy-ds-migrated-1595bs8"
               onError={e => { e.target.style.display='none'; }} />
-            <div style={{ padding:'4px 6px', fontSize:'10px', color:'#888', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            <div className="pmy-ds-migrated-1b43wd">
               {img.label || img.filename || "Sem nome"}
             </div>
           </div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'30px', color:'#aaa', fontSize:'13px' }}>
+          <div className="pmy-ds-migrated-1otk903">
             {search ? `Nenhuma imagem encontrada para "${search}"` : "Nenhuma imagem disponível. Clique em Abrir Biblioteca acima."}
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function PmyNavIcon({ name }) {
-  const common = {
-    width: 19,
-    height: 19,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    "aria-hidden": true,
-  };
-
-  const paths = {
-    dashboard: <><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
-    agenda: <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></>,
-    integracoes: <><path d="M8.5 14.5l-2 2a3.5 3.5 0 105 5l2-2"/><path d="M15.5 9.5l2-2a3.5 3.5 0 10-5-5l-2 2"/><path d="M9 15l6-6"/></>,
-    guias: <><path d="M16 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></>,
-    automacoes: <><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/><circle cx="12" cy="12" r="4"/></>,
-    midias: <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5L5 20"/></>,
-    configuracoes: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1V21h-4v-.1A1.7 1.7 0 008.6 19.4a1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4H3v-4h.1A1.7 1.7 0 004.6 8.6a1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1V3h4v.1A1.7 1.7 0 0015.4 4.6a1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 9c.16.38.4.72.72 1 .3.27.7.41 1.1.4H21v4h-.1a1.7 1.7 0 00-1.5.6z"/></>,
-  };
-
-  return <svg {...common}>{paths[name] || paths.dashboard}</svg>;
 }
 
 function isDarkThemeColor(value) {
@@ -656,11 +631,11 @@ function CentralDeReservasContent() {
   const ui = (pt, en) => lang === "en" ? en : pt;
   const navItems = [
     { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Dashboard" : "Dashboard" },
-    { key: "agenda", icon: "agenda", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
-    { key: "integracoes", icon: "integracoes", label: lang === "pt" ? "Integrações" : "Integrations" },
-    { key: "guias", icon: "guias", label: lang === "pt" ? "Guias" : "Guides" },
-    { key: "automacoes", icon: "automacoes", label: lang === "pt" ? "Automações" : "Automations" },
-    { key: "midias", icon: "midias", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
+    { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
+    { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
+    { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
+    { key: "automacoes", icon: "automation", label: lang === "pt" ? "Automações" : "Automations" },
+    { key: "midias", icon: "media", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
   ];
 
   const openNavigationTab = (key) => {
@@ -1365,23 +1340,23 @@ function CentralDeReservasContent() {
   };
 
   const syncProviderMeta = {
-    SHOPIFY: { label: "Shopify", icon: "🛍️" },
-    GETYOURGUIDE: { label: "GetYourGuide", icon: "🎟️" },
-    VIATOR: { label: "Viator", icon: "🟢" },
-    CIVITATIS: { label: "Civitatis", icon: "🔴" },
-    HEADOUT: { label: "Headout", icon: "🌍" },
-    CENTRAL: { label: "Central PMY", icon: "🧭" },
-    MANUAL: { label: "Manual", icon: "✍️" },
+    SHOPIFY: { label: "Shopify", icon: "store" },
+    GETYOURGUIDE: { label: "GetYourGuide", icon: "bookings" },
+    VIATOR: { label: "Viator", icon: "ticket" },
+    CIVITATIS: { label: "Civitatis", icon: "building" },
+    HEADOUT: { label: "Headout", icon: "globe" },
+    CENTRAL: { label: "Central PMY", icon: "dashboard" },
+    MANUAL: { label: "Manual", icon: "file" },
   };
 
   const syncStatusMeta = {
-    COMPLETED: { icon: "✅", label: "Sincronizado", bg: "#ecfdf3", color: "#166534" },
-    SKIPPED: { icon: "↪️", label: "Ignorado", bg: "#eff6ff", color: "#1d4ed8" },
-    PENDING: { icon: "⏳", label: "Pendente", bg: "#fff7ed", color: "#9a3412" },
-    PROCESSING: { icon: "🔄", label: "Processando", bg: "#eff6ff", color: "#1d4ed8" },
-    RETRY: { icon: "🟠", label: "Nova tentativa", bg: "#fff7ed", color: "#c2410c" },
-    BLOCKED: { icon: "⚠️", label: "Bloqueado", bg: "#fffbeb", color: "#92400e" },
-    DEAD: { icon: "❌", label: "Falhou", bg: "#fef2f2", color: "#b91c1c" },
+    COMPLETED: { label: "Sincronizado" },
+    SKIPPED: { label: "Ignorado" },
+    PENDING: { label: "Pendente" },
+    PROCESSING: { label: "Processando" },
+    RETRY: { label: "Nova tentativa" },
+    BLOCKED: { label: "Bloqueado" },
+    DEAD: { label: "Falhou" },
   };
 
   const formatSyncTime = (value) => {
@@ -2404,7 +2379,7 @@ function CentralDeReservasContent() {
     const pad = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
     const totalDays = new Date(currentYear, currentMonth+1, 0).getDate();
     let cells = [];
-    for (let p=0; p<pad; p++) cells.push(<div key={`e-${p}`} className="pmy-calendar-day empty" style={{opacity:0.15,cursor:'default',background:'none',border:'none'}}></div>);
+    for (let p=0; p<pad; p++) cells.push(<div key={`e-${p}`} className="pmy-calendar-day empty pmy-ds-migrated-a68ndl" ></div>);
     for (let day=1; day<=totalDays; day++) {
       const wn = weekdays[(day+pad-1)%7]||weekdays[0];
       cells.push(renderDayCell(day, wn.split('-')[0], `d-${day}`));
@@ -2485,14 +2460,14 @@ function CentralDeReservasContent() {
 
     return (
       <div className="pmy-modal-overlay" onClick={() => setConnectingPlatform(null)}>
-        <div className="pmy-connect-modal" style={{ maxHeight:'90vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
+        <div className="pmy-connect-modal pmy-ds-migrated-nz4pdt"  onClick={e => e.stopPropagation()}>
 
           {/* Header */}
-          <div style={{ padding:'25px 25px 0', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-            <div style={{ flex:1, textAlign:'center' }}>
-              <span style={{ fontSize:'50px', display:'block', marginBottom:'8px' }}>{platform.logo}</span>
-              <div style={{ fontSize:'21px', fontWeight:'900', color:'var(--text-dark)', marginBottom:'5px' }}>{platform.name}</div>
-              <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'18px' }}>
+          <div className="pmy-ds-migrated-551uiq">
+            <div className="pmy-ds-migrated-p1kt1o">
+              <span className="pmy-ds-migrated-1o512c8"><Icon name={platform.icon} size={24} /></span>
+              <div className="pmy-ds-migrated-aeaxj9">{platform.name}</div>
+              <div className="pmy-ds-migrated-6r8r3f">
                 {isTripadvisor
                   ? ui("Conteúdo e reputação · não é canal de reservas", "Content and reputation · not a booking channel")
                   : conn.connected
@@ -2501,51 +2476,51 @@ function CentralDeReservasContent() {
               </div>
             </div>
             <button onClick={() => setConnectingPlatform(null)}
-              style={{ background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#aaa', marginLeft:'10px' }}>&times;</button>
+              className="pmy-ds-migrated-1g3pznn">&times;</button>
           </div>
 
-          <div style={{ padding:'0 25px 25px' }}>
+          <div className="pmy-ds-migrated-16l5m1y">
 
             {/* ── SHOPIFY: já conectado pelo contexto do app ── */}
             {isShopify && (
               <div>
-                <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
-                    <span style={{ fontSize:'22px' }}>✅</span>
-                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>{ui("Shopify conectado automaticamente", "Shopify connected automatically")}</strong>
+                <div className="pmy-ds-migrated-1bihub7">
+                  <div className="pmy-ds-migrated-v4y6wx">
+                    <span className="pmy-ds-migrated-i9ilnf">✅</span>
+                    <strong className="pmy-ds-migrated-1451bbq">{ui("Shopify conectado automaticamente", "Shopify connected automatically")}</strong>
                   </div>
-                  <div style={{ fontSize:'13px', color:'#444', lineHeight:'1.8' }}>
+                  <div className="pmy-ds-migrated-vi0mf">
                     <div>🏢 Loja: <strong>{conn.accountName}</strong></div>
                     <div>🔄 Último sync: <strong>{conn.lastSync}</strong></div>
                     <div>⚙️ Método: <strong>Shopify Admin API (OAuth interno do app)</strong></div>
-                    <div style={{ marginTop:'6px' }}>
+                    <div className="pmy-ds-migrated-j0srg2">
                       📡 Pedidos em tempo real:{' '}
-                      <strong style={{ color: shopifyWebhookStatus?.ok ? '#006600' : '#b45309' }}>
+                      <strong className={shopifyWebhookStatus?.ok ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
                         {shopifyWebhookStatus?.ok ? 'Webhooks ativos' : 'Configuração pendente'}
                       </strong>
                     </div>
                     {shopifyWebhookStatus?.subscriptions?.length > 0 && (
-                      <div style={{ fontSize:'11px', color:'#666', marginTop:'4px' }}>
+                      <div className="pmy-ds-migrated-tz10ua">
                         {shopifyWebhookStatus.subscriptions.map(s => s.topic).join(' · ')}
                       </div>
                     )}
                     {!shopifyWebhookStatus?.ok && shopifyWebhookStatus?.error && (
-                      <div style={{ fontSize:'11px', color:'#a40000', marginTop:'4px' }}>
+                      <div className="pmy-ds-migrated-6nlv6t">
                         {shopifyWebhookStatus.error}
                       </div>
                     )}
                   </div>
                 </div>
-                <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'18px', fontSize:'13px', color:'#92400e', lineHeight:'1.6' }}>
+                <div className="pmy-ds-migrated-1ewrw06">
                   <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> Este app já acessa sua loja via autenticação OAuth do Shopify. Os produtos são puxados automaticamente pelo servidor.
                   Se os produtos não aparecerem, verifique se existem produtos cadastrados em <strong>Produtos → Todos os produtos</strong> no seu painel Shopify e recarregue a página.
                 </div>
-                <div style={{ display:'flex', gap:'10px' }}>
-                  <button className="pmy-btn-submit" onClick={() => { setConnectingPlatform(null); window.location.reload(); }} style={{ flex:1 }}>
+                <div className="pmy-ds-migrated-12y480p">
+                  <button className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => { setConnectingPlatform(null); window.location.reload(); }} >
                     🔄 Recarregar e Sincronizar Produtos
                   </button>
                   <button onClick={() => window.open('https://admin.shopify.com/store/products', '_blank')}
-                    style={{ flex:1, background:'#f5f5f5', border:'1px solid #ddd', borderRadius:'8px', padding:'12px', fontWeight:'700', fontSize:'13px', cursor:'pointer', color:'#555' }}>
+                    className="pmy-ds-migrated-14rz57k">
                     Ver Produtos ↗
                   </button>
                 </div>
@@ -2555,17 +2530,11 @@ function CentralDeReservasContent() {
             {/* ── GETYOURGUIDE: Supplier API v1 real ── */}
             {isGyg && (
               <div>
-                <div style={{
-                  background: gygIntegrationStatus?.credentialsReady ? '#f0fdf4' : '#fffbeb',
-                  border: `1px solid ${gygIntegrationStatus?.credentialsReady ? '#b8e6b8' : '#fcd34d'}`,
-                  borderRadius:'12px',
-                  padding:'18px',
-                  marginBottom:'16px'
-                }}>
-                  <div style={{ fontSize:'15px', fontWeight:'900', color:gygIntegrationStatus?.credentialsReady?'#006600':'#92400e', marginBottom:'10px' }}>
+                <div className={`pmy-ds-state-panel ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
+                  <div className={`pmy-ds-state-title ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
                     {gygIntegrationStatus?.credentialsReady ? '✅ Backend GYG pronto para testes' : '🟡 Credenciais do Integrator Portal pendentes'}
                   </div>
-                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.8' }}>
+                  <div className="pmy-ds-migrated-zwhy5l">
                     <div>🔐 Entrada GYG → PMY: <strong>{gygIntegrationStatus?.incomingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
                     <div>📤 PMY → GYG: <strong>{gygIntegrationStatus?.outgoingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
                     <div>🌐 API GYG: <strong>{gygIntegrationStatus?.apiBaseConfigured ? 'configurada' : 'pendente'}</strong></div>
@@ -2575,8 +2544,8 @@ function CentralDeReservasContent() {
                   </div>
                 </div>
 
-                <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'15px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'8px' }}>{ui("🔌 Endpoints Supplier API v1", "🔌 Supplier API v1 Endpoints")}</div>
+                <div className="pmy-ds-migrated-19khbc6">
+                  <div className="pmy-ds-migrated-169rt21">{ui("🔌 Endpoints Supplier API v1", "🔌 Supplier API v1 Endpoints")}</div>
                   {[
                     'get-availabilities',
                     'reserve',
@@ -2584,22 +2553,22 @@ function CentralDeReservasContent() {
                     'book',
                     'cancel-booking',
                   ].map((endpoint) => (
-                    <div key={endpoint} style={{ fontFamily:'monospace', fontSize:'11px', color:'#555', padding:'3px 0', wordBreak:'break-all' }}>
+                    <div key={endpoint} className="pmy-ds-migrated-imav8e">
                       {gygIntegrationStatus?.endpointBase || '/1'}/{endpoint}
                     </div>
                   ))}
-                  <div style={{ marginTop:'9px', fontSize:'11px', color:'#888', lineHeight:'1.5' }}>
+                  <div className="pmy-ds-migrated-1x192bc">
                     {ui('As credenciais ficam somente no Northflank. Não cole usuário ou senha do GetYourGuide dentro da Central.','Credentials remain only in Northflank. Do not paste your GetYourGuide username or password inside the Central.')}
                   </div>
                 </div>
 
-                <div style={{ background:'#fff', border:'1px solid #e5e5e5', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'13px', fontWeight:'900', color:'var(--primary-green)', marginBottom:'12px' }}>
+                <div className="pmy-ds-migrated-1b0miao">
+                  <div className="pmy-ds-migrated-yf6yxk">
                     🧳 Mapear tour PMY ↔ GetYourGuide
                   </div>
 
-                  <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
-                    <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Tour mestre PMY", "PMY master tour")}</label>
+                  <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >
+                    <label className="pmy-ds-migrated-1ygjrzr">{ui("Tour mestre PMY", "PMY master tour")}</label>
                     <select className="pmy-form-input" value={gygConfigTourId} onChange={(e) => handleGygTourSelection(e.target.value)}>
                       <option value="">{ui("-- Selecione --", "-- Select --")}</option>
                       {(tours || [])
@@ -2614,62 +2583,50 @@ function CentralDeReservasContent() {
 
                   {selectedGygTour && (
                     <>
-                      <div style={{ background:'#f7faf7', border:'1px solid #e0eee0', borderRadius:'8px', padding:'10px', marginBottom:'10px' }}>
-                        <div style={{ fontSize:'10px', color:'#888' }}>{ui("Supplier productId da PMY", "PMY supplier productId")}</div>
-                        <code style={{ fontSize:'11px', color:'#006600', wordBreak:'break-all' }}>{selectedGygTour.id}</code>
-                        <div style={{ fontSize:'10px', color:'#888', marginTop:'6px' }}>
+                      <div className="pmy-ds-migrated-18lu7h0">
+                        <div className="pmy-ds-migrated-qric2k">{ui("Supplier productId da PMY", "PMY supplier productId")}</div>
+                        <code className="pmy-ds-migrated-h8ux69">{selectedGygTour.id}</code>
+                        <div className="pmy-ds-migrated-1k9dgzl">
                           Capacidade central: <strong>{selectedGygTour.maxCapacity}</strong> · fonte: {selectedGygTour.capacitySource}
                         </div>
                       </div>
 
-                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
-                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("ID da atividade/opção no GetYourGuide", "GetYourGuide activity/option ID")}</label>
+                      <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >
+                        <label className="pmy-ds-migrated-1ygjrzr">{ui("ID da atividade/opção no GetYourGuide", "GetYourGuide activity/option ID")}</label>
                         <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
                           placeholder={ui('Cole o ID do produto/opção correspondente no GYG','Paste the corresponding product/option ID from GYG')} />
                       </div>
 
-                      <div className="pmy-form-group" style={{ marginBottom:'10px' }}>
-                        <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>
-                          {ui('Horários reais','Real times')} <span style={{ color:'#888', fontWeight:'400' }}>({ui('HH:MM separados por vírgula','HH:MM separated by commas')})</span>
+                      <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >
+                        <label className="pmy-ds-migrated-1ygjrzr">
+                          {ui('Horários reais','Real times')} <span className="pmy-ds-migrated-fuwqya">({ui('HH:MM separados por vírgula','HH:MM separated by commas')})</span>
                         </label>
                         <input className="pmy-form-input" value={gygConfigSchedule} onChange={(e) => setGygConfigSchedule(e.target.value)}
                           placeholder="Ex.: 09:30, 14:00" />
-                        <div style={{ fontSize:'10px', color:'#888', marginTop:'4px' }}>
+                        <div className="pmy-ds-migrated-1w0i767">
                           {ui('Fonte atual:','Current source:')} {selectedGygTour.scheduleSource || 'UNCONFIGURED'}. {ui('Se preencher aqui, passa a ser MANUAL.','If you fill this in, the source becomes MANUAL.')}
                         </div>
                       </div>
 
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                      <div className="pmy-ds-migrated-ezx7vp">
                         <div className="pmy-form-group">
-                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Fuso horário", "Time zone")}</label>
+                          <label className="pmy-ds-migrated-1ygjrzr">{ui("Fuso horário", "Time zone")}</label>
                           <input className="pmy-form-input" value={gygConfigTimezone} onChange={(e) => setGygConfigTimezone(e.target.value)}
                             placeholder="Europe/Lisbon" />
                         </div>
                         <div className="pmy-form-group">
-                          <label style={{ fontSize:'12px', fontWeight:'700', display:'block', marginBottom:'5px' }}>{ui("Cutoff em segundos", "Cutoff in seconds")}</label>
+                          <label className="pmy-ds-migrated-1ygjrzr">{ui("Cutoff em segundos", "Cutoff in seconds")}</label>
                           <input type="number" min="0" max="604800" className="pmy-form-input" value={gygConfigCutoff} onChange={(e) => setGygConfigCutoff(e.target.value)}
                             placeholder="Ex.: 3600" />
                         </div>
                       </div>
 
-                      <label style={{
-                        display:'flex',
-                        gap:'8px',
-                        alignItems:'flex-start',
-                        marginTop:'12px',
-                        padding:'10px',
-                        background:'#fff9e8',
-                        border:'1px solid #f2d77b',
-                        borderRadius:'8px',
-                        fontSize:'11px',
-                        color:'#6d5510',
-                        lineHeight:'1.45'
-                      }}>
+                      <label className="pmy-ds-migrated-10ufuqp">
                         <input
                           type="checkbox"
                           checked={gygConfigPriceOverApi}
                           onChange={(e) => setGygConfigPriceOverApi(e.target.checked)}
-                          style={{ marginTop:'2px' }}
+                          className="pmy-ds-migrated-1juj53y"
                         />
                         <span>
                           <strong>{ui("Preço via API", "Price via API")}</strong>. Ative somente quando as categorias/preços deste produto estiverem idênticos aos configurados no GetYourGuide. Por padrão fica desligado.
@@ -2677,25 +2634,24 @@ function CentralDeReservasContent() {
                       </label>
 
                       {gygConfigMessage && (
-                        <div style={{ fontSize:'11px', color:gygConfigMessage.includes('salva')?'#006600':'#a40000', marginTop:'10px' }}>
+                        <div className={`pmy-ds-inline-message ${gygConfigMessage.includes('salva') ? "is-success" : "is-danger"}`}>
                           {gygConfigMessage}
                         </div>
                       )}
 
-                      <button type="button" className="pmy-btn-submit" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}
-                        style={{ marginTop:'12px', opacity:gygConfigSaving?0.6:1 }}>
+                      <button type="button" className="pmy-btn-submit pmy-u-mt-3" onClick={handleSaveGygTourConfig} disabled={gygConfigSaving}>
                         {gygConfigSaving ? ui('Salvando...','Saving...') : ui('💾 Salvar configuração GYG','💾 Save GYG configuration')}
                       </button>
                     </>
                   )}
                 </div>
 
-                <div style={{ display:'flex', gap:'10px' }}>
+                <div className="pmy-ds-migrated-12y480p">
                   <button type="button" onClick={() => window.open('https://integrator.getyourguide.com/', '_blank')}
-                    style={{ flex:1, background:'#ffdd00', border:'1px solid #e4c400', color:'#222', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    className="pmy-ds-migrated-1hgd3ce">
                     Abrir Integrator Portal ↗
                   </button>
-                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                  <button type="button" className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => setConnectingPlatform(null)} >
                     Fechar
                   </button>
                 </div>
@@ -2705,11 +2661,11 @@ function CentralDeReservasContent() {
             {/* ── TRIPADVISOR: conteúdo/reputação, não canal de reservas ── */}
             {isTripadvisor && (
               <div>
-                <div style={{ background:'#f5f7ff', border:'1px solid #d9def8', borderRadius:'12px', padding:'18px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'15px', fontWeight:'900', color:'#3949ab', marginBottom:'10px' }}>
+                <div className="pmy-ds-migrated-126x48q">
+                  <div className="pmy-ds-migrated-1ddsok5">
                     🦉 Tripadvisor = Conteúdo & Reputação
                   </div>
-                  <div style={{ fontSize:'12px', color:'#555', lineHeight:'1.75' }}>
+                  <div className="pmy-ds-migrated-1y98iuh">
                     <div>⭐ Reviews e ratings: <strong>Tripadvisor Terra API</strong></div>
                     <div>📷 Fotos e dados da localização: <strong>Tripadvisor Terra API</strong></div>
                     <div>🎟️ Reservas de tours/atividades: <strong>{ui("geridas pela integração Viator", "managed by the Viator integration")}</strong></div>
@@ -2717,13 +2673,13 @@ function CentralDeReservasContent() {
                   </div>
                 </div>
 
-                <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px', fontSize:'12px', color:'#92400e', lineHeight:'1.6' }}>
+                <div className="pmy-ds-migrated-12pzgqr">
                   <strong>{ui("Sem duplicar reservas.", "No duplicate bookings.")}</strong> Quando uma experiência da PMY aparece no Tripadvisor, o inventário e as reservas são distribuídos pela Viator. A Central deve contabilizar essa venda como Viator, não como um segundo canal Tripadvisor.
                 </div>
 
-                <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'#555', marginBottom:'10px' }}>{ui("O que poderemos integrar separadamente", "What we can integrate separately")}</div>
-                  <ul style={{ margin:0, paddingLeft:'18px', fontSize:'12px', color:'#555', lineHeight:'1.7' }}>
+                <div className="pmy-ds-migrated-1t8mads">
+                  <div className="pmy-ds-migrated-1efxhyu">{ui("O que poderemos integrar separadamente", "What we can integrate separately")}</div>
+                  <ul className="pmy-ds-migrated-1dhnes7">
                     <li>{ui("reviews recentes da empresa/localização", "recent company/location reviews")}</li>
                     <li>{ui("nota média e quantidade de avaliações", "average rating and review count")}</li>
                     <li>{ui("fotos e dados públicos da localização", "public location photos and data")}</li>
@@ -2731,12 +2687,12 @@ function CentralDeReservasContent() {
                   </ul>
                 </div>
 
-                <div style={{ display:'flex', gap:'10px' }}>
+                <div className="pmy-ds-migrated-12y480p">
                   <button type="button" onClick={() => window.open('https://docs.terra.tripadvisor.com/docs/overview', '_blank')}
-                    style={{ flex:1, background:'#34e0a1', border:'1px solid #22bd84', color:'#111', borderRadius:'8px', padding:'11px', fontWeight:'800', cursor:'pointer' }}>
+                    className="pmy-ds-migrated-bhqwnz">
                     Abrir documentação Terra ↗
                   </button>
-                  <button type="button" className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>
+                  <button type="button" className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => setConnectingPlatform(null)} >
                     Fechar
                   </button>
                 </div>
@@ -2746,21 +2702,21 @@ function CentralDeReservasContent() {
             {/* ── OUTRAS PLATAFORMAS: já conectadas ── */}
             {!isShopify && !isGyg && !isTripadvisor && conn.connected && (
               <div>
-                <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'12px', padding:'18px', marginBottom:'18px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' }}>
-                    <span style={{ fontSize:'22px' }}>✅</span>
-                    <strong style={{ fontSize:'15px', color:'var(--primary-green)' }}>{ui("Integração Ativa", "Integration Active")}</strong>
+                <div className="pmy-ds-migrated-1bihub7">
+                  <div className="pmy-ds-migrated-v4y6wx">
+                    <span className="pmy-ds-migrated-i9ilnf">✅</span>
+                    <strong className="pmy-ds-migrated-1451bbq">{ui("Integração Ativa", "Integration Active")}</strong>
                   </div>
-                  <div style={{ fontSize:'13px', color:'#444', lineHeight:'1.8' }}>
+                  <div className="pmy-ds-migrated-vi0mf">
                     <div>🏢 Conta: <strong>{conn.accountName}</strong></div>
                     <div>🔄 Último sync: <strong>{conn.lastSync}</strong></div>
                     <div>📋 Campos mapeados: <strong>11 / 11</strong></div>
                   </div>
                 </div>
-                <div style={{ display:'flex', gap:'10px' }}>
-                  <button className="pmy-btn-submit" onClick={() => setConnectingPlatform(null)} style={{ flex:1 }}>{ui("Fechar", "Close")}</button>
+                <div className="pmy-ds-migrated-12y480p">
+                  <button className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => setConnectingPlatform(null)} >{ui("Fechar", "Close")}</button>
                   <button onClick={() => { handleDisconnect(connectingPlatform); setConnectingPlatform(null); }}
-                    style={{ flex:1, background:'#fff0f0', border:'1px solid #fcc', color:'#cc0000', borderRadius:'8px', padding:'12px', fontWeight:'700', fontSize:'13px', cursor:'pointer' }}>
+                    className="pmy-ds-migrated-1vibuhi">
                     Desconectar
                   </button>
                 </div>
@@ -2771,17 +2727,17 @@ function CentralDeReservasContent() {
             {!isShopify && !isGyg && !isTripadvisor && !conn.connected && guide && (
               <div>
                 {/* Passo a passo */}
-                <div style={{ background:'#f8f8f8', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'18px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px' }}>
+                <div className="pmy-ds-migrated-10tglp5">
+                  <div className="pmy-ds-migrated-lqsxsk">
                     📋 Como obter sua chave de API
                   </div>
-                  <ol style={{ paddingLeft:'18px', margin:0, display:'flex', flexDirection:'column', gap:'8px' }}>
+                  <ol className="pmy-ds-migrated-1irya13">
                     {guide.steps.map((step, i) => (
-                      <li key={i} style={{ fontSize:'13px', color:'#444', lineHeight:'1.5' }}>
+                      <li key={i} className="pmy-ds-migrated-rhcrii">
                         {step}
                         {i === 0 && (
                           <button onClick={() => window.open(platform.oauthUrl, '_blank', 'width=960,height=700')}
-                            style={{ marginLeft:'8px', background:'none', border:'none', color:'var(--primary-green)', fontWeight:'700', fontSize:'12px', cursor:'pointer', textDecoration:'underline' }}>
+                            className="pmy-ds-migrated-jcbkm6">
                             Abrir ↗
                           </button>
                         )}
@@ -2791,22 +2747,22 @@ function CentralDeReservasContent() {
                 </div>
 
                 {/* Campos de credencial */}
-                <div style={{ background:'#fafafa', border:'1px solid #eee', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-                  <div style={{ fontSize:'12px', fontWeight:'800', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px' }}>
+                <div className="pmy-ds-migrated-1t8mads">
+                  <div className="pmy-ds-migrated-lqsxsk">
                     🔑 Cole suas credenciais aqui
                   </div>
-                  <div className="pmy-form-group" style={{ marginBottom:'12px' }}>
-                    <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', marginBottom:'5px', display:'block' }}>
-                      {guide.field1Label} <span style={{ color:'#cc0000' }}>*</span>
+                  <div className="pmy-form-group pmy-ds-migrated-14ogarx" >
+                    <label className="pmy-ds-migrated-18dm9zi">
+                      {guide.field1Label} <span className="pmy-ds-migrated-1ibouyj">*</span>
                     </label>
                     <input type="password" className="pmy-form-input"
                       placeholder={guide.field1Placeholder}
                       value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} />
                   </div>
                   {guide.field2Label && (
-                    <div className="pmy-form-group" style={{ marginBottom:'4px' }}>
-                      <label style={{ fontSize:'12px', fontWeight:'700', color:'#555', marginBottom:'5px', display:'block' }}>
-                        {guide.field2Label} <span style={{ color:'#cc0000' }}>*</span>
+                    <div className="pmy-form-group pmy-ds-migrated-1x7aa6i" >
+                      <label className="pmy-ds-migrated-18dm9zi">
+                        {guide.field2Label} <span className="pmy-ds-migrated-1ibouyj">*</span>
                       </label>
                       <input type="text" className="pmy-form-input"
                         placeholder={guide.field2Placeholder || ""}
@@ -2817,14 +2773,13 @@ function CentralDeReservasContent() {
 
                 <button className="pmy-btn-submit"
                   onClick={() => handleConfirmConnect(connectingPlatform)}
-                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}
-                  style={{ opacity: (!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())) ? 0.5 : 1 }}>
+                  disabled={!apiKeyInput.trim() || (guide.field2Label && !apiSecretInput.trim())}>
                   ✓ Ativar Integração com {platform.name}
                 </button>
 
-                <div style={{ marginTop:'14px', textAlign:'center' }}>
+                <div className="pmy-ds-migrated-9t83ue">
                   <a href={platform.docsUrl} target="_blank" rel="noreferrer"
-                    style={{ fontSize:'12px', color:'#888', textDecoration:'none' }}>
+                    className="pmy-ds-migrated-m16xnn">
                     📖 Documentação oficial da API {platform.name} ↗
                   </a>
                 </div>
@@ -2851,27 +2806,22 @@ function CentralDeReservasContent() {
       const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
       content = (
         <div>
-          <h4 style={{ fontSize:'15px', color:'#555', marginBottom:'12px' }}>{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
-          <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'20px' }}>
+          <h4 className="pmy-ds-migrated-rg4op4">{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
+          <div className="pmy-ds-migrated-1iaao15">
             {dayBookings.length > 0 ? (
               <>
-                <div style={{
-                  display:'grid',
-                  gridTemplateColumns:'repeat(3,1fr)',
-                  gap:'8px',
-                  marginBottom:'12px'
-                }}>
-                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
-                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.bookingCount}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("reservas", "bookings")}</div>
+                <div className="pmy-ds-migrated-tymypy">
+                  <div className="pmy-ds-migrated-1q2shfb">
+                    <div className="pmy-ds-migrated-ctpaem">{dayStats.bookingCount}</div>
+                    <div className="pmy-ds-migrated-qric2k">{ui("reservas", "bookings")}</div>
                   </div>
-                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
-                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.passengers}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("passageiros", "passengers")}</div>
+                  <div className="pmy-ds-migrated-1q2shfb">
+                    <div className="pmy-ds-migrated-ctpaem">{dayStats.passengers}</div>
+                    <div className="pmy-ds-migrated-qric2k">{ui("passageiros", "passengers")}</div>
                   </div>
-                  <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'8px', padding:'9px', textAlign:'center' }}>
-                    <div style={{ fontSize:'17px', fontWeight:'900', color:'var(--primary-green)' }}>{dayStats.remaining}/{dayStats.capacity}</div>
-                    <div style={{ fontSize:'10px', color:'#888' }}>{ui("vagas restantes", "spots remaining")}</div>
+                  <div className="pmy-ds-migrated-1q2shfb">
+                    <div className="pmy-ds-migrated-ctpaem">{dayStats.remaining}/{dayStats.capacity}</div>
+                    <div className="pmy-ds-migrated-qric2k">{ui("vagas restantes", "spots remaining")}</div>
                   </div>
                 </div>
 
@@ -2886,37 +2836,23 @@ function CentralDeReservasContent() {
                     booking.platform || 'Central';
 
                   return (
-                    <div key={booking.id} style={{
-                      display:'grid',
-                      gridTemplateColumns:'1fr auto',
-                      gap:'12px',
-                      alignItems:'center',
-                      padding:'11px 0',
-                      borderBottom:i===dayBookings.length-1?'none':'1px solid #eee'
-                    }}>
+                    <div key={booking.id} className={`pmy-ds-booking-row ${i === dayBookings.length - 1 ? "is-last" : ""}`}>
                       <div>
-                        <div style={{ fontWeight:'800', fontSize:'14px', color:'#333' }}>
+                        <div className="pmy-ds-migrated-1i4hdds">
                           {tour?.title || 'Tour'}
                         </div>
-                        <div style={{ fontSize:'11px', color:'#777', marginTop:'4px', lineHeight:'1.6' }}>
+                        <div className="pmy-ds-migrated-1guweit">
                           🕒 {parts?.timeKey || '—'} · 👥 {pax} pax · 🛒 {platformLabel}
                           {booking.bookingRef ? ` · ${booking.bookingRef}` : ''}
                         </div>
-                        <div style={{ fontSize:'11px', color:'#777' }}>
+                        <div className="pmy-ds-migrated-1mlhxwo">
                           {booking.adults > 0 ? `Adult ${booking.adults}  ` : ''}
                           {booking.children > 0 ? `Child ${booking.children}  ` : ''}
                           {booking.youths > 0 ? `Youth ${booking.youths}  ` : ''}
                           {booking.seniors > 0 ? `Senior ${booking.seniors}` : ''}
                         </div>
                       </div>
-                      <span style={{
-                        fontSize:'10px',
-                        fontWeight:'800',
-                        padding:'5px 8px',
-                        borderRadius:'12px',
-                        background:booking.status==='CONFIRMED'?'#eaf8ea':'#fff4d6',
-                        color:booking.status==='CONFIRMED'?'#087a08':'#9a6700'
-                      }}>
+                      <span className={`pmy-ds-booking-status ${booking.status === 'CONFIRMED' ? "is-confirmed" : "is-pending"}`}>
                         {booking.status==='CONFIRMED'?ui('CONFIRMADA','CONFIRMED'):ui('PENDENTE','PENDING')}
                       </span>
                     </div>
@@ -2924,20 +2860,20 @@ function CentralDeReservasContent() {
                 })}
               </>
             ) : (
-              <p style={{ color:'#999', fontSize:'14px', textAlign:'center', padding:'10px 0' }}>
+              <p className="pmy-ds-migrated-en208m">
                 Nenhuma reserva para este dia.
               </p>
             )}
           </div>
-          <hr style={{ border:'none', borderTop:'1px solid #eee', margin:'20px 0' }} />
+          <hr className="pmy-ds-migrated-1gk8eya" />
           {dayBlocks.length > 0 && (
-            <div style={{ padding:'12px 14px', background:'#fff8e8', border:'1px solid #e7c565', color:'#6d5510', borderRadius:'8px', fontSize:'12px', lineHeight:'1.5', marginBottom:'14px' }}>
+            <div className="pmy-ds-migrated-9ru3fj">
               🔒 {dayBlocks.length} regra{dayBlocks.length===1?'':'s'} de disponibilidade ativa{dayBlocks.length===1?'':'s'} neste dia.
               {isGloballyBlocked ? ' O dia inteiro está bloqueado.' : ' Os bloqueios são aplicados apenas aos tours/horários configurados.'}
             </div>
           )}
           {isGloballyBlocked ? (
-            <div style={{ padding:'15px', background:'#ffe6e6', border:'1px solid #cc0000', color:'#cc0000', borderRadius:'8px', fontWeight:'bold', fontSize:'13px', lineHeight:'1.4' }}>
+            <div className="pmy-ds-migrated-11ejay0">
               {ui('🔒 Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.','🔒 Allocation Suspended: this day has a global block in the Central Agenda.')}
             </div>
           ) : (
@@ -2945,25 +2881,25 @@ function CentralDeReservasContent() {
               {!isFormAllocating ? (
                 <button type="button" className="pmy-btn-submit" onClick={() => setIsFormAllocating(true)}>{ui("+ Adicionar Novo Tour a este Dia", "+ Add New Tour to This Day")}</button>
               ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:'15px', background:'#f5fcf5', padding:'20px', borderRadius:'10px', border:'1px solid #e0f0e0' }}>
-                  <h4 style={{ color:'var(--primary-green)', fontWeight:'bold', fontSize:'15px' }}>{ui("➕ Escalar Passeio na Folha Diária", "➕ Assign Tour to Daily Schedule")}</h4>
-                  <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                    <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Tour", "Select Tour")}</label>
+                <div className="pmy-ds-migrated-8q1173">
+                  <h4 className="pmy-ds-migrated-1j7wbnq">{ui("➕ Escalar Passeio na Folha Diária", "➕ Assign Tour to Daily Schedule")}</h4>
+                  <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
+                    <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Tour", "Select Tour")}</label>
                     <select className="pmy-form-input" value={modalSelectedTour} onChange={e => handleModalTourChange(e.target.value)} required>
                       <option value="">{ui("-- Selecione o Tour --", "-- Select Tour --")}</option>
                       {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
                     </select>
                   </div>
                   {modalSelectedTour && (
-                    <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                      <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Horário:", "Select Time:")}</label>
+                    <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
+                      <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Horário:", "Select Time:")}</label>
                       <select className="pmy-form-input">
                         {modalAvailableHours.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                   )}
-                  <div className="pmy-form-box-item" style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
-                    <label style={{ fontSize:'13px', fontWeight:'700' }}>{ui("Selecione o Guia:", "Select Guide:")}</label>
+                  <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
+                    <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Guia:", "Select Guide:")}</label>
                     <select className="pmy-form-input">
                       {guidesList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
@@ -2996,52 +2932,52 @@ function CentralDeReservasContent() {
       title = ui("Detalhes do Guia","Guide Details");
       content = (
         <div>
-          <div style={{ display:'flex', gap:'20px', alignItems:'center', marginBottom:'20px', borderBottom:'1px solid #eee', paddingBottom:'20px' }}>
-            <img src={selectedGuideInfo.photo} alt={selectedGuideInfo.name} style={{ width:'80px', height:'80px', borderRadius:'16px', objectFit:'cover' }} />
+          <div className="pmy-ds-migrated-s219yw">
+            <img src={selectedGuideInfo.photo} alt={selectedGuideInfo.name} className="pmy-ds-migrated-h7rqpk" />
             <div>
-              <h2 style={{ fontSize:'22px', fontWeight:'bold', color:'var(--text-dark)', margin:'0 0 5px 0' }}>{selectedGuideInfo.name}</h2>
-              <div style={{ fontSize:'13px', color:'#666' }}>✉️ {selectedGuideInfo.email||'N/A'}</div>
-              <div style={{ fontSize:'13px', color:'#666', marginTop:'4px' }}>📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
+              <h2 className="pmy-ds-migrated-1xc4j8f">{selectedGuideInfo.name}</h2>
+              <div className="pmy-ds-migrated-llii8p">✉️ {selectedGuideInfo.email||'N/A'}</div>
+              <div className="pmy-ds-migrated-1g1g73g">📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
             </div>
           </div>
-          <h4 style={{ fontSize:'15px', color:'var(--primary-green)', fontWeight:'bold', marginBottom:'10px' }}>{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
-          <div style={{ background:'#f9f9f9', padding:'15px', borderRadius:'8px', border:'1px solid #eee', marginBottom:'20px' }}>
-            <div className="pmy-list-item" style={{ padding:'8px 0' }}><span>🏰 Sintra e Cascais Completo</span><strong>{ui("Amanhã, 09:00", "Tomorrow, 09:00")}</strong></div>
-            <div className="pmy-list-item" style={{ padding:'8px 0' }}><span>🏰 Fátima, Batalha e Nazaré</span><strong>28/Maio, 08:30</strong></div>
-            <div className="pmy-list-item" style={{ padding:'8px 0', borderBottom:'none' }}><span>🚶‍♂️ Lisboa Walking Tour (Baixa)</span><strong>30/Maio, 14:00</strong></div>
+          <h4 className="pmy-ds-migrated-uzos4w">{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
+          <div className="pmy-ds-migrated-1iaao15">
+            <div className="pmy-list-item pmy-ds-migrated-16en88k" ><span>🏰 Sintra e Cascais Completo</span><strong>{ui("Amanhã, 09:00", "Tomorrow, 09:00")}</strong></div>
+            <div className="pmy-list-item pmy-ds-migrated-16en88k" ><span>🏰 Fátima, Batalha e Nazaré</span><strong>28/Maio, 08:30</strong></div>
+            <div className="pmy-list-item pmy-ds-migrated-1huynzl" ><span>🚶‍♂️ Lisboa Walking Tour (Baixa)</span><strong>30/Maio, 14:00</strong></div>
           </div>
-          <h4 style={{ fontSize:'15px', color:'#555', fontWeight:'bold', marginBottom:'10px' }}>{ui("Horários Disponíveis Padrão:", "Default Available Hours:")}</h4>
-          <div style={{ display:'flex', gap:'10px', marginBottom:'16px' }}>
-            <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>{ui("Segunda a Sábado", "Monday to Saturday")}</span>
-            <span className="pmy-tag" style={{ background:'#e6f2e6', color:'var(--primary-green)', fontSize:'12px' }}>08:00 - 18:00</span>
+          <h4 className="pmy-ds-migrated-1tu9ok4">{ui("Horários Disponíveis Padrão:", "Default Available Hours:")}</h4>
+          <div className="pmy-ds-migrated-aauppd">
+            <span className="pmy-tag pmy-ds-migrated-1djmfvs" >{ui("Segunda a Sábado", "Monday to Saturday")}</span>
+            <span className="pmy-tag pmy-ds-migrated-1djmfvs" >08:00 - 18:00</span>
           </div>
 
           {selectedGuideInfo?.utmId && (
-            <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'14px' }}>
-              <h4 style={{ fontSize:'14px', fontWeight:'800', color:'var(--primary-green)', marginBottom:'10px' }}>{ui("🔗 Link de Indicação UTM", "🔗 UTM Referral Link")}</h4>
-              <div style={{ display:'flex', gap:'6px', alignItems:'center', marginBottom:'8px' }}>
-                <code style={{ fontSize:'11px', background:'#fff', border:'1px solid #ddd', borderRadius:'5px', padding:'4px 8px', flex:1, wordBreak:'break-all', color:'#555' }}>
+            <div className="pmy-ds-migrated-1tqyd6n">
+              <h4 className="pmy-ds-migrated-mlhmew">{ui("🔗 Link de Indicação UTM", "🔗 UTM Referral Link")}</h4>
+              <div className="pmy-ds-migrated-1l6zt83">
+                <code className="pmy-ds-migrated-eo31ti">
                   {selectedGuideInfo.referralLink}
                 </code>
                 <button onClick={() => navigator.clipboard.writeText(selectedGuideInfo.referralLink).then(()=>alert(ui('Copiado!','Copied!'))).catch(()=>{})}
-                  style={{ padding:'6px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
+                  className="pmy-ds-migrated-2ek2w0">
                   📋
                 </button>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'8px', fontSize:'11px' }}>
+              <div className="pmy-ds-migrated-1tivhpi">
                 {[
                   { label: 'utm_campaign', value: selectedGuideInfo.utmId },
                   { label: 'utm_source',   value: 'guia' },
                   { label: 'utm_medium',   value: 'indicacao' },
                   { label: 'utm_content',  value: selectedGuideInfo.name?.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"") },
                 ].map((p,i) => (
-                  <div key={i} style={{ background:'#fff', border:'1px solid #eee', borderRadius:'6px', padding:'6px 8px' }}>
-                    <div style={{ color:'#aaa', marginBottom:'2px' }}>{p.label}</div>
-                    <code style={{ color:'var(--primary-green)', fontWeight:'700', fontSize:'11px' }}>{p.value}</code>
+                  <div key={i} className="pmy-ds-migrated-zb4ttd">
+                    <div className="pmy-ds-migrated-x2g73f">{p.label}</div>
+                    <code className="pmy-ds-migrated-18qyl6w">{p.value}</code>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:'10px', fontSize:'12px', color:'#888' }}>
+              <div className="pmy-ds-migrated-1v3pzky">
                 💡 {ui('Acesse','Go to')} <strong>Shopify → Marketing → {ui('Campanhas','Campaigns')}</strong> {ui('para ver as métricas desta campanha.','to view this campaign’s metrics.')}
               </div>
             </div>
@@ -3052,27 +2988,27 @@ function CentralDeReservasContent() {
       title = lang === 'pt' ? "Vendas por Canal" : "Sales by Channel";
       content = (
         <div>
-          <div style={{ background:'#f8faf8', border:'1px solid #e3ebe4', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px' }}>
-            <div style={{ fontSize:'22px', fontWeight:'900', color:'var(--primary-green)' }}>{totalSalesCount}</div>
-            <div style={{ fontSize:'12px', color:'#666' }}>{lang==='pt'?'reservas confirmadas no período':'confirmed bookings in period'} · {getPeriodLabel()}</div>
+          <div className="pmy-ds-migrated-15kb926">
+            <div className="pmy-ds-migrated-bn454q">{totalSalesCount}</div>
+            <div className="pmy-ds-migrated-q9qvqo">{lang==='pt'?'reservas confirmadas no período':'confirmed bookings in period'} · {getPeriodLabel()}</div>
           </div>
           {salesByChannel.length === 0 ? (
-            <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhuma venda confirmada no período.':'No confirmed sales in this period.'}</p>
+            <p className="pmy-ds-migrated-qx2f5l">{lang==='pt'?'Nenhuma venda confirmada no período.':'No confirmed sales in this period.'}</p>
           ) : salesByChannel.map(channel => (
             <div className="pmy-list-item" key={channel.platform}>
               <div>
                 <strong>{channel.label}</strong>
-                <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                <div className="pmy-ds-migrated-1imkwof">
                   {channel.bookings} {lang==='pt'?'reservas':'bookings'} · {channel.passengers} pax
                   {channel.missingValue > 0 ? ` · ⚠️ ${channel.missingValue} ${lang==='pt'?'sem valor':'without value'}` : ''}
                 </div>
               </div>
-              <div style={{ textAlign:'right' }}>
+              <div className="pmy-ds-migrated-dzs10n">
                 {Object.entries(channel.revenueByCurrency).length > 0
                   ? Object.entries(channel.revenueByCurrency).map(([currency, amount]) => (
-                      <div key={currency} style={{ fontWeight:'800', color:'var(--primary-green)', fontSize:'13px' }}>{formatMoney(amount, currency)}</div>
+                      <div key={currency} className="pmy-ds-migrated-y33mrr">{formatMoney(amount, currency)}</div>
                     ))
-                  : <span style={{ color:'#aaa' }}>—</span>}
+                  : <span className="pmy-ds-migrated-chpnty">—</span>}
               </div>
             </div>
           ))}
@@ -3082,28 +3018,28 @@ function CentralDeReservasContent() {
       title = lang === 'pt' ? "Cancelamentos" : "Cancellations";
       content = (
         <div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px' }}>
-            <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'10px', padding:'12px', textAlign:'center' }}>
-              <div style={{ fontSize:'22px', fontWeight:'900', color:'#b91c1c' }}>{canceledCount}</div>
-              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'cancelamentos no período':'cancellations in period'}</div>
+          <div className="pmy-ds-migrated-cmwaz9">
+            <div className="pmy-ds-migrated-dk3p17">
+              <div className="pmy-ds-migrated-4eykw2">{canceledCount}</div>
+              <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'cancelamentos no período':'cancellations in period'}</div>
             </div>
-            <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'10px', padding:'12px', textAlign:'center' }}>
-              <div style={{ fontSize:'22px', fontWeight:'900', color:'#c2410c' }}>{cancellationRate.toFixed(1)}%</div>
-              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'taxa de cancelamento':'cancellation rate'}</div>
+            <div className="pmy-ds-migrated-9plhb3">
+              <div className="pmy-ds-migrated-1jgtff0">{cancellationRate.toFixed(1)}%</div>
+              <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'taxa de cancelamento':'cancellation rate'}</div>
             </div>
           </div>
           {realCanceledBookings.length === 0
-            ? <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhum cancelamento registrado no período.':'No cancellations in this period.'}</p>
+            ? <p className="pmy-ds-migrated-qx2f5l">{lang==='pt'?'Nenhum cancelamento registrado no período.':'No cancellations in this period.'}</p>
             : realCanceledBookings.map(b => (
                 <div className="pmy-list-item" key={b.id}>
                   <div>
                     <strong>{b.customerName||"N/A"}</strong>
-                    <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                    <div className="pmy-ds-migrated-1imkwof">
                       {platformLabel(b.platform)} · {new Date(b.externalUpdatedAt || b.updatedAt || b.createdAt).toLocaleDateString(lang==='pt'?'pt-PT':'en-GB')}
                       {b.cancelReason ? ` · ${b.cancelReason}` : ''}
                     </div>
                   </div>
-                  <span style={{ color:'#b91c1c', fontWeight:'800', fontSize:'12px' }}>
+                  <span className="pmy-ds-migrated-g36fy">
                     {moneyValue(b) !== null && bookingCurrency(b) ? formatMoney(moneyValue(b), bookingCurrency(b)) : '—'}
                   </span>
                 </div>
@@ -3114,24 +3050,24 @@ function CentralDeReservasContent() {
       title = lang === 'pt' ? "Faturamento Confirmado" : "Confirmed Revenue";
       content = (
         <div>
-          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-            <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>
+          <div className="pmy-ds-migrated-v9m9mh">
+            <div className="pmy-ds-migrated-ks5tu8">
               {confirmedRevenueValue > 0 ? formatMoney(confirmedRevenueValue) : '—'}
             </div>
-            <div style={{ fontSize:'12px', color:'#555', marginTop:'4px' }}>
+            <div className="pmy-ds-migrated-306txk">
               {pricedConfirmedBookings.length} {lang==='pt'?'reservas com valor real':'bookings with real value'}
               {missingFinancialBookings.length > 0 ? ` · ${missingFinancialBookings.length} ${lang==='pt'?'sem valor financeiro':'without financial value'}` : ''}
             </div>
             {revenueCurrencies.length > 1 && (
-              <div style={{ fontSize:'11px', color:'#b45309', marginTop:'6px' }}>
+              <div className="pmy-ds-migrated-1a7crin">
                 ⚠️ {lang==='pt'?'Existem múltiplas moedas. O cartão principal mostra':'Multiple currencies detected. Main card shows'} {dashboardCurrency}.
               </div>
             )}
           </div>
           {realConfirmedBookings.length === 0
-            ? <div style={{ textAlign:'center', padding:'30px', color:'#aaa' }}>
-                <div style={{ fontSize:'32px', marginBottom:'10px' }}>📋</div>
-                <div style={{ fontWeight:'700' }}>{lang==='pt'?'Nenhuma reserva confirmada no período':'No confirmed bookings in this period'}</div>
+            ? <div className="pmy-ds-migrated-1urcfkr">
+                <div className="pmy-ds-migrated-8rge5c">📋</div>
+                <div className="pmy-ds-migrated-psj0ex">{lang==='pt'?'Nenhuma reserva confirmada no período':'No confirmed bookings in this period'}</div>
               </div>
             : realConfirmedBookings.map(b => {
                 const tour = (tours || []).find(item => item.id === b.tourId);
@@ -3139,11 +3075,11 @@ function CentralDeReservasContent() {
                   <div className="pmy-list-item" key={b.id}>
                     <div>
                       <strong>{tour?.title || b.customerName || "Reserva"}</strong>
-                      <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                      <div className="pmy-ds-migrated-1imkwof">
                         {platformLabel(b.platform)} · {new Date(b.startTime).toLocaleDateString(lang==='pt'?'pt-PT':'en-GB')} · {Number(b.totalParticipants || 0)} pax
                       </div>
                     </div>
-                    <span style={{ color:moneyValue(b)!==null&&bookingCurrency(b)?'var(--primary-green)':'#b45309', fontWeight:'800' }}>
+                    <span className={moneyValue(b)!==null&&bookingCurrency(b) ? "pmy-ds-state-text is-success pmy-u-extrabold" : "pmy-ds-state-text is-warning pmy-u-extrabold"}>
                       {moneyValue(b)!==null&&bookingCurrency(b) ? formatMoney(moneyValue(b), bookingCurrency(b)) : (lang==='pt'?'Sem valor':'No value')}
                     </span>
                   </div>
@@ -3156,26 +3092,26 @@ function CentralDeReservasContent() {
       title = lang === 'pt' ? "Ticket Médio" : "Average Ticket";
       content = (
         <div>
-          <div style={{ background:'#fffaf0', border:'1px solid #f3d7a2', borderRadius:'10px', padding:'16px', marginBottom:'16px' }}>
-            <div style={{ fontSize:'24px', fontWeight:'900', color:'#b7791f' }}>
+          <div className="pmy-ds-migrated-qgwi9k">
+            <div className="pmy-ds-migrated-ey1tb3">
               {averageTicketValue > 0 ? formatMoney(averageTicketValue) : '—'}
             </div>
-            <div style={{ fontSize:'12px', color:'#555', marginTop:'4px' }}>
+            <div className="pmy-ds-migrated-306txk">
               {lang==='pt'?'Faturamento real dividido pelas reservas com valor na mesma moeda.':'Real revenue divided by bookings priced in the same currency.'}
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-            <div style={{ background:'#f8faf8', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'12px' }}>
-              <div style={{ fontSize:'20px', fontWeight:'900' }}>{pricedConfirmedBookings.length}</div>
-              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'reservas usadas no cálculo':'bookings used in calculation'}</div>
+          <div className="pmy-ds-migrated-ezx7vp">
+            <div className="pmy-ds-migrated-7h7616">
+              <div className="pmy-ds-migrated-1edjp0n">{pricedConfirmedBookings.length}</div>
+              <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'reservas usadas no cálculo':'bookings used in calculation'}</div>
             </div>
-            <div style={{ background:missingFinancialBookings.length?'#fff7ed':'#f0fdf4', border:'1px solid #e5e7eb', borderRadius:'9px', padding:'12px' }}>
-              <div style={{ fontSize:'20px', fontWeight:'900', color:missingFinancialBookings.length?'#c2410c':'#166534' }}>{missingFinancialBookings.length}</div>
-              <div style={{ fontSize:'11px', color:'#777' }}>{lang==='pt'?'reservas sem valor':'bookings without value'}</div>
+            <div className={`pmy-ds-metric-state ${missingFinancialBookings.length ? "is-warning" : "is-success"}`}>
+              <div className={`pmy-ds-metric-state__value ${missingFinancialBookings.length ? "is-warning" : "is-success"}`}>{missingFinancialBookings.length}</div>
+              <div className="pmy-ds-migrated-1mlhxwo">{lang==='pt'?'reservas sem valor':'bookings without value'}</div>
             </div>
           </div>
           {revenueCurrencies.length > 1 && (
-            <div style={{ marginTop:'12px', fontSize:'11px', color:'#b45309', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'8px', padding:'9px 11px' }}>
+            <div className="pmy-ds-migrated-4znly2">
               ⚠️ {lang==='pt'?'O ticket médio não mistura moedas. O valor principal usa':'Average ticket never mixes currencies. Main value uses'} {dashboardCurrency}.
             </div>
           )}
@@ -3185,12 +3121,12 @@ function CentralDeReservasContent() {
       title = lang === 'pt' ? "Próximas Saídas — 30 dias" : "Upcoming Departures — 30 days";
       content = (
         <div>
-          <div style={{ background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'10px', padding:'14px 16px', marginBottom:'16px' }}>
-            <div style={{ fontSize:'24px', fontWeight:'900', color:'var(--primary-green)' }}>{upcomingCount}</div>
-            <div style={{ fontSize:'12px', color:'#555' }}>{lang==='pt'?'saídas únicas com reservas confirmadas ou pendentes':'unique departures with confirmed or pending bookings'}</div>
+          <div className="pmy-ds-migrated-1mkckx0">
+            <div className="pmy-ds-migrated-ks5tu8">{upcomingCount}</div>
+            <div className="pmy-ds-migrated-1trl76t">{lang==='pt'?'saídas únicas com reservas confirmadas ou pendentes':'unique departures with confirmed or pending bookings'}</div>
           </div>
           {upcomingDepartures.length === 0 ? (
-            <p style={{ textAlign:'center', color:'#999' }}>{lang==='pt'?'Nenhuma saída nos próximos 30 dias.':'No departures in the next 30 days.'}</p>
+            <p className="pmy-ds-migrated-qx2f5l">{lang==='pt'?'Nenhuma saída nos próximos 30 dias.':'No departures in the next 30 days.'}</p>
           ) : upcomingDepartures.map(departure => {
             const tour = (tours || []).find(item => item.id === departure.tourId);
             const when = departure.startTime.toLocaleString(lang==='pt'?'pt-PT':'en-GB', {
@@ -3205,10 +3141,10 @@ function CentralDeReservasContent() {
               <div className="pmy-list-item" key={departure.key}>
                 <div>
                   <strong>{tour?.title || 'Tour'}</strong>
-                  <div style={{ fontSize:'11px', color:'#888', marginTop:'3px' }}>
+                  <div className="pmy-ds-migrated-1imkwof">
                     {when} · {departure.bookings} {lang==='pt'?'reservas':'bookings'} · {departure.passengers} pax
                   </div>
-                  <div style={{ fontSize:'10px', color:'#999', marginTop:'2px' }}>{[...departure.platforms].join(' · ')}</div>
+                  <div className="pmy-ds-migrated-1761q2k">{[...departure.platforms].join(' · ')}</div>
                 </div>
               </div>
             );
@@ -3237,41 +3173,41 @@ function CentralDeReservasContent() {
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
     return (
       <div className="pmy-modal-overlay" onClick={() => setEditingGuide(null)}>
-        <div style={{ background:"#fff", width:"480px", maxWidth:"95vw", borderRadius:"20px", boxShadow:"0 24px 60px rgba(0,0,0,0.18)", overflow:"hidden" }} onClick={e => e.stopPropagation()}>
-          <div style={{ background:"var(--primary-green)", padding:"22px 26px 20px", position:"relative" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"15px" }}>
-              <div style={{ position:"relative" }}>
+        <div className="pmy-ds-migrated-zuczkc" onClick={e => e.stopPropagation()}>
+          <div className="pmy-ds-migrated-1ig0zoz">
+            <div className="pmy-ds-migrated-g4mnio">
+              <div className="pmy-ds-migrated-otectg">
                 <img src={editGuidePhoto || guide.photo} alt={guide.name}
-                  style={{ width:"62px", height:"62px", borderRadius:"14px", objectFit:"cover", border:"2.5px solid rgba(255,255,255,0.35)", display:"block" }} />
+                  className="pmy-ds-migrated-1sos9w" />
                 <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
                   title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
-                  style={{ position:"absolute", bottom:"-7px", right:"-7px", width:"22px", height:"22px", borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", boxShadow:"0 2px 6px rgba(0,0,0,0.2)" }}>📷</button>
-                <input type="file" accept="image/*" style={{ display:"none" }} ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                  className="pmy-ds-migrated-1canwv8">📷</button>
+                <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
               </div>
               <div>
-                <div style={{ color:"rgba(255,255,255,0.65)", fontSize:"11px", fontWeight:"700", marginBottom:"3px", textTransform:"uppercase", letterSpacing:"0.5px" }}>{ui("Editando guia", "Editing guide")}</div>
-                <div style={{ color:"#fff", fontSize:"19px", fontWeight:"900" }}>{guide.name}</div>
+                <div className="pmy-ds-migrated-1w8jk2f">{ui("Editando guia", "Editing guide")}</div>
+                <div className="pmy-ds-migrated-16qi501">{guide.name}</div>
               </div>
             </div>
             <button onClick={() => setEditingGuide(null)}
-              style={{ position:"absolute", top:"14px", right:"18px", background:"rgba(255,255,255,0.18)", border:"none", borderRadius:"50%", width:"30px", height:"30px", cursor:"pointer", color:"#fff", fontSize:"18px", display:"flex", alignItems:"center", justifyContent:"center" }}>&times;</button>
+              className="pmy-ds-migrated-6cymc4">&times;</button>
           </div>
-          <form onSubmit={handleSaveEditGuide} style={{ padding:"26px" }}>
-            <div style={{ display:"flex", flexDirection:"column", gap:"15px" }}>
-              <div className="pmy-form-group" style={{ marginBottom:0 }}>
+          <form onSubmit={handleSaveEditGuide} className="pmy-ds-migrated-bp52w">
+            <div className="pmy-ds-migrated-kxbe7g">
+              <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>{ui("Nome e Sobrenome", "Full Name")}</label>
                 <input type="text" className="pmy-form-input" value={editGuideName} onChange={e => setEditGuideName(e.target.value)} required />
               </div>
-              <div className="pmy-form-group" style={{ marginBottom:0 }}>
+              <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>E-mail</label>
                 <input type="email" className="pmy-form-input" value={editGuideEmail} onChange={e => setEditGuideEmail(e.target.value)} />
               </div>
-              <div className="pmy-form-group" style={{ marginBottom:0 }}>
+              <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>WhatsApp</label>
-                <div style={{ display:"flex", gap:"10px", alignItems:"center" }}>
-                  <div style={{ position:"relative", display:"flex", alignItems:"center", flexShrink:0 }}>
-                    <img src={getFlagUrl(currentDdi.iso)} alt="" style={{ position:"absolute", left:"10px", width:"20px", height:"14px", objectFit:"cover", borderRadius:"2px", zIndex:1, pointerEvents:"none", boxShadow:"0 1px 3px rgba(0,0,0,0.2)" }} />
-                    <select className="pmy-form-input" style={{ width:"120px", paddingLeft:"38px" }} value={editGuideDdi} onChange={e => setEditGuideDdi(e.target.value)}>
+                <div className="pmy-ds-migrated-1xq7i67">
+                  <div className="pmy-ds-migrated-186wwav">
+                    <img src={getFlagUrl(currentDdi.iso)} alt="" className="pmy-ds-migrated-15ma959" />
+                    <select className="pmy-form-input pmy-ds-migrated-zk0se5"  value={editGuideDdi} onChange={e => setEditGuideDdi(e.target.value)}>
                       {ddiList.map((d,i) => <option key={i} value={d.code}>{d.code}</option>)}
                     </select>
                   </div>
@@ -3279,32 +3215,32 @@ function CentralDeReservasContent() {
                 </div>
               </div>
 
-              <div className="pmy-form-group" style={{ marginBottom:0 }}>
+              <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>{ui("ID da Campanha UTM", "UTM Campaign ID")}</label>
-                <input type="text" className="pmy-form-input" placeholder="Ex: 21d91c"
+                <input type="text" className="pmy-form-input pmy-ds-migrated-a4ogq7" placeholder="Ex: 21d91c"
                   value={editGuideUtmId} onChange={e => setEditGuideUtmId(e.target.value)}
-                  style={{ fontFamily:'monospace' }} />
+                   />
                 {editGuideUtmId && editGuideName && (
-                  <div style={{ marginTop:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
-                    <div style={{ fontSize:'11px', color:'#555', background:'#f0fdf4', border:'1px solid #b8e6b8', borderRadius:'6px', padding:'5px 8px', flex:1, wordBreak:'break-all' }}>
+                  <div className="pmy-ds-migrated-1b1b88p">
+                    <div className="pmy-ds-migrated-ib1k9x">
                       🔗 {`https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`}
                     </div>
                     <button type="button" onClick={() => {
                       const url = `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`;
                       navigator.clipboard.writeText(url).then(() => alert(ui('Link copiado!','Link copied!'))).catch(()=>{});
-                    }} style={{ padding:'5px 10px', background:'var(--primary-green)', color:'#fff', border:'none', borderRadius:'6px', fontSize:'11px', cursor:'pointer', fontWeight:'700', flexShrink:0 }}>
+                    }} className="pmy-ds-migrated-1jfo6nj">
                       📋 Copiar
                     </button>
                   </div>
                 )}
               </div>
             </div>
-            <div style={{ display:"flex", gap:"10px", marginTop:"22px", paddingTop:"18px", borderTop:"1px solid #f0f0f0" }}>
-              <button type="submit" className="pmy-btn-submit" style={{ flex:1 }}>{ui("💾 Salvar Alterações", "💾 Save Changes")}</button>
+            <div className="pmy-ds-migrated-y37ip1">
+              <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff" >{ui("💾 Salvar Alterações", "💾 Save Changes")}</button>
               <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
-                style={{ padding:"12px 16px", background:"#fff0f0", border:"1px solid #fcc", color:"#cc0000", borderRadius:"8px", fontWeight:"700", fontSize:"13px", cursor:"pointer" }}>🗑️</button>
+                className="pmy-ds-migrated-138e6nr">🗑️</button>
               <button type="button" onClick={() => setEditingGuide(null)}
-                style={{ padding:"12px 16px", background:"#f5f5f5", border:"none", color:"#555", borderRadius:"8px", fontWeight:"700", fontSize:"13px", cursor:"pointer" }}>{ui("Cancelar", "Cancel")}</button>
+                className="pmy-ds-migrated-2o86xe">{ui("Cancelar", "Cancel")}</button>
             </div>
           </form>
         </div>
@@ -4762,7 +4698,7 @@ function CentralDeReservasContent() {
       .pmy-card-value { font-size:28px; }
       .pmy-date-wrapper { flex-shrink:0; }
       .pmy-date-btn { width:42px; height:42px; overflow:hidden; padding:0; justify-content:center; font-size:0; }
-      .pmy-date-btn::before { content:'📅'; font-size:17px; }
+      .pmy-date-btn::before { content:none; }
       .pmy-date-dropdown { position:fixed; left:14px; right:14px; top:76px; width:auto; max-height:calc(100dvh - 96px); overflow:auto; }
       .pmy-date-custom-inputs { flex-direction:column; align-items:stretch; }
       .pmy-date-custom-inputs > span { display:none; }
@@ -4870,7 +4806,7 @@ function CentralDeReservasContent() {
                 onClick={() => openNavigationTab(item.key)}
                 title={sidebarCollapsed ? item.label : undefined}
               >
-                <span className="pmy-menu-icon"><PmyNavIcon name={item.icon} /></span>
+                <span className="pmy-menu-icon"><Icon name={item.icon} size={19} /></span>
                 <span className="pmy-menu-label">{item.label}</span>
               </button>
             ))}
@@ -4883,7 +4819,7 @@ function CentralDeReservasContent() {
               onClick={() => openNavigationTab("configuracoes")}
               title={sidebarCollapsed ? (lang === "pt" ? "Configurações" : "Settings") : undefined}
             >
-              <span className="pmy-menu-icon"><PmyNavIcon name="configuracoes" /></span>
+              <span className="pmy-menu-icon"><Icon name="settings" size={19} /></span>
               <span className="pmy-menu-label">{lang === "pt" ? "Configurações" : "Settings"}</span>
             </button>
 
@@ -4906,9 +4842,7 @@ function CentralDeReservasContent() {
                 onClick={() => setMobileNavOpen(true)}
                 aria-label={lang === "pt" ? "Abrir menu" : "Open menu"}
               >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M4 7h16M4 12h16M4 17h16"/>
-                </svg>
+                <Icon name="menu" size={19} strokeWidth={2} />
               </button>
               <div className="pmy-header-copy">
                 <div className="pmy-eyebrow">{lang === 'pt' ? 'Portugal Me & You · Central de Reservas' : 'Portugal Me & You · Booking Hub'}</div>
@@ -4925,7 +4859,7 @@ function CentralDeReservasContent() {
             </div>
             {activeTab==='dashboard' && (
               <div className="pmy-date-wrapper">
-                <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}>📅 {getPeriodLabel()} ▾</button>
+                <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
                   <>
                     <div className="pmy-date-overlay" onClick={() => setIsDateMenuOpen(false)}></div>
@@ -4939,7 +4873,7 @@ function CentralDeReservasContent() {
                         <div className="pmy-date-custom-title">{t.period_custom}</div>
                         <div className="pmy-date-custom-inputs">
                           <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} />
-                          <span style={{ color:'#aaa' }}>-</span>
+                          <span className="pmy-ds-migrated-chpnty">-</span>
                           <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
                         </div>
                         <button className="pmy-date-apply-btn" onClick={handleCustomDateApply}>{t.btn_apply}</button>
