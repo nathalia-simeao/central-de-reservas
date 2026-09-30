@@ -619,7 +619,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
               >
                 <div style={{
                   padding:'12px',
-                  borderRight:'1px solid #ededed',
+                  borderRight:'1px solid var(--dashboard-border)',
                   background:'var(--dashboard-soft)'
                 }}>
                   <div style={{
@@ -645,7 +645,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             border:0,
                             borderRadius:'10px',
                             background:active ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))' : 'transparent',
-                            color:active ? 'var(--dashboard-accent)' : '#444',
+                            color:active ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
                             padding:'9px 10px',
                             textAlign:'left',
                             fontSize:'13px',
@@ -667,7 +667,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         background:selectedRange === "custom"
                           ? 'color-mix(in srgb, var(--dashboard-accent) 11%, var(--surface-color))'
                           : 'transparent',
-                        color:selectedRange === "custom" ? 'var(--dashboard-accent)' : '#444',
+                        color:selectedRange === "custom" ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
                         padding:'9px 10px',
                         textAlign:'left',
                         fontSize:'13px',
@@ -733,7 +733,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         padding:'9px 10px',
                         background:calendarSelectionStep === "start"
                           ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
-                          : '#fff',
+                          : 'var(--surface-color)',
                         textAlign:'left',
                         cursor:'pointer',
                         minWidth:0,
@@ -748,7 +748,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         justifyContent:'space-between',
                         gap:'8px',
                         fontSize:'15px',
-                        color:calendarSelectionStep === "start" ? 'var(--dashboard-accent)' : '#999',
+                        color:calendarSelectionStep === "start" ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
@@ -775,7 +775,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                       style={{
                         display:'grid',
                         placeItems:'center',
-                        color:'#a3aaa4',
+                        color:'var(--dashboard-muted)',
                         fontSize:'15px',
                         fontWeight:'900'
                       }}
@@ -798,7 +798,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         padding:'9px 10px',
                         background:calendarSelectionStep === "end"
                           ? 'color-mix(in srgb, var(--dashboard-accent) 6%, var(--surface-color))'
-                          : '#fff',
+                          : 'var(--surface-color)',
                         textAlign:'left',
                         cursor:'pointer',
                         minWidth:0,
@@ -813,7 +813,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                         justifyContent:'space-between',
                         gap:'8px',
                         fontSize:'15px',
-                        color:calendarSelectionStep === "end" ? 'var(--dashboard-accent)' : '#999',
+                        color:calendarSelectionStep === "end" ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
                         fontWeight:'900',
                         textTransform:'uppercase',
                         letterSpacing:'.05em'
@@ -941,7 +941,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                             style={{
                               height:'30px',
                               border:isToday && !isStart && !isEnd
-                                ? '1px solid color-mix(in srgb, var(--dashboard-accent) 38%, #ddd)'
+                                ? '1px solid color-mix(in srgb, var(--dashboard-accent) 38%, var(--dashboard-border))'
                                 : '1px solid transparent',
                               borderRadius:'9px',
                               background:isStart || isEnd
@@ -953,7 +953,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                                 ? 'var(--dashboard-accent-contrast)'
                                 : inRange
                                   ? 'var(--dashboard-accent)'
-                                  : '#444',
+                                  : 'var(--dashboard-text)',
                               fontSize:'15px',
                               fontWeight:isStart || isEnd || isToday ? '850' : '650',
                               cursor:'pointer'
@@ -1087,7 +1087,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
                   <div style={{
                     fontSize:'15px',
                     fontWeight:'850',
-                    color:isExpanded ? 'var(--dashboard-accent)' : '#2f2f2f',
+                    color:isExpanded ? 'var(--dashboard-accent)' : 'var(--dashboard-text)',
                     overflow:'hidden',
                     textOverflow:'ellipsis',
                     whiteSpace:'nowrap'
@@ -1369,7 +1369,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
               <div style={{
                 fontSize:'12px',
                 lineHeight:1.35,
-                color:'#858985'
+                color:'var(--dashboard-muted)'
               }}>
                 {item.description}
               </div>
@@ -1384,7 +1384,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
           paddingTop:'11px',
           borderTop:'1px solid var(--dashboard-border)',
           fontSize:'12px',
-          color:'#8a8f8b'
+          color:'var(--dashboard-muted)'
         }}>
           {lang === 'pt'
             ? `${unclassified} reserva(s) possui(em) status ainda não classificado pela Central.`
@@ -1879,7 +1879,7 @@ const TourPerformanceRanking = ({
                   borderRadius:'999px',
                   padding:'8px 12px',
                   background:active ? 'var(--surface-color)' : 'transparent',
-                  color:active ? 'var(--dashboard-accent)' : '#737873',
+                  color:active ? 'var(--dashboard-accent)' : 'var(--dashboard-muted)',
                   fontSize:'12px',
                   fontWeight:'850',
                   cursor:'pointer',
@@ -1943,8 +1943,8 @@ const TourPerformanceRanking = ({
                   borderRadius:'11px',
                   display:'grid',
                   placeItems:'center',
-                  background:index === 0 ? 'var(--dashboard-accent)' : '#f2f3f2',
-                  color:index === 0 ? 'var(--dashboard-accent-contrast)' : '#6e746f',
+                  background:index === 0 ? 'var(--dashboard-accent)' : 'var(--dashboard-soft)',
+                  color:index === 0 ? 'var(--dashboard-accent-contrast)' : 'var(--dashboard-muted)',
                   fontSize:'13px',
                   fontWeight:'900'
                 }}>
@@ -2314,7 +2314,7 @@ export default function DashboardTab(props) {
                             <div className="pmy-tour-item" key={tour.id}>
                               {tour.image
                                 ? <img src={tour.image} alt={tour.imageAlt || tour.title} className={`pmy-tour-img ${imageShape}`} />
-                                : <div className={`pmy-tour-img ${imageShape}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background:'#f9f2f2' }}>🏰</div>
+                                : <div className={`pmy-tour-img ${imageShape}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background:'var(--dashboard-soft)' }}>🏰</div>
                               }
                               <div className="pmy-tour-details">
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
