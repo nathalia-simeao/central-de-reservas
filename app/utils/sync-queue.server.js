@@ -11,6 +11,7 @@ export const SYNC_EVENT_TYPES = Object.freeze({
 });
 
 const RESERVATION_PROVIDERS = [
+  "SHOPIFY",
   "GETYOURGUIDE",
   "VIATOR",
   "HEADOUT",
@@ -18,6 +19,8 @@ const RESERVATION_PROVIDERS = [
 ];
 
 const PROVIDER_ALIASES = {
+  SHOPIFY: "SHOPIFY",
+  SHOP: "SHOPIFY",
   GYG: "GETYOURGUIDE",
   GETYOURGUIDE: "GETYOURGUIDE",
   GET_YOUR_GUIDE: "GETYOURGUIDE",
@@ -27,6 +30,7 @@ const PROVIDER_ALIASES = {
 };
 
 const MAPPING_FIELDS = {
+  SHOPIFY: "shopifyProductId",
   GETYOURGUIDE: "gygActivityId",
   VIATOR: "viatorProductCode",
   HEADOUT: "headoutId",
@@ -84,6 +88,7 @@ async function mappedProvidersForTour(prisma, tourId) {
   const tour = await prisma.tour.findUnique({
     where: { id: tourId },
     select: {
+      shopifyProductId: true,
       gygActivityId: true,
       viatorProductCode: true,
       headoutId: true,
@@ -395,6 +400,18 @@ function classifyGygResult(result) {
 
 async function dispatchToProvider(job) {
   const provider = normalizeProvider(job.provider);
+
+  if (provider === "SHOPIFY") {
+    return {
+      status: "COMPLETED",
+      result: {
+        mode: "LIVE_PULL_AND_ATOMIC_HOLD",
+        reason: "STOREFRONT_CENTRAL_CAPACITY_GUARD",
+        detail:
+          "The PMY storefront reads Central availability at checkout and creates a PENDING hold before Shopify can accept the booking. Slot capacity is not mirrored into date-agnostic Shopify variant inventory.",
+      },
+    };
+  }
 
   if (provider === "GETYOURGUIDE") {
     const {
