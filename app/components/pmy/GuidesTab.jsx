@@ -3,58 +3,30 @@ import {
   Button,
   Card,
   EmptyState,
-  FormField,
   Icon,
-  Input,
   SectionHeader,
-  Select,
   Tabs,
 } from "./PmyUI";
 
 export default function GuidesTab(props) {
   const {
     activeTab,
-    ddiList,
-    getFlagUrl,
     guideAssignments = [],
-    guideDdi,
-    guideEmail,
-    guideName,
-    guidePhoto,
-    guidePhotoRef,
-    guideUtmId,
-    guideWhatsapp,
+    guideShopifySync,
     guidesList,
-    handleAddGuide,
     handleDeleteGuide,
-    handleGuidePhotoChange,
     handleOpenEditGuide,
-    openShopifyFilePicker,
     setActiveModal,
-    setGuideDdi,
-    setGuideEmail,
-    setGuideName,
-    setGuidePhoto,
-    setGuideUtmId,
-    setGuideWhatsapp,
     setSelectedGuideInfo,
     setUpcomingToursFilter,
     t,
     upcomingToursFilter,
-    lang
+    lang,
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
 
   if (activeTab !== "guias") return null;
-
-  const referralPreview =
-    guideUtmId && guideName
-      ? `https://portugalmeandyou.com/?utm_campaign=${guideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${guideName
-          .toLowerCase()
-          .replace(/\s+/g, "_")
-          .replace(/[^a-z0-9_]/g, "")}`
-      : "";
 
   const upcomingTabs = [
     { value: "today", label: t.filter_today },
@@ -124,104 +96,48 @@ export default function GuidesTab(props) {
 
   return (
     <div className="pmy-ds-stack">
-      <Card className="pmy-ds-narrow">
+      <Card>
         <SectionHeader
-          eyebrow={tr("Equipe", "Team")}
-          title={t.form_new_guide}
+          eyebrow={tr("Fonte dos perfis", "Profile source")}
+          title={tr("Guias sincronizados do Shopify", "Guides synced from Shopify")}
           subtitle={tr(
-            "Cadastre os dados de contato, foto e campanha de indicação do guia.",
-            "Add the guide contact details, photo and referral campaign.",
+            "Nome, foto, descrição, vídeo, passeio exclusivo e galeria vêm do metaobjeto Guias. A Central mantém contato, UTM e escala.",
+            "Name, photo, description, video, exclusive tour and gallery come from the Guides metaobject. The Central keeps contact, UTM and scheduling.",
           )}
+          actions={
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon="refresh"
+              onClick={() => window.location.reload()}
+            >
+              {tr("Sincronizar agora", "Sync now")}
+            </Button>
+          }
         />
 
-        <form onSubmit={handleAddGuide} className="pmy-ds-form-stack">
-          <FormField label={t.form_guide_name} required>
-            <Input
-              type="text"
-              value={guideName}
-              onChange={(event) => setGuideName(event.target.value)}
-              required
-            />
-          </FormField>
-
-          <FormField label={t.form_guide_email}>
-            <Input
-              type="email"
-              value={guideEmail}
-              onChange={(event) => setGuideEmail(event.target.value)}
-            />
-          </FormField>
-
-          <FormField label={t.form_guide_whatsapp} required>
-            <div className="pmy-ds-phone-row">
-              <div className="pmy-ds-ddi">
-                <img
-                  src={getFlagUrl(ddiList.find((item) => item.code === guideDdi)?.iso || "pt")}
-                  alt=""
-                  className="pmy-ds-flag"
-                />
-                <Select value={guideDdi} onChange={(event) => setGuideDdi(event.target.value)}>
-                  {ddiList.map((item, index) => (
-                    <option key={index} value={item.code}>{item.code}</option>
-                  ))}
-                </Select>
-              </div>
-              <Input
-                type="tel"
-                placeholder="912 345 678"
-                value={guideWhatsapp}
-                onChange={(event) => setGuideWhatsapp(event.target.value)}
-                required
-              />
-            </div>
-          </FormField>
-
-          <FormField label={t.form_guide_photo}>
-            <div className="pmy-ds-media-picker">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                icon="upload"
-                onClick={() => guidePhotoRef.current?.click()}
-              >
-                {tr("Upload", "Upload")}
-              </Button>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleGuidePhotoChange}
-                className="pmy-ds-file-input"
-                ref={guidePhotoRef}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                icon="media"
-                onClick={() => openShopifyFilePicker((url) => setGuidePhoto(url))}
-              >
-                {tr("Escolher da biblioteca", "Choose from library")}
-              </Button>
-              {guidePhoto ? <img src={guidePhoto} alt="" className="pmy-ds-preview-image" /> : null}
-            </div>
-          </FormField>
-
-          <FormField label={tr("ID da Campanha UTM (opcional)", "UTM Campaign ID (optional)")}>
-            <Input
-              type="text"
-              className="pmy-ds-mono"
-              placeholder="Ex: 21d91c"
-              value={guideUtmId}
-              onChange={(event) => setGuideUtmId(event.target.value)}
-            />
-            {referralPreview ? <div className="pmy-ds-code-note">{referralPreview}</div> : null}
-          </FormField>
-
-          <div className="pmy-ds-actions">
-            <Button type="submit" icon="plus">{t.btn_add_guide}</Button>
+        <div className={["pmy-ds-state-panel", guideShopifySync?.success ? "is-success" : "is-warning"].filter(Boolean).join(" ")}>
+          <div className={["pmy-ds-state-title", guideShopifySync?.success ? "is-success" : "is-warning"].filter(Boolean).join(" ")}>
+            {guideShopifySync?.success
+              ? tr(
+                  String(guideShopifySync.total || 0) + " perfis encontrados no Shopify",
+                  String(guideShopifySync.total || 0) + " profiles found in Shopify",
+                )
+              : tr("Sincronização do Shopify precisa de atenção", "Shopify sync needs attention")}
           </div>
-        </form>
+          <div className="pmy-ds-migrated-rhcrii">
+            {guideShopifySync?.success
+              ? tr(
+                  "Os perfis são reconciliados automaticamente ao abrir a Central. Alterações editoriais devem ser feitas no Shopify.",
+                  "Profiles are automatically reconciled when the Central opens. Editorial changes should be made in Shopify.",
+                )
+              : (guideShopifySync?.error || tr(
+                  "A Central continuará mostrando os guias já salvos e tentará sincronizar novamente no próximo carregamento.",
+                  "The Central will keep showing saved guides and retry the sync on the next load.",
+                ))}
+          </div>
+        </div>
       </Card>
 
       <Card>
@@ -229,8 +145,8 @@ export default function GuidesTab(props) {
           eyebrow={tr("Equipe", "Team")}
           title={t.registered_guides_list}
           subtitle={tr(
-            "Abra um guia para ver detalhes ou use as ações rápidas para editar e copiar o link.",
-            "Open a guide to view details or use the quick actions to edit and copy the referral link.",
+            "Os perfis editoriais vêm do Shopify; dados operacionais e escalas continuam na Central.",
+            "Editorial profiles come from Shopify; operational data and assignments remain in the Central.",
           )}
         />
 
@@ -268,6 +184,11 @@ export default function GuidesTab(props) {
                   {guide.name.split(" ")[0]}<br />
                   {guide.name.split(" ").slice(1).join(" ")}
                 </div>
+                <div className="pmy-u-mt-2">
+                  <Badge tone={guide.shopifyMetaobjectId ? "accent" : "neutral"}>
+                    {guide.shopifyMetaobjectId ? "Shopify" : tr("Local", "Local")}
+                  </Badge>
+                </div>
 
                 <div className="pmy-ds-guide-actions" onClick={(event) => event.stopPropagation()}>
                   <Button
@@ -277,7 +198,9 @@ export default function GuidesTab(props) {
                     icon="settings"
                     onClick={() => handleOpenEditGuide(guide)}
                   >
-                    {tr("Editar", "Edit")}
+                    {guide.shopifyMetaobjectId
+                      ? tr("Dados operacionais", "Operational data")
+                      : tr("Editar", "Edit")}
                   </Button>
 
                   {guide.referralLink ? (
@@ -298,15 +221,17 @@ export default function GuidesTab(props) {
                     />
                   ) : null}
 
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    icon="trash"
-                    iconOnly
-                    aria-label={tr("Excluir guia", "Delete guide")}
-                    onClick={() => handleDeleteGuide(guide.id)}
-                  />
+                  {!guide.shopifyMetaobjectId ? (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      icon="trash"
+                      iconOnly
+                      aria-label={tr("Excluir guia", "Delete guide")}
+                      onClick={() => handleDeleteGuide(guide.id)}
+                    />
+                  ) : null}
                 </div>
               </div>
             ))}
