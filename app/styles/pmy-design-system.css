@@ -2233,3 +2233,37 @@
     text-align: left;
   }
 }
+
+
+.pmy-ds-performance-grid { grid-template-columns: 1fr !important; }
+.pmy-ds-performance-card { padding: 0 25px 25px !important; }
+.pmy-ds-performance-header {
+  padding: 25px 0 14px;
+  border-bottom: 1px solid var(--pmy-ds-border);
+}
+.pmy-ds-performance-title { margin-bottom: var(--pmy-space-1) !important; }
+.pmy-ds-performance-empty {
+  padding: 10px 0;
+  color: var(--pmy-ds-muted);
+  font-size: 15px;
+}
+.pmy-ds-performance-placeholder {
+  display: grid !important;
+  place-items: center;
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-accent);
+}
+.pmy-ds-performance-price {
+  margin-bottom: var(--pmy-space-1);
+  color: var(--pmy-ds-accent);
+  font-size: 15px;
+  font-weight: 750;
+}
+.pmy-ds-accordion-chevron {
+  color: var(--pmy-ds-muted);
+  transition: transform var(--pmy-motion-normal), color var(--pmy-motion-fast);
+}
+.pmy-ds-accordion-chevron.is-open {
+  transform: rotate(180deg);
+  color: var(--pmy-ds-accent);
+}
