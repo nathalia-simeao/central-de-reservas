@@ -102,15 +102,19 @@ export default function IntegrationsTab(props) {
                       const isConfigured = Boolean(conn.configured);
                       const statusLabel = conn.connected
                         ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
-                        : isConfigured
-                          ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
+                        : conn.validationError
+                          ? tr("ERRO NA CREDENCIAL", "CREDENTIAL ERROR")
+                          : isConfigured
+                            ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
                           : isPendingOnboarding
                             ? tr("ONBOARDING PENDENTE", "ONBOARDING PENDING")
                             : tr("NÃO CONFIGURADO", "NOT CONFIGURED");
                       const statusClass = conn.connected
                         ? "is-connected"
-                        : isConfigured
-                          ? "is-configured"
+                        : conn.validationError
+                          ? "is-error"
+                          : isConfigured
+                            ? "is-configured"
                           : isPendingOnboarding
                             ? "is-pending"
                             : "";
@@ -127,7 +131,8 @@ export default function IntegrationsTab(props) {
                           key={platform.key}
                           className={[
                             `pmy-int-card-v2 ${conn.connected ? "connected" : ""}`,
-                            isConfigured && !conn.connected ? "is-configured" : "",
+                            conn.validationError ? "is-error" : "",
+                            isConfigured && !conn.connected && !conn.validationError ? "is-configured" : "",
                             isPendingOnboarding ? "is-pending" : "",
                             "pmy-ds-migrated-15s4y9o",
                           ].filter(Boolean).join(" ")}
@@ -142,7 +147,7 @@ export default function IntegrationsTab(props) {
                           </div>
                           <div className="pmy-ds-migrated-1gcp9k1">
                             <span
-                              className={`pmy-int-status-dot ${conn.connected ? "on" : isConfigured ? "configured" : isPendingOnboarding ? "pending" : "off"}`}
+                              className={`pmy-int-status-dot ${conn.connected ? "on" : conn.validationError ? "error" : isConfigured ? "configured" : isPendingOnboarding ? "pending" : "off"}`}
                             ></span>
                             <span className={`pmy-ds-connection-state ${statusClass}`}>
                               {statusLabel}
@@ -150,7 +155,15 @@ export default function IntegrationsTab(props) {
                           </div>
                           <div className="pmy-int-name-v2">{platform.name}</div>
                           <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
-                          {isConfigured && !conn.connected && (
+                          {conn.validationError && (
+                            <div className="pmy-int-connection-note is-error">
+                              {conn.lastValidationMessage || tr(
+                                "O último teste da credencial falhou. Abra a integração para revisar ou substituir os dados.",
+                                "The last credential test failed. Open the integration to review or replace the data.",
+                              )}
+                            </div>
+                          )}
+                          {isConfigured && !conn.connected && !conn.validationError && (
                             <div className="pmy-int-connection-note">
                               {tr(
                                 "A credencial está salva no backend e o caminho técnico local foi testado. O canal só vira conectado quando a Central receber uma chamada autenticada real.",
