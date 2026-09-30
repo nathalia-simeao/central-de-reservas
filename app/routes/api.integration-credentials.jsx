@@ -88,9 +88,9 @@ async function testStoredCredential(provider) {
     }
 
     return updateIntegrationValidation(db, provider, {
-      status: "VALIDATED",
+      status: "LOCAL_CHECK",
       message:
-        "Credencial criptografada validada pela autenticação real da Supplier API. Aguardando a primeira requisição autenticada da Viator para marcar como conectado.",
+        "Credencial criptografada carregada e aceita pelo middleware local da Supplier API. Isso não confirma tráfego da Viator; aguardando a primeira requisição autenticada real para marcar como conectado.",
     });
   }
 
@@ -117,9 +117,9 @@ async function testStoredCredential(provider) {
     }
 
     return updateIntegrationValidation(db, provider, {
-      status: "VALIDATED",
+      status: "LOCAL_CHECK",
       message:
-        "Credencial criptografada validada pela autenticação real da Supplier API. Aguardando a primeira requisição autenticada da Civitatis para marcar como conectado.",
+        "Credencial criptografada carregada e aceita pelo middleware local da Supplier API. Isso não confirma tráfego da Civitatis; aguardando a primeira requisição autenticada real para marcar como conectado.",
     });
   }
 
@@ -248,7 +248,7 @@ export const action = async ({ request }) => {
         success: true,
         status,
         message:
-          "Credencial salva de forma criptografada e validada pela Supplier API da Central.",
+          "Credencial salva com criptografia e teste técnico local concluído. A conexão só será confirmada após tráfego autenticado real do canal.",
       });
     } catch (error) {
       console.error("[PMY] integration credential save/test failed", error);
