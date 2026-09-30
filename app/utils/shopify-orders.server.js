@@ -803,6 +803,16 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
       };
     }
 
+    if (convertedHold.reason === "HOLD_EXPIRED" && convertedHold.hold) {
+      return {
+        booking: convertedHold.hold,
+        syncStatus: convertedHold.hold.syncStatus || "EXPIRED",
+        updated: false,
+        reusedHold: false,
+        skipSync: true,
+      };
+    }
+
     console.warn(
       `[SHOPIFY] Checkout hold ${group.holdId} could not be reused: ${convertedHold.reason}`,
     );
@@ -970,23 +980,25 @@ export async function processShopifyOrderWebhook(
       syncStatus: result.syncStatus,
       totalParticipants: group.totalParticipants,
     });
-    await enqueueBookingSync(prisma, {
-      eventId: sourceEventId
-        ? `${sourceEventId}:${result.updated ? "updated" : "created"}:${result.booking.id}`
-        : undefined,
-      eventType: result.updated
-        ? SYNC_EVENT_TYPES.BOOKING_UPDATED
-        : SYNC_EVENT_TYPES.BOOKING_CREATED,
-      booking: result.booking,
-      sourcePlatform: SHOPIFY_PLATFORM,
-      force: true,
-      payload: {
-        orderId,
-        syncStatus: result.syncStatus,
-        attribution: group.attribution || {},
-        commercialSource: group.commercialSource,
-      },
-    });
+    if (!result.skipSync) {
+      await enqueueBookingSync(prisma, {
+        eventId: sourceEventId
+          ? `${sourceEventId}:${result.updated ? "updated" : "created"}:${result.booking.id}`
+          : undefined,
+        eventType: result.updated
+          ? SYNC_EVENT_TYPES.BOOKING_UPDATED
+          : SYNC_EVENT_TYPES.BOOKING_CREATED,
+        booking: result.booking,
+        sourcePlatform: SHOPIFY_PLATFORM,
+        force: true,
+        payload: {
+          orderId,
+          syncStatus: result.syncStatus,
+          attribution: group.attribution || {},
+          commercialSource: group.commercialSource,
+        },
+      });
+    }
   }
 
   // If an order was edited and a tour line disappeared, release its old seats.
