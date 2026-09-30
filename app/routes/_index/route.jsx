@@ -35,6 +35,52 @@ const getLisbonToday = () => {
 
 const getFlagUrl = (iso2) => `https://flagcdn.com/w20/${iso2.toLowerCase()}.png`;
 
+const getDraftOrderAttribution = () => {
+  const params = new URLSearchParams(window.location.search || "");
+  const sessionKey = "pmy_central_session_v1";
+  let sessionId = "";
+
+  try {
+    sessionId = sessionStorage.getItem(sessionKey) || "";
+    if (!sessionId) {
+      sessionId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? `central_${crypto.randomUUID()}`
+          : `central_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem(sessionKey, sessionId);
+    }
+  } catch {
+    sessionId = `central_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  const attribution = {
+    session_id: sessionId,
+    order_referrer_source: "central_pmy",
+    order_referrer_name: "Central PMY",
+    order_referrer_channel: "backoffice",
+  };
+
+  [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "fbclid",
+    "msclkid",
+    "ttclid",
+  ].forEach((key) => {
+    const value = String(params.get(key) || "").trim();
+    if (value) attribution[key] = value;
+  });
+
+  return attribution;
+};
+
 const ddiList = [
   { code: "+93",   iso: "AF" }, { code: "+355",  iso: "AL" }, { code: "+213",  iso: "DZ" },
   { code: "+376",  iso: "AD" }, { code: "+244",  iso: "AO" }, { code: "+1268", iso: "AG" },
@@ -1441,6 +1487,7 @@ function CentralDeReservasContent() {
       formData.append("language", custLang);
       formData.append("bookingPlatforms", bookingPlatforms.join(","));
       formData.append("lineItems", JSON.stringify(lineItems));
+      formData.append("attribution", JSON.stringify(getDraftOrderAttribution()));
 
       const payload = await requestResourceJson("/api/draft-order", formData);
       const draftOrder = payload?.draftOrder;
