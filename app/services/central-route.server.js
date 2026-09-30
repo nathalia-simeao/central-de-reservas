@@ -21,6 +21,11 @@ import {
   requeueSyncJob,
   SYNC_EVENT_TYPES,
 } from "../utils/sync-queue.server";
+import {
+  integrationEncryptionReady,
+  integrationEnvironmentSecretStatus,
+  listSafeIntegrationSecretStatuses,
+} from "../utils/integration-secrets.server";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -634,6 +639,18 @@ export const loader = async ({ request }) => {
     scheduleMissing: gygScheduleMissing.length,
   };
 
+  let integrationCredentialStatus = {
+    encryptionReady: integrationEncryptionReady(),
+    environment: integrationEnvironmentSecretStatus(),
+    statuses: [],
+  };
+  try {
+    integrationCredentialStatus.statuses =
+      await listSafeIntegrationSecretStatuses(prisma);
+  } catch (error) {
+    console.error("[PMY] integration credential status load failed:", error);
+  }
+
   return json({
     apiKey: process.env.SHOPIFY_API_KEY || "",
     tours,
@@ -647,6 +664,7 @@ export const loader = async ({ request }) => {
     dbGuides,
     shopifyWebhookStatus,
     gygIntegrationStatus,
+    integrationCredentialStatus,
     businessSettings,
     platformFieldMappings,
   });
