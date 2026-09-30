@@ -26,6 +26,7 @@ import {
   integrationEnvironmentSecretStatus,
   listSafeIntegrationSecretStatuses,
 } from "../utils/integration-secrets.server";
+import { localSlotToInstant } from "../utils/gyg-v1.server";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -272,12 +273,33 @@ export const loader = async ({ request }) => {
   // catálogo, Draft Orders, pedidos ou Banco de Mídia.
   const shopifyStaff = [];
 
-  // Busca guias do banco de dados
+  // Busca guias e escalas reais do banco de dados.
   let dbGuides = [];
+  let guideAssignments = [];
   try {
-    dbGuides = await prisma.guide.findMany({ orderBy: { createdAt: 'asc' } });
+    [dbGuides, guideAssignments] = await Promise.all([
+      prisma.guide.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.guideAssignment.findMany({
+        where: { status: "ASSIGNED" },
+        include: {
+          guide: true,
+          tour: {
+            select: {
+              id: true,
+              title: true,
+              shopifyProductId: true,
+              timezone: true,
+              durationMinutes: true,
+            },
+          },
+        },
+        orderBy: { startTime: "asc" },
+      }),
+    ]);
   } catch (e) {
+    console.error("[PMY] guide schedule load failed:", e);
     dbGuides = [];
+    guideAssignments = [];
   }
 
   // Biblioteca unificada PMY v1: PostgreSQL é o catálogo canônico e Shopify
@@ -662,6 +684,7 @@ export const loader = async ({ request }) => {
     mediaFiles,
     shopifyImages,
     dbGuides,
+    guideAssignments,
     shopifyWebhookStatus,
     gygIntegrationStatus,
     integrationCredentialStatus,
@@ -1067,6 +1090,197 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] saveGygTourConfig error:", e);
       return json({ success: false, error: e.message }, { status: 500 });
+    }
+  }
+
+  if (_action === "saveGuideAssignment") {
+    try {
+      const externalTourId = String(formData.get("tourId") || "").trim();
+      const guideId = String(formData.get("guideId") || "").trim();
+      const dateKey = String(formData.get("date") || "").trim();
+      const timeKey = String(formData.get("time") || "").trim();
+
+      if (!externalTourId || !guideId || !dateKey || !timeKey) {
+        return json(
+          {
+            success: false,
+            error: "Tour, guia, data e horário são obrigatórios para publicar a escala.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const [tour, guide] = await Promise.all([
+        resolveTourByPlatformId(prisma, "SHOPIFY", externalTourId),
+        prisma.guide.findUnique({ where: { id: guideId } }),
+      ]);
+
+      if (!tour) {
+        return json(
+          { success: false, error: "Tour mestre não encontrado." },
+          { status: 404 },
+        );
+      }
+      if (!guide) {
+        return json(
+          { success: false, error: "Guia não encontrado." },
+          { status: 404 },
+        );
+      }
+
+      const startTime = localSlotToInstant(
+        dateKey,
+        timeKey,
+        tour.timezone || "Europe/Lisbon",
+      );
+      if (!startTime) {
+        return json(
+          { success: false, error: "Data ou horário inválido para a escala." },
+          { status: 400 },
+        );
+      }
+
+      const [guideConflict, departureAssignment] = await Promise.all([
+        prisma.guideAssignment.findFirst({
+          where: {
+            guideId,
+            startTime,
+            status: "ASSIGNED",
+            tourId: { not: tour.id },
+          },
+          include: { tour: { select: { title: true } } },
+        }),
+        prisma.guideAssignment.findFirst({
+          where: {
+            tourId: tour.id,
+            startTime,
+            status: "ASSIGNED",
+          },
+        }),
+      ]);
+
+      if (guideConflict) {
+        return json(
+          {
+            success: false,
+            code: "GUIDE_ALREADY_ASSIGNED",
+            error: `${guide.name} já está escalado(a) para ${guideConflict.tour?.title || "outro tour"} neste mesmo horário.`,
+          },
+          { status: 409 },
+        );
+      }
+
+      const assignment = departureAssignment
+        ? await prisma.guideAssignment.update({
+            where: { id: departureAssignment.id },
+            data: {
+              guideId,
+              status: "ASSIGNED",
+              source: "MANUAL",
+            },
+            include: {
+              guide: true,
+              tour: {
+                select: {
+                  id: true,
+                  title: true,
+                  shopifyProductId: true,
+                  timezone: true,
+                  durationMinutes: true,
+                },
+              },
+            },
+          })
+        : await prisma.guideAssignment.create({
+            data: {
+              guideId,
+              tourId: tour.id,
+              startTime,
+              status: "ASSIGNED",
+              source: "MANUAL",
+            },
+            include: {
+              guide: true,
+              tour: {
+                select: {
+                  id: true,
+                  title: true,
+                  shopifyProductId: true,
+                  timezone: true,
+                  durationMinutes: true,
+                },
+              },
+            },
+          });
+
+      return json({
+        success: true,
+        assignment,
+        message: `${guide.name} escalado(a) para ${tour.title} em ${dateKey} às ${timeKey}.`,
+      });
+    } catch (error) {
+      console.error("[PMY] saveGuideAssignment failed:", error);
+      if (error?.code === "P2002") {
+        return json(
+          {
+            success: false,
+            code: "GUIDE_ASSIGNMENT_CONFLICT",
+            error:
+              "A saída ou o guia acabou de receber outra escala neste horário. Atualize a Agenda e tente novamente.",
+          },
+          { status: 409 },
+        );
+      }
+      return json(
+        {
+          success: false,
+          error: error?.message || "Não foi possível publicar a escala do guia.",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (_action === "removeGuideAssignment") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      if (!id) {
+        return json(
+          { success: false, error: "Escala não informada." },
+          { status: 400 },
+        );
+      }
+
+      const existing = await prisma.guideAssignment.findUnique({
+        where: { id },
+        include: { guide: true, tour: true },
+      });
+      if (!existing) {
+        return json(
+          { success: false, error: "Escala não encontrada." },
+          { status: 404 },
+        );
+      }
+
+      const assignment = await prisma.guideAssignment.update({
+        where: { id },
+        data: { status: "CANCELLED" },
+      });
+
+      return json({
+        success: true,
+        assignment,
+        message: `Escala de ${existing.guide.name} em ${existing.tour.title} removida.`,
+      });
+    } catch (error) {
+      console.error("[PMY] removeGuideAssignment failed:", error);
+      return json(
+        {
+          success: false,
+          error: error?.message || "Não foi possível remover a escala.",
+        },
+        { status: 500 },
+      );
     }
   }
 

@@ -55,6 +55,7 @@ model Tour {
   variants               TourVariant[]
   bookings               Booking[]
   blockedDates           BlockedDate[]
+  guideAssignments       GuideAssignment[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @default(now()) @updatedAt
 
@@ -146,14 +147,33 @@ model Booking {
 }
 
 model Guide {
-  id           String   @id @default(uuid())
-  name         String
-  email        String?
-  whatsapp     String
-  photoUrl     String?
-  utmId        String?  // ID da campanha UTM (ex: 21d91c)
-  referralLink String?  // Link completo com parâmetros UTM
-  createdAt    DateTime @default(now())
+  id             String            @id @default(uuid())
+  name           String
+  email          String?
+  whatsapp       String
+  photoUrl       String?
+  utmId          String?           // ID da campanha UTM (ex: 21d91c)
+  referralLink   String?           // Link completo com parâmetros UTM
+  assignments    GuideAssignment[]
+  createdAt      DateTime          @default(now())
+}
+
+model GuideAssignment {
+  id        String   @id @default(uuid())
+  guideId   String
+  guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  tourId    String
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  status    String   @default("ASSIGNED")
+  source    String   @default("MANUAL")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([guideId, startTime])
+  @@index([tourId, startTime])
+  @@index([status, startTime])
 }
 
 model BlockedDate {
