@@ -1807,3 +1807,429 @@
   .pmy-ds-channel-track { grid-column: 1 / -1; grid-row: 2; }
   .pmy-ds-channel-detail { grid-template-columns: 1fr; }
 }
+
+
+/* Dashboard status / departures / ranking */
+.pmy-ds-status-summary {
+  min-width: 132px;
+  padding: 10px 13px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: var(--pmy-radius-md);
+  background: var(--pmy-ds-soft);
+  text-align: right;
+}
+.pmy-ds-status-summary__label {
+  display: block;
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.pmy-ds-status-summary__value {
+  display: block;
+  margin-top: 3px;
+  color: var(--pmy-ds-accent);
+  font-size: 25px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+.pmy-ds-status-distribution {
+  height: 12px;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: var(--pmy-space-5);
+  border-radius: var(--pmy-radius-pill);
+  background: var(--pmy-ds-soft);
+}
+.pmy-ds-status-segment {
+  flex: 0 0 var(--pmy-share, 0%);
+  min-width: var(--pmy-share-min, 0);
+  transition: flex-basis var(--pmy-motion-normal);
+}
+.pmy-ds-status-segment.is-confirmed,
+.pmy-ds-status-icon.is-confirmed { background: var(--pmy-success); color: var(--pmy-success); }
+.pmy-ds-status-segment.is-pending,
+.pmy-ds-status-icon.is-pending { background: var(--pmy-warning); color: var(--pmy-warning); }
+.pmy-ds-status-segment.is-canceled,
+.pmy-ds-status-icon.is-canceled { background: var(--pmy-danger); color: var(--pmy-danger); }
+.pmy-ds-status-segment.is-completed,
+.pmy-ds-status-icon.is-completed { background: var(--pmy-info); color: var(--pmy-info); }
+
+.pmy-ds-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: var(--pmy-space-3);
+}
+.pmy-ds-status-card {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: var(--pmy-radius-lg);
+  background: var(--pmy-ds-surface);
+}
+.pmy-ds-status-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pmy-space-3);
+  margin-bottom: 14px;
+}
+.pmy-ds-status-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--pmy-radius-md);
+}
+.pmy-ds-status-icon.is-confirmed { background: var(--pmy-success-soft); }
+.pmy-ds-status-icon.is-pending { background: var(--pmy-warning-soft); }
+.pmy-ds-status-icon.is-canceled { background: var(--pmy-danger-soft); }
+.pmy-ds-status-icon.is-completed { background: var(--pmy-info-soft); }
+.pmy-ds-status-share {
+  font-size: var(--pmy-type-xs);
+  font-weight: 850;
+}
+.pmy-ds-status-share.is-confirmed,
+.pmy-ds-status-value.is-confirmed { color: var(--pmy-success); }
+.pmy-ds-status-share.is-pending,
+.pmy-ds-status-value.is-pending { color: var(--pmy-warning); }
+.pmy-ds-status-share.is-canceled,
+.pmy-ds-status-value.is-canceled { color: var(--pmy-danger); }
+.pmy-ds-status-share.is-completed,
+.pmy-ds-status-value.is-completed { color: var(--pmy-info); }
+.pmy-ds-status-label {
+  margin-bottom: 3px;
+  color: var(--pmy-ds-text);
+  font-size: var(--pmy-type-md);
+  font-weight: 850;
+}
+.pmy-ds-status-value {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 900;
+}
+.pmy-ds-status-description,
+.pmy-ds-status-note {
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  line-height: 1.35;
+}
+.pmy-ds-status-note {
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid var(--pmy-ds-border);
+}
+
+.pmy-ds-departure-summary {
+  min-width: 120px;
+  padding: 10px 13px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: var(--pmy-radius-md);
+  background: var(--pmy-ds-soft);
+  text-align: right;
+}
+.pmy-ds-departure-summary__label {
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.pmy-ds-departure-summary__value {
+  display: block;
+  margin-top: 2px;
+  color: var(--pmy-ds-accent);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+}
+.pmy-ds-departure-table { overflow-x: auto; }
+.pmy-ds-departure-table__inner { min-width: 920px; }
+.pmy-ds-departure-head,
+.pmy-ds-departure-row {
+  display: grid;
+  grid-template-columns: minmax(280px,1.7fr) 120px 86px 105px minmax(170px,1fr) 150px;
+  gap: var(--pmy-space-3);
+}
+.pmy-ds-departure-head {
+  padding: 0 12px 9px;
+  border-bottom: 1px solid var(--pmy-ds-border);
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.pmy-ds-departure-head__end { text-align: right; }
+.pmy-ds-departure-row {
+  min-height: 74px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pmy-ds-border);
+}
+.pmy-ds-departure-tour {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.pmy-ds-departure-image,
+.pmy-ds-departure-placeholder {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  object-fit: cover;
+}
+.pmy-ds-departure-placeholder {
+  display: grid;
+  place-items: center;
+  border-radius: var(--pmy-radius-md);
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-accent);
+}
+.pmy-ds-departure-copy { min-width: 0; }
+.pmy-ds-departure-title {
+  overflow: hidden;
+  color: var(--pmy-ds-text);
+  font-size: var(--pmy-type-md);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pmy-ds-departure-meta {
+  margin-top: 3px;
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+}
+.pmy-ds-departure-date,
+.pmy-ds-departure-time { color: var(--pmy-ds-text); font-weight: 800; }
+.pmy-ds-departure-date { font-size: var(--pmy-type-sm); }
+.pmy-ds-departure-time { font-size: var(--pmy-type-md); }
+.pmy-ds-departure-pax strong {
+  display: block;
+  color: var(--pmy-ds-text);
+  font-size: 17px;
+}
+.pmy-ds-departure-pax span {
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+}
+.pmy-ds-departure-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.pmy-ds-departure-seats { text-align: right; }
+.pmy-ds-seat-count {
+  min-width: 58px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 11px;
+  color: var(--pmy-success);
+  background: var(--pmy-success-soft);
+  font-size: var(--pmy-type-lg);
+  font-weight: 900;
+}
+.pmy-ds-seat-count.is-tight { color: var(--pmy-warning); background: var(--pmy-warning-soft); }
+.pmy-ds-seat-count.is-full { color: var(--pmy-danger); background: var(--pmy-danger-soft); }
+.pmy-ds-seat-meta {
+  margin-top: 4px;
+  color: var(--pmy-ds-muted);
+  font-size: 10px;
+}
+.pmy-ds-show-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 15px;
+}
+
+.pmy-ds-ranking-controls {
+  display: inline-flex;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: var(--pmy-radius-pill);
+  background: var(--pmy-ds-soft);
+}
+.pmy-ds-ranking-control {
+  border: 0;
+  border-radius: var(--pmy-radius-pill);
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  font-weight: 850;
+  cursor: pointer;
+}
+.pmy-ds-ranking-control.is-active {
+  background: var(--pmy-ds-surface);
+  color: var(--pmy-ds-accent);
+  box-shadow: var(--pmy-shadow-xs);
+}
+.pmy-ds-ranking-list {
+  display: grid;
+  gap: var(--pmy-space-2);
+}
+.pmy-ds-ranking-row {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 46px minmax(230px,1.6fr) minmax(120px,1fr) 112px 112px 150px;
+  align-items: center;
+  gap: var(--pmy-space-3);
+  padding: 10px 12px;
+  border: 1px solid var(--pmy-ds-border);
+  border-radius: 15px;
+  background: var(--pmy-ds-surface);
+}
+.pmy-ds-ranking-row.is-first {
+  background: color-mix(in srgb, var(--pmy-ds-accent) 4%, var(--pmy-ds-surface));
+}
+.pmy-ds-ranking-position {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-sm);
+  font-weight: 900;
+}
+.pmy-ds-ranking-row.is-first .pmy-ds-ranking-position {
+  background: var(--pmy-ds-accent);
+  color: var(--pmy-ds-accent-contrast);
+}
+.pmy-ds-ranking-tour {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.pmy-ds-ranking-image,
+.pmy-ds-ranking-placeholder {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+.pmy-ds-ranking-image { object-fit: cover; }
+.pmy-ds-ranking-placeholder {
+  display: grid;
+  place-items: center;
+  border-radius: var(--pmy-radius-md);
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-accent);
+}
+.pmy-ds-ranking-copy { min-width: 0; }
+.pmy-ds-ranking-name {
+  overflow: hidden;
+  color: var(--pmy-ds-text);
+  font-size: var(--pmy-type-md);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pmy-ds-ranking-warning {
+  margin-top: 3px;
+  color: var(--pmy-warning);
+  font-size: var(--pmy-type-xs);
+}
+.pmy-ds-ranking-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--pmy-radius-pill);
+  background: var(--pmy-ds-soft);
+}
+.pmy-ds-ranking-fill {
+  width: var(--pmy-bar-width, 0%);
+  min-width: var(--pmy-bar-min, 0);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pmy-ds-accent);
+}
+.pmy-ds-ranking-metric__label {
+  display: block;
+  color: var(--pmy-ds-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.pmy-ds-ranking-metric__value {
+  color: var(--pmy-ds-text);
+  font-size: 18px;
+  font-weight: 850;
+}
+.pmy-ds-ranking-revenue { text-align: right; }
+.pmy-ds-ranking-revenue .pmy-ds-ranking-metric__value {
+  display: block;
+  color: var(--pmy-ds-accent);
+  font-size: 17px;
+}
+.pmy-ds-ranking-note {
+  margin-top: 14px;
+  padding-top: 11px;
+  border-top: 1px solid var(--pmy-ds-border);
+  color: var(--pmy-ds-muted);
+  font-size: var(--pmy-type-xs);
+  line-height: 1.45;
+}
+
+.pmy-ds-legacy-category-grid { grid-template-columns: 1fr; }
+.pmy-ds-legacy-category-content { padding: 0 25px 25px; }
+.pmy-ds-legacy-category-header {
+  padding: 25px 0 14px;
+  border-bottom: 1px solid var(--pmy-ds-border);
+}
+.pmy-ds-legacy-tour-placeholder {
+  display: grid !important;
+  place-items: center;
+  background: var(--pmy-ds-soft);
+  color: var(--pmy-ds-accent);
+}
+.pmy-ds-legacy-tour-value {
+  margin-bottom: 4px;
+  color: var(--pmy-ds-accent);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+@media (max-width: 1000px) {
+  .pmy-ds-status-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .pmy-ds-ranking-row {
+    grid-template-columns: 42px minmax(180px,1.4fr) minmax(90px,1fr) 82px 92px 130px;
+    gap: 10px;
+  }
+}
+@media (max-width: 700px) {
+  .pmy-ds-status-grid { grid-template-columns: 1fr; }
+  .pmy-ds-departure-table { overflow: visible; }
+  .pmy-ds-departure-table__inner { min-width: 0; }
+  .pmy-ds-departure-head { display: none; }
+  .pmy-ds-departure-row {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    margin-bottom: 10px;
+    padding: 14px;
+    border: 1px solid var(--pmy-ds-border);
+    border-radius: var(--pmy-radius-lg);
+  }
+  .pmy-ds-departure-tour,
+  .pmy-ds-departure-channels { grid-column: 1 / -1; }
+  .pmy-ds-departure-seats { text-align: left; }
+  .pmy-ds-ranking-controls { max-width: 100%; overflow-x: auto; }
+  .pmy-ds-ranking-row {
+    grid-template-columns: 38px minmax(0,1fr);
+  }
+  .pmy-ds-ranking-row > .pmy-ds-ranking-track,
+  .pmy-ds-ranking-row > .pmy-ds-ranking-revenue { grid-column: 1 / -1; }
+  .pmy-ds-ranking-revenue {
+    padding-top: 10px;
+    border-top: 1px solid var(--pmy-ds-border);
+    text-align: left;
+  }
+}
