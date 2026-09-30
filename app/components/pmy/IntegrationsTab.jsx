@@ -537,7 +537,7 @@ export default function IntegrationsTab(props) {
 
                   <div className="pmy-ds-migrated-kewd2o">
                     <strong className="pmy-ds-migrated-1sbb1if">{tr("Como ler:", "How to read:")}</strong> cada linha representa o envio de um mesmo evento para um canal.
-                    Se um canal estiver e outro falha ou nova tentativa, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
+                    Se o mesmo evento tiver status diferentes entre os canais, existe uma divergência. O botão <strong>{tr("Reenviar", "Retry")}</strong> recoloca apenas aquele job na fila e tenta processá-lo novamente.
                   </div>
                 </div>
               )}
