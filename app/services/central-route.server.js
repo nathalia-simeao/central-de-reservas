@@ -27,6 +27,7 @@ import {
   listSafeIntegrationSecretStatuses,
 } from "../utils/integration-secrets.server";
 import { localSlotToInstant } from "../utils/gyg-v1.server";
+import { syncShopifyGuideMetaobjects } from "../utils/shopify-guides.server";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -273,12 +274,43 @@ export const loader = async ({ request }) => {
   // catálogo, Draft Orders, pedidos ou Banco de Mídia.
   const shopifyStaff = [];
 
-  // Busca guias e escalas reais do banco de dados.
+  // Shopify é a fonte editorial dos guias. A Central mantém os campos
+  // operacionais (contato, UTM e escalas) no PostgreSQL.
+  let guideShopifySync = {
+    success: false,
+    total: 0,
+    created: 0,
+    updated: 0,
+    error: null,
+  };
+  try {
+    const syncResult = await syncShopifyGuideMetaobjects(prisma, admin);
+    guideShopifySync = {
+      success: true,
+      ...syncResult,
+      error: null,
+    };
+  } catch (error) {
+    console.error("[PMY] Shopify guide metaobject sync failed:", error);
+    guideShopifySync.error =
+      error?.message || "Falha ao sincronizar os guias do Shopify.";
+  }
+
+  // Busca os guias ativos do Shopify e qualquer registro manual legado.
+  // Escalas continuam vindo do banco relacional real.
   let dbGuides = [];
   let guideAssignments = [];
   try {
     [dbGuides, guideAssignments] = await Promise.all([
-      prisma.guide.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.guide.findMany({
+        where: {
+          OR: [
+            { shopifyMetaobjectId: null },
+            { shopifyActive: true },
+          ],
+        },
+        orderBy: { name: "asc" },
+      }),
       prisma.guideAssignment.findMany({
         where: { status: "ASSIGNED" },
         include: {
@@ -685,6 +717,7 @@ export const loader = async ({ request }) => {
     shopifyImages,
     dbGuides,
     guideAssignments,
+    guideShopifySync,
     shopifyWebhookStatus,
     gygIntegrationStatus,
     integrationCredentialStatus,
@@ -1795,40 +1828,123 @@ export const action = async ({ request }) => {
     }
   }
 
-  // Criar/atualizar guia no banco
+  // Campos editoriais de guias sincronizados são propriedade do Shopify.
+  // A Central persiste somente contato/UTM nesses registros.
   if (_action === "saveGuide") {
     try {
-      const id       = formData.get("id");
-      const name     = formData.get("name");
-      const email    = formData.get("email") || null;
-      const whatsapp = formData.get("whatsapp");
-      const photoUrl = formData.get("photoUrl") || null;
-      const utmId    = formData.get("utmId") || null;
-      const baseUrl  = formData.get("baseUrl") || "https://portugalmeandyou.com/";
-      // Gera utm_content a partir do nome (ex: "Renan Stein" → "renan_stein")
-      const utmContent = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+      const id = String(formData.get("id") || "").trim() || null;
+      const submittedName = String(formData.get("name") || "").trim();
+      const email = String(formData.get("email") || "").trim() || null;
+      const whatsapp = String(formData.get("whatsapp") || "").trim();
+      const submittedPhotoUrl = String(formData.get("photoUrl") || "").trim() || null;
+      const utmId = String(formData.get("utmId") || "").trim() || null;
+      const baseUrl = String(
+        formData.get("baseUrl") || "https://portugalmeandyou.com/",
+      ).trim();
+
+      let existing = null;
+      if (id) {
+        existing = await prisma.guide.findUnique({ where: { id } });
+        if (!existing) {
+          return json(
+            { success: false, error: "Guia não encontrado." },
+            { status: 404 },
+          );
+        }
+      }
+
+      const shopifyManaged = Boolean(existing?.shopifyMetaobjectId);
+      const name = shopifyManaged ? existing.name : submittedName;
+      if (!name) {
+        return json(
+          { success: false, error: "Nome do guia é obrigatório." },
+          { status: 400 },
+        );
+      }
+
+      const utmContent = name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
       const referralLink = utmId
         ? `${baseUrl}?utm_campaign=${utmId}&utm_source=guia&utm_medium=indicacao&utm_content=${utmContent}`
         : null;
-      if (id) {
-        await prisma.guide.update({ where: { id }, data: { name, email, whatsapp, photoUrl, utmId, referralLink } });
+
+      const operationalData = {
+        email,
+        whatsapp,
+        utmId,
+        referralLink,
+      };
+
+      let guide;
+      if (existing) {
+        guide = await prisma.guide.update({
+          where: { id },
+          data: shopifyManaged
+            ? operationalData
+            : {
+                ...operationalData,
+                name,
+                photoUrl: submittedPhotoUrl,
+              },
+        });
       } else {
-        await prisma.guide.create({ data: { name, email, whatsapp, photoUrl, utmId, referralLink } });
+        guide = await prisma.guide.create({
+          data: {
+            name,
+            email,
+            whatsapp,
+            photoUrl: submittedPhotoUrl,
+            utmId,
+            referralLink,
+            source: "CENTRAL",
+          },
+        });
       }
-      return json({ success: true });
+
+      return json({ success: true, guide });
     } catch (e) {
-      return json({ success: false, error: e.message });
+      return json(
+        { success: false, error: e?.message || "Falha ao salvar guia." },
+        { status: 500 },
+      );
     }
   }
 
-  // Deletar guia do banco
+  // Guias sincronizados devem ser removidos no Shopify. Apagá-los localmente
+  // destruiria também a relação com as escalas e eles seriam recriados no sync.
   if (_action === "deleteGuide") {
     try {
-      const id = formData.get("id");
+      const id = String(formData.get("id") || "").trim();
+      const guide = await prisma.guide.findUnique({ where: { id } });
+      if (!guide) {
+        return json(
+          { success: false, error: "Guia não encontrado." },
+          { status: 404 },
+        );
+      }
+      if (guide.shopifyMetaobjectId) {
+        return json(
+          {
+            success: false,
+            code: "SHOPIFY_MANAGED_GUIDE",
+            error:
+              "Este guia vem do Shopify. Remova ou desative a entrada no metaobjeto Guias para retirá-lo da Central.",
+          },
+          { status: 409 },
+        );
+      }
+
       await prisma.guide.delete({ where: { id } });
       return json({ success: true });
     } catch (e) {
-      return json({ success: false, error: e.message });
+      return json(
+        { success: false, error: e?.message || "Falha ao remover guia." },
+        { status: 500 },
+      );
     }
   }
 

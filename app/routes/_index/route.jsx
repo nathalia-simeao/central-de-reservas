@@ -412,7 +412,7 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -525,10 +525,28 @@ function CentralDeReservasContent() {
   const [guideDdi, setGuideDdi] = useState("+351");
   const [guideWhatsapp, setGuideWhatsapp] = useState("");
   const [guidePhoto, setGuidePhoto] = useState(null);
-  // Guias vêm do banco (dinâmico) — fallback para lista vazia se banco vazio
+  // Perfis editoriais vêm do metaobjeto Shopify; contato/UTM e escala
+  // continuam operacionais dentro da Central.
   const [guidesList, setGuidesList] = useState(
     dbGuides.length > 0
-      ? dbGuides.map(g => ({ id: g.id, name: g.name, email: g.email || "", whatsapp: g.whatsapp, photo: g.photoUrl || "https://via.placeholder.com/150", utmId: g.utmId || "", referralLink: g.referralLink || "" }))
+      ? dbGuides.map(g => ({
+          id: g.id,
+          name: g.name,
+          email: g.email || "",
+          whatsapp: g.whatsapp || "",
+          photo: g.photoUrl || "https://via.placeholder.com/150",
+          description: g.description || "",
+          videoUrl: g.videoUrl || "",
+          galleryUrls: Array.isArray(g.galleryUrls) ? g.galleryUrls : [],
+          exclusiveProducts: Array.isArray(g.exclusiveProducts) ? g.exclusiveProducts : [],
+          shopifyMetaobjectId: g.shopifyMetaobjectId || null,
+          shopifyHandle: g.shopifyHandle || "",
+          shopifyActive: Boolean(g.shopifyActive),
+          shopifyUpdatedAt: g.shopifyUpdatedAt || null,
+          source: g.source || "CENTRAL",
+          utmId: g.utmId || "",
+          referralLink: g.referralLink || "",
+        }))
       : []
   );
   const [selectedGuideInfo, setSelectedGuideInfo] = useState(null);
@@ -1636,47 +1654,94 @@ function CentralDeReservasContent() {
 
   const handleSaveEditGuide = async (e) => {
     e.preventDefault();
-    if (!editGuideName || !editGuideWhatsapp) return;
-    const whatsapp = `${editGuideDdi} ${editGuideWhatsapp}`;
-    // Optimistic update
-    const editUtmContent = editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+    if (!editGuideName) return;
+    const whatsapp = editGuideWhatsapp.trim()
+      ? `${editGuideDdi} ${editGuideWhatsapp.trim()}`
+      : "";
+    const currentGuide = guidesList.find((guide) => guide.id === editingGuide);
+    const shopifyManaged = Boolean(currentGuide?.shopifyMetaobjectId);
+    const effectiveName = shopifyManaged ? currentGuide.name : editGuideName;
+    const editUtmContent = effectiveName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g,"_")
+      .replace(/[^a-z0-9_]/g,"");
     const editReferralLink = editGuideUtmId
       ? `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editUtmContent}`
       : "";
-    setGuidesList(prev => prev.map(g =>
-      g.id === editingGuide
-        ? { ...g, name: editGuideName, email: editGuideEmail, whatsapp, photo: editGuidePhoto || g.photo, utmId: editGuideUtmId, referralLink: editReferralLink }
-        : g
-    ));
-    setEditingGuide(null);
-    // Persist to DB (only if real DB id, not temp)
-    if (!String(editingGuide).startsWith('temp_')) {
+
+    if (!String(editingGuide).startsWith("temp_")) {
       try {
         const fd = new FormData();
         fd.append("_action", "saveGuide");
         fd.append("id", editingGuide);
-        fd.append("name", editGuideName);
+        fd.append("name", effectiveName);
         fd.append("email", editGuideEmail || "");
         fd.append("whatsapp", whatsapp);
         fd.append("utmId", editGuideUtmId || "");
-        if (editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
-        await fetch(window.location.href, { method: "POST", body: fd });
-      } catch {}
+        if (!shopifyManaged && editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
+
+        const res = await fetch(window.location.href, { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok || !data?.success) {
+          alert(data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."));
+          return;
+        }
+
+        setGuidesList(prev => prev.map(g =>
+          g.id === editingGuide
+            ? {
+                ...g,
+                name: shopifyManaged ? g.name : editGuideName,
+                email: editGuideEmail,
+                whatsapp,
+                photo: shopifyManaged ? g.photo : (editGuidePhoto || g.photo),
+                utmId: editGuideUtmId,
+                referralLink: editReferralLink,
+              }
+            : g
+        ));
+      } catch (error) {
+        alert(error?.message || ui("Erro ao salvar guia.", "Error saving guide."));
+        return;
+      }
     }
+    setEditingGuide(null);
   };
 
   const handleDeleteGuide = async (id) => {
+    const guide = guidesList.find((item) => item.id === id);
+    if (guide?.shopifyMetaobjectId) {
+      alert(
+        ui(
+          "Este guia é gerenciado pelo Shopify. Remova ou desative a entrada no metaobjeto Guias.",
+          "This guide is managed by Shopify. Remove or disable the entry in the Guides metaobject.",
+        ),
+      );
+      return;
+    }
     if (!window.confirm("Remover este guia do sistema?")) return;
-    setGuidesList(prev => prev.filter(g => g.id !== id));
-    setEditingGuide(null);
-    if (!String(id).startsWith('temp_')) {
+
+    if (!String(id).startsWith("temp_")) {
       try {
         const fd = new FormData();
         fd.append("_action", "deleteGuide");
         fd.append("id", id);
-        await fetch(window.location.href, { method: "POST", body: fd });
-      } catch {}
+        const res = await fetch(window.location.href, { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok || !data?.success) {
+          alert(data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."));
+          return;
+        }
+      } catch (error) {
+        alert(error?.message || ui("Erro ao remover guia.", "Error removing guide."));
+        return;
+      }
     }
+
+    setGuidesList(prev => prev.filter(g => g.id !== id));
+    setEditingGuide(null);
   };
 
   const handleEditGuidePhotoChange = (e) => {
@@ -3458,8 +3523,60 @@ function CentralDeReservasContent() {
               <h2 className="pmy-ds-migrated-1xc4j8f">{selectedGuideInfo.name}</h2>
               <div className="pmy-ds-migrated-llii8p">✉️ {selectedGuideInfo.email||'N/A'}</div>
               <div className="pmy-ds-migrated-1g1g73g">📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
+              {selectedGuideInfo.shopifyMetaobjectId && (
+                <div className="pmy-u-mt-2">
+                  <span className="pmy-tag">Shopify · metaobjeto Guias</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {selectedGuideInfo.description && (
+            <div className="pmy-ds-panel-soft pmy-u-mt-3">
+              <h4 className="pmy-u-mb-2">{ui("Perfil do guia", "Guide profile")}</h4>
+              <p>{selectedGuideInfo.description}</p>
+            </div>
+          )}
+
+          {selectedGuideInfo.videoUrl && (
+            <div className="pmy-u-mt-3">
+              <h4 className="pmy-u-mb-2">{ui("Vídeo", "Video")}</h4>
+              <video
+                controls
+                preload="metadata"
+                src={selectedGuideInfo.videoUrl}
+                className="pmy-guide-profile-video"
+              />
+            </div>
+          )}
+
+          {selectedGuideInfo.exclusiveProducts?.length > 0 && (
+            <div className="pmy-u-mt-3">
+              <h4 className="pmy-u-mb-2">{ui("Passeios exclusivos", "Exclusive tours")}</h4>
+              <div className="pmy-ds-list-plain">
+                {selectedGuideInfo.exclusiveProducts.map((product) => (
+                  <div className="pmy-ds-list-plain__row" key={product.id}>
+                    <span className="pmy-ds-list-plain__title">
+                      <Icon name="mapPin" size={17} />
+                      {product.title}
+                    </span>
+                    <span className="pmy-tag">Shopify</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedGuideInfo.galleryUrls?.length > 0 && (
+            <div className="pmy-u-mt-3">
+              <h4 className="pmy-u-mb-2">{ui("Galeria", "Gallery")}</h4>
+              <div className="pmy-guide-profile-gallery">
+                {selectedGuideInfo.galleryUrls.map((url) => (
+                  <img key={url} src={url} alt={selectedGuideInfo.name} loading="lazy" />
+                ))}
+              </div>
+            </div>
+          )}
           <h4 className="pmy-ds-migrated-uzos4w">{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
           <div className="pmy-ds-migrated-1iaao15">
             {guideAssignmentsList
@@ -3717,6 +3834,7 @@ function CentralDeReservasContent() {
     const guide = guidesList.find(g => g.id === editingGuide);
     if (!guide) return null;
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
+    const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
       <div className="pmy-modal-overlay" onClick={() => setEditingGuide(null)}>
         <div className="pmy-ds-migrated-zuczkc" onClick={e => e.stopPropagation()}>
@@ -3725,24 +3843,57 @@ function CentralDeReservasContent() {
               <div className="pmy-ds-migrated-otectg">
                 <img src={editGuidePhoto || guide.photo} alt={guide.name}
                   className="pmy-ds-migrated-1sos9w" />
-                <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
-                  title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
-                  className="pmy-ds-migrated-1canwv8">📷</button>
-                <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                {!shopifyManaged && (
+                  <>
+                    <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
+                      title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
+                      className="pmy-ds-migrated-1canwv8"><Icon name="media" size={16} /></button>
+                    <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                  </>
+                )}
               </div>
               <div>
-                <div className="pmy-ds-migrated-1w8jk2f">{ui("Editando guia", "Editing guide")}</div>
+                <div className="pmy-ds-migrated-1w8jk2f">
+                  {shopifyManaged
+                    ? ui("Dados operacionais do guia", "Guide operational data")
+                    : ui("Editando guia", "Editing guide")}
+                </div>
                 <div className="pmy-ds-migrated-16qi501">{guide.name}</div>
               </div>
             </div>
             <button onClick={() => setEditingGuide(null)}
               className="pmy-ds-migrated-6cymc4">&times;</button>
           </div>
+          {shopifyManaged && (
+            <div className="pmy-ds-state-panel pmy-u-mx-4 pmy-u-mt-3">
+              <div className="pmy-ds-state-title">
+                {ui("Perfil sincronizado do Shopify", "Profile synced from Shopify")}
+              </div>
+              <div className="pmy-ds-migrated-rhcrii">
+                {ui(
+                  "Nome, foto, descrição, vídeo, passeio exclusivo e galeria são gerenciados no metaobjeto Guias. Aqui ficam apenas e-mail, WhatsApp, UTM e escala.",
+                  "Name, photo, description, video, exclusive tour and gallery are managed in the Guides metaobject. Only email, WhatsApp, UTM and scheduling are managed here.",
+                )}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSaveEditGuide} className="pmy-ds-migrated-bp52w">
             <div className="pmy-ds-migrated-kxbe7g">
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>{ui("Nome e Sobrenome", "Full Name")}</label>
-                <input type="text" className="pmy-form-input" value={editGuideName} onChange={e => setEditGuideName(e.target.value)} required />
+                <input
+                  type="text"
+                  className="pmy-form-input"
+                  value={shopifyManaged ? guide.name : editGuideName}
+                  onChange={e => setEditGuideName(e.target.value)}
+                  disabled={shopifyManaged}
+                  required
+                />
+                {shopifyManaged && (
+                  <div className="pmy-ds-code-note">
+                    {ui("Alterações de nome são feitas no Shopify.", "Name changes are made in Shopify.")}
+                  </div>
+                )}
               </div>
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>E-mail</label>
@@ -3757,7 +3908,7 @@ function CentralDeReservasContent() {
                       {ddiList.map((d,i) => <option key={i} value={d.code}>{d.code}</option>)}
                     </select>
                   </div>
-                  <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} required />
+                  <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} />
                 </div>
               </div>
 
@@ -3782,9 +3933,15 @@ function CentralDeReservasContent() {
               </div>
             </div>
             <div className="pmy-ds-migrated-y37ip1">
-              <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff" >{ui("💾 Salvar Alterações", "💾 Save Changes")}</button>
-              <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
-                className="pmy-ds-migrated-138e6nr">🗑️</button>
+              <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff">
+                {ui("Salvar dados operacionais", "Save operational data")}
+              </button>
+              {!shopifyManaged && (
+                <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
+                  className="pmy-ds-migrated-138e6nr" aria-label={ui("Excluir guia", "Delete guide")}>
+                  <Icon name="trash" size={16} />
+                </button>
+              )}
               <button type="button" onClick={() => setEditingGuide(null)}
                 className="pmy-ds-migrated-2o86xe">{ui("Cancelar", "Cancel")}</button>
             </div>
@@ -5473,6 +5630,7 @@ function CentralDeReservasContent() {
 
           <GuidesTab {...{
             activeTab, ddiList, getFlagUrl, guideAssignments: guideAssignmentsList,
+            guideShopifySync,
             guideDdi, guideEmail, guideName, guidePhoto,
             guidePhotoRef, guideUtmId, guideWhatsapp, guidesList, handleAddGuide,
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,

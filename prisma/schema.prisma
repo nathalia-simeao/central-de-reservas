@@ -147,15 +147,29 @@ model Booking {
 }
 
 model Guide {
-  id             String            @id @default(uuid())
-  name           String
-  email          String?
-  whatsapp       String
-  photoUrl       String?
-  utmId          String?           // ID da campanha UTM (ex: 21d91c)
-  referralLink   String?           // Link completo com parâmetros UTM
-  assignments    GuideAssignment[]
-  createdAt      DateTime          @default(now())
+  id                  String            @id @default(uuid())
+  name                String
+  email               String?
+  whatsapp            String
+  photoUrl            String?
+  description         String?           @db.Text
+  videoUrl            String?           @db.Text
+  galleryUrls         String[]          @default([])
+  exclusiveProducts   Json?
+  shopifyMetaobjectId String?           @unique
+  shopifyHandle       String?
+  shopifyActive       Boolean           @default(false)
+  shopifyUpdatedAt    DateTime?
+  source              String            @default("CENTRAL")
+  utmId               String?           // ID da campanha UTM (ex: 21d91c)
+  referralLink        String?           // Link completo com parâmetros UTM
+  assignments         GuideAssignment[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+
+  @@index([shopifyHandle])
+  @@index([shopifyActive])
+  @@index([source])
 }
 
 model GuideAssignment {
