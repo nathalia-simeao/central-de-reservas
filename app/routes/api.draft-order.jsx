@@ -7,6 +7,93 @@ function clean(value) {
   return String(value ?? "").trim();
 }
 
+const ATTRIBUTION_FIELDS = [
+  "session_id",
+  "order_referrer_source",
+  "order_referrer_name",
+  "order_referrer_channel",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "gclid",
+  "gbraid",
+  "wbraid",
+  "fbclid",
+  "msclkid",
+  "ttclid",
+];
+
+function cleanAttribute(value, max = 255) {
+  return clean(value).slice(0, max);
+}
+
+function parseAttribution(raw) {
+  let parsed = {};
+  try {
+    parsed = JSON.parse(clean(raw) || "{}");
+  } catch {
+    parsed = {};
+  }
+
+  const out = {};
+  for (const key of ATTRIBUTION_FIELDS) {
+    const value = cleanAttribute(parsed?.[key]);
+    if (value) out[key] = value;
+  }
+  return out;
+}
+
+function generatedCentralSession() {
+  return `central_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function attributionAttributes(attribution) {
+  const sessionId = attribution.session_id || generatedCentralSession();
+  const source =
+    attribution.order_referrer_source ||
+    attribution.utm_source ||
+    "central_pmy";
+  const name = attribution.order_referrer_name || "Central PMY";
+  const channel =
+    attribution.order_referrer_channel ||
+    attribution.utm_medium ||
+    "backoffice";
+
+  const rows = [
+    ["order_referrer_source", source],
+    ["order_referrer_name", name],
+    ["order_referrer_channel", channel],
+    ["PMY Session", sessionId],
+    ["PMY First Source", attribution.utm_source || source],
+    ["PMY Last Source", attribution.utm_source || source],
+    ["PMY UTM Source", attribution.utm_source],
+    ["PMY UTM Medium", attribution.utm_medium],
+    ["PMY UTM Campaign", attribution.utm_campaign],
+    ["PMY UTM Term", attribution.utm_term],
+    ["PMY UTM Content", attribution.utm_content],
+    ["PMY UTM ID", attribution.utm_id],
+    ["PMY GCLID", attribution.gclid],
+    ["PMY GBRAID", attribution.gbraid],
+    ["PMY WBRAID", attribution.wbraid],
+    ["PMY FBCLID", attribution.fbclid],
+    ["PMY MSCLKID", attribution.msclkid],
+    ["PMY TTCLID", attribution.ttclid],
+  ];
+
+  return {
+    sessionId,
+    source,
+    name,
+    channel,
+    attributes: rows
+      .filter(([, value]) => clean(value))
+      .map(([key, value]) => ({ key, value: cleanAttribute(value) })),
+  };
+}
+
 function normalizeTime(value) {
   const match = clean(value).match(/^([01]?\d|2[0-3])[:hH]([0-5]\d)$/);
   if (!match) return null;
@@ -112,6 +199,8 @@ export const action = async ({ request }) => {
   const time = normalizeTime(formData.get("time"));
   const language = clean(formData.get("language"));
   const bookingPlatforms = clean(formData.get("bookingPlatforms"));
+  const attribution = parseAttribution(formData.get("attribution"));
+  const attributionMeta = attributionAttributes(attribution);
   let lineItems;
 
   try {
@@ -146,7 +235,13 @@ export const action = async ({ request }) => {
       { key: "date", value: date },
       { key: "time", value: time },
       { key: "language", value: language },
-      { key: "source", value: "Central PMY" },
+      { key: "source", value: attributionMeta.name },
+      ...attributionMeta.attributes,
+      { key: "PMY Product ID", value: productId },
+      {
+        key: "PMY Variant IDs",
+        value: lineItems.map((item) => item.variantId).join(","),
+      },
     ];
 
     const input = {
@@ -157,14 +252,29 @@ export const action = async ({ request }) => {
           { key: "date", value: date },
           { key: "time", value: time },
           { key: "language", value: language },
+          { key: "_PMY Product ID", value: productId },
+          { key: "_PMY Variant ID", value: item.variantId },
+          ...(tourTitle
+            ? [{ key: "_PMY Product Title", value: cleanAttribute(tourTitle) }]
+            : []),
+          ...(variantTitleById.get(item.variantId)
+            ? [
+                {
+                  key: "_PMY Variant Title",
+                  value: cleanAttribute(variantTitleById.get(item.variantId)),
+                },
+              ]
+            : []),
         ],
       })),
       customAttributes: [
         ...attributes,
-        ...(tourTitle ? [{ key: "tour", value: tourTitle }] : []),
-        ...(customerName ? [{ key: "customer_name", value: customerName }] : []),
+        ...(tourTitle ? [{ key: "tour", value: cleanAttribute(tourTitle) }] : []),
+        ...(customerName
+          ? [{ key: "customer_name", value: cleanAttribute(customerName) }]
+          : []),
         ...(bookingPlatforms
-          ? [{ key: "booking_platforms", value: bookingPlatforms }]
+          ? [{ key: "booking_platforms", value: cleanAttribute(bookingPlatforms) }]
           : []),
       ],
       tags: ["PMY Central", "Central de Reservas"],
@@ -175,6 +285,9 @@ export const action = async ({ request }) => {
         `Horário: ${time}`,
         `Idioma: ${language}`,
         customerName ? `Cliente: ${customerName}` : null,
+        `Origem: ${attributionMeta.name}`,
+        `Canal: ${attributionMeta.channel}`,
+        `Sessão PMY: ${attributionMeta.sessionId}`,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -254,6 +367,24 @@ export const action = async ({ request }) => {
         date,
         time,
         language,
+        attribution: {
+          sessionId: attributionMeta.sessionId,
+          source: attributionMeta.source,
+          name: attributionMeta.name,
+          channel: attributionMeta.channel,
+          utmSource: attribution.utm_source || null,
+          utmMedium: attribution.utm_medium || null,
+          utmCampaign: attribution.utm_campaign || null,
+          utmTerm: attribution.utm_term || null,
+          utmContent: attribution.utm_content || null,
+          utmId: attribution.utm_id || null,
+          gclid: attribution.gclid || null,
+          gbraid: attribution.gbraid || null,
+          wbraid: attribution.wbraid || null,
+          fbclid: attribution.fbclid || null,
+          msclkid: attribution.msclkid || null,
+          ttclid: attribution.ttclid || null,
+        },
         lineItems: lineItems.map((item) => ({
           ...item,
           variantTitle: variantTitleById.get(item.variantId) || null,
