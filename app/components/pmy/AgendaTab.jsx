@@ -25,7 +25,6 @@ export default function AgendaTab(props) {
     blockTourId,
     blockedDates,
     bookingDate,
-    bookingPlatforms,
     bookingTime,
     calendarView,
     currentMonthLabel,
@@ -59,7 +58,6 @@ export default function AgendaTab(props) {
     setBlockRecurringDays,
     setBlockSelectedHour,
     setBookingDate,
-    setBookingPlatforms,
     setBookingTime,
     setCalendarView,
     setCustEmail,
@@ -270,62 +268,13 @@ export default function AgendaTab(props) {
               );
             })() : null}
 
-            <FormField
-              label={tr(
-                "Registrar entrada em qual plataforma?",
-                "Which platform should record this booking?",
-              )}
-              hint={tr("Selecione uma ou mais.", "Select one or more.")}
-            >
-              <div className="pmy-platform-pills">
-                {reservationPlatforms.map((platform) => {
-                  const connection = platformConnections[platform.key];
-                  const selected = bookingPlatforms.includes(platform.key);
-
-                  return (
-                    <button
-                      key={platform.key}
-                      type="button"
-                      className={`pmy-platform-pill${selected ? " selected" : ""}${!connection.connected ? " disconnected" : ""}`}
-                      onClick={() =>
-                        connection.connected &&
-                        handleTogglePlatformSelection(
-                          platform.key,
-                          bookingPlatforms,
-                          setBookingPlatforms,
-                        )
-                      }
-                      title={
-                        !connection.connected
-                          ? `${platform.name} ${tr("não conectado", "not connected")}`
-                          : ""
-                      }
-                    >
-                      <span className="pmy-platform-pill-logo">{platform.logo}</span>
-                      {platform.name}
-                      {selected ? <Icon name="check" size={13} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {bookingPlatforms.length === 0 ? (
-                <Toast tone="warning">
-                  {tr(
-                    "Selecione pelo menos uma plataforma para registrar a reserva.",
-                    "Select at least one platform to record the booking.",
-                  )}
-                </Toast>
-              ) : null}
-            </FormField>
-
             {draftOrderError ? <Toast tone="danger">{draftOrderError}</Toast> : null}
 
             <Button
               type="submit"
               size="lg"
               icon="external"
-              disabled={bookingPlatforms.length === 0 || draftOrderLoading}
+              disabled={draftOrderLoading}
             >
               {draftOrderLoading
                 ? tr("Criando Draft Order no Shopify...", "Creating Shopify Draft Order...")

@@ -240,7 +240,6 @@ export const action = async ({ request }) => {
   const date = normalizeDate(formData.get("date"));
   const time = normalizeTime(formData.get("time"));
   const language = clean(formData.get("language"));
-  const bookingPlatforms = clean(formData.get("bookingPlatforms"));
   const attribution = parseAttribution(formData.get("attribution"));
   const attributionMeta = attributionAttributes(attribution);
   const commercialSource = classifyCommercialSource({
@@ -329,6 +328,9 @@ export const action = async ({ request }) => {
           language,
           productId,
           tourTitle: tourTitle || masterTour.title,
+          customerName: customerName || null,
+          customerEmail: customerEmail || null,
+          customerPhone: customerPhone || null,
           lineItems,
         },
       },
@@ -402,8 +404,11 @@ export const action = async ({ request }) => {
         ...(customerName
           ? [{ key: "customer_name", value: cleanAttribute(customerName) }]
           : []),
-        ...(bookingPlatforms
-          ? [{ key: "booking_platforms", value: cleanAttribute(bookingPlatforms) }]
+        ...(customerEmail
+          ? [{ key: "customer_email", value: cleanAttribute(customerEmail) }]
+          : []),
+        ...(customerPhone
+          ? [{ key: "customer_phone", value: cleanAttribute(customerPhone) }]
           : []),
       ],
       tags: ["PMY Central", "Central de Reservas"],
@@ -414,6 +419,8 @@ export const action = async ({ request }) => {
         `Horário: ${time}`,
         `Idioma: ${language}`,
         customerName ? `Cliente: ${customerName}` : null,
+        customerEmail ? `E-mail: ${customerEmail}` : null,
+        customerPhone ? `Telefone / WhatsApp: ${customerPhone}` : null,
         `Origem: ${attributionMeta.name}`,
         `Origem comercial: ${commercialSource}`,
         `Canal: ${attributionMeta.channel}`,
@@ -501,6 +508,9 @@ export const action = async ({ request }) => {
           language,
           productId,
           tourTitle: tourTitle || masterTour.title,
+          customerName: customerName || null,
+          customerEmail: customerEmail || null,
+          customerPhone: customerPhone || null,
           lineItems,
         },
       },
