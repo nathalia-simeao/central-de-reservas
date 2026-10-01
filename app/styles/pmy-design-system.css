@@ -528,11 +528,22 @@
 }
 .pmy-ds-guide-actions {
   width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  margin-top: var(--pmy-space-3);
+  gap: var(--pmy-space-2);
+  margin-top: auto;
+  padding-top: var(--pmy-space-3);
+}
+.pmy-ds-guide-actions > .pmy-ds-button:not(.pmy-ds-button--icon) {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding-inline: 10px;
+}
+.pmy-ds-guide-actions > .pmy-ds-button--icon {
+  flex: 0 0 34px;
 }
 .pmy-ds-panel-soft {
   padding: var(--pmy-space-4);
