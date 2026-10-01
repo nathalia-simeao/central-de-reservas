@@ -4672,3 +4672,47 @@
 }
 
 .pmy-u-mx-4 { margin-left: var(--pmy-space-4); margin-right: var(--pmy-space-4); }
+
+
+/* Guide WhatsApp country code field */
+.pmy-guide-phone-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: var(--pmy-space-3);
+  align-items: center;
+}
+
+.pmy-guide-phone-prefix {
+  position: relative;
+  min-width: 0;
+}
+
+.pmy-guide-phone-flag {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 22px;
+  height: 15px;
+  transform: translateY(-50%);
+  object-fit: cover;
+  border-radius: 2px;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .16);
+}
+
+.pmy-guide-phone-select {
+  width: 100%;
+  min-width: 0;
+  padding-left: 44px !important;
+  padding-right: 30px !important;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 620px) {
+  .pmy-guide-phone-row {
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: var(--pmy-space-2);
+  }
+}
