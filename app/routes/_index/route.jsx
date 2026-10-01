@@ -3901,14 +3901,29 @@ function CentralDeReservasContent() {
               </div>
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label>WhatsApp</label>
-                <div className="pmy-ds-migrated-1xq7i67">
-                  <div className="pmy-ds-migrated-186wwav">
-                    <img src={getFlagUrl(currentDdi.iso)} alt="" className="pmy-ds-migrated-15ma959" />
-                    <select className="pmy-form-input pmy-ds-migrated-zk0se5"  value={editGuideDdi} onChange={e => setEditGuideDdi(e.target.value)}>
+                <div className="pmy-guide-phone-row">
+                  <div className="pmy-guide-phone-prefix">
+                    <img
+                      src={getFlagUrl(currentDdi.iso)}
+                      alt={currentDdi.iso || ""}
+                      className="pmy-guide-phone-flag"
+                    />
+                    <select
+                      className="pmy-form-input pmy-guide-phone-select"
+                      value={editGuideDdi}
+                      onChange={e => setEditGuideDdi(e.target.value)}
+                      aria-label={ui("DDI do WhatsApp", "WhatsApp country code")}
+                    >
                       {ddiList.map((d,i) => <option key={i} value={d.code}>{d.code}</option>)}
                     </select>
                   </div>
-                  <input type="tel" className="pmy-form-input" placeholder="912 345 678" value={editGuideWhatsapp} onChange={e => setEditGuideWhatsapp(e.target.value)} />
+                  <input
+                    type="tel"
+                    className="pmy-form-input"
+                    placeholder="912 345 678"
+                    value={editGuideWhatsapp}
+                    onChange={e => setEditGuideWhatsapp(e.target.value)}
+                  />
                 </div>
               </div>
 
