@@ -6,7 +6,6 @@ import DashboardTab from "../../components/pmy/DashboardTab";
 import AgendaTab from "../../components/pmy/AgendaTab";
 import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
-import AutomationsTab from "../../components/pmy/AutomationsTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import MediaTab from "../../components/pmy/MediaTab";
 import { Icon } from "../../components/pmy/PmyUI";
@@ -719,7 +718,6 @@ function CentralDeReservasContent() {
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
     { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
-    { key: "automacoes", icon: "automation", label: lang === "pt" ? "Automações" : "Automations" },
     { key: "midias", icon: "media", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
   ];
 
@@ -5600,7 +5598,6 @@ function CentralDeReservasContent() {
               {activeTab==='agenda' && t.agenda_title}
               {activeTab==='integracoes' && t.integrations_title}
               {activeTab==='guias' && t.guides_title}
-              {activeTab==='automacoes' && t.automations_title}
               {activeTab==='configuracoes' && t.settings_title}
               {activeTab==='midias' && (lang === 'pt' ? 'Banco de Mídias' : 'Media Library')}
             </h1>
@@ -5684,8 +5681,6 @@ function CentralDeReservasContent() {
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
             setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
           }} />
-
-          <AutomationsTab activeTab={activeTab} lang={lang} />
 
           <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
