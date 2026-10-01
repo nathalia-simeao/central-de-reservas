@@ -481,7 +481,6 @@ function CentralDeReservasContent() {
   const [draftOrderLoading, setDraftOrderLoading] = useState(false);
   const [draftOrderError, setDraftOrderError] = useState("");
   const [draftOrderInfo, setDraftOrderInfo] = useState(null);
-  const [bookingPlatforms, setBookingPlatforms] = useState(["shopify"]);  // plataformas da reserva
   const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis"]); // apenas canais reais de reserva
 
   // D. BLOQUEIOS MANUAIS
@@ -1561,11 +1560,6 @@ function CentralDeReservasContent() {
       setDraftOrderError("Selecione o idioma do tour.");
       return;
     }
-    if (!bookingPlatforms.includes("shopify")) {
-      setDraftOrderError("Para gerar o checkout, mantenha Shopify selecionado como plataforma.");
-      return;
-    }
-
     const realVariants = Array.isArray(tour.variants) ? tour.variants : [];
     const lineItems = realVariants
       .filter((variant) => variantMatchesBookingTime(variant, bookingTime))
@@ -1591,7 +1585,6 @@ function CentralDeReservasContent() {
       formData.append("date", bookingDate);
       formData.append("time", bookingTime);
       formData.append("language", custLang);
-      formData.append("bookingPlatforms", bookingPlatforms.join(","));
       formData.append("lineItems", JSON.stringify(lineItems));
       formData.append("attribution", JSON.stringify(getDraftOrderAttribution()));
 
@@ -5642,7 +5635,7 @@ function CentralDeReservasContent() {
           <AgendaTab {...{
             activeTab, activeTourLanguages, blockDateTime, blockMessage, blockPlatforms,
             blockRecurringDays, blockSaving, blockSelectedHour, blockTourId, blockedDates,
-            bookingDate, bookingPlatforms, bookingTime, calendarView, currentMonthLabel,
+            bookingDate, bookingTime, calendarView, currentMonthLabel,
             currentYear, custEmail, custLang, custName, custPhone, draftOrderError,
             draftOrderInfo, draftOrderLoading, generatedLink, getBookingTimesForTour,
             getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange,
@@ -5650,7 +5643,7 @@ function CentralDeReservasContent() {
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
             imageShape, platformConnections, renderCalendarDays, reservationPlatforms,
             selectedTour, setBlockDateTime, setBlockPlatforms, setBlockRecurringDays,
-            setBlockSelectedHour, setBookingDate, setBookingPlatforms, setBookingTime,
+            setBlockSelectedHour, setBookingDate, setBookingTime,
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
             tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang
