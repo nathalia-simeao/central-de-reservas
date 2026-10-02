@@ -240,21 +240,197 @@ export function Modal({
   onClose,
   closeLabel = "Close",
   className = "",
+  closeOnBackdrop = true,
+  initialFocusRef = null,
 }) {
+  const dialogRef = React.useRef(null);
+  const titleId = React.useId();
+  const previousFocusRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+
+    previousFocusRef.current = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+
+    const focusInitial = () => {
+      const preferred = initialFocusRef?.current;
+      const firstFocusable = dialog?.querySelector(focusableSelector);
+      (preferred || firstFocusable || dialog)?.focus?.();
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll(focusableSelector)]
+        .filter((element) => !element.hasAttribute("disabled") && element.tabIndex !== -1);
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    window.requestAnimationFrame(focusInitial);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, [initialFocusRef, onClose, open]);
+
   if (!open) return null;
 
   return (
-    <div className="pmy-ds-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose?.();
-    }}>
-      <div className={["pmy-ds-modal", className].filter(Boolean).join(" ")} role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="pmy-ds-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (
+          closeOnBackdrop &&
+          event.target === event.currentTarget
+        ) {
+          onClose?.();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className={["pmy-ds-modal", className].filter(Boolean).join(" ")}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="pmy-ds-modal__header">
-          <h2 className="pmy-ds-modal__title">{title}</h2>
-          <Button variant="ghost" size="sm" icon="close" iconOnly aria-label={closeLabel} onClick={onClose} />
+          <h2 id={titleId} className="pmy-ds-modal__title">{title}</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="close"
+            iconOnly
+            aria-label={closeLabel}
+            onClick={onClose}
+          />
         </div>
         <div className="pmy-ds-modal__body">{children}</div>
         {footer ? <div className="pmy-ds-modal__footer">{footer}</div> : null}
       </div>
+    </div>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  tone = "danger",
+  loading = false,
+  onConfirm,
+  onCancel,
+}) {
+  const confirmRef = React.useRef(null);
+
+  return (
+    <Modal
+      open={open}
+      title={title}
+      onClose={loading ? undefined : onCancel}
+      closeLabel={cancelLabel}
+      closeOnBackdrop={!loading}
+      initialFocusRef={confirmRef}
+      className="pmy-ds-modal--confirm"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={loading}
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
+            ref={confirmRef}
+            type="button"
+            variant={tone === "danger" ? "danger" : "primary"}
+            disabled={loading}
+            onClick={onConfirm}
+          >
+            {loading ? "…" : confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <p className="pmy-ds-confirm-copy">{description}</p>
+    </Modal>
+  );
+}
+
+export function ToastViewport({
+  toast,
+  onDismiss,
+  duration = 3600,
+}) {
+  React.useEffect(() => {
+    if (!toast || !duration) return undefined;
+    const timer = window.setTimeout(() => onDismiss?.(), duration);
+    return () => window.clearTimeout(timer);
+  }, [duration, onDismiss, toast]);
+
+  if (!toast) return null;
+
+  return (
+    <div
+      className="pmy-ds-toast-viewport"
+      aria-live={toast.tone === "danger" ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
+      <Toast tone={toast.tone || "info"}>
+        <div className="pmy-ds-toast-content">
+          <span>{toast.message}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            icon="close"
+            iconOnly
+            aria-label={toast.closeLabel || "Close"}
+            onClick={onDismiss}
+          />
+        </div>
+      </Toast>
     </div>
   );
 }
