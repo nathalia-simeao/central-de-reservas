@@ -50,6 +50,10 @@ module.exports = {
       },
       rules: {
         "react/no-unknown-property": ["error", { ignore: ["variant"] }],
+        // The PMY Central passes large domain view-model objects through JSX
+        // and does not use runtime PropTypes. Keep lint focused on correctness
+        // and accessibility instead of requiring hundreds of duplicate schemas.
+        "react/prop-types": "off",
       },
     },
 
