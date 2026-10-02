@@ -1290,6 +1290,7 @@ function CentralDeReservasContent() {
       await persistBusinessSettings({
         [mediaField]: media.id,
         [urlField]: media.url,
+        ...(variant === "light" ? { logoUrl: null } : {}),
       });
 
       if (variant === "dark") setLogoOnDarkUrl(media.url);
@@ -1331,6 +1332,7 @@ function CentralDeReservasContent() {
       await persistBusinessSettings({
         [mediaField]: null,
         [urlField]: null,
+        ...(variant === "light" ? { logoUrl: null } : {}),
       });
 
       if (variant === "dark") setLogoOnDarkUrl(null);
