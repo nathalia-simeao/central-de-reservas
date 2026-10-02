@@ -25,7 +25,6 @@ export default function CentralModalLayer(props) {
     editGuideEmail,
     editGuideName,
     editGuidePhoto,
-    editGuidePhotoMediaId,
     editGuidePhotoRef,
     editGuideUtmId,
     editGuideWhatsapp,
