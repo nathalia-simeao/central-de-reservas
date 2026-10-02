@@ -55,7 +55,6 @@ export async function handleCentralGuideAction({ action, formData, prisma, sessi
               id: submittedPhotoMediaId,
               shop: session?.shop || "",
               active: true,
-              category: "guide",
             },
             select: {
               id: true,
