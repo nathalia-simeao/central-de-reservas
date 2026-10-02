@@ -1923,9 +1923,41 @@ export default function DashboardTab(props) {
                         ) : cat.toursList.map(tour => {
                           const masterTourId = tour.masterTourId || tour.id;
                           const tourBookings = realConfirmedBookings.filter(b => b.tourId === masterTourId);
-                          const shopifyB = tourBookings.filter(b=>b.platform==='SHOPIFY').length;
-                          const viatorB  = tourBookings.filter(b=>b.platform==='VIATOR').length;
-                          const gygB     = tourBookings.filter(b=>b.platform==='GETYOURGUIDE').length;
+                          const normalizeChannelKey = (value) => {
+                            const normalized = String(value || "").trim().toUpperCase();
+                            if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(normalized)) return "getyourguide";
+                            if (normalized === "SHOPIFY") return "shopify";
+                            if (normalized === "VIATOR") return "viator";
+                            if (normalized === "CIVITATIS") return "civitatis";
+                            if (normalized === "HEADOUT") return "headout";
+                            if (normalized === "MANUAL") return "manual";
+                            if (normalized === "CENTRAL") return "central";
+                            return normalized.toLowerCase() || "other";
+                          };
+                          const channelCounts = tourBookings.reduce((acc, booking) => {
+                            const key = normalizeChannelKey(booking.platform);
+                            acc[key] = (acc[key] || 0) + 1;
+                            return acc;
+                          }, {});
+                          const configuredChannels = (reservationPlatforms || [])
+                            .filter((platform) =>
+                              platformConnections?.[platform.key]?.connected ||
+                              Number(channelCounts[platform.key] || 0) > 0
+                            )
+                            .map((platform) => ({
+                              key: platform.key,
+                              label: platform.name,
+                              count: Number(channelCounts[platform.key] || 0),
+                            }));
+                          const knownKeys = new Set(configuredChannels.map((channel) => channel.key));
+                          const extraChannels = Object.entries(channelCounts)
+                            .filter(([key]) => !knownKeys.has(key))
+                            .map(([key, count]) => ({
+                              key,
+                              label: platformLabel ? platformLabel(key) : key,
+                              count,
+                            }));
+                          const visibleChannels = [...configuredChannels, ...extraChannels];
                           return (
                             <div className="pmy-tour-item" key={tour.id}>
                               {tour.image
@@ -1938,9 +1970,15 @@ export default function DashboardTab(props) {
                                 <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
                                 {tour.price && <div className="pmy-ds-performance-price">{tour.price}</div>}
                                 <div className="pmy-tag-row">
-                                  <span className="pmy-tag site">{t.source_site}: {shopifyB} reservas</span>
-                                  <span className="pmy-tag viator">{t.source_viator}: {viatorB} reservas</span>
-                                  <span className="pmy-tag gyg">{t.source_gyg}: {gygB} reservas</span>
+                                  {visibleChannels.length > 0 ? visibleChannels.map((channel) => (
+                                    <Badge key={channel.key} tone={channel.count > 0 ? "accent" : "neutral"}>
+                                      {channel.label}: {channel.count} {lang === "pt" ? "reserva(s)" : "booking(s)"}
+                                    </Badge>
+                                  )) : (
+                                    <Badge tone="neutral">
+                                      {lang === "pt" ? "Sem reservas por canal" : "No channel bookings"}
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                             </div>
