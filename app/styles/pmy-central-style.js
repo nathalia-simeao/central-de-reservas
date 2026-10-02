@@ -56,7 +56,7 @@ export function buildCentralStyles(theme) {
       body, html { overflow-x:hidden; background-color:var(--bg-color); }
       .Polaris-Page { padding:0 !important; max-width:100% !important; }
       h1.Polaris-Header-Title { display:none !important; }
-      ::-webkit-scrollbar { width:6px; height:0px; }
+      ::-webkit-scrollbar { width:8px; height:8px; }
       ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); border-radius:10px; }
   
       .pmy-app-container { display:flex; height:100vh; width:100vw; margin-left:-20px; overflow:hidden; }
@@ -71,8 +71,9 @@ export function buildCentralStyles(theme) {
       .pmy-menu-item.active { background-color:var(--primary-green); color:#ffffff; }
       .pmy-sidebar-footer { margin-top:auto; padding:20px; border-top:1px solid #f0f0f0; display:flex; flex-direction:column; align-items:center; gap:15px; }
       .pmy-lang-pill { display:flex; align-items:center; gap:12px; border:1px solid rgba(0,0,0,0.15); border-radius:30px; padding:8px 16px; background:transparent; user-select:none; }
-      .pmy-lang-pill span { cursor:pointer; opacity:0.3; transition:0.2s ease; display:flex; align-items:center; justify-content:center; }
-      .pmy-lang-pill span.active { opacity:1; transform:scale(1.1); }
+      .pmy-lang-option { appearance:none; border:0; background:transparent; padding:0; cursor:pointer; opacity:0.3; transition:0.2s ease; display:flex; align-items:center; justify-content:center; border-radius:6px; }
+      .pmy-lang-option.active { opacity:1; transform:scale(1.1); }
+      .pmy-lang-option:focus-visible { outline:3px solid color-mix(in srgb, var(--primary-green) 45%, transparent); outline-offset:3px; }
       .pmy-flag-icon { width:24px; height:16px; object-fit:cover; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
       .pmy-lang-divider { width:1px; height:18px; background:rgba(0,0,0,0.15); }
       .pmy-credit-text { font-size:12px; color:#999; text-align:center; }
@@ -124,7 +125,7 @@ export function buildCentralStyles(theme) {
       .pmy-guide-mini-tag { display:flex; align-items:center; gap:6px; background:#f5f5f5; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold; }
       .pmy-guide-mini-img { width:18px; height:18px; border-radius:50%; object-fit:cover; }
   
-      .pmy-accordion-header { display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #eee; cursor:pointer; transition:0.2s; }
+      .pmy-accordion-header { appearance:none; width:100%; background:transparent; color:inherit; text-align:left; display:flex; justify-content:space-between; align-items:center; padding:15px 0; border:0; border-bottom:1px solid #eee; cursor:pointer; transition:0.2s; }
       .pmy-accordion-header:hover { color:var(--primary-green); }
       .pmy-accordion-title { font-size:16px; font-weight:700; }
       .pmy-accordion-content { display:none; padding:15px 0; border-bottom:1px solid #eee; }
@@ -150,7 +151,7 @@ export function buildCentralStyles(theme) {
       .pmy-date-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:90; background:transparent; }
       .pmy-date-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:#ffffff; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.15); width:320px; z-index:100; border:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; overflow:hidden; }
       .pmy-date-presets { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee; }
-      .pmy-date-preset-item { background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
+      .pmy-date-preset-item { appearance:none; border:0; width:100%; background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
       .pmy-date-preset-item:hover { background:#f9f9f9; color:var(--primary-green); }
       .pmy-date-preset-item.active { background:#e6f2e6; color:var(--primary-green); }
       .pmy-date-custom { padding:15px; display:flex; flex-direction:column; gap:10px; background:#ffffff; }
@@ -1116,7 +1117,15 @@ export function buildCentralStyles(theme) {
       .pmy-prod-table,
       .pmy-mapping-table { min-width:680px; }
       .pmy-form-box:has(.pmy-prod-table),
-      .pmy-form-box:has(.pmy-mapping-table) { overflow-x:auto; }
+      .pmy-form-box:has(.pmy-mapping-table),
+      .pmy-sync-log,
+      .pmy-calendar-scroll {
+        overflow-x:auto;
+        scrollbar-width:thin;
+        scrollbar-gutter:stable;
+        -webkit-overflow-scrolling:touch;
+        padding-bottom:6px;
+      }
   
       /* ===== DASHBOARD THEME-SAFE COLORS ===== */
       .pmy-dashboard {
