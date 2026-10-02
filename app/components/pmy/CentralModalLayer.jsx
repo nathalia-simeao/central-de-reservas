@@ -99,6 +99,7 @@ export default function CentralModalLayer(props) {
     setEditGuideName,
     setEditGuidePhoto,
     setEditGuidePhotoMediaId,
+    setGuidePhotoUploadError,
     setEditGuideUtmId,
     setEditGuideWhatsapp,
     setEditingGuide,
@@ -1125,6 +1126,7 @@ export default function CentralModalLayer(props) {
                       type="button"
                       onClick={() =>
                         openMediaLibraryPicker((media) => {
+                          setGuidePhotoUploadError("");
                           setEditGuidePhoto(media?.url || null);
                           setEditGuidePhotoMediaId(media?.id || null);
                         })
