@@ -402,6 +402,7 @@ function CentralDeReservasContent() {
     canceledCount,
     cancellationRate,
     upcomingCount,
+    upcomingDepartures,
     tourOptions,
     dashboardUpcomingDepartures,
     categoriesData,
@@ -2346,6 +2347,7 @@ function CentralDeReservasContent() {
         platformTokenGuide,
         pricedConfirmedBookings,
         realCanceledBookings,
+        realConfirmedBookings,
         revenueByCurrency,
         revenueCurrencies,
         salesByChannel,
@@ -2378,6 +2380,7 @@ function CentralDeReservasContent() {
         tours,
         ui,
         upcomingCount,
+        upcomingDepartures,
       }} />
     </>
   );
