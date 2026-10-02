@@ -1261,13 +1261,17 @@ function CentralDeReservasContent() {
 
     if (!legacyLogo && !legacyTheme) return;
 
-    if (legacyLogo) setLogoOnLightUrl(legacyLogo);
+    if (legacyLogo && !String(legacyLogo).startsWith("data:")) {
+      setLogoOnLightUrl(legacyLogo);
+    }
     if (legacyTheme && typeof legacyTheme === "object") {
       setTheme({ ...DEFAULT_THEME, ...legacyTheme });
     }
 
     persistBusinessSettings({
-      ...(legacyLogo ? { logoOnLightUrl: legacyLogo } : {}),
+      ...(legacyLogo && !String(legacyLogo).startsWith("data:")
+        ? { logoOnLightUrl: legacyLogo }
+        : {}),
       ...(legacyTheme ? { theme: { ...DEFAULT_THEME, ...legacyTheme } } : {}),
     })
       .then(() => {
@@ -1281,7 +1285,7 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
+  // BRAND LOGO: usa exatamente o mesmo pipeline persistente da Biblioteca PMY.
   const uploadBusinessLogo = useCallback(async (variant, file) => {
     if (!file) return;
 
@@ -1296,51 +1300,41 @@ function CentralDeReservasContent() {
     }
 
     setLogoUploadingVariant(variant);
-    setSettingsSaveMessage("Enviando logo...");
+    setSettingsSaveMessage("Enviando logo para a Biblioteca PMY...");
 
     try {
-      const prepareFd = new FormData();
-      prepareFd.append("_action", "prepareLogoUpload");
-      prepareFd.append("variant", variant);
-      prepareFd.append("filename", file.name);
-      prepareFd.append("mimetype", file.type || "image/png");
-      prepareFd.append("size", String(file.size));
-
-      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
-
-      const uploadForm = new FormData();
-      for (const parameter of prepared.parameters || []) {
-        uploadForm.append(parameter.name, parameter.value);
-      }
-      uploadForm.append("file", file);
-
-      const uploadResponse = await fetch(prepared.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "logo",
+        label:
+          variant === "dark"
+            ? "Logo para fundo escuro"
+            : "Logo para fundo claro",
+        requestResourceJson,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error("Falha ao enviar a logo para o Shopify Files.");
-      }
+      const mediaField =
+        variant === "dark"
+          ? "logoOnDarkMediaId"
+          : "logoOnLightMediaId";
+      const urlField =
+        variant === "dark"
+          ? "logoOnDarkUrl"
+          : "logoOnLightUrl";
 
-      const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeLogoUpload");
-      finalizeFd.append("variant", variant);
-      finalizeFd.append("resourceUrl", prepared.resourceUrl);
-      finalizeFd.append("filename", file.name);
-      finalizeFd.append("mimetype", file.type || "image/png");
+      await persistBusinessSettings({
+        [mediaField]: media.id,
+        [urlField]: media.url,
+      });
 
-      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
-      const url = String(finalized?.url || finalized?.media?.url || "").trim();
+      if (variant === "dark") setLogoOnDarkUrl(media.url);
+      else setLogoOnLightUrl(media.url);
 
-      if (!url) {
-        throw new Error("O Shopify não devolveu a URL final da logo.");
-      }
-
-      if (variant === "dark") setLogoOnDarkUrl(url);
-      else setLogoOnLightUrl(url);
-
-      setSettingsSaveMessage("Logo salva e sincronizada ✓");
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+      setSettingsSaveMessage("Logo salva na Biblioteca PMY ✓");
     } catch (error) {
       console.error("[PMY] brand logo upload failed:", error);
       setSettingsSaveMessage(
@@ -1349,7 +1343,7 @@ function CentralDeReservasContent() {
     } finally {
       setLogoUploadingVariant(null);
     }
-  }, [requestResourceJson]);
+  }, [persistBusinessSettings, requestResourceJson]);
 
   const handleBrandLogoChange = (variant, event) => {
     const file = event.target.files?.[0];
@@ -1360,15 +1354,24 @@ function CentralDeReservasContent() {
 
   const handleRemoveBrandLogo = async (variant) => {
     try {
-      const fd = new FormData();
-      fd.append("_action", "removeLogo");
-      fd.append("variant", variant);
-      await requestResourceJson("/api/brand-logo", fd);
+      const mediaField =
+        variant === "dark"
+          ? "logoOnDarkMediaId"
+          : "logoOnLightMediaId";
+      const urlField =
+        variant === "dark"
+          ? "logoOnDarkUrl"
+          : "logoOnLightUrl";
+
+      await persistBusinessSettings({
+        [mediaField]: null,
+        [urlField]: null,
+      });
 
       if (variant === "dark") setLogoOnDarkUrl(null);
       else setLogoOnLightUrl(null);
 
-      setSettingsSaveMessage("Logo removida ✓");
+      setSettingsSaveMessage("Logo desvinculada ✓");
     } catch (error) {
       setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
     }
