@@ -218,8 +218,8 @@ export default function SettingsTab(props) {
           eyebrow={tr("Marca", "Brand")}
           title={tr("Identidade da Agência", "Agency Identity")}
           subtitle={tr(
-            "Configure uma versão da logo para fundos claros e outra para fundos escuros. A Central escolhe automaticamente a melhor versão para a sidebar.",
-            "Configure one logo for light backgrounds and another for dark backgrounds. The Central automatically selects the best version for the sidebar.",
+            "Configure uma versão para fundos claros e outra para fundos escuros. Os arquivos são salvos na Biblioteca PMY e a Central persiste apenas a referência da mídia.",
+            "Configure one version for light backgrounds and another for dark backgrounds. Files are stored in the PMY Media Library and the Central persists only the media reference.",
           )}
           actions={
             <span className={`pmy-ds-theme-state ${sidebarIsDark ? "is-dark" : ""}`}>

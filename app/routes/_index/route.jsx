@@ -14,6 +14,7 @@ import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
 import { useBookingCheckout } from "../../hooks/useBookingCheckout";
 import { buildCentralStyles } from "../../styles/pmy-central-style";
+import { uploadFileToPmyMediaLibrary } from "../../utils/media-library.client";
 import {
   DEFAULT_THEME,
   allPlatforms,
@@ -42,7 +43,7 @@ function CentralDeReservasContent() {
   const bookings = bookingsList;
 
   // Abre modal interno de seleção de imagem (picker interno com busca)
-  const openShopifyFilePicker = useCallback((onSelect) => {
+  const openMediaLibraryPicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
     window.__pmyPickerCallback = onSelect;
     setActiveModal('pickPhotoForGuide');
@@ -81,6 +82,7 @@ function CentralDeReservasContent() {
   const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
   const settingsSaveTimerRef = useRef(null);
   const settingsMessageTimerRef = useRef(null);
+  const legacyDataLogoMigrationRef = useRef(false);
 
   const sidebarIsDark = isDarkThemeColor(theme.sidebarBg);
   const activeSidebarLogoUrl = sidebarIsDark
@@ -152,6 +154,9 @@ function CentralDeReservasContent() {
   const [guideDdi, setGuideDdi] = useState("+351");
   const [guideWhatsapp, setGuideWhatsapp] = useState("");
   const [guidePhoto, setGuidePhoto] = useState(null);
+  const [guidePhotoMediaId, setGuidePhotoMediaId] = useState(null);
+  const [guidePhotoUploading, setGuidePhotoUploading] = useState(false);
+  const [guidePhotoUploadError, setGuidePhotoUploadError] = useState("");
   // Perfis editoriais vêm do metaobjeto Shopify; contato/UTM e escala
   // continuam operacionais dentro da Central.
   const [guidesList, setGuidesList] = useState(
@@ -162,6 +167,7 @@ function CentralDeReservasContent() {
           email: g.email || "",
           whatsapp: g.whatsapp || "",
           photo: g.photoUrl || "https://via.placeholder.com/150",
+          photoMediaId: g.photoMediaId || null,
           description: g.description || "",
           videoUrl: g.videoUrl || "",
           galleryUrls: Array.isArray(g.galleryUrls) ? g.galleryUrls : [],
@@ -186,6 +192,7 @@ function CentralDeReservasContent() {
   const [editGuideDdi, setEditGuideDdi] = useState("+351");
   const [editGuideWhatsapp, setEditGuideWhatsapp] = useState("");
   const [editGuidePhoto, setEditGuidePhoto] = useState(null);
+  const [editGuidePhotoMediaId, setEditGuidePhotoMediaId] = useState(null);
   const editGuidePhotoRef = useRef(null);
 
   // H. INTEGRAÇÕES CUSTOMIZADAS
@@ -935,14 +942,15 @@ function CentralDeReservasContent() {
     if (!guideName || !guideWhatsapp) return;
     const whatsapp = `${guideDdi} ${guideWhatsapp}`;
     const photoUrl = guidePhoto || null;
+    const photoMediaId = guidePhotoMediaId || null;
     const utmContent = guideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
     const referralLink = guideUtmId
       ? `https://portugalmeandyou.com/?utm_campaign=${guideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${utmContent}`
       : "";
     const tempId = `temp_${Date.now()}`;
-    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150", utmId: guideUtmId, referralLink };
+    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150", photoMediaId, utmId: guideUtmId, referralLink };
     setGuidesList(prev => [...prev, newGuide]);
-    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null); setGuideUtmId("");
+    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null); setGuidePhotoMediaId(null); setGuideUtmId("");
     try {
       const fd = new FormData();
       fd.append("_action", "saveGuide");
@@ -951,6 +959,7 @@ function CentralDeReservasContent() {
       fd.append("whatsapp", whatsapp);
       fd.append("utmId", guideUtmId || "");
       if (photoUrl) fd.append("photoUrl", photoUrl);
+      if (photoMediaId) fd.append("photoMediaId", photoMediaId);
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const data = await res.json();
       if (data.success) window.location.reload();
@@ -958,6 +967,7 @@ function CentralDeReservasContent() {
   };
 
   const handleOpenEditGuide = (guide) => {
+    setGuidePhotoUploadError("");
     setEditingGuide(guide.id);
     setEditGuideName(guide.name);
     setEditGuideEmail(guide.email || "");
@@ -965,6 +975,7 @@ function CentralDeReservasContent() {
     setEditGuideDdi(parts[0] || "+351");
     setEditGuideWhatsapp(parts.slice(1).join(" ") || "");
     setEditGuidePhoto(guide.photo || null);
+    setEditGuidePhotoMediaId(guide.photoMediaId || null);
     setEditGuideUtmId(guide.utmId || "");
   };
 
@@ -997,6 +1008,7 @@ function CentralDeReservasContent() {
         fd.append("whatsapp", whatsapp);
         fd.append("utmId", editGuideUtmId || "");
         if (!shopifyManaged && editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
+        if (!shopifyManaged && editGuidePhotoMediaId) fd.append("photoMediaId", editGuidePhotoMediaId);
 
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
@@ -1013,6 +1025,7 @@ function CentralDeReservasContent() {
                 email: editGuideEmail,
                 whatsapp,
                 photo: shopifyManaged ? g.photo : (editGuidePhoto || g.photo),
+                photoMediaId: shopifyManaged ? g.photoMediaId : editGuidePhotoMediaId,
                 utmId: editGuideUtmId,
                 referralLink: editReferralLink,
               }
@@ -1060,67 +1073,56 @@ function CentralDeReservasContent() {
     setEditingGuide(null);
   };
 
-  const handleEditGuidePhotoChange = (e) => {
-    const f = e.target.files[0];
-    if (f) setEditGuidePhoto(URL.createObjectURL(f));
+  const handleEditGuidePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setGuidePhotoUploading(true);
+    setGuidePhotoUploadError("");
+    try {
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "guide",
+        label: `Foto guia - ${editGuideName || "Guia"}`,
+        requestResourceJson,
+      });
+      setEditGuidePhoto(media.url);
+      setEditGuidePhotoMediaId(media.id);
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+    } catch (error) {
+      setGuidePhotoUploadError(
+        error?.message || "Não foi possível enviar a foto do guia.",
+      );
+    } finally {
+      setGuidePhotoUploading(false);
+    }
   };
 
   // HANDLERS DE MÍDIA
   const handleMediaUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setMediaUploading(true);
     setMediaUploadError("");
-    setMediaUploadProgress(10);
+    setMediaUploadProgress(20);
 
     try {
-      const fd = new FormData();
-      fd.append("_action", "uploadMedia");
-      fd.append("filename", file.name);
-      fd.append("mimetype", file.type);
-      fd.append("size", String(file.size));
-      fd.append("category", mediaCategoryInput);
-
-      const data = await requestResourceJson("/", fd);
-      setMediaUploadProgress(30);
-
-      const uploadForm = new FormData();
-      data.parameters.forEach((param) => uploadForm.append(param.name, param.value));
-      uploadForm.append("file", file);
-      setMediaUploadProgress(60);
-
-      const uploadRes = await fetch(data.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: mediaCategoryInput,
+        label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
+        requestResourceJson,
       });
-      if (!uploadRes.ok) {
-        throw new Error("Falha ao enviar o arquivo para o Shopify Files.");
-      }
-
-      setMediaUploadProgress(82);
-
-      const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeMediaUpload");
-      finalizeFd.append("resourceUrl", data.resourceUrl);
-      finalizeFd.append("filename", file.name);
-      finalizeFd.append("mimetype", file.type);
-      finalizeFd.append("category", mediaCategoryInput);
-      finalizeFd.append(
-        "label",
-        mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
-      );
-
-      const finalizeData = await requestResourceJson("/", finalizeFd);
-
-      if (!finalizeData.media) {
-        throw new Error("Falha ao registrar o arquivo na biblioteca PMY.");
-      }
 
       setMediaUploadProgress(100);
       setMediaList((current) => [
-        finalizeData.media,
-        ...current.filter((item) => item.id !== finalizeData.media.id),
+        media,
+        ...current.filter((item) => item.id !== media.id),
       ]);
       setMediaLabelInput("");
     } catch (err) {
@@ -1212,6 +1214,101 @@ function CentralDeReservasContent() {
   }, [persistBusinessSettings]);
 
   useEffect(() => {
+    if (legacyDataLogoMigrationRef.current || !businessSettings) return;
+
+    const candidates = [
+      {
+        variant: "light",
+        value: businessSettings.logoOnLightUrl || businessSettings.logoUrl || "",
+      },
+      {
+        variant: "dark",
+        value: businessSettings.logoOnDarkUrl || "",
+      },
+    ].filter((item) => String(item.value || "").startsWith("data:"));
+
+    if (candidates.length === 0) return;
+    legacyDataLogoMigrationRef.current = true;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        for (const candidate of candidates) {
+          const response = await fetch(candidate.value);
+          const blob = await response.blob();
+          const extension =
+            blob.type === "image/svg+xml"
+              ? "svg"
+              : blob.type === "image/webp"
+                ? "webp"
+                : blob.type === "image/jpeg"
+                  ? "jpg"
+                  : "png";
+          const file = new File(
+            [blob],
+            `pmy-logo-${candidate.variant}.${extension}`,
+            { type: blob.type || "image/png" },
+          );
+
+          const media = await uploadFileToPmyMediaLibrary({
+            file,
+            category: "logo",
+            label:
+              candidate.variant === "dark"
+                ? "Logo para fundo escuro"
+                : "Logo para fundo claro",
+            requestResourceJson,
+          });
+
+          if (cancelled) return;
+
+          const mediaField =
+            candidate.variant === "dark"
+              ? "logoOnDarkMediaId"
+              : "logoOnLightMediaId";
+          const urlField =
+            candidate.variant === "dark"
+              ? "logoOnDarkUrl"
+              : "logoOnLightUrl";
+
+          await persistBusinessSettings({
+            [mediaField]: media.id,
+            [urlField]: media.url,
+            ...(candidate.variant === "light" ? { logoUrl: null } : {}),
+          });
+
+          if (cancelled) return;
+          if (candidate.variant === "dark") setLogoOnDarkUrl(media.url);
+          else setLogoOnLightUrl(media.url);
+
+          setMediaList((current) => [
+            media,
+            ...current.filter((item) => item.id !== media.id),
+          ]);
+        }
+
+        if (!cancelled) {
+          setSettingsSaveMessage(
+            "Logo antiga migrada para a Biblioteca PMY ✓",
+          );
+        }
+      } catch (error) {
+        console.error("[PMY] legacy Data URL logo migration failed:", error);
+        if (!cancelled) {
+          setSettingsSaveMessage(
+            "Erro: a logo antiga precisa ser reenviada para a Biblioteca PMY.",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessSettings, persistBusinessSettings, requestResourceJson]);
+
+  useEffect(() => {
     if (businessSettings) return;
 
     let legacyLogo = null;
@@ -1226,13 +1323,17 @@ function CentralDeReservasContent() {
 
     if (!legacyLogo && !legacyTheme) return;
 
-    if (legacyLogo) setLogoOnLightUrl(legacyLogo);
+    if (legacyLogo && !String(legacyLogo).startsWith("data:")) {
+      setLogoOnLightUrl(legacyLogo);
+    }
     if (legacyTheme && typeof legacyTheme === "object") {
       setTheme({ ...DEFAULT_THEME, ...legacyTheme });
     }
 
     persistBusinessSettings({
-      ...(legacyLogo ? { logoOnLightUrl: legacyLogo } : {}),
+      ...(legacyLogo && !String(legacyLogo).startsWith("data:")
+        ? { logoOnLightUrl: legacyLogo }
+        : {}),
       ...(legacyTheme ? { theme: { ...DEFAULT_THEME, ...legacyTheme } } : {}),
     })
       .then(() => {
@@ -1246,7 +1347,7 @@ function CentralDeReservasContent() {
       });
   }, [businessSettings, persistBusinessSettings]);
 
-  // BRAND LOGO: fluxo isolado em /api/brand-logo para não depender das actions gerais.
+  // BRAND LOGO: usa exatamente o mesmo pipeline persistente da Biblioteca PMY.
   const uploadBusinessLogo = useCallback(async (variant, file) => {
     if (!file) return;
 
@@ -1261,51 +1362,42 @@ function CentralDeReservasContent() {
     }
 
     setLogoUploadingVariant(variant);
-    setSettingsSaveMessage("Enviando logo...");
+    setSettingsSaveMessage("Enviando logo para a Biblioteca PMY...");
 
     try {
-      const prepareFd = new FormData();
-      prepareFd.append("_action", "prepareLogoUpload");
-      prepareFd.append("variant", variant);
-      prepareFd.append("filename", file.name);
-      prepareFd.append("mimetype", file.type || "image/png");
-      prepareFd.append("size", String(file.size));
-
-      const prepared = await requestResourceJson("/api/brand-logo", prepareFd);
-
-      const uploadForm = new FormData();
-      for (const parameter of prepared.parameters || []) {
-        uploadForm.append(parameter.name, parameter.value);
-      }
-      uploadForm.append("file", file);
-
-      const uploadResponse = await fetch(prepared.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "logo",
+        label:
+          variant === "dark"
+            ? "Logo para fundo escuro"
+            : "Logo para fundo claro",
+        requestResourceJson,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error("Falha ao enviar a logo para o Shopify Files.");
-      }
+      const mediaField =
+        variant === "dark"
+          ? "logoOnDarkMediaId"
+          : "logoOnLightMediaId";
+      const urlField =
+        variant === "dark"
+          ? "logoOnDarkUrl"
+          : "logoOnLightUrl";
 
-      const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeLogoUpload");
-      finalizeFd.append("variant", variant);
-      finalizeFd.append("resourceUrl", prepared.resourceUrl);
-      finalizeFd.append("filename", file.name);
-      finalizeFd.append("mimetype", file.type || "image/png");
+      await persistBusinessSettings({
+        [mediaField]: media.id,
+        [urlField]: media.url,
+        ...(variant === "light" ? { logoUrl: null } : {}),
+      });
 
-      const finalized = await requestResourceJson("/api/brand-logo", finalizeFd);
-      const url = String(finalized?.url || finalized?.media?.url || "").trim();
+      if (variant === "dark") setLogoOnDarkUrl(media.url);
+      else setLogoOnLightUrl(media.url);
 
-      if (!url) {
-        throw new Error("O Shopify não devolveu a URL final da logo.");
-      }
-
-      if (variant === "dark") setLogoOnDarkUrl(url);
-      else setLogoOnLightUrl(url);
-
-      setSettingsSaveMessage("Logo salva e sincronizada ✓");
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+      setSettingsSaveMessage("Logo salva na Biblioteca PMY ✓");
     } catch (error) {
       console.error("[PMY] brand logo upload failed:", error);
       setSettingsSaveMessage(
@@ -1314,7 +1406,7 @@ function CentralDeReservasContent() {
     } finally {
       setLogoUploadingVariant(null);
     }
-  }, [requestResourceJson]);
+  }, [persistBusinessSettings, requestResourceJson]);
 
   const handleBrandLogoChange = (variant, event) => {
     const file = event.target.files?.[0];
@@ -1325,15 +1417,25 @@ function CentralDeReservasContent() {
 
   const handleRemoveBrandLogo = async (variant) => {
     try {
-      const fd = new FormData();
-      fd.append("_action", "removeLogo");
-      fd.append("variant", variant);
-      await requestResourceJson("/api/brand-logo", fd);
+      const mediaField =
+        variant === "dark"
+          ? "logoOnDarkMediaId"
+          : "logoOnLightMediaId";
+      const urlField =
+        variant === "dark"
+          ? "logoOnDarkUrl"
+          : "logoOnLightUrl";
+
+      await persistBusinessSettings({
+        [mediaField]: null,
+        [urlField]: null,
+        ...(variant === "light" ? { logoUrl: null } : {}),
+      });
 
       if (variant === "dark") setLogoOnDarkUrl(null);
       else setLogoOnLightUrl(null);
 
-      setSettingsSaveMessage("Logo removida ✓");
+      setSettingsSaveMessage("Logo desvinculada ✓");
     } catch (error) {
       setSettingsSaveMessage(error?.message || "Erro ao remover logo.");
     }
@@ -1420,7 +1522,34 @@ function CentralDeReservasContent() {
 
     savePlatformFieldMapping(platform, resetMapping);
   };
-  const handleGuidePhotoChange = (e) => { const f = e.target.files[0]; if (f) setGuidePhoto(URL.createObjectURL(f)); };
+  const handleGuidePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setGuidePhotoUploading(true);
+    setGuidePhotoUploadError("");
+    try {
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "guide",
+        label: `Foto guia - ${guideName || "Guia"}`,
+        requestResourceJson,
+      });
+      setGuidePhoto(media.url);
+      setGuidePhotoMediaId(media.id);
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+    } catch (error) {
+      setGuidePhotoUploadError(
+        error?.message || "Não foi possível enviar a foto do guia.",
+      );
+    } finally {
+      setGuidePhotoUploading(false);
+    }
+  };
   const toggleCategory = (n) => setOpenCategories(p => p.includes(n) ? p.filter(c=>c!==n) : [...p,n]);
   const handlePresetSelection = (k) => { setSelectedPeriod(k); setIsDateMenuOpen(false); };
   const handleCustomDateApply = () => { if (customStart && customEnd) { setSelectedPeriod("period_custom"); setIsDateMenuOpen(false); } };
@@ -2243,7 +2372,7 @@ function CentralDeReservasContent() {
             guideDdi, guideEmail, guideName, guidePhoto,
             guidePhotoRef, guideUtmId, guideWhatsapp, guidesList, handleAddGuide,
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
-            openShopifyFilePicker, setActiveModal, setGuideDdi, setGuideEmail,
+            openMediaLibraryPicker, setActiveModal, setGuideDdi, setGuideEmail,
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
             setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
           }} />
@@ -2305,6 +2434,8 @@ function CentralDeReservasContent() {
         guideAssignmentMessage,
         guideAssignmentSaving,
         guideAssignmentsList,
+        guidePhotoUploadError,
+        guidePhotoUploading,
         guidesList,
         gygConfigActivityId,
         gygConfigCutoff,
@@ -2341,7 +2472,7 @@ function CentralDeReservasContent() {
         modalSelectedHour,
         modalSelectedTour,
         moneyValue,
-        openShopifyFilePicker,
+        openMediaLibraryPicker,
         platformConnections,
         platformLabel,
         platformTokenGuide,
@@ -2361,6 +2492,8 @@ function CentralDeReservasContent() {
         setEditGuideEmail,
         setEditGuideName,
         setEditGuidePhoto,
+        setEditGuidePhotoMediaId,
+        setGuidePhotoUploadError,
         setEditGuideUtmId,
         setEditGuideWhatsapp,
         setEditingGuide,

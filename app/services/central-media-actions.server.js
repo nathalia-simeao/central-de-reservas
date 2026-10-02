@@ -276,6 +276,34 @@ export async function handleCentralMediaAction({
         if (!media) {
           return json({ success: false, error: "Mídia não encontrada." }, { status: 404 });
         }
+
+        const [logoReference, guideReference] = await Promise.all([
+          prisma.businessSetting.findFirst({
+            where: {
+              OR: [
+                { logoOnLightMediaId: media.id },
+                { logoOnDarkMediaId: media.id },
+              ],
+            },
+            select: { id: true },
+          }),
+          prisma.guide.findFirst({
+            where: { photoMediaId: media.id },
+            select: { id: true, name: true },
+          }),
+        ]);
+
+        if (logoReference || guideReference) {
+          return json(
+            {
+              success: false,
+              error: guideReference
+                ? `Esta mídia está sendo usada pela foto do guia ${guideReference.name}. Troque a foto antes de removê-la.`
+                : "Esta mídia está sendo usada como logo da Central. Desvincule a logo antes de removê-la.",
+            },
+            { status: 409 },
+          );
+        }
   
         if (media.source?.startsWith("shopify_")) {
           return json(

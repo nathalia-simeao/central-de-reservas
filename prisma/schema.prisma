@@ -169,6 +169,7 @@ model Guide {
   email               String?
   whatsapp            String
   photoUrl            String?
+  photoMediaId        String?
   description         String?           @db.Text
   videoUrl            String?           @db.Text
   galleryUrls         String[]          @default([])
@@ -187,6 +188,7 @@ model Guide {
   @@index([shopifyHandle])
   @@index([shopifyActive])
   @@index([source])
+  @@index([photoMediaId])
 }
 
 model GuideAssignment {
@@ -359,9 +361,11 @@ model BusinessSetting {
   id             String   @id @default(uuid())
   shop           String   @unique
   logoUrl        String?  @db.Text // legado
-  logoOnLightUrl String?  @db.Text
-  logoOnDarkUrl  String?  @db.Text
-  theme          Json?
+  logoOnLightUrl     String?  @db.Text
+  logoOnDarkUrl      String?  @db.Text
+  logoOnLightMediaId String?
+  logoOnDarkMediaId  String?
+  theme              Json?
   imageShape     String   @default("rounded")
   fieldMappings  Json?
   createdAt      DateTime @default(now())
