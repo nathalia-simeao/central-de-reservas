@@ -331,10 +331,19 @@ function CentralDeReservasContent() {
       Boolean(integrationCredentialStatus?.environment?.viator?.configured),
     ),
     getyourguide: {
-      connected: Boolean(gygIntegrationStatus?.credentialsReady),
+      connected: Boolean(gygIntegrationStatus?.trafficVerified),
       configured: Boolean(gygIntegrationStatus?.credentialsReady),
+      status: gygIntegrationStatus?.trafficVerified
+        ? "CONNECTED"
+        : gygIntegrationStatus?.credentialsReady
+          ? "CONFIGURED"
+          : null,
       accountName: "PMY Supplier API v1",
-      lastSync: gygIntegrationStatus?.credentialsReady ? "Pronto para testes" : "Credenciais pendentes",
+      lastSync: gygIntegrationStatus?.lastTrafficAt
+        ? formatCredentialCheck(gygIntegrationStatus.lastTrafficAt)
+        : gygIntegrationStatus?.credentialsReady
+          ? "Aguardando tráfego real"
+          : "Credenciais pendentes",
     },
     tripadvisor: {
       connected: false,
@@ -364,6 +373,7 @@ function CentralDeReservasContent() {
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
   const [gygConfigActivityId, setGygConfigActivityId] = useState("");
+  const [gygConfigOptions, setGygConfigOptions] = useState({});
   const [gygConfigSchedule, setGygConfigSchedule] = useState("");
   const [gygConfigTimezone, setGygConfigTimezone] = useState("Europe/Lisbon");
   const [gygConfigCutoff, setGygConfigCutoff] = useState("");
@@ -1920,6 +1930,14 @@ function CentralDeReservasContent() {
     const tour = (tours || []).find((item) => item.id === id);
 
     setGygConfigActivityId(tour?.gygActivityId || "");
+    setGygConfigOptions(
+      Object.fromEntries(
+        (tour?.variants || []).map((variant) => [
+          variant.id,
+          variant.gygOptionId || "",
+        ]),
+      ),
+    );
     setGygConfigSchedule((tour?.scheduleSlots || []).join(", "));
     setGygConfigTimezone(tour?.timezone || "Europe/Lisbon");
     setGygConfigCutoff(
@@ -1944,6 +1962,7 @@ function CentralDeReservasContent() {
       fd.append("_action", "saveGygTourConfig");
       fd.append("id", gygConfigTourId);
       fd.append("gygActivityId", gygConfigActivityId);
+      fd.append("gygOptionMappings", JSON.stringify(gygConfigOptions));
       fd.append("scheduleSlots", gygConfigSchedule);
       fd.append("timezone", gygConfigTimezone);
       fd.append("bookingCutoffSeconds", gygConfigCutoff);
@@ -2531,6 +2550,7 @@ function CentralDeReservasContent() {
         guidePhotoUploading,
         guidesList,
         gygConfigActivityId,
+        gygConfigOptions,
         gygConfigCutoff,
         gygConfigMessage,
         gygConfigPriceOverApi,
@@ -2591,6 +2611,7 @@ function CentralDeReservasContent() {
         setEditGuideWhatsapp,
         setEditingGuide,
         setGygConfigActivityId,
+        setGygConfigOptions,
         setGygConfigCutoff,
         setGygConfigPriceOverApi,
         setGygConfigSchedule,

@@ -45,6 +45,7 @@ export default function CentralModalLayer(props) {
     guidePhotoUploading,
     guidesList,
     gygConfigActivityId,
+    gygConfigOptions,
     gygConfigCutoff,
     gygConfigMessage,
     gygConfigPriceOverApi,
@@ -105,6 +106,7 @@ export default function CentralModalLayer(props) {
     setEditGuideWhatsapp,
     setEditingGuide,
     setGygConfigActivityId,
+    setGygConfigOptions,
     setGygConfigCutoff,
     setGygConfigPriceOverApi,
     setGygConfigSchedule,
@@ -345,17 +347,52 @@ export default function CentralModalLayer(props) {
             {/* ── GETYOURGUIDE: Supplier API v1 real ── */}
             {isGyg && (
               <div>
-                <div className={`pmy-ds-state-panel ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
-                  <div className={`pmy-ds-state-title ${gygIntegrationStatus?.credentialsReady ? "is-success" : "is-warning"}`}>
-                    {gygIntegrationStatus?.credentialsReady ? '✅ Backend GYG pronto para testes' : '🟡 Credenciais do Integrator Portal pendentes'}
+                <div className={`pmy-ds-state-panel ${gygIntegrationStatus?.trafficVerified ? "is-success" : "is-warning"}`}>
+                  <div className={`pmy-ds-state-title ${gygIntegrationStatus?.trafficVerified ? "is-success" : "is-warning"}`}>
+                    {gygIntegrationStatus?.trafficVerified
+                      ? ui("✅ Tráfego autenticado do GetYourGuide confirmado", "✅ Authenticated GetYourGuide traffic confirmed")
+                      : gygIntegrationStatus?.credentialsReady
+                        ? ui("🟡 Backend pronto · aguardando tráfego real do GYG", "🟡 Backend ready · waiting for real GYG traffic")
+                        : ui("🟡 Credenciais do Integrator Portal pendentes", "🟡 Integrator Portal credentials pending")}
                   </div>
                   <div className="pmy-ds-migrated-zwhy5l">
                     <div>🔐 Entrada GYG → PMY: <strong>{gygIntegrationStatus?.incomingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
                     <div>📤 PMY → GYG: <strong>{gygIntegrationStatus?.outgoingAuthConfigured ? 'configurada' : 'pendente'}</strong></div>
                     <div>🌐 API GYG: <strong>{gygIntegrationStatus?.apiBaseConfigured ? 'configurada' : 'pendente'}</strong></div>
                     <div>🧳 Tours mapeados: <strong>{gygIntegrationStatus?.mappedTours || 0}</strong></div>
+                    <div>🧩 Opções GYG mapeadas: <strong>{gygIntegrationStatus?.mappedOptions || 0}/{gygIntegrationStatus?.activeOptions || 0}</strong></div>
                     <div>🟢 Tours prontos: <strong>{gygIntegrationStatus?.readyTours || 0}</strong></div>
                     <div>🕒 Sem horário real: <strong>{gygIntegrationStatus?.scheduleMissing || 0}</strong></div>
+                    <div>📡 Evidências técnicas: <strong>{gygIntegrationStatus?.certificationEvidenceVerified || 0}/{gygIntegrationStatus?.certificationEvidenceTotal || 6}</strong></div>
+                  </div>
+                </div>
+
+                <div className="pmy-ds-migrated-19khbc6">
+                  <div className="pmy-ds-migrated-169rt21">
+                    {ui("🧪 Evidências da certificação", "🧪 Certification evidence")}
+                  </div>
+                  {(gygIntegrationStatus?.certificationEvidence || []).map((step) => (
+                    <div key={step.key} className="pmy-ds-migrated-imav8e">
+                      <strong>{step.verified ? "✅" : "○"} {step.label}</strong>
+                      {" · "}
+                      {step.direction === "OUTBOUND"
+                        ? ui("PMY → GYG", "PMY → GYG")
+                        : ui("GYG → PMY", "GYG → PMY")}
+                      {step.lastSeenAt
+                        ? ` · ${new Date(step.lastSeenAt).toLocaleString(lang === "pt" ? "pt-PT" : "en-GB")}`
+                        : ""}
+                    </div>
+                  ))}
+                  <div className="pmy-ds-migrated-1x192bc">
+                    {gygIntegrationStatus?.technicalEvidenceComplete
+                      ? ui(
+                          "As seis operações obrigatórias já deixaram evidência técnica na Central. A aprovação/certificação final continua sendo concedida pelo GetYourGuide.",
+                          "All six mandatory operations have technical evidence in the Central. Final approval/certification is still granted by GetYourGuide.",
+                        )
+                      : ui(
+                          "A Central só marca cada etapa quando recebe uma chamada autenticada real ou quando o notify-availability-update é aceito pelo GYG.",
+                          "The Central only marks a step after a real authenticated request or after notify-availability-update is accepted by GYG.",
+                        )}
                   </div>
                 </div>
   
@@ -410,6 +447,41 @@ export default function CentralModalLayer(props) {
                         <label className="pmy-ds-migrated-1ygjrzr">{ui("ID da atividade/opção no GetYourGuide", "GetYourGuide activity/option ID")}</label>
                         <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
                           placeholder={ui('Cole o ID do produto/opção correspondente no GYG','Paste the corresponding product/option ID from GYG')} />
+                      </div>
+
+                      <div className="pmy-form-group pmy-ds-migrated-1bzrduz">
+                        <label className="pmy-ds-migrated-1ygjrzr">
+                          {ui("Mapeamento das opções", "Option mappings")}
+                        </label>
+                        <div className="pmy-ds-migrated-1x192bc">
+                          {ui(
+                            "Registre o option ID do GetYourGuide para cada variante/opção operacional da PMY. IDs vazios continuam explicitamente pendentes.",
+                            "Store the GetYourGuide option ID for each PMY operational variant/option. Empty IDs remain explicitly pending.",
+                          )}
+                        </div>
+                        {(selectedGygTour.variants || [])
+                          .filter((variant) => variant.active !== false)
+                          .map((variant) => (
+                            <div key={variant.id} className="pmy-u-mt-2">
+                              <label className="pmy-ds-migrated-1ygjrzr" htmlFor={`gyg-option-${variant.id}`}>
+                                {variant.title || variant.sku || variant.passengerCategory || ui("Opção PMY", "PMY option")}
+                                {variant.startTimeSlot ? ` · ${variant.startTimeSlot}` : ""}
+                                {variant.passengerCategory ? ` · ${variant.passengerCategory}` : ""}
+                              </label>
+                              <input
+                                id={`gyg-option-${variant.id}`}
+                                className="pmy-form-input"
+                                value={gygConfigOptions?.[variant.id] || ""}
+                                onChange={(event) =>
+                                  setGygConfigOptions((current) => ({
+                                    ...(current || {}),
+                                    [variant.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder={ui("GYG option ID", "GYG option ID")}
+                              />
+                            </div>
+                          ))}
                       </div>
   
                       <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >

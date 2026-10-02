@@ -1,5 +1,6 @@
 import {
   readGygBody,
+  recordGygAuthenticatedTraffic,
   requireGygAuth,
   reserveGyg,
 } from "../utils/gyg-v1.server";
@@ -11,5 +12,14 @@ export const action = async ({ request }) => {
   const parsed = await readGygBody(request);
   if (parsed.error) return parsed.error;
 
-  return reserveGyg(parsed.data);
+  const response = await reserveGyg(parsed.data);
+  await recordGygAuthenticatedTraffic(
+    "reserve",
+    {
+      productId: parsed.data?.productId,
+      gygBookingReference: parsed.data?.gygBookingReference,
+    },
+    response,
+  );
+  return response;
 };

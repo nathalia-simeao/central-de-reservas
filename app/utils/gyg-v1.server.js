@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import db from "../db.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
@@ -39,6 +40,68 @@ export function requireGygAuth(request) {
         "AUTHORIZATION_FAILURE",
         "The provided authentication credentials are not valid.",
       );
+}
+
+export async function recordGygAuthenticatedTraffic(
+  topic,
+  metadata = {},
+  response = null,
+) {
+  try {
+    const payload = {
+      source: "AUTHENTICATED_SUPPLIER_API",
+    };
+
+    for (const key of [
+      "productId",
+      "gygBookingReference",
+      "bookingReference",
+      "reservationReference",
+    ]) {
+      const value = metadata?.[key];
+      if (value !== undefined && value !== null && String(value).trim()) {
+        payload[key] = String(value);
+      }
+    }
+
+    let responseSummary = null;
+    let status = "RECEIVED";
+
+    if (response?.clone) {
+      try {
+        const responseBody = await response.clone().json();
+        if (responseBody?.errorCode) {
+          status = "ERROR";
+          responseSummary = {
+            errorCode: String(responseBody.errorCode),
+          };
+        } else {
+          responseSummary = { success: true };
+        }
+      } catch {
+        status = "ERROR";
+        responseSummary = { parseError: true };
+      }
+    }
+
+    await prisma.integrationEvent.create({
+      data: {
+        provider: GYG_PLATFORM,
+        externalEventId: `gyg:${topic}:${randomUUID()}`,
+        topic: String(topic || "unknown"),
+        status,
+        payload,
+        result: responseSummary,
+        error:
+          status === "ERROR"
+            ? responseSummary?.errorCode || "INVALID_RESPONSE"
+            : null,
+        processedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[GYG v1] authenticated traffic audit failed", error);
+  }
 }
 
 export async function readGygBody(request) {
@@ -881,6 +944,34 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
     payload = await response.json();
   } catch {
     payload = null;
+  }
+
+  try {
+    await prisma.integrationEvent.create({
+      data: {
+        provider: GYG_PLATFORM,
+        externalEventId: `gyg:notify-availability-update:${randomUUID()}`,
+        topic: "notify-availability-update",
+        status: response.status === 202 ? "PROCESSED" : "ERROR",
+        payload: {
+          source: "CENTRAL_AVAILABILITY_PUSH",
+          productId: String(productId),
+          availabilityCount: Array.isArray(availabilities)
+            ? availabilities.length
+            : 0,
+        },
+        result: {
+          httpStatus: response.status,
+        },
+        error:
+          response.status === 202
+            ? null
+            : `GetYourGuide notify availability returned HTTP ${response.status}.`,
+        processedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[GYG v1] notify availability audit failed", error);
   }
 
   return {
