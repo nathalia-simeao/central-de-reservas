@@ -9,6 +9,7 @@ import { classifyCommercialSource } from "../utils/commercial-source.server";
 import { enqueueAvailabilitySync } from "../utils/sync-queue.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
+import { minimizeCheckoutHoldPayload } from "../utils/privacy.server";
 
 const json = (body, init) => data(body, init);
 
@@ -320,7 +321,7 @@ export const action = async ({ request }) => {
           lineItems.length === 1 ? lineItems[0].variantId : null,
         syncStatus: "CHECKOUT_HOLD",
         holdExpiresAt,
-        rawPayload: {
+        rawPayload: minimizeCheckoutHoldPayload({
           kind: "CENTRAL_CHECKOUT_HOLD",
           shop: session?.shop || null,
           date,
@@ -328,11 +329,8 @@ export const action = async ({ request }) => {
           language,
           productId,
           tourTitle: tourTitle || masterTour.title,
-          customerName: customerName || null,
-          customerEmail: customerEmail || null,
-          customerPhone: customerPhone || null,
           lineItems,
-        },
+        }),
       },
     });
 
@@ -497,22 +495,18 @@ export const action = async ({ request }) => {
       data: {
         bookingRef: draftOrder.name || null,
         syncStatus: "CHECKOUT_HOLD",
-        rawPayload: {
+        rawPayload: minimizeCheckoutHoldPayload({
           kind: "CENTRAL_CHECKOUT_HOLD",
           shop: session?.shop || null,
           draftOrderId: draftOrder.id,
           draftOrderName: draftOrder.name || null,
-          invoiceUrl: draftOrder.invoiceUrl,
           date,
           time,
           language,
           productId,
           tourTitle: tourTitle || masterTour.title,
-          customerName: customerName || null,
-          customerEmail: customerEmail || null,
-          customerPhone: customerPhone || null,
           lineItems,
-        },
+        }),
       },
     });
 
