@@ -414,6 +414,14 @@ export const action = async ({ request }) => {
         return json({ success: false, error: "Tour ID is required." }, { status: 400 });
       }
 
+      const existingTour = await prisma.tour.findUnique({
+        where: { id },
+        include: { variants: true },
+      });
+      if (!existingTour) {
+        return json({ success: false, error: "Tour mestre não encontrado." }, { status: 404 });
+      }
+
       const gygActivityId = String(formData.get("gygActivityId") || "").trim() || null;
       const timezone = String(formData.get("timezone") || "Europe/Lisbon").trim();
       try {
@@ -473,9 +481,93 @@ export const action = async ({ request }) => {
         update.scheduleSource = "MANUAL";
       }
 
-      const tour = await prisma.tour.update({
+      let optionMappings = null;
+      if (formData.has("gygOptionMappings")) {
+        const rawMappings = String(formData.get("gygOptionMappings") || "").trim();
+        try {
+          const parsed = rawMappings ? JSON.parse(rawMappings) : {};
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("object required");
+          }
+
+          const allowedVariantIds = new Set(
+            (existingTour.variants || []).map((variant) => variant.id),
+          );
+          optionMappings = Object.fromEntries(
+            Object.entries(parsed)
+              .filter(([variantId]) => allowedVariantIds.has(variantId))
+              .map(([variantId, value]) => [
+                variantId,
+                String(value || "").trim() || null,
+              ]),
+          );
+        } catch {
+          return json(
+            { success: false, error: "Mapeamento de opções GYG inválido." },
+            { status: 400 },
+          );
+        }
+
+        const optionIds = Object.values(optionMappings).filter(Boolean);
+        if (new Set(optionIds).size !== optionIds.length) {
+          return json(
+            {
+              success: false,
+              error: "Cada GYG option ID deve ser único dentro do tour.",
+            },
+            { status: 400 },
+          );
+        }
+
+        if (optionIds.length > 0) {
+          const conflict = await prisma.tourVariant.findFirst({
+            where: {
+              gygOptionId: { in: optionIds },
+              tourId: { not: id },
+            },
+            select: {
+              gygOptionId: true,
+              tour: { select: { title: true } },
+            },
+          });
+          if (conflict) {
+            return json(
+              {
+                success: false,
+                error:
+                  `O GYG option ID ${conflict.gygOptionId} já está vinculado ao tour "${conflict.tour?.title || "outro tour"}".`,
+              },
+              { status: 409 },
+            );
+          }
+        }
+      }
+
+      const operations = [
+        prisma.tour.update({
+          where: { id },
+          data: update,
+        }),
+      ];
+
+      if (optionMappings) {
+        for (const variant of existingTour.variants || []) {
+          if (!Object.prototype.hasOwnProperty.call(optionMappings, variant.id)) {
+            continue;
+          }
+          operations.push(
+            prisma.tourVariant.update({
+              where: { id: variant.id },
+              data: { gygOptionId: optionMappings[variant.id] },
+            }),
+          );
+        }
+      }
+
+      await prisma.$transaction(operations);
+
+      const tour = await prisma.tour.findUnique({
         where: { id },
-        data: update,
         include: { variants: true },
       });
 
