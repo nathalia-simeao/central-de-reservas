@@ -360,8 +360,6 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
-  const confirmRef = React.useRef(null);
-
   return (
     <Modal
       open={open}
@@ -369,7 +367,6 @@ export function ConfirmDialog({
       onClose={loading ? undefined : onCancel}
       closeLabel={cancelLabel}
       closeOnBackdrop={!loading}
-      initialFocusRef={confirmRef}
       className="pmy-ds-modal--confirm"
       footer={
         <>
@@ -382,7 +379,6 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button
-            ref={confirmRef}
             type="button"
             variant={tone === "danger" ? "danger" : "primary"}
             disabled={loading}
