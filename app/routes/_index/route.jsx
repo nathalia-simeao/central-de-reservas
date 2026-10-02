@@ -2343,9 +2343,25 @@ function CentralDeReservasContent() {
             </button>
 
             <div className="pmy-lang-pill">
-              <span className={lang==='pt'?'active':''} onClick={() => setLang('pt')}><img src="https://flagcdn.com/w40/pt.png" alt="PT" className="pmy-flag-icon" /></span>
-              <div className="pmy-lang-divider"></div>
-              <span className={lang==='en'?'active':''} onClick={() => setLang('en')}><img src="https://flagcdn.com/w40/gb.png" alt="EN" className="pmy-flag-icon" /></span>
+              <button
+                type="button"
+                className={`pmy-lang-option ${lang === "pt" ? "active" : ""}`}
+                aria-pressed={lang === "pt"}
+                aria-label="Português"
+                onClick={() => setLang("pt")}
+              >
+                <img src="https://flagcdn.com/w40/pt.png" alt="" className="pmy-flag-icon" />
+              </button>
+              <div className="pmy-lang-divider" aria-hidden="true"></div>
+              <button
+                type="button"
+                className={`pmy-lang-option ${lang === "en" ? "active" : ""}`}
+                aria-pressed={lang === "en"}
+                aria-label="English"
+                onClick={() => setLang("en")}
+              >
+                <img src="https://flagcdn.com/w40/gb.png" alt="" className="pmy-flag-icon" />
+              </button>
             </div>
             <div className="pmy-credit-text">{t.created_by}</div>
           </div>
@@ -2384,7 +2400,15 @@ function CentralDeReservasContent() {
                     <div className="pmy-date-dropdown">
                       <div className="pmy-date-presets">
                         {["period_1w","period_15d","period_30d","period_60d","period_90d","period_120d","period_6m","period_1y"].map(k => (
-                          <div key={k} className={`pmy-date-preset-item ${selectedPeriod===k?'active':''}`} onClick={() => handlePresetSelection(k)}>{t[k]}</div>
+                          <button
+                            key={k}
+                            type="button"
+                            className={`pmy-date-preset-item ${selectedPeriod === k ? "active" : ""}`}
+                            aria-pressed={selectedPeriod === k}
+                            onClick={() => handlePresetSelection(k)}
+                          >
+                            {t[k]}
+                          </button>
                         ))}
                       </div>
                       <div className="pmy-date-custom">
