@@ -3,7 +3,18 @@ import db from "../db.server";
 import { processShopifyWebhookEvent } from "../utils/shopify-orders.server";
 
 export const action = async ({ request }) => {
-  const { payload, topic, shop, webhookId } = await authenticate.webhook(request);
+  const {
+    payload,
+    topic,
+    shop,
+    webhookId,
+    tenantAllowed,
+  } = await authenticate.webhook(request);
+
+  if (!tenantAllowed) {
+    console.warn(`[TENANT] Ignored ${topic} webhook from non-primary shop ${shop}`);
+    return new Response(null, { status: 200 });
+  }
 
   try {
     const result = await processShopifyWebhookEvent(db, {
