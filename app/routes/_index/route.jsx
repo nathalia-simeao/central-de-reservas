@@ -2393,11 +2393,31 @@ function CentralDeReservasContent() {
             </div>
             {activeTab==='dashboard' && (
               <div className="pmy-date-wrapper">
-                <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
+                <button
+                  type="button"
+                  className="pmy-date-btn"
+                  aria-expanded={isDateMenuOpen}
+                  aria-haspopup="dialog"
+                  aria-controls="pmy-dashboard-period-menu"
+                  onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}
+                >
+                  <Icon name="calendar" size={16} />
+                  {getPeriodLabel()}
+                  <Icon name="chevronDown" size={14} />
+                </button>
                 {isDateMenuOpen && (
                   <>
-                    <div className="pmy-date-overlay" onClick={() => setIsDateMenuOpen(false)}></div>
-                    <div className="pmy-date-dropdown">
+                    <div
+                      className="pmy-date-overlay"
+                      role="presentation"
+                      onClick={() => setIsDateMenuOpen(false)}
+                    />
+                    <div
+                      id="pmy-dashboard-period-menu"
+                      className="pmy-date-dropdown"
+                      role="dialog"
+                      aria-label={lang === "pt" ? "Selecionar período do dashboard" : "Select dashboard period"}
+                    >
                       <div className="pmy-date-presets">
                         {["period_1w","period_15d","period_30d","period_60d","period_90d","period_120d","period_6m","period_1y"].map(k => (
                           <button
