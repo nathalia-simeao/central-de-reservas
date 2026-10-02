@@ -97,6 +97,13 @@ function CentralDeReservasContent() {
     resolve?.(accepted);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      confirmResolverRef.current?.(false);
+      confirmResolverRef.current = null;
+    };
+  }, []);
+
   // Identidade visual persistente do negócio.
   // A logo para fundo claro e a versão para fundo escuro ficam no banco.
   const [logoOnLightUrl, setLogoOnLightUrl] = useState(
