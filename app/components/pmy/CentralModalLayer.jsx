@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
 import { Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
@@ -225,9 +226,7 @@ export default function CentralModalLayer(props) {
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
   
     return (
-      <>
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
-        <div
+      <div
           className="pmy-modal-overlay"
           onMouseDown={(event) => {
           if (event.target === event.currentTarget) setConnectingPlatform(null);
@@ -1200,9 +1199,7 @@ export default function CentralModalLayer(props) {
       );
     }
     return (
-      <>
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
-        <div
+      <div
           className="pmy-modal-overlay"
           onMouseDown={(event) => {
           if (event.target === event.currentTarget) setActiveModal(null);
@@ -1223,7 +1220,6 @@ export default function CentralModalLayer(props) {
           <div className="pmy-modal-body">{content}</div>
         </div>
       </div>
-      </>
     );
   };
   
@@ -1235,9 +1231,7 @@ export default function CentralModalLayer(props) {
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
     const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
-      <>
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
-        <div
+      <div
           className="pmy-modal-overlay"
           onMouseDown={(event) => {
           if (event.target === event.currentTarget) setEditingGuide(null);
@@ -1411,7 +1405,6 @@ export default function CentralModalLayer(props) {
           </form>
         </div>
       </div>
-      </>
     );
   };
 
