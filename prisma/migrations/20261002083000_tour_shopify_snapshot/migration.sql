@@ -8,3 +8,4 @@ CREATE INDEX "Booking_createdAt_idx" ON "Booking"("createdAt");
 CREATE INDEX "Booking_updatedAt_idx" ON "Booking"("updatedAt");
 CREATE INDEX "Booking_externalCreatedAt_idx" ON "Booking"("externalCreatedAt");
 CREATE INDEX "Booking_externalUpdatedAt_idx" ON "Booking"("externalUpdatedAt");
+CREATE INDEX "Media_shop_active_createdAt_idx" ON "Media"("shop", "active", "createdAt");
