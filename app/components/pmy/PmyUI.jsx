@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import "../../styles/pmy-design-system.css";
 
 const ICON_PATHS = {
