@@ -14,6 +14,7 @@ export default function GuidesTab(props) {
     guideAssignments = [],
     guideShopifySync,
     guidesList,
+    notify,
     handleDeleteGuide,
     handleOpenEditGuide,
     setActiveModal,
@@ -219,12 +220,17 @@ export default function GuidesTab(props) {
                       iconOnly
                       aria-label={tr("Copiar link de indicação", "Copy referral link")}
                       title={tr("Copiar link de indicação", "Copy referral link")}
-                      onClick={() =>
-                        navigator.clipboard
-                          .writeText(guide.referralLink)
-                          .then(() => alert(tr("Link copiado!", "Link copied!")))
-                          .catch(() => {})
-                      }
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(guide.referralLink);
+                          notify?.(tr("Link copiado.", "Link copied."), "success");
+                        } catch {
+                          notify?.(
+                            tr("Não foi possível copiar o link.", "Could not copy the link."),
+                            "danger",
+                          );
+                        }
+                      }}
                     />
                   ) : null}
 
