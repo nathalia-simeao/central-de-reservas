@@ -14,6 +14,7 @@ import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
 import { useBookingCheckout } from "../../hooks/useBookingCheckout";
 import { buildCentralStyles } from "../../styles/pmy-central-style";
+import { uploadFileToPmyMediaLibrary } from "../../utils/media-library.client";
 import {
   DEFAULT_THEME,
   allPlatforms,
@@ -152,6 +153,9 @@ function CentralDeReservasContent() {
   const [guideDdi, setGuideDdi] = useState("+351");
   const [guideWhatsapp, setGuideWhatsapp] = useState("");
   const [guidePhoto, setGuidePhoto] = useState(null);
+  const [guidePhotoMediaId, setGuidePhotoMediaId] = useState(null);
+  const [guidePhotoUploading, setGuidePhotoUploading] = useState(false);
+  const [guidePhotoUploadError, setGuidePhotoUploadError] = useState("");
   // Perfis editoriais vêm do metaobjeto Shopify; contato/UTM e escala
   // continuam operacionais dentro da Central.
   const [guidesList, setGuidesList] = useState(
@@ -162,6 +166,7 @@ function CentralDeReservasContent() {
           email: g.email || "",
           whatsapp: g.whatsapp || "",
           photo: g.photoUrl || "https://via.placeholder.com/150",
+          photoMediaId: g.photoMediaId || null,
           description: g.description || "",
           videoUrl: g.videoUrl || "",
           galleryUrls: Array.isArray(g.galleryUrls) ? g.galleryUrls : [],
@@ -186,6 +191,7 @@ function CentralDeReservasContent() {
   const [editGuideDdi, setEditGuideDdi] = useState("+351");
   const [editGuideWhatsapp, setEditGuideWhatsapp] = useState("");
   const [editGuidePhoto, setEditGuidePhoto] = useState(null);
+  const [editGuidePhotoMediaId, setEditGuidePhotoMediaId] = useState(null);
   const editGuidePhotoRef = useRef(null);
 
   // H. INTEGRAÇÕES CUSTOMIZADAS
