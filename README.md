@@ -134,7 +134,7 @@ Esse comando executa um launch guard antes do `shopify app deploy`. O deploy é 
 - `SHOPIFY_APP_URL` difere do `application_url` do Shopify;
 - runtime e webhooks deixam de usar a mesma versão de API.
 
-O endereço temporário atual pode continuar sendo usado durante desenvolvimento/homologação, mas deve ser substituído pelo domínio definitivo antes do lançamento.
+O domínio definitivo de produção da Central é `https://central.portugalmeandyou.com`. O endereço `code.run` deve permanecer apenas como endpoint temporário de infraestrutura e não deve voltar a ser usado como URL oficial do app.
 
 ## Manutenção do repositório
 
