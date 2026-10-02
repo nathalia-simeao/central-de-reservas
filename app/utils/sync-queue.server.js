@@ -637,16 +637,33 @@ export async function processSyncQueue(
 }
 
 export async function getSyncQueueStats(prisma) {
-  const rows = await prisma.syncJob.groupBy({
-    by: ["status"],
-    _count: { _all: true },
-  });
+  const [rows, oldestActionable] = await Promise.all([
+    prisma.syncJob.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
+    typeof prisma.syncJob.findFirst === "function"
+      ? prisma.syncJob.findFirst({
+          where: {
+            status: { in: ["PENDING", "RETRY", "BLOCKED", "DEAD"] },
+          },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        })
+      : Promise.resolve(null),
+  ]);
 
   const stats = Object.fromEntries(
     rows.map((row) => [row.status, row._count._all]),
   );
 
-  return {
+  const snapshot = {
     pending: stats.PENDING || 0,
     processing: stats.PROCESSING || 0,
     retry: stats.RETRY || 0,
@@ -654,6 +671,29 @@ export async function getSyncQueueStats(prisma) {
     skipped: stats.SKIPPED || 0,
     blocked: stats.BLOCKED || 0,
     dead: stats.DEAD || 0,
+  };
+
+  const health =
+    snapshot.dead > 0
+      ? "critical"
+      : snapshot.retry > 0 || snapshot.blocked > 0
+        ? "degraded"
+        : "healthy";
+
+  return {
+    ...snapshot,
+    health,
+    attention: snapshot.retry + snapshot.blocked + snapshot.dead,
+    oldestActionable: oldestActionable
+      ? {
+          id: oldestActionable.id,
+          provider: oldestActionable.provider,
+          status: oldestActionable.status,
+          createdAt: oldestActionable.createdAt,
+          updatedAt: oldestActionable.updatedAt,
+        }
+      : null,
+    checkedAt: new Date(),
   };
 }
 
