@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-static-element-interactions -- media preview backdrop dismisses only on direct backdrop press */
 import {
   Badge,
   Button,
@@ -91,9 +92,7 @@ export default function MediaTab(props) {
   return (
     <>
       {mediaPreview ? (
-        <>
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop closes only when the backdrop itself is pressed */}
-          <div
+        <div
             className="pmy-media-preview-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setMediaPreview(null);
@@ -105,7 +104,6 @@ export default function MediaTab(props) {
             className="pmy-media-preview-img"
           />
         </div>
-        </>
       ) : null}
 
       <div className="pmy-media-layout">
