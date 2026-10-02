@@ -8,6 +8,7 @@ import { classifyCommercialSource } from "../utils/commercial-source.server";
 import { enqueueAvailabilitySync } from "../utils/sync-queue.server";
 import { resolveTourByPlatformId } from "../utils/tour-passport.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
+import { minimizeCheckoutHoldPayload } from "../utils/privacy.server";
 
 const HOLD_MINUTES = 15;
 const MAX_GROUPS = 10;
@@ -387,7 +388,7 @@ async function reserveGroup({
       totalParticipants: group.requestedSeats,
       syncStatus: "STOREFRONT_HOLD",
       holdExpiresAt,
-      rawPayload: {
+      rawPayload: minimizeCheckoutHoldPayload({
         kind: "STOREFRONT_CHECKOUT_HOLD",
         requestId,
         groupKeys: group.keys,
@@ -399,9 +400,9 @@ async function reserveGroup({
           masterTour.shopifyProductId ||
           group.productId ||
           null,
-        items: group.items,
+        lineItems: group.items,
         attribution: attribution || {},
-      },
+      }),
     },
   });
 
