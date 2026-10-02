@@ -5,6 +5,7 @@ import {
   getCentralAvailability,
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks, getDatePartsInTimeZone } from "./availability.server";
+import { minimizeGygPayload } from "./booking-payload-privacy.server";
 import { checkGygBasicAuth } from "./gyg.server";
 import { resolveTourByPlatformId } from "./tour-passport.server";
 import {
@@ -506,7 +507,7 @@ export async function reserveGyg(data) {
         syncStatus: "RESERVED",
         lastSyncedAt: new Date(),
         holdExpiresAt,
-        rawPayload: { data },
+        rawPayload: minimizeGygPayload(data, "reserve"),
       },
     });
 
@@ -587,7 +588,7 @@ export async function cancelGygReservation(data) {
         syncStatus: "SYNCED",
         lastSyncedAt: new Date(),
         holdExpiresAt: null,
-        rawPayload: { data },
+        rawPayload: minimizeGygPayload(data, "cancel-reservation"),
       },
     });
 
@@ -737,7 +738,7 @@ export async function bookGyg(data) {
         lastSyncedAt: new Date(),
         holdExpiresAt: null,
         externalUpdatedAt: new Date(),
-        rawPayload: { data },
+        rawPayload: minimizeGygPayload(data, "book"),
       },
     });
 
@@ -823,7 +824,7 @@ export async function cancelGygBooking(data) {
         lastSyncedAt: new Date(),
         holdExpiresAt: null,
         externalUpdatedAt: new Date(),
-        rawPayload: { data },
+        rawPayload: minimizeGygPayload(data, "cancel-booking"),
       },
     });
 

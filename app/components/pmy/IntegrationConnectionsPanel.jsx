@@ -142,7 +142,6 @@ export default function IntegrationConnectionsPanel({
                           <div className="pmy-ds-migrated-htnqm2">{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>
                         </div>
                         {contentPlatforms.map(platform => {
-                          const conn = platformConnections[platform.key];
                           return (
                             <div key={platform.key} className="pmy-int-card-v2 pmy-ds-migrated-1btvbiy" >
                               <div className="pmy-int-top">

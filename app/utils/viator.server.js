@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import db from "../db.server";
+import { minimizeViatorPayload } from "./booking-payload-privacy.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
   createBookingWithCapacityGuard,
@@ -356,11 +357,8 @@ function contactPhone(data) {
   return clean(data?.ContactDetail?.ContactValue);
 }
 
-function safeRawPayload(data) {
-  if (!data || typeof data !== "object") return data;
-  const clone = structuredClone(data);
-  if (clone.ApiKey) clone.ApiKey = "[REDACTED]";
-  return clone;
+function safeRawPayload(data, operation) {
+  return minimizeViatorPayload(data, operation);
 }
 
 function optionIdForTour(tour) {
@@ -902,7 +900,7 @@ export async function viatorReserve(body) {
         holdExpiresAt,
         rawPayload: {
           viatorOperation: "reserve",
-          request: safeRawPayload(body),
+          request: safeRawPayload(body, "reserve"),
         },
       },
     });
@@ -1059,7 +1057,7 @@ export async function viatorBooking(body) {
             externalUpdatedAt: new Date(),
             rawPayload: {
               viatorOperation: "booking",
-              request: safeRawPayload(data),
+              request: safeRawPayload(data, "booking"),
             },
           },
         });
@@ -1107,7 +1105,7 @@ export async function viatorBooking(body) {
         externalUpdatedAt: new Date(),
         rawPayload: {
           viatorOperation: "booking",
-          request: safeRawPayload(data),
+          request: safeRawPayload(data, "booking"),
         },
       },
     });
@@ -1254,7 +1252,7 @@ export async function viatorBookingAmendment(body) {
           externalUpdatedAt: new Date(),
           rawPayload: {
             viatorOperation: "booking-amendment",
-            request: safeRawPayload(data),
+            request: safeRawPayload(data, "booking-amendment"),
           },
         },
       });
@@ -1373,7 +1371,7 @@ export async function viatorBookingCancellation(body) {
           externalUpdatedAt: new Date(),
           rawPayload: {
             viatorOperation: "booking-cancellation",
-            request: safeRawPayload(data),
+            request: safeRawPayload(data, "booking-cancellation"),
           },
         },
       });

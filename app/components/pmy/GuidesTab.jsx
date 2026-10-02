@@ -16,6 +16,7 @@ export default function GuidesTab(props) {
     guidesList,
     handleDeleteGuide,
     handleOpenEditGuide,
+    notify = () => {},
     setActiveModal,
     setSelectedGuideInfo,
     setUpcomingToursFilter,
@@ -197,13 +198,16 @@ export default function GuidesTab(props) {
                   </Badge>
                 </div>
 
-                <div className="pmy-ds-guide-actions" onClick={(event) => event.stopPropagation()}>
+                <div className="pmy-ds-guide-actions">
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
                     icon="settings"
-                    onClick={() => handleOpenEditGuide(guide)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleOpenEditGuide(guide);
+                    }}
                   >
                     {guide.shopifyMetaobjectId
                       ? tr("Dados operacionais", "Operational data")
@@ -219,12 +223,13 @@ export default function GuidesTab(props) {
                       iconOnly
                       aria-label={tr("Copiar link de indicação", "Copy referral link")}
                       title={tr("Copiar link de indicação", "Copy referral link")}
-                      onClick={() =>
+                      onClick={(event) => {
+                        event.stopPropagation();
                         navigator.clipboard
                           .writeText(guide.referralLink)
-                          .then(() => alert(tr("Link copiado!", "Link copied!")))
-                          .catch(() => {})
-                      }
+                          .then(() => notify(tr("Link copiado!", "Link copied!"), "success"))
+                          .catch(() => notify(tr("Não foi possível copiar o link.", "Could not copy the link."), "danger"));
+                      }}
                     />
                   ) : null}
 
@@ -236,7 +241,10 @@ export default function GuidesTab(props) {
                       icon="trash"
                       iconOnly
                       aria-label={tr("Excluir guia", "Delete guide")}
-                      onClick={() => handleDeleteGuide(guide.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteGuide(guide.id);
+                      }}
                     />
                   ) : null}
                 </div>

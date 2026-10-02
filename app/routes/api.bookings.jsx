@@ -1,6 +1,7 @@
 import { data } from "react-router";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
+import { bookingOperationalSelect } from "../utils/booking-select.server";
 
 const json = (body, init) => data(body, init);
 
@@ -74,6 +75,7 @@ export const loader = async ({ request }) => {
       orderBy: [{ startTime: "asc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
+      select: bookingOperationalSelect,
     }),
     db.booking.count({ where }),
   ]);

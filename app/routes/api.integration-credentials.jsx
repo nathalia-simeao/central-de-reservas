@@ -261,7 +261,9 @@ export const action = async ({ request }) => {
             message: error?.message || "Falha ao validar credencial.",
           });
         }
-      } catch {}
+      } catch {
+        // Preserve the original credential error if the status update also fails.
+      }
 
       const status = await getSafeIntegrationSecretStatus(db, provider).catch(() => null);
       return json(
@@ -286,7 +288,9 @@ export const action = async ({ request }) => {
           status: "ERROR",
           message: error?.message || "Falha ao validar credencial.",
         });
-      } catch {}
+      } catch {
+        // Preserve the original credential error if the status update also fails.
+      }
 
       const status = await getSafeIntegrationSecretStatus(db, provider).catch(() => null);
       return json(

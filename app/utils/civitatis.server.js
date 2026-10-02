@@ -3,10 +3,10 @@ import db from "../db.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
   createBookingWithCapacityGuard,
-  getCentralAvailability,
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";
+import { minimizeCivitatisPayload } from "./booking-payload-privacy.server";
 import {
   getIntegrationCredentials,
   updateIntegrationValidation,
@@ -606,10 +606,6 @@ function contactLanguage(contact) {
   return locales.length ? String(locales[0]) : null;
 }
 
-function safePayload(value) {
-  return value && typeof value === "object" ? structuredClone(value) : value;
-}
-
 function bookingStatus(booking) {
   if (booking.status === "CONFIRMED") return "CONFIRMED";
   if (booking.status === "CANCELED") return "CANCELLED";
@@ -931,7 +927,11 @@ export async function civitatisCreateBooking(request, body) {
         lastSyncedAt: new Date(),
         rawPayload: {
           civitatisEnvironment: requestEnvironment(request),
-          civitatisRequest: safePayload(body),
+          civitatisRequest: minimizeCivitatisPayload(
+            body,
+            "hold",
+            requestEnvironment(request),
+          ),
         },
       },
     });
@@ -1116,8 +1116,14 @@ export async function civitatisConfirmBooking(request, uuid, body) {
         externalUpdatedAt: new Date(),
         holdExpiresAt: null,
         rawPayload: {
-          ...safePayload(booking.rawPayload || {}),
-          civitatisConfirmation: safePayload(body),
+          ...(booking.rawPayload && typeof booking.rawPayload === "object"
+            ? booking.rawPayload
+            : {}),
+          civitatisConfirmation: minimizeCivitatisPayload(
+            body,
+            "confirm",
+            requestEnvironment(request),
+          ),
           civitatisEnvironment: requestEnvironment(request),
         },
       },

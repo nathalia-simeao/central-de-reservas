@@ -1,7 +1,6 @@
 import { Button, EmptyState, ErrorState, Icon, LoadingState, Toast } from "./PmyUI";
 
 export default function IntegrationSyncLogPanel({
-  bookings,
   cancelShopifyValidation,
   formatSyncTime,
   handleRequeueSyncJob,
@@ -22,7 +21,6 @@ export default function IntegrationSyncLogPanel({
   syncQueueLastLoaded,
   syncQueueLoading,
   syncStatusMeta,
-  tours,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
 
@@ -284,7 +282,7 @@ export default function IntegrationSyncLogPanel({
                             )}
                           />
                         ) : (
-                          <div className="pmy-ds-migrated-13izxgm pmy-ds-table-wrap" tabIndex={0} aria-label={tr("Histórico de sincronização", "Sync history")}>
+                          <div className="pmy-ds-migrated-13izxgm pmy-ds-table-wrap" role="region" aria-label={tr("Histórico de sincronização", "Sync history")}>
                             <table className="pmy-ds-migrated-sq1wms">
                               <thead>
                                 <tr className="pmy-ds-migrated-37kcbg">

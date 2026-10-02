@@ -91,12 +91,17 @@ export default function MediaTab(props) {
   return (
     <>
       {mediaPreview ? (
-        <div className="pmy-media-preview-overlay" onClick={() => setMediaPreview(null)}>
+        <div
+          className="pmy-media-preview-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMediaPreview(null);
+          }}
+        >
           <img
             src={mediaPreview}
             alt=""
             className="pmy-media-preview-img"
-            onClick={(event) => event.stopPropagation()}
           />
         </div>
       ) : null}
@@ -180,7 +185,7 @@ export default function MediaTab(props) {
                     {sourceLabel(media.source)}
                   </div>
 
-                  <div className="pmy-media-actions" onClick={(event) => event.stopPropagation()}>
+                  <div className="pmy-media-actions">
                     <Button
                       type="button"
                       variant="secondary"
@@ -189,7 +194,10 @@ export default function MediaTab(props) {
                       iconOnly
                       title={tr("Copiar URL", "Copy URL")}
                       aria-label={tr("Copiar URL", "Copy URL")}
-                      onClick={() => handleCopyMediaUrl(media.url)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleCopyMediaUrl(media.url);
+                      }}
                     />
                     {!media.source?.startsWith("shopify") ? (
                       <Button
@@ -200,7 +208,10 @@ export default function MediaTab(props) {
                         iconOnly
                         title={tr("Remover", "Remove")}
                         aria-label={tr("Remover", "Remove")}
-                        onClick={() => handleDeleteMedia(media.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteMedia(media.id);
+                        }}
                       />
                     ) : null}
                   </div>
