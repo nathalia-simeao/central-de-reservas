@@ -12,10 +12,14 @@ export const action = async ({ request }) => {
   const parsed = await readGygBody(request);
   if (parsed.error) return parsed.error;
 
-  await recordGygAuthenticatedTraffic("reserve", {
-    productId: parsed.data?.productId,
-    gygBookingReference: parsed.data?.gygBookingReference,
-  });
-
-  return reserveGyg(parsed.data);
+  const response = await reserveGyg(parsed.data);
+  await recordGygAuthenticatedTraffic(
+    "reserve",
+    {
+      productId: parsed.data?.productId,
+      gygBookingReference: parsed.data?.gygBookingReference,
+    },
+    response,
+  );
+  return response;
 };
