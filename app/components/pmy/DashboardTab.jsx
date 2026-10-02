@@ -1683,7 +1683,15 @@ export default function DashboardTab(props) {
     dashboardTrendData,
     dashboardTrendGranularity,
     dashboardCurrency,
-    imageShape
+    imageShape,
+    operationalCapacity,
+    criticalDepartures,
+    platformConnections,
+    reservationPlatforms,
+    platformLabel,
+    syncQueueData,
+    syncQueueLoading,
+    syncQueueError
   } = props;
 
   return (
@@ -1834,6 +1842,33 @@ export default function DashboardTab(props) {
                 lang={lang}
                 imageShape={imageShape}
               />
+
+              <div className="pmy-grid pmy-ds-performance-grid">
+                <OperationalOccupancyPanel
+                  summary={operationalCapacity || {}}
+                  lang={lang}
+                />
+                <CriticalDeparturesPanel
+                  departures={criticalDepartures || []}
+                  lang={lang}
+                />
+              </div>
+
+              <div className="pmy-grid pmy-ds-performance-grid">
+                <SyncBookingIssuesPanel
+                  bookings={bookings}
+                  syncQueueData={syncQueueData}
+                  syncQueueLoading={syncQueueLoading}
+                  syncQueueError={syncQueueError}
+                  lang={lang}
+                />
+                <IntegrationHealthPanel
+                  platformConnections={platformConnections}
+                  reservationPlatforms={reservationPlatforms}
+                  syncQueueData={syncQueueData}
+                  lang={lang}
+                />
+              </div>
 
               <TrendChart
                 data={dashboardTrendData || []}
