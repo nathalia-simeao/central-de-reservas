@@ -410,6 +410,83 @@ export function buildDashboardViewModel({
     };
   });
   
+
+  const operationalCapacity = dashboardUpcomingDepartures.reduce(
+    (summary, departure) => {
+      const capacity = Math.max(0, Number(departure?.capacity || 0));
+      const passengers = Math.max(0, Number(departure?.passengers || 0));
+      const availableSeats = Math.max(
+        0,
+        Number(departure?.availableSeats ?? capacity - passengers),
+      );
+      const occupancyRate =
+        capacity > 0 ? Math.min(100, (passengers / capacity) * 100) : 0;
+
+      if (capacity > 0) {
+        summary.totalCapacity += capacity;
+        summary.totalPassengers += Math.min(passengers, capacity);
+        summary.departuresWithCapacity += 1;
+      }
+
+      if (capacity > 0 && availableSeats === 0) {
+        summary.fullDepartures += 1;
+      } else if (
+        capacity > 0 &&
+        (availableSeats <= 3 || occupancyRate >= 80)
+      ) {
+        summary.lowCapacityDepartures += 1;
+      }
+
+      return summary;
+    },
+    {
+      totalCapacity: 0,
+      totalPassengers: 0,
+      departuresWithCapacity: 0,
+      fullDepartures: 0,
+      lowCapacityDepartures: 0,
+    },
+  );
+
+  operationalCapacity.occupancyRate =
+    operationalCapacity.totalCapacity > 0
+      ? (operationalCapacity.totalPassengers / operationalCapacity.totalCapacity) * 100
+      : 0;
+  operationalCapacity.availableSeats = Math.max(
+    0,
+    operationalCapacity.totalCapacity - operationalCapacity.totalPassengers,
+  );
+
+  const criticalDepartures = dashboardUpcomingDepartures
+    .map((departure) => {
+      const capacity = Math.max(0, Number(departure?.capacity || 0));
+      const passengers = Math.max(0, Number(departure?.passengers || 0));
+      const availableSeats = Math.max(
+        0,
+        Number(departure?.availableSeats ?? capacity - passengers),
+      );
+      const occupancyRate =
+        capacity > 0 ? Math.min(100, (passengers / capacity) * 100) : 0;
+
+      return {
+        ...departure,
+        occupancyRate,
+        criticality:
+          capacity > 0 && availableSeats === 0
+            ? "FULL"
+            : capacity > 0 && (availableSeats <= 3 || occupancyRate >= 80)
+              ? "LOW_CAPACITY"
+              : "NORMAL",
+      };
+    })
+    .filter((departure) => departure.criticality !== "NORMAL")
+    .sort((left, right) => {
+      const seatDifference =
+        Number(left.availableSeats || 0) - Number(right.availableSeats || 0);
+      if (seatDifference !== 0) return seatDifference;
+      return new Date(left.startTime) - new Date(right.startTime);
+    });
+
   // Categorias: agrupa pelas coleções do Shopify (dinâmico)
   const allCollections = [...new Set(
     tourOptions.flatMap(t => (t.collections || []).map(c => c.title))
@@ -451,6 +528,8 @@ export function buildDashboardViewModel({
     upcomingDepartures,
     tourOptions,
     dashboardUpcomingDepartures,
+    operationalCapacity,
+    criticalDepartures,
     categoriesData,
   };
 }
