@@ -269,7 +269,12 @@ export default function IntegrationSyncLogPanel({
                             )}
                           />
                         ) : (
-                          <div className="pmy-ds-migrated-13izxgm">
+                          <div
+                            className="pmy-ds-migrated-13izxgm pmy-ds-table-scroll-region"
+                            role="region"
+                            aria-label={tr("Histórico de sincronização", "Synchronization history")}
+                            tabIndex={0}
+                          >
                             <table className="pmy-ds-migrated-sq1wms">
                               <thead>
                                 <tr className="pmy-ds-migrated-37kcbg">
