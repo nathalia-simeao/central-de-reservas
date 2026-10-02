@@ -91,8 +91,10 @@ export default function MediaTab(props) {
   return (
     <>
       {mediaPreview ? (
-        <div
-          className="pmy-media-preview-overlay"
+        <>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop closes only when the backdrop itself is pressed */}
+          <div
+            className="pmy-media-preview-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setMediaPreview(null);
           }}
@@ -103,6 +105,7 @@ export default function MediaTab(props) {
             className="pmy-media-preview-img"
           />
         </div>
+        </>
       ) : null}
 
       <div className="pmy-media-layout">
