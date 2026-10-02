@@ -136,6 +136,28 @@ Esse comando executa um launch guard antes do `shopify app deploy`. O deploy é 
 
 O domínio definitivo de produção da Central é `https://central.portugalmeandyou.com`. O endereço `code.run` deve permanecer apenas como endpoint temporário de infraestrutura e não deve voltar a ser usado como URL oficial do app.
 
+## GetYourGuide Supplier API
+
+A integração GetYourGuide usa a Supplier API v1 no endereço público canônico:
+
+```text
+https://central.portugalmeandyou.com/1
+```
+
+Endpoints operacionais:
+
+- `GET /1/get-availabilities`
+- `POST /1/reserve`
+- `POST /1/cancel-reservation`
+- `POST /1/book`
+- `POST /1/cancel-booking`
+
+A atualização proativa de disponibilidade usa o endpoint remoto `notify-availability-update`. As credenciais reais do Integrator Portal ficam somente no ambiente de produção, por meio de `GYG_INCOMING_USER`, `GYG_INCOMING_PASS`, `GYG_OUTGOING_USER`, `GYG_OUTGOING_PASS` e `GYG_API_BASE`.
+
+A Central não considera o canal conectado apenas porque essas variáveis existem. O status de conexão exige tráfego autenticado e o painel mantém uma matriz de evidências para Availability, Reserve, Cancel Reservation, Book, Cancel Booking e Notify Availability. A conclusão dessa matriz é evidência técnica interna; a certificação final continua dependendo da aprovação do GetYourGuide.
+
+O mapeamento operacional deve registrar o identificador da atividade e os option IDs disponibilizados no Integrator Portal antes da bateria de certificação.
+
 ## Manutenção do repositório
 
 O repositório não versiona artefatos gerados em `build/` nem páginas de demonstração do template Shopify.
