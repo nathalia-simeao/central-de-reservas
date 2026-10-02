@@ -298,21 +298,33 @@ export async function syncShopifyMediaLibrary(prisma, admin, shop) {
       const repaired = {};
 
       if (
-        businessSettings.logoOnLightUrl &&
-        isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl) &&
         lightMedia?.url &&
-        lightMedia.url !== businessSettings.logoOnLightUrl
+        (
+          !businessSettings.logoOnLightMediaId ||
+          businessSettings.logoOnLightMediaId !== lightMedia.id ||
+          (
+            businessSettings.logoOnLightUrl &&
+            isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl)
+          )
+        )
       ) {
         repaired.logoOnLightUrl = lightMedia.url;
+        repaired.logoOnLightMediaId = lightMedia.id;
       }
 
       if (
-        businessSettings.logoOnDarkUrl &&
-        isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl) &&
         darkMedia?.url &&
-        darkMedia.url !== businessSettings.logoOnDarkUrl
+        (
+          !businessSettings.logoOnDarkMediaId ||
+          businessSettings.logoOnDarkMediaId !== darkMedia.id ||
+          (
+            businessSettings.logoOnDarkUrl &&
+            isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl)
+          )
+        )
       ) {
         repaired.logoOnDarkUrl = darkMedia.url;
+        repaired.logoOnDarkMediaId = darkMedia.id;
       }
 
       if (Object.keys(repaired).length > 0) {
