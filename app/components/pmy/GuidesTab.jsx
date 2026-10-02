@@ -112,30 +112,37 @@ export default function GuidesTab(props) {
               icon="refresh"
               onClick={() => window.location.reload()}
             >
-              {tr("Sincronizar agora", "Sync now")}
+              {tr("Atualizar status", "Refresh status")}
             </Button>
           }
         />
 
         <div className={["pmy-ds-state-panel", guideShopifySync?.success ? "is-success" : "is-warning"].filter(Boolean).join(" ")}>
           <div className={["pmy-ds-state-title", guideShopifySync?.success ? "is-success" : "is-warning"].filter(Boolean).join(" ")}>
-            {guideShopifySync?.success
-              ? tr(
-                  String(guideShopifySync.total || 0) + " perfis encontrados no Shopify",
-                  String(guideShopifySync.total || 0) + " profiles found in Shopify",
-                )
-              : tr("Sincronização do Shopify precisa de atenção", "Shopify sync needs attention")}
+            {guideShopifySync?.success === null
+              ? tr("Atualização do Shopify em segundo plano", "Shopify refresh running in background")
+              : guideShopifySync?.success
+                ? tr(
+                    String(guideShopifySync.total || 0) + " perfis encontrados no Shopify",
+                    String(guideShopifySync.total || 0) + " profiles found in Shopify",
+                  )
+                : tr("Sincronização do Shopify precisa de atenção", "Shopify sync needs attention")}
           </div>
           <div className="pmy-ds-migrated-rhcrii">
-            {guideShopifySync?.success
+            {guideShopifySync?.success === null
               ? tr(
-                  "Os perfis são reconciliados automaticamente ao abrir a Central. Alterações editoriais devem ser feitas no Shopify.",
-                  "Profiles are automatically reconciled when the Central opens. Editorial changes should be made in Shopify.",
+                  "A Central abriu com os dados salvos e está atualizando os perfis sem bloquear a página.",
+                  "The Central opened with cached data and is refreshing profiles without blocking the page.",
                 )
-              : (guideShopifySync?.error || tr(
-                  "A Central continuará mostrando os guias já salvos e tentará sincronizar novamente no próximo carregamento.",
-                  "The Central will keep showing saved guides and retry the sync on the next load.",
-                ))}
+              : guideShopifySync?.success
+                ? tr(
+                    "Os perfis ficam salvos na Central e são reconciliados em segundo plano. Alterações editoriais devem ser feitas no Shopify.",
+                    "Profiles stay cached in the Central and are reconciled in the background. Editorial changes should be made in Shopify.",
+                  )
+                : (guideShopifySync?.error || tr(
+                    "A Central continuará mostrando os guias já salvos e tentará sincronizar novamente em segundo plano.",
+                    "The Central will keep showing saved guides and retry the sync in the background.",
+                  ))}
           </div>
         </div>
       </Card>

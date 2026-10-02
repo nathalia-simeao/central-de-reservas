@@ -1376,6 +1376,8 @@ export default function DashboardTab(props) {
     getPeriodLabel,
     salesByChannel,
     bookings,
+    bookingsLoading,
+    bookingsLoadError,
     categoriesData,
     toggleCategory,
     openCategories,
@@ -1392,6 +1394,20 @@ export default function DashboardTab(props) {
 {/* ===== TAB: DASHBOARD ===== */}
           {activeTab==='dashboard' && (
             <div className="pmy-dashboard">
+              {bookingsLoading ? (
+                <div className="pmy-ds-actions pmy-ds-mb-2">
+                  <Badge tone="neutral">
+                    {lang === "pt"
+                      ? "Atualizando reservas do período..."
+                      : "Refreshing bookings for this period..."}
+                  </Badge>
+                </div>
+              ) : null}
+              {bookingsLoadError ? (
+                <div className="pmy-ds-actions pmy-ds-mb-2">
+                  <Badge tone="warning">{bookingsLoadError}</Badge>
+                </div>
+              ) : null}
               {(() => {
                 const confirmedPassengers = realConfirmedBookings.reduce(
                   (total, booking) => total + Number(booking?.totalParticipants || 0),

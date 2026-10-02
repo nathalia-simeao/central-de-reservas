@@ -58,7 +58,7 @@ function productItemFromTour(tour, platform) {
   };
 }
 
-async function fetchShopifyCatalog(admin) {
+export async function fetchShopifyCatalog(admin) {
   const response = await admin.graphql(`
     query ManualPlatformSyncCatalog {
       shop { currencyCode }

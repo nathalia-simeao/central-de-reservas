@@ -25,6 +25,10 @@ export default function MediaTab(props) {
     mediaLabelInput,
     mediaList,
     mediaPreview,
+    mediaLoading,
+    mediaLoadError,
+    mediaHasMore,
+    loadMediaLibrary,
     mediaUploadError,
     mediaUploadProgress,
     mediaUploadRef,
@@ -115,7 +119,22 @@ export default function MediaTab(props) {
             </div>
           </div>
 
-          {visibleMedia.length === 0 ? (
+          {mediaLoadError ? (
+            <Toast tone="danger">{mediaLoadError}</Toast>
+          ) : null}
+
+          {mediaLoading && mediaList.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon="refresh"
+                title={tr("Carregando biblioteca", "Loading library")}
+                description={tr(
+                  "Buscando somente a primeira página de mídias.",
+                  "Fetching only the first page of media.",
+                )}
+              />
+            </Card>
+          ) : visibleMedia.length === 0 ? (
             <Card>
               <EmptyState
                 icon="media"
@@ -127,6 +146,7 @@ export default function MediaTab(props) {
               />
             </Card>
           ) : (
+            <>
             <div className="pmy-media-grid">
               {visibleMedia.map((media) => (
                 <div
@@ -214,6 +234,22 @@ export default function MediaTab(props) {
                 </div>
               ))}
             </div>
+            {mediaHasMore ? (
+              <div className="pmy-ds-actions pmy-ds-mt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  icon="refresh"
+                  disabled={mediaLoading}
+                  onClick={() => loadMediaLibrary?.({ reset: false })}
+                >
+                  {mediaLoading
+                    ? tr("Carregando...", "Loading...")
+                    : tr("Carregar mais mídias", "Load more media")}
+                </Button>
+              </div>
+            ) : null}
+            </>
           )}
         </div>
 
@@ -262,15 +298,20 @@ export default function MediaTab(props) {
                 type="button"
                 variant="secondary"
                 icon="refresh"
-                onClick={() => window.location.reload()}
+                disabled={mediaLoading}
+                onClick={() =>
+                  loadMediaLibrary?.({ reset: true, refreshShopify: true })
+                }
               >
-                {tr("Atualizar fontes Shopify", "Refresh Shopify sources")}
+                {mediaLoading
+                  ? tr("Atualizando fontes...", "Refreshing sources...")
+                  : tr("Atualizar fontes Shopify", "Refresh Shopify sources")}
               </Button>
 
               <span className="pmy-ds-muted pmy-ds-text-xs">
                 {tr(
-                  "Shopify Files e imagens de produtos são reconciliados automaticamente com a biblioteca PMY.",
-                  "Shopify Files and product images are automatically reconciled with the PMY library.",
+                  "Shopify Files e imagens de produtos são atualizados em segundo plano e também podem ser sincronizados manualmente aqui.",
+                  "Shopify Files and product images refresh in the background and can also be synced manually here.",
                 )}
               </span>
 

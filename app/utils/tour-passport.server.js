@@ -100,6 +100,25 @@ function deriveSchedule(product) {
   return { slots: [], source: "UNCONFIGURED" };
 }
 
+function buildShopifySnapshot(product) {
+  return {
+    description: String(product?.description || ""),
+    image: product?.image || null,
+    imageAlt: product?.imageAlt || product?.name || null,
+    collections: Array.isArray(product?.collections) ? product.collections : [],
+    metafields:
+      product?.metafields && typeof product.metafields === "object"
+        ? product.metafields
+        : {},
+    currency: clean(product?.currency || "EUR")?.toUpperCase()?.slice(0, 3) || "EUR",
+    price: product?.price || null,
+    priceRaw: Number.isFinite(Number(product?.priceRaw))
+      ? Number(product.priceRaw)
+      : null,
+    sku: product?.sku && product.sku !== "—" ? String(product.sku) : null,
+  };
+}
+
 function parseBlockedWeekdays(value) {
   return [
     ...new Set(
@@ -252,6 +271,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
     const parsedCapacity = parseCapacity(product?.metafields?.group_size);
     const parsedDuration = parseDurationMinutes(product?.metafields?.duration_info);
     const productCurrency = clean(product?.currency || "EUR")?.toUpperCase()?.slice(0, 3) || "EUR";
+    const shopifySnapshot = buildShopifySnapshot(product);
     let tour = byProductId.get(product.id);
 
     if (!tour) {
@@ -261,6 +281,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
           productType,
           shopifyStatus,
           shopifyProductId: product.id,
+          shopifySnapshot,
           ...(parsedCapacity
             ? { maxCapacity: parsedCapacity, capacitySource: "SHOPIFY_GROUP_SIZE" }
             : {}),
@@ -301,6 +322,12 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
     if ((tour.productType || null) !== productType) tourChanges.productType = productType;
     if ((tour.shopifyStatus || null) !== shopifyStatus) {
       tourChanges.shopifyStatus = shopifyStatus;
+    }
+    if (
+      JSON.stringify(tour.shopifySnapshot || null) !==
+      JSON.stringify(shopifySnapshot)
+    ) {
+      tourChanges.shopifySnapshot = shopifySnapshot;
     }
 
     if (tour.capacitySource !== "MANUAL" && parsedCapacity) {

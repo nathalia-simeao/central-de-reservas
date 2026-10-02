@@ -4,7 +4,6 @@ import db from "../db.server";
 import {
   buildTourPassportUpdate,
   resolveTourByPlatformId,
-  syncShopifyCatalogToMasterTours,
 } from "../utils/tour-passport.server";
 import {
   dateInputToUtcMidnight,
@@ -12,7 +11,6 @@ import {
   parseRecurringDays,
 } from "../utils/availability.server";
 import { createBookingWithCapacityGuard } from "../utils/capacity.server";
-import { ensureShopifyOrderWebhooks } from "../utils/shopify-webhooks.server";
 import {
   enqueueAvailabilitySync,
   enqueueBookingSync,
@@ -27,7 +25,10 @@ import {
   listSafeIntegrationSecretStatuses,
 } from "../utils/integration-secrets.server";
 import { localSlotToInstant } from "../utils/gyg-v1.server";
-import { syncShopifyGuideMetaobjects } from "../utils/shopify-guides.server";
+import {
+  getCentralRefreshStatus,
+  scheduleCentralRefresh,
+} from "../utils/central-refresh.server";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -95,567 +96,217 @@ const waitForShopifyFileUrl = async (admin, fileId, initialFile = null) => {
   );
 };
 
-const isLikelyTemporaryUploadUrl = (value) => {
-  const raw = String(value || "").trim();
-  if (!raw) return false;
-
-  try {
-    const host = new URL(raw).hostname.toLowerCase();
-    return (
-      host.includes("staged") ||
-      host.includes("storage.googleapis.com") ||
-      host.includes("amazonaws.com")
-    );
-  } catch {
-    return false;
-  }
-};
-
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
+  const now = new Date();
+  const defaultStart = new Date(now);
+  defaultStart.setDate(defaultStart.getDate() - 30);
+  const defaultEnd = new Date(now);
+  defaultEnd.setDate(defaultEnd.getDate() + 30);
 
-  // Keep Shopify order webhooks in sync with the installed shop.
-  // registerWebhooks is idempotent: it creates missing subscriptions and
-  // updates callbacks when needed.
-  if (session) {
-    try {
-      await registerWebhooks({ session });
-    } catch (webhookError) {
-      console.error("[SHOPIFY] registerWebhooks on app load failed:", webhookError);
-    }
-  }
-
-  // Verificação/autocorreção adicional usando o token do próprio app.
-  // Isso cobre instalações em que o hook da biblioteca não criou as subscriptions.
-  let shopifyWebhookStatus = {
-    ok: false,
-    callbackUrl: null,
-    subscriptions: [],
-    error: "Ainda não verificado",
-  };
-  try {
-    shopifyWebhookStatus = await ensureShopifyOrderWebhooks(
-      admin,
-      process.env.SHOPIFY_APP_URL,
-    );
-  } catch (webhookEnsureError) {
-    console.error("[SHOPIFY] ensureShopifyOrderWebhooks failed:", webhookEnsureError);
-    shopifyWebhookStatus = {
-      ok: false,
-      callbackUrl: null,
-      subscriptions: [],
-      error: webhookEnsureError?.message || String(webhookEnsureError),
-    };
-  }
-
-  let tours      = await prisma.tour.findMany({ include: { bookings: true, variants: true } });
-  const bookings = await prisma.booking.findMany({ orderBy: { startTime: "asc" } });
-  const blockedDates = await prisma.blockedDate.findMany({
-    where: { active: true },
-    include: { tour: { select: { id: true, title: true, shopifyProductId: true } } },
-    orderBy: { createdAt: "desc" },
+  // O carregamento da Central agora é somente leitura do PostgreSQL.
+  // Shopify/webhooks/guias/mídia são atualizados em stale-while-revalidate,
+  // sem bloquear a resposta da página.
+  scheduleCentralRefresh({
+    prisma,
+    admin,
+    session,
+    registerWebhooks,
   });
 
-  // Busca nome real da loja + produtos via GraphQL
-  let shopifyProducts = [];
-  let shopName = session?.shop || "Minha Loja Shopify";
-  try {
-    const gqlResponse = await admin.graphql(`
-      query {
-        shop { name myshopifyDomain currencyCode }
-        products(first: 100) {
-          edges {
-            node {
-              id
-              title
-              productType
-              status
-              description
-              featuredImage { url altText }
-              collections(first: 5) {
-                edges { node { id title } }
-              }
-              variants(first: 20) {
-                edges {
-                  node {
-                    id
-                    title
-                    sku
-                    price
-                    compareAtPrice
-                    availableForSale
-                  }
-                }
-              }
-              metafields(first: 30, namespace: "custom") {
-                edges {
-                  node { key value }
-                }
-              }
-            }
-          }
-        }
-      }
-    `);
-    const gqlData = await gqlResponse.json();
-    shopName = gqlData?.data?.shop?.name || shopName;
-    const shopCurrency = gqlData?.data?.shop?.currencyCode || "EUR";
+  const bookingWindowWhere = {
+    OR: [
+      { createdAt: { gte: defaultStart, lte: defaultEnd } },
+      { externalCreatedAt: { gte: defaultStart, lte: defaultEnd } },
+      { updatedAt: { gte: defaultStart, lte: defaultEnd } },
+      { externalUpdatedAt: { gte: defaultStart, lte: defaultEnd } },
+      { startTime: { gte: defaultStart, lte: defaultEnd } },
+    ],
+  };
 
-    shopifyProducts = (gqlData?.data?.products?.edges || []).map(({ node }) => {
-      // Pega todas as variantes (preços, categorias de passageiro, horários)
-      const variants = (node.variants?.edges || []).map(({ node: v }) => ({
-        id: v.id,
-        title: v.title,
-        sku: v.sku || "—",
-        price: v.price ? "€" + parseFloat(v.price).toFixed(0) : "—",
-        priceRaw: parseFloat(v.price || 0),
-        compareAtPrice: v.compareAtPrice ? "€" + parseFloat(v.compareAtPrice).toFixed(0) : null,
-        available: v.availableForSale,
+  const assignmentStart = new Date(now);
+  assignmentStart.setDate(assignmentStart.getDate() - 30);
+  const assignmentEnd = new Date(now);
+  assignmentEnd.setDate(assignmentEnd.getDate() + 180);
+
+  const blockedEnd = new Date(now);
+  blockedEnd.setDate(blockedEnd.getDate() + 400);
+  const blockedStart = new Date(now);
+  blockedStart.setDate(blockedStart.getDate() - 2);
+
+  let [
+    tours,
+    bookings,
+    bookingTotal,
+    blockedDates,
+    dbGuides,
+    guideAssignments,
+    businessSettings,
+    platformFieldMappings,
+  ] = await Promise.all([
+    prisma.tour.findMany({
+      include: { variants: true },
+      orderBy: { title: "asc" },
+    }),
+    prisma.booking.findMany({
+      where: bookingWindowWhere,
+      orderBy: [{ startTime: "asc" }, { createdAt: "desc" }],
+      take: 250,
+    }),
+    prisma.booking.count({ where: bookingWindowWhere }),
+    prisma.blockedDate.findMany({
+      where: {
+        active: true,
+        OR: [
+          { dayOfWeek: { not: null } },
+          { date: null },
+          { date: { gte: blockedStart, lte: blockedEnd } },
+        ],
+      },
+      include: {
+        tour: {
+          select: { id: true, title: true, shopifyProductId: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.guide.findMany({
+      where: {
+        OR: [
+          { shopifyMetaobjectId: null },
+          { shopifyActive: true },
+        ],
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.guideAssignment.findMany({
+      where: {
+        status: "ASSIGNED",
+        startTime: { gte: assignmentStart, lte: assignmentEnd },
+      },
+      include: {
+        guide: true,
+        tour: {
+          select: {
+            id: true,
+            title: true,
+            shopifyProductId: true,
+            timezone: true,
+            durationMinutes: true,
+          },
+        },
+      },
+      orderBy: { startTime: "asc" },
+    }),
+    session?.shop
+      ? prisma.businessSetting.findUnique({ where: { shop: session.shop } })
+      : Promise.resolve(null),
+    session?.shop
+      ? prisma.platformFieldMapping.findMany({
+          where: { shop: session.shop },
+          orderBy: { platform: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // Migração legada apenas em memória: o loader não escreve mais no banco.
+  if (
+    platformFieldMappings.length === 0 &&
+    businessSettings?.fieldMappings &&
+    typeof businessSettings.fieldMappings === "object" &&
+    !Array.isArray(businessSettings.fieldMappings)
+  ) {
+    platformFieldMappings = Object.entries(businessSettings.fieldMappings)
+      .filter(
+        ([, mappings]) =>
+          mappings &&
+          typeof mappings === "object" &&
+          !Array.isArray(mappings),
+      )
+      .map(([platform, mappings]) => ({
+        id: `legacy:${platform}`,
+        shop: session?.shop || "legacy",
+        platform: String(platform).toLowerCase(),
+        mappings,
       }));
+  }
 
-      // Metafields customizados (horários, etc)
-      const metafields = {};
-      for (const { node: mf } of (node.metafields?.edges || [])) {
-        metafields[mf.key] = mf.value;
-      }
-
-      // Coleções (categorias)
-      const collections = (node.collections?.edges || []).map(({ node: c }) => ({
-        id: c.id, title: c.title,
-      }));
-
-      // Preço base (primeira variante adulto ou a menor)
-      const baseVariant = variants[0];
-      const minPrice = variants.length > 0 ? Math.min(...variants.map(v => v.priceRaw)) : 0;
-
-      // Horários do produto — tenta metafield 'schedule', depois 'times', depois padrão
-      const scheduleRaw = metafields['schedule'] || metafields['times'] || metafields['horarios'] || null;
-      const scheduleSlots = scheduleRaw
-        ? scheduleRaw.split(/[,;|]/).map(s => s.trim()).filter(Boolean)
-        : [];
+  const shopifyProducts = tours
+    .filter((tour) => Boolean(tour.shopifyProductId))
+    .map((tour) => {
+      const snapshot =
+        tour.shopifySnapshot &&
+        typeof tour.shopifySnapshot === "object" &&
+        !Array.isArray(tour.shopifySnapshot)
+          ? tour.shopifySnapshot
+          : {};
+      const variants = (tour.variants || [])
+        .filter((variant) => Boolean(variant.shopifyVariantId))
+        .map((variant) => {
+          const priceRaw =
+            variant.price == null ? 0 : Number(variant.price);
+          return {
+            id: variant.shopifyVariantId,
+            title: variant.title || "Default Title",
+            sku: variant.sku || "—",
+            price:
+              Number.isFinite(priceRaw) && priceRaw > 0
+                ? `€${priceRaw.toFixed(0)}`
+                : "—",
+            priceRaw: Number.isFinite(priceRaw) ? priceRaw : 0,
+            compareAtPrice: null,
+            available: variant.active !== false,
+            currency: variant.currency || null,
+          };
+        });
+      const numericPrices = variants
+        .map((variant) => Number(variant.priceRaw))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const priceRaw =
+        Number.isFinite(Number(snapshot.priceRaw)) &&
+        Number(snapshot.priceRaw) > 0
+          ? Number(snapshot.priceRaw)
+          : numericPrices.length
+            ? Math.min(...numericPrices)
+            : 0;
 
       return {
-        id:          node.id,
-        name:        node.title,
-        productType: node.productType || null,
-        description: node.description || "",
-        sku:         baseVariant?.sku || "—",
-        price:       minPrice > 0 ? "€" + minPrice.toFixed(0) : "—",
-        priceRaw:    minPrice,
-        active:      node.status === "ACTIVE",
-        synced:      true,
-        image:       node.featuredImage?.url || null,
-        imageAlt:    node.featuredImage?.altText || node.title,
+        id: tour.shopifyProductId,
+        name: tour.title,
+        productType: tour.productType || null,
+        description: String(snapshot.description || ""),
+        sku: snapshot.sku || variants[0]?.sku || "—",
+        price:
+          snapshot.price ||
+          (priceRaw > 0 ? `€${priceRaw.toFixed(0)}` : "—"),
+        priceRaw,
+        active: tour.shopifyStatus !== "INACTIVE",
+        synced: true,
+        image: snapshot.image || null,
+        imageAlt: snapshot.imageAlt || tour.title,
         variants,
-        collections,
-        scheduleSlots, // horários reais do produto
-        metafields,
-        currency: shopCurrency,
+        collections: Array.isArray(snapshot.collections)
+          ? snapshot.collections
+          : [],
+        scheduleSlots: tour.scheduleSlots || [],
+        metafields:
+          snapshot.metafields && typeof snapshot.metafields === "object"
+            ? snapshot.metafields
+            : {},
+        currency:
+          snapshot.currency ||
+          variants.find((variant) => variant.currency)?.currency ||
+          "EUR",
       };
     });
 
-    // Sincroniza o catálogo reservável da Shopify com o registro mestre Tour.
-    // Produtos operacionais (ex.: taxa de reagendamento) não viram passeios.
-    try {
-      await syncShopifyCatalogToMasterTours(prisma, shopifyProducts);
-      tours = await prisma.tour.findMany({
-        include: { bookings: true, variants: true },
-        orderBy: { title: "asc" },
-      });
-    } catch (syncError) {
-      console.error("[PMY] tour passport sync error:", syncError);
-    }
-  } catch (e) {
-    shopifyProducts = [];
-  }
-
-  // A Central não solicita read_users por padrão.
-  // Esse scope é restrito no Shopify e não é necessário para reservas,
-  // catálogo, Draft Orders, pedidos ou Banco de Mídia.
+  const shopName = session?.shop || "Minha Loja Shopify";
   const shopifyStaff = [];
+  const mediaFiles = [];
 
-  // Shopify é a fonte editorial dos guias. A Central mantém os campos
-  // operacionais (contato, UTM e escalas) no PostgreSQL.
-  let guideShopifySync = {
-    success: false,
-    total: 0,
-    created: 0,
-    updated: 0,
-    error: null,
-  };
-  try {
-    const syncResult = await syncShopifyGuideMetaobjects(prisma, admin);
-    guideShopifySync = {
-      success: true,
-      ...syncResult,
-      error: null,
-    };
-  } catch (error) {
-    console.error("[PMY] Shopify guide metaobject sync failed:", error);
-    guideShopifySync.error =
-      error?.message || "Falha ao sincronizar os guias do Shopify.";
-  }
-
-  // Busca os guias ativos do Shopify e qualquer registro manual legado.
-  // Escalas continuam vindo do banco relacional real.
-  let dbGuides = [];
-  let guideAssignments = [];
-  try {
-    [dbGuides, guideAssignments] = await Promise.all([
-      prisma.guide.findMany({
-        where: {
-          OR: [
-            { shopifyMetaobjectId: null },
-            { shopifyActive: true },
-          ],
-        },
-        orderBy: { name: "asc" },
-      }),
-      prisma.guideAssignment.findMany({
-        where: { status: "ASSIGNED" },
-        include: {
-          guide: true,
-          tour: {
-            select: {
-              id: true,
-              title: true,
-              shopifyProductId: true,
-              timezone: true,
-              durationMinutes: true,
-            },
-          },
-        },
-        orderBy: { startTime: "asc" },
-      }),
-    ]);
-  } catch (e) {
-    console.error("[PMY] guide schedule load failed:", e);
-    dbGuides = [];
-    guideAssignments = [];
-  }
-
-  // Biblioteca unificada PMY v1: PostgreSQL é o catálogo canônico e Shopify
-  // Files/produtos são reconciliados como fontes externas da mesma biblioteca.
-  let mediaFiles = [];
-  let shopifyImages = [];
-  const mediaShop = session?.shop || null;
-
-  try {
-    if (mediaShop) {
-      // Registros anteriores à biblioteca multi-loja pertencem à loja instalada.
-      await prisma.media.updateMany({
-        where: { shop: "legacy" },
-        data: { shop: mediaShop },
-      });
-    }
-
-    const externalMedia = [];
-
-    // Imagens dos produtos Shopify.
-    try {
-      const prodImgRes = await admin.graphql(`
-        query PmyProductMediaLibrary {
-          products(first: 100) {
-            edges {
-              node {
-                id
-                title
-                images(first: 10) {
-                  edges {
-                    node {
-                      id
-                      url
-                      altText
-                      width
-                      height
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      `);
-      const prodImgData = await prodImgRes.json();
-
-      for (const { node: product } of (prodImgData?.data?.products?.edges || [])) {
-        for (const { node: img } of (product?.images?.edges || [])) {
-          if (!img?.id || !img?.url) continue;
-          externalMedia.push({
-            source: "shopify_product",
-            externalId: img.id,
-            url: img.url,
-            filename: img.url.split("/").pop()?.split("?")[0] || "shopify-product-image.jpg",
-            mimetype: "image/jpeg",
-            category: "tour",
-            label: img.altText || product.title || "Imagem de tour",
-            productTitle: product.title || null,
-            width: Number.isFinite(Number(img.width)) ? Number(img.width) : null,
-            height: Number.isFinite(Number(img.height)) ? Number(img.height) : null,
-            metadata: { productId: product.id },
-          });
-        }
-      }
-    } catch (productMediaError) {
-      console.error("[PMY] Shopify product media sync failed:", productMediaError);
-    }
-
-    // Shopify Files, incluindo imagens e arquivos genéricos como PDF.
-    try {
-      const filesRes = await admin.graphql(`
-        query PmyShopifyFilesLibrary {
-          files(first: 100) {
-            edges {
-              node {
-                __typename
-                id
-                ... on MediaImage {
-                  alt
-                  createdAt
-                  fileStatus
-                  image {
-                    url
-                    altText
-                    width
-                    height
-                  }
-                }
-                ... on GenericFile {
-                  alt
-                  createdAt
-                  fileStatus
-                  url
-                  mimeType
-                }
-              }
-            }
-          }
-        }
-      `);
-      const filesData = await filesRes.json();
-
-      for (const { node: file } of (filesData?.data?.files?.edges || [])) {
-        if (!file?.id) continue;
-
-        const isImage = file.__typename === "MediaImage";
-        const url = isImage ? file?.image?.url : file?.url;
-        if (!url) continue;
-
-        externalMedia.push({
-          source: "shopify_files",
-          externalId: file.id,
-          url,
-          filename: url.split("/").pop()?.split("?")[0] || "shopify-file",
-          mimetype: isImage ? "image/jpeg" : (file.mimeType || "application/octet-stream"),
-          category: "general",
-          label: file.alt || file?.image?.altText || url.split("/").pop()?.split("?")[0] || "Arquivo Shopify",
-          productTitle: null,
-          width: isImage && Number.isFinite(Number(file?.image?.width)) ? Number(file.image.width) : null,
-          height: isImage && Number.isFinite(Number(file?.image?.height)) ? Number(file.image.height) : null,
-          metadata: {
-            fileStatus: file.fileStatus || null,
-            shopifyType: file.__typename,
-            createdAt: file.createdAt || null,
-          },
-        });
-      }
-    } catch (filesErr) {
-      console.error("[PMY] Shopify Files media sync failed:", filesErr);
-    }
-
-    if (mediaShop && externalMedia.length > 0) {
-      const ownedUploads = await prisma.media.findMany({
-        where: { shop: mediaShop, source: "pmy_upload" },
-      });
-      const ownedByExternalId = new Map(
-        ownedUploads
-          .filter((item) => item.externalId)
-          .map((item) => [item.externalId, item]),
-      );
-      const ownedByUrl = new Map(
-        ownedUploads
-          .filter((item) => item.url)
-          .map((item) => [item.url, item]),
-      );
-
-      for (const item of externalMedia) {
-        // Uploads iniciados pela Central continuam sendo uma única mídia PMY,
-        // mesmo que também apareçam na listagem do Shopify Files.
-        const owned =
-          item.source === "shopify_files"
-            ? ownedByExternalId.get(item.externalId) || ownedByUrl.get(item.url)
-            : null;
-
-        if (owned) {
-          await prisma.media.update({
-            where: { id: owned.id },
-            data: {
-              url: item.url,
-              filename: item.filename,
-              mimetype: item.mimetype,
-              externalId: item.externalId,
-              width: item.width,
-              height: item.height,
-              metadata: item.metadata,
-              active: true,
-            },
-          });
-          continue;
-        }
-
-        await prisma.media.upsert({
-          where: {
-            shop_source_externalId: {
-              shop: mediaShop,
-              source: item.source,
-              externalId: item.externalId,
-            },
-          },
-          create: {
-            shop: mediaShop,
-            ...item,
-          },
-          update: {
-            url: item.url,
-            filename: item.filename,
-            mimetype: item.mimetype,
-            label: item.label,
-            productTitle: item.productTitle,
-            width: item.width,
-            height: item.height,
-            metadata: item.metadata,
-            active: true,
-          },
-        });
-      }
-    }
-
-    mediaFiles = await prisma.media.findMany({
-      where: mediaShop
-        ? { shop: mediaShop, active: true }
-        : { shop: "legacy", active: true },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Mantido apenas para compatibilidade visual durante a transição.
-    // A fonte real da tela é mediaFiles, já unificada.
-    shopifyImages = mediaFiles.filter((item) =>
-      String(item.source || "").startsWith("shopify_"),
-    );
-  } catch (mediaError) {
-    console.error("[PMY] unified media library failed:", mediaError);
-    mediaFiles = [];
-    shopifyImages = [];
-  }
-
-  let businessSettings = null;
-  if (session?.shop) {
-    try {
-      businessSettings = await prisma.businessSetting.findUnique({
-        where: { shop: session.shop },
-      });
-
-      // Recupera automaticamente logos antigas que tenham ficado apontando
-      // para a URL temporária do staged upload. A biblioteca de mídia já foi
-      // reconciliada acima com o URL definitivo do Shopify Files.
-      if (businessSettings && Array.isArray(mediaFiles) && mediaFiles.length > 0) {
-        const latestLogoFor = (label) =>
-          mediaFiles.find(
-            (item) =>
-              item?.active !== false &&
-              item?.source === "pmy_upload" &&
-              item?.category === "logo" &&
-              item?.label === label &&
-              item?.url,
-          );
-
-        const lightMedia = latestLogoFor("Logo para fundo claro");
-        const darkMedia = latestLogoFor("Logo para fundo escuro");
-        const repaired = {};
-
-        if (
-          businessSettings.logoOnLightUrl &&
-          isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl) &&
-          lightMedia?.url &&
-          lightMedia.url !== businessSettings.logoOnLightUrl
-        ) {
-          repaired.logoOnLightUrl = lightMedia.url;
-        }
-
-        if (
-          businessSettings.logoOnDarkUrl &&
-          isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl) &&
-          darkMedia?.url &&
-          darkMedia.url !== businessSettings.logoOnDarkUrl
-        ) {
-          repaired.logoOnDarkUrl = darkMedia.url;
-        }
-
-        if (Object.keys(repaired).length > 0) {
-          businessSettings = await prisma.businessSetting.update({
-            where: { shop: session.shop },
-            data: repaired,
-          });
-          console.info("[PMY] repaired persisted logo URL(s) from Shopify Files");
-        }
-      }
-    } catch (settingsError) {
-      console.error("[PMY] business settings load failed:", settingsError);
-      businessSettings = null;
-    }
-  }
-
-  let platformFieldMappings = [];
-  if (session?.shop) {
-    try {
-      platformFieldMappings = await prisma.platformFieldMapping.findMany({
-        where: { shop: session.shop },
-        orderBy: { platform: "asc" },
-      });
-
-      // Migração suave do JSON legado salvo em BusinessSetting.
-      if (
-        platformFieldMappings.length === 0 &&
-        businessSettings?.fieldMappings &&
-        typeof businessSettings.fieldMappings === "object" &&
-        !Array.isArray(businessSettings.fieldMappings)
-      ) {
-        const legacyEntries = Object.entries(businessSettings.fieldMappings)
-          .filter(([, mappings]) => mappings && typeof mappings === "object" && !Array.isArray(mappings));
-
-        if (legacyEntries.length > 0) {
-          await Promise.all(
-            legacyEntries.map(([platform, mappings]) =>
-              prisma.platformFieldMapping.upsert({
-                where: {
-                  shop_platform: {
-                    shop: session.shop,
-                    platform: String(platform).toLowerCase(),
-                  },
-                },
-                create: {
-                  shop: session.shop,
-                  platform: String(platform).toLowerCase(),
-                  mappings,
-                },
-                update: { mappings },
-              }),
-            ),
-          );
-
-          platformFieldMappings = await prisma.platformFieldMapping.findMany({
-            where: { shop: session.shop },
-            orderBy: { platform: "asc" },
-          });
-        }
-      }
-    } catch (mappingError) {
-      console.error("[PMY] platform field mappings load failed:", mappingError);
-      platformFieldMappings = [];
-    }
-  }
-
-  const gygMappedTours = (tours || []).filter((tour) => Boolean(tour.gygActivityId));
+  const gygMappedTours = (tours || []).filter(
+    (tour) => Boolean(tour.gygActivityId),
+  );
   const gygReadyTours = gygMappedTours.filter(
     (tour) =>
       Array.isArray(tour.scheduleSlots) &&
@@ -669,7 +320,9 @@ export const loader = async ({ request }) => {
       ),
   );
   const gygScheduleMissing = gygMappedTours.filter(
-    (tour) => !Array.isArray(tour.scheduleSlots) || tour.scheduleSlots.length === 0,
+    (tour) =>
+      !Array.isArray(tour.scheduleSlots) ||
+      tour.scheduleSlots.length === 0,
   );
 
   const gygIntegrationStatus = {
@@ -705,16 +358,43 @@ export const loader = async ({ request }) => {
     console.error("[PMY] integration credential status load failed:", error);
   }
 
+  const latestRefresh = getCentralRefreshStatus(session?.shop);
+  const shopifyWebhookStatus =
+    latestRefresh.webhookStatus || {
+      ok: null,
+      callbackUrl: null,
+      subscriptions: [],
+      error: latestRefresh.running
+        ? "Verificação em segundo plano."
+        : "Verificação será atualizada em segundo plano.",
+    };
+  const guideShopifySync = latestRefresh.guides
+    ? { success: true, ...latestRefresh.guides, error: null }
+    : {
+        success: null,
+        total: dbGuides.filter((guide) => guide.shopifyMetaobjectId).length,
+        created: 0,
+        updated: 0,
+        error: latestRefresh.lastError || null,
+      };
+
   return json({
     apiKey: process.env.SHOPIFY_API_KEY || "",
     tours,
     bookings,
+    bookingPage: {
+      page: 1,
+      pageSize: 250,
+      total: bookingTotal,
+      hasMore: bookingTotal > bookings.length,
+      start: defaultStart.toISOString(),
+      end: defaultEnd.toISOString(),
+    },
     blockedDates,
     shopifyProducts,
     shopName,
     shopifyStaff,
     mediaFiles,
-    shopifyImages,
     dbGuides,
     guideAssignments,
     guideShopifySync,
@@ -725,7 +405,6 @@ export const loader = async ({ request }) => {
     platformFieldMappings,
   });
 };
-
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();

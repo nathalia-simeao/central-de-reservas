@@ -81,6 +81,37 @@ const getDraftOrderAttribution = () => {
   return attribution;
 };
 
+
+const getDashboardRangeForPeriod = (selectedPeriod, customStart, customEnd) => {
+  if (selectedPeriod === "period_custom" && customStart && customEnd) {
+    return {
+      start: new Date(`${customStart}T00:00:00`),
+      end: new Date(`${customEnd}T23:59:59.999`),
+    };
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+
+  if (selectedPeriod === "period_6m") {
+    start.setMonth(start.getMonth() - 6);
+  } else if (selectedPeriod === "period_1y") {
+    start.setFullYear(start.getFullYear() - 1);
+  } else {
+    const days = {
+      period_1w: 7,
+      period_15d: 15,
+      period_30d: 30,
+      period_60d: 60,
+      period_90d: 90,
+      period_120d: 120,
+    }[selectedPeriod] || 30;
+    start.setDate(start.getDate() - days);
+  }
+
+  return { start, end };
+};
+
 const ddiList = [
   { code: "+93",   iso: "AF" }, { code: "+355",  iso: "AL" }, { code: "+213",  iso: "DZ" },
   { code: "+376",  iso: "AD" }, { code: "+244",  iso: "AO" }, { code: "+1268", iso: "AG" },
@@ -411,7 +442,14 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const [bookingsList, setBookingsList] = useState(initialBookings);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsLoadError, setBookingsLoadError] = useState("");
+  const bookingsRequestIdRef = useRef(0);
+  const bookingFilterMountedRef = useRef(false);
+  const bookings = bookingsList;
+
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -563,8 +601,13 @@ function CentralDeReservasContent() {
   const [customName, setCustomName] = useState("");
 
   // BANCO DE MÍDIA
-  // O loader já devolve a biblioteca canônica consolidada no PostgreSQL.
+  // A biblioteca é carregada somente quando a aba/picker precisa dela.
   const [mediaList, setMediaList] = useState(mediaFiles);
+  const [mediaLoaded, setMediaLoaded] = useState(mediaFiles.length > 0);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaLoadError, setMediaLoadError] = useState("");
+  const [mediaPage, setMediaPage] = useState(0);
+  const [mediaHasMore, setMediaHasMore] = useState(false);
   const [showShopifySource, setShowShopifySource] = useState(true);
   const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit'
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
@@ -748,35 +791,11 @@ function CentralDeReservasContent() {
 
   // Dashboard financeiro calculado somente com dados reais persistidos em Booking.
   const dashboardNow = new Date();
-
-  const dashboardPeriodRange = (() => {
-    if (selectedPeriod === "period_custom" && customStart && customEnd) {
-      const start = new Date(`${customStart}T00:00:00`);
-      const end = new Date(`${customEnd}T23:59:59.999`);
-      return { start, end };
-    }
-
-    const end = new Date(dashboardNow);
-    const start = new Date(dashboardNow);
-
-    if (selectedPeriod === "period_6m") {
-      start.setMonth(start.getMonth() - 6);
-    } else if (selectedPeriod === "period_1y") {
-      start.setFullYear(start.getFullYear() - 1);
-    } else {
-      const days = {
-        period_1w: 7,
-        period_15d: 15,
-        period_30d: 30,
-        period_60d: 60,
-        period_90d: 90,
-        period_120d: 120,
-      }[selectedPeriod] || 30;
-      start.setDate(start.getDate() - days);
-    }
-
-    return { start, end };
-  })();
+  const dashboardPeriodRange = getDashboardRangeForPeriod(
+    selectedPeriod,
+    customStart,
+    customEnd,
+  );
 
   const bookingStatus = (booking) => String(booking?.status || "").toUpperCase();
   const bookingCreatedAt = (booking) => new Date(booking?.externalCreatedAt || booking?.createdAt || 0);
@@ -1190,17 +1209,18 @@ function CentralDeReservasContent() {
     // ---- HANDLERS / sincronização ----
   const resourceUrl = useCallback((pathname) => {
     const current = new URL(window.location.href);
-    const params = new URLSearchParams();
+    const target = new URL(pathname, current.origin);
 
     // Nunca reaproveitar id_token/session da URL: os tokens Shopify são
     // curtos e precisam ser renovados a cada chamada autenticada.
     for (const key of ["shop", "host", "embedded"]) {
       const value = current.searchParams.get(key);
-      if (value) params.set(key, value);
+      if (value && !target.searchParams.has(key)) {
+        target.searchParams.set(key, value);
+      }
     }
 
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return `${target.pathname}${target.search}`;
   }, []);
 
   const requestResourceJson = useCallback(async (pathname, formData = null) => {
@@ -1248,6 +1268,174 @@ function CentralDeReservasContent() {
 
     return payload;
   }, [resourceUrl]);
+
+  const loadBookingsForRange = useCallback(async (start, end) => {
+    const requestId = ++bookingsRequestIdRef.current;
+    setBookingsLoading(true);
+    setBookingsLoadError("");
+
+    try {
+      let page = 1;
+      let hasMore = true;
+      let collected = [];
+      let lastPage = null;
+
+      while (hasMore && page <= 20) {
+        const params = new URLSearchParams({
+          start: new Date(start).toISOString(),
+          end: new Date(end).toISOString(),
+          page: String(page),
+          pageSize: "200",
+        });
+        const payload = await requestResourceJson(
+          `/api/bookings?${params.toString()}`,
+        );
+
+        if (requestId !== bookingsRequestIdRef.current) return;
+
+        collected = [
+          ...collected,
+          ...(Array.isArray(payload?.items) ? payload.items : []),
+        ];
+        lastPage = payload?.page || null;
+        hasMore = Boolean(payload?.page?.hasMore);
+        page += 1;
+      }
+
+      if (requestId !== bookingsRequestIdRef.current) return;
+
+      const unique = new Map(
+        collected
+          .filter((booking) => booking?.id)
+          .map((booking) => [booking.id, booking]),
+      );
+      setBookingsList([...unique.values()]);
+
+      if (hasMore) {
+        setBookingsLoadError(
+          lang === "en"
+            ? "This period has more than 4,000 bookings. Narrow the date range for a complete view."
+            : "Este período possui mais de 4.000 reservas. Reduza o intervalo para uma visão completa.",
+        );
+      } else if (lastPage?.total != null && collected.length < Number(lastPage.total)) {
+        setBookingsLoadError(
+          lang === "en"
+            ? "Some bookings could not be loaded for this period."
+            : "Parte das reservas deste período não pôde ser carregada.",
+        );
+      }
+    } catch (error) {
+      if (requestId !== bookingsRequestIdRef.current) return;
+      setBookingsLoadError(
+        error?.message ||
+          (lang === "en"
+            ? "Could not load bookings for this period."
+            : "Não foi possível carregar as reservas deste período."),
+      );
+    } finally {
+      if (requestId === bookingsRequestIdRef.current) {
+        setBookingsLoading(false);
+      }
+    }
+  }, [lang, requestResourceJson]);
+
+  const bookingFilterKey =
+    selectedPeriod === "period_custom"
+      ? `${selectedPeriod}:${customStart}:${customEnd}`
+      : selectedPeriod;
+
+  useEffect(() => {
+    const firstRun = !bookingFilterMountedRef.current;
+    if (firstRun) {
+      bookingFilterMountedRef.current = true;
+      if (!bookingPage?.hasMore) return;
+    }
+
+    if (
+      selectedPeriod === "period_custom" &&
+      (!customStart || !customEnd)
+    ) {
+      return;
+    }
+
+    const range = getDashboardRangeForPeriod(
+      selectedPeriod,
+      customStart,
+      customEnd,
+    );
+    loadBookingsForRange(range.start, range.end);
+  }, [
+    bookingFilterKey,
+    bookingPage?.hasMore,
+    customEnd,
+    customStart,
+    loadBookingsForRange,
+    selectedPeriod,
+  ]);
+
+  const loadMediaLibrary = useCallback(async ({
+    reset = false,
+    refreshShopify = false,
+  } = {}) => {
+    if (mediaLoading) return;
+
+    setMediaLoading(true);
+    setMediaLoadError("");
+
+    try {
+      let payload;
+      if (refreshShopify) {
+        const formData = new FormData();
+        formData.append("_action", "refreshShopify");
+        payload = await requestResourceJson("/api/media-library", formData);
+      } else {
+        const nextPage = reset ? 1 : Math.max(1, mediaPage + 1);
+        const params = new URLSearchParams({
+          page: String(nextPage),
+          pageSize: "60",
+        });
+        payload = await requestResourceJson(
+          `/api/media-library?${params.toString()}`,
+        );
+      }
+
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setMediaList((current) => {
+        if (reset || refreshShopify) return items;
+        const merged = new Map(
+          [...current, ...items]
+            .filter((item) => item?.id)
+            .map((item) => [item.id, item]),
+        );
+        return [...merged.values()];
+      });
+      setMediaPage(Number(payload?.page?.current || 1));
+      setMediaHasMore(Boolean(payload?.page?.hasMore));
+      setMediaLoaded(true);
+    } catch (error) {
+      setMediaLoadError(
+        error?.message ||
+          (lang === "en"
+            ? "Could not load the media library."
+            : "Não foi possível carregar a biblioteca de mídia."),
+      );
+    } finally {
+      setMediaLoading(false);
+    }
+  }, [lang, mediaLoading, mediaPage, requestResourceJson]);
+
+  useEffect(() => {
+    const needsMedia =
+      activeTab === "midias" || activeModal === "pickPhotoForGuide";
+    if (!needsMedia || mediaLoaded || mediaLoading) return;
+    loadMediaLibrary({ reset: true });
+  }, [
+    activeModal,
+    activeTab,
+    loadMediaLibrary,
+    mediaLoaded,
+    mediaLoading,
+  ]);
 
   const loadShopifyValidation = useCallback(async () => {
     try {
@@ -2922,8 +3110,12 @@ function CentralDeReservasContent() {
                     <div>⚙️ Método: <strong>Shopify Admin API (OAuth interno do app)</strong></div>
                     <div className="pmy-ds-migrated-j0srg2">
                       📡 Pedidos em tempo real:{' '}
-                      <strong className={shopifyWebhookStatus?.ok ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
-                        {shopifyWebhookStatus?.ok ? 'Webhooks ativos' : 'Configuração pendente'}
+                      <strong className={shopifyWebhookStatus?.ok === true ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
+                        {shopifyWebhookStatus?.ok === null
+                          ? ui("Verificando em segundo plano...", "Checking in background...")
+                          : shopifyWebhookStatus?.ok
+                            ? ui("Webhooks ativos", "Webhooks active")
+                            : ui("Configuração pendente", "Configuration pending")}
                       </strong>
                     </div>
                     {shopifyWebhookStatus?.subscriptions?.length > 0 && (
@@ -2931,7 +3123,7 @@ function CentralDeReservasContent() {
                         {shopifyWebhookStatus.subscriptions.map(s => s.topic).join(' · ')}
                       </div>
                     )}
-                    {!shopifyWebhookStatus?.ok && shopifyWebhookStatus?.error && (
+                    {shopifyWebhookStatus?.ok === false && shopifyWebhookStatus?.error && (
                       <div className="pmy-ds-migrated-6nlv6t">
                         {shopifyWebhookStatus.error}
                       </div>
@@ -2939,12 +3131,27 @@ function CentralDeReservasContent() {
                   </div>
                 </div>
                 <div className="pmy-ds-migrated-1ewrw06">
-                  <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> Este app já acessa sua loja via autenticação OAuth do Shopify. Os produtos são puxados automaticamente pelo servidor.
-                  Se os produtos não aparecerem, verifique se existem produtos cadastrados em <strong>Produtos → Todos os produtos</strong> no seu painel Shopify e recarregue a página.
+                  <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> {ui(
+                    "A Central abre com o catálogo salvo no banco e atualiza o Shopify em segundo plano, sem travar a página.",
+                    "The Central opens from the cached catalog and refreshes Shopify in the background without blocking the page.",
+                  )}
+                  {" "}{ui(
+                    "Use a sincronização manual apenas quando quiser forçar uma atualização imediata.",
+                    "Use manual sync only when you want to force an immediate refresh.",
+                  )}
                 </div>
                 <div className="pmy-ds-migrated-12y480p">
-                  <button className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => { setConnectingPlatform(null); window.location.reload(); }} >
-                    🔄 Recarregar e Sincronizar Produtos
+                  <button
+                    className="pmy-btn-submit pmy-ds-migrated-ckcaff"
+                    disabled={manualSyncPlatform === "shopify"}
+                    onClick={async () => {
+                      await handleSyncPlatformNow("shopify");
+                      window.location.reload();
+                    }}
+                  >
+                    {manualSyncPlatform === "shopify"
+                      ? ui("Sincronizando...", "Syncing...")
+                      : ui("🔄 Sincronizar Shopify agora", "🔄 Sync Shopify now")}
                   </button>
                   <button onClick={() => window.open('https://admin.shopify.com/store/products', '_blank')}
                     className="pmy-ds-migrated-14rz57k">
@@ -5628,7 +5835,7 @@ function CentralDeReservasContent() {
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, getPeriodLabel,
-            salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
+            salesByChannel, bookings, bookingsLoading, bookingsLoadError, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
 
@@ -5689,6 +5896,7 @@ function CentralDeReservasContent() {
           <MediaTab {...{
             activeTab, handleCopyMediaUrl, handleDeleteMedia, handleMediaUpload,
             mediaCategoryInput, mediaFilter, mediaLabelInput, mediaList, mediaPreview,
+            mediaLoading, mediaLoadError, mediaHasMore, loadMediaLibrary,
             mediaUploadError, mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
             setMediaCategoryInput, setMediaFilter, setMediaLabelInput, setMediaList,
             setMediaPreview, setShowShopifySource, showShopifySource, lang

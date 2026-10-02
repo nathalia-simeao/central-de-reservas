@@ -33,6 +33,7 @@ model Tour {
   title                  String
   productType            String?
   shopifyStatus          String?
+  shopifySnapshot        Json?
   maxCapacity            Int           @default(20)
   capacitySource         String        @default("DEFAULT")
   scheduleSlots          String[]      @default([])
@@ -144,6 +145,11 @@ model Booking {
   @@index([platform, status])
   @@index([commercialSource])
   @@index([platform, externalOrderId])
+  @@index([startTime])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([externalCreatedAt])
+  @@index([externalUpdatedAt])
 }
 
 model Guide {
@@ -231,6 +237,7 @@ model Media {
 
   @@unique([shop, source, externalId], map: "Media_shop_source_externalId_key")
   @@index([shop, active])
+  @@index([shop, active, createdAt])
   @@index([source])
   @@index([category])
 }
