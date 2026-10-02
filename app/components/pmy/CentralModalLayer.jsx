@@ -82,6 +82,7 @@ export default function CentralModalLayer(props) {
     platformTokenGuide,
     pricedConfirmedBookings,
     realCanceledBookings,
+    realConfirmedBookings,
     revenueByCurrency,
     revenueCurrencies,
     salesByChannel,
@@ -114,6 +115,7 @@ export default function CentralModalLayer(props) {
     tours,
     ui,
     upcomingCount,
+    upcomingDepartures,
   } = props;
 
   const renderConnectModal = () => {
