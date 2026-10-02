@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import {
@@ -79,6 +80,7 @@ export default function CentralModalLayer(props) {
     modalSelectedTour,
     moneyValue,
     openMediaLibraryPicker,
+    notify,
     platformConnections,
     platformLabel,
     platformTokenGuide,
@@ -122,6 +124,86 @@ export default function CentralModalLayer(props) {
     upcomingDepartures,
   } = props;
 
+  const previousFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!connectingPlatform && !activeModal && !editingGuide) return undefined;
+
+    previousFocusRef.current = document.activeElement;
+    const dialogs = [...document.querySelectorAll('[data-pmy-dialog="true"]')];
+    const dialog = dialogs[dialogs.length - 1] || null;
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+
+    const focusDialog = () => {
+      const first = dialog?.querySelector(focusableSelector);
+      (first || dialog)?.focus?.();
+    };
+
+    const closeCurrentDialog = () => {
+      if (editingGuide) {
+        setEditingGuide(null);
+      } else if (activeModal) {
+        setActiveModal(null);
+      } else if (connectingPlatform) {
+        setConnectingPlatform(null);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCurrentDialog();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll(focusableSelector)].filter(
+        (element) => !element.hasAttribute("disabled") && element.tabIndex !== -1,
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    window.requestAnimationFrame(focusDialog);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, [
+    activeModal,
+    connectingPlatform,
+    editingGuide,
+    setActiveModal,
+    setConnectingPlatform,
+    setEditingGuide,
+  ]);
+
   const renderConnectModal = () => {
     if (!connectingPlatform) return null;
     const platform = allPlatforms.find(p => p.key === connectingPlatform);
@@ -137,7 +219,15 @@ export default function CentralModalLayer(props) {
   
     return (
       <div className="pmy-modal-overlay" onClick={() => setConnectingPlatform(null)}>
-        <div className="pmy-connect-modal pmy-ds-migrated-nz4pdt"  onClick={e => e.stopPropagation()}>
+        <div
+          className="pmy-connect-modal pmy-ds-migrated-nz4pdt"
+          data-pmy-dialog="true"
+          role="dialog"
+          aria-modal="true"
+          aria-label={ui("Configurar integração", "Configure integration")}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
   
           {/* Header */}
           <div className="pmy-ds-migrated-551uiq">
@@ -899,7 +989,17 @@ export default function CentralModalLayer(props) {
                 <code className="pmy-ds-migrated-eo31ti">
                   {selectedGuideInfo.referralLink}
                 </code>
-                <button onClick={() => navigator.clipboard.writeText(selectedGuideInfo.referralLink).then(()=>alert(ui('Copiado!','Copied!'))).catch(()=>{})}
+                <button
+                  type="button"
+                  aria-label={ui("Copiar link de indicação", "Copy referral link")}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(selectedGuideInfo.referralLink);
+                      notify?.(ui("Link copiado.", "Link copied."), "success");
+                    } catch {
+                      notify?.(ui("Não foi possível copiar o link.", "Could not copy the link."), "danger");
+                    }
+                  }}
                   className="pmy-ds-migrated-2ek2w0">
                   📋
                 </button>
@@ -1094,7 +1194,15 @@ export default function CentralModalLayer(props) {
     }
     return (
       <div className="pmy-modal-overlay" onClick={() => setActiveModal(null)}>
-        <div className="pmy-modal" onClick={e => e.stopPropagation()}>
+        <div
+          className="pmy-modal"
+          data-pmy-dialog="true"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
           <div className="pmy-modal-header">
             <div className="pmy-modal-title">{title}</div>
             <button className="pmy-modal-close" onClick={() => setActiveModal(null)}>&times;</button>
@@ -1114,7 +1222,15 @@ export default function CentralModalLayer(props) {
     const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
       <div className="pmy-modal-overlay" onClick={() => setEditingGuide(null)}>
-        <div className="pmy-ds-migrated-zuczkc" onClick={e => e.stopPropagation()}>
+        <div
+          className="pmy-ds-migrated-zuczkc"
+          data-pmy-dialog="true"
+          role="dialog"
+          aria-modal="true"
+          aria-label={ui("Editar guia", "Edit guide")}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
           <div className="pmy-ds-migrated-1ig0zoz">
             <div className="pmy-ds-migrated-g4mnio">
               <div className="pmy-ds-migrated-otectg">
@@ -1248,7 +1364,9 @@ export default function CentralModalLayer(props) {
                     </div>
                     <button type="button" onClick={() => {
                       const url = `https://portugalmeandyou.com/?utm_campaign=${editGuideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${editGuideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"")}`;
-                      navigator.clipboard.writeText(url).then(() => alert(ui('Link copiado!','Link copied!'))).catch(()=>{});
+                      navigator.clipboard.writeText(url)
+                        .then(() => notify?.(ui("Link copiado.", "Link copied."), "success"))
+                        .catch(() => notify?.(ui("Não foi possível copiar o link.", "Could not copy the link."), "danger"));
                     }} className="pmy-ds-migrated-1jfo6nj">
                       📋 Copiar
                     </button>
