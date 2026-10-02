@@ -507,7 +507,7 @@ async function validationStatus(serviceAdmin, orderId = null) {
   let shopifyOrder = null;
   if (externalOrderId) {
     try {
-      shopifyOrder = await fetchShopifyOrderState(admin, externalOrderId);
+      shopifyOrder = await fetchShopifyOrderState(serviceAdmin, externalOrderId);
     } catch (error) {
       console.error("[PMY] Shopify E2E order-state check failed:", error);
     }
