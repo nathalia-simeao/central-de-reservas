@@ -8,6 +8,7 @@ import {
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
 } from "./sync-queue.server";
+import { minimizeShopifyOrderPayload } from "./privacy.server";
 
 const SHOPIFY_PLATFORM = "SHOPIFY";
 
@@ -665,7 +666,7 @@ async function createForcedShopifyBooking(prisma, group, payload, status, syncSt
         lastSyncedAt: new Date(),
         externalCreatedAt: safeDate(payload?.created_at),
         externalUpdatedAt: safeDate(payload?.updated_at),
-        rawPayload: payload,
+        rawPayload: minimizeShopifyOrderPayload(payload),
       },
     });
   } catch (error) {
@@ -752,7 +753,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
         cancelReason: null,
         lastSyncedAt: new Date(),
         externalUpdatedAt: safeDate(payload?.updated_at) || new Date(),
-        rawPayload: payload,
+        rawPayload: minimizeShopifyOrderPayload(payload),
       },
     });
 
@@ -790,7 +791,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
         lastSyncedAt: new Date(),
         externalCreatedAt: safeDate(payload?.created_at),
         externalUpdatedAt: safeDate(payload?.updated_at),
-        rawPayload: payload,
+        rawPayload: minimizeShopifyOrderPayload(payload),
       },
     });
 
@@ -847,7 +848,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
       lastSyncedAt: new Date(),
       externalCreatedAt: safeDate(payload?.created_at),
       externalUpdatedAt: safeDate(payload?.updated_at),
-      rawPayload: payload,
+      rawPayload: minimizeShopifyOrderPayload(payload),
     },
   });
 
@@ -924,7 +925,7 @@ export async function processShopifyOrderWebhook(
         cancelReason: asString(payload?.cancel_reason) || "shopify_order_cancelled",
         lastSyncedAt: new Date(),
         externalUpdatedAt: safeDate(payload?.updated_at) || new Date(),
-        rawPayload: payload,
+        rawPayload: minimizeShopifyOrderPayload(payload),
       },
     });
 
@@ -1107,13 +1108,13 @@ export async function processShopifyWebhookEvent(
       topic,
       shop,
       status: "PROCESSING",
-      payload,
+      payload: minimizeShopifyOrderPayload(payload),
     },
     update: {
       topic,
       shop,
       status: "PROCESSING",
-      payload,
+      payload: minimizeShopifyOrderPayload(payload),
       error: null,
     },
   });
