@@ -1296,7 +1296,7 @@ function CentralDeReservasContent() {
         console.error("[PMY] legacy Data URL logo migration failed:", error);
         if (!cancelled) {
           setSettingsSaveMessage(
-            "A logo antiga precisa ser reenviada para a Biblioteca PMY.",
+            "Erro: a logo antiga precisa ser reenviada para a Biblioteca PMY.",
           );
         }
       }
