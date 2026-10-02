@@ -455,10 +455,28 @@ export async function resolveTourByPlatformId(prisma, platform, externalId) {
     or.push({ [externalField]: id });
   }
 
-  return prisma.tour.findFirst({
+  const tour = await prisma.tour.findFirst({
     where: { OR: or },
     include: { variants: true },
   });
+
+  if (tour || normalizedPlatform !== "GETYOURGUIDE") {
+    return tour;
+  }
+
+  // Compatibility alias for GYG option-level mapping. The canonical supplier
+  // productId remains the PMY Tour id, but an option id can still resolve the
+  // owning Tour during certification and troubleshooting.
+  const option = await prisma.tourVariant.findUnique({
+    where: { gygOptionId: id },
+    include: {
+      tour: {
+        include: { variants: true },
+      },
+    },
+  });
+
+  return option?.tour || null;
 }
 
 export function buildTourPassportUpdate(formData) {
