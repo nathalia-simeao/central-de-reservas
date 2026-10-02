@@ -1590,6 +1590,10 @@ const IntegrationHealthPanel = ({
       health = "PENDING";
       tone = "warning";
       label = lang === "pt" ? "Onboarding pendente" : "Onboarding pending";
+    } else if (blockedCount > 0) {
+      health = "WARNING";
+      tone = "warning";
+      label = lang === "pt" ? "Entrega bloqueada" : "Delivery blocked";
     } else if (connection.connected) {
       health = "HEALTHY";
       tone = "success";
