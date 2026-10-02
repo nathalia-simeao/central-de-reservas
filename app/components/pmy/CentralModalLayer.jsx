@@ -244,7 +244,7 @@ export default function CentralModalLayer(props) {
         >
   
           {/* Header */}
-          <div className="pmy-ds-migrated-551uiq">
+          <div className="pmy-ds-migrated-551uiq pmy-connect-modal__header">
             <div className="pmy-ds-migrated-p1kt1o">
               <span className="pmy-ds-migrated-1o512c8"><Icon name={platform.icon} size={24} /></span>
               <div className="pmy-ds-migrated-aeaxj9">{platform.name}</div>
@@ -277,7 +277,7 @@ export default function CentralModalLayer(props) {
               className="pmy-ds-migrated-1g3pznn">&times;</button>
           </div>
   
-          <div className="pmy-ds-migrated-16l5m1y">
+          <div className="pmy-ds-migrated-16l5m1y pmy-connect-modal__body">
   
             {/* ── SHOPIFY: já conectado pelo contexto do app ── */}
             {isShopify && (
@@ -365,6 +365,72 @@ export default function CentralModalLayer(props) {
                     <div>🕒 Sem horário real: <strong>{gygIntegrationStatus?.scheduleMissing || 0}</strong></div>
                     <div>📡 Evidências técnicas: <strong>{gygIntegrationStatus?.certificationEvidenceVerified || 0}/{gygIntegrationStatus?.certificationEvidenceTotal || 6}</strong></div>
                   </div>
+                </div>
+
+                <div className="pmy-gyg-quick-map">
+                  <div className="pmy-gyg-quick-map__title">
+                    {ui("🧳 Produto para o autoteste do GetYourGuide", "🧳 Product for GetYourGuide self-test")}
+                  </div>
+                  <div className="pmy-gyg-quick-map__hint">
+                    {ui(
+                      "Selecione o passeio e copie o Supplier productId para o campo “Valid product ID” do Integrator Portal.",
+                      "Select the tour and copy the Supplier productId into the Integrator Portal “Valid product ID” field.",
+                    )}
+                  </div>
+                  <div className="pmy-form-group pmy-u-mt-2">
+                    <label className="pmy-ds-migrated-1ygjrzr" htmlFor="gyg-quick-tour">
+                      {ui("Tour mestre PMY", "PMY master tour")}
+                    </label>
+                    <select
+                      id="gyg-quick-tour"
+                      className="pmy-form-input"
+                      value={gygConfigTourId}
+                      onChange={(event) => handleGygTourSelection(event.target.value)}
+                    >
+                      <option value="">{ui("-- Selecione um passeio --", "-- Select a tour --")}</option>
+                      {(tours || [])
+                        .filter((tour) => tour.shopifyStatus !== "INACTIVE")
+                        .map((tour) => (
+                          <option key={tour.id} value={tour.id}>
+                            {tour.title}{tour.gygActivityId ? " ✓ GYG" : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {selectedGygTour && (
+                    <div className="pmy-gyg-product-id">
+                      <div className="pmy-gyg-product-id__meta">
+                        <span className="pmy-gyg-product-id__label">
+                          {ui("Supplier productId da PMY", "PMY Supplier productId")}
+                        </span>
+                        <code className="pmy-gyg-product-id__value">{selectedGygTour.id}</code>
+                      </div>
+                      <button
+                        type="button"
+                        className="pmy-gyg-product-id__copy"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(selectedGygTour.id);
+                            notify(
+                              ui("Supplier productId copiado.", "Supplier productId copied."),
+                              "success",
+                            );
+                          } catch {
+                            notify(
+                              ui(
+                                "Não consegui copiar automaticamente. Selecione o código e copie manualmente.",
+                                "Could not copy automatically. Select the code and copy it manually.",
+                              ),
+                              "warning",
+                            );
+                          }
+                        }}
+                      >
+                        {ui("Copiar ID", "Copy ID")}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pmy-ds-migrated-19khbc6">
