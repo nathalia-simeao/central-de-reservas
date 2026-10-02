@@ -526,10 +526,20 @@ export function buildDashboardViewModel({
   
   // Se não tiver coleções, fallback por nome
   const categoriesData = allCollections.length > 0
-    ? allCollections.map(colName => ({
-        name: colName,
-        toursList: tourOptions.filter(t => (t.collections || []).some(c => c.title === colName))
-      })).filter(c => c.toursList.length > 0)
+    ? [
+        ...allCollections.map((colName) => ({
+          name: colName,
+          toursList: tourOptions.filter((tour) =>
+            (tour.collections || []).some((collection) => collection.title === colName),
+          ),
+        })),
+        {
+          name: lang === "pt" ? "Outros passeios" : "Other tours",
+          toursList: tourOptions.filter(
+            (tour) => !Array.isArray(tour.collections) || tour.collections.length === 0,
+          ),
+        },
+      ].filter((category) => category.toursList.length > 0)
     : [
         { name: "Day Trips", toursList: tourOptions.filter(t => !t.title.toLowerCase().includes("walking")) },
         { name: "Walking Tours", toursList: tourOptions.filter(t =>  t.title.toLowerCase().includes("walking")) },
