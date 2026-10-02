@@ -172,12 +172,57 @@ export const action = async ({ request }) => {
 
       if (formData.has("logoOnLightUrl")) {
         const logoOnLightUrl = String(formData.get("logoOnLightUrl") || "").trim();
+        if (logoOnLightUrl.startsWith("data:")) {
+          return json(
+            { success: false, error: "A logo deve apontar para uma mídia persistida, não para Data URL." },
+            { status: 400 },
+          );
+        }
         patch.logoOnLightUrl = logoOnLightUrl || null;
       }
 
       if (formData.has("logoOnDarkUrl")) {
         const logoOnDarkUrl = String(formData.get("logoOnDarkUrl") || "").trim();
+        if (logoOnDarkUrl.startsWith("data:")) {
+          return json(
+            { success: false, error: "A logo deve apontar para uma mídia persistida, não para Data URL." },
+            { status: 400 },
+          );
+        }
         patch.logoOnDarkUrl = logoOnDarkUrl || null;
+      }
+
+      for (const [field, formField] of [
+        ["logoOnLightMediaId", "logoOnLightMediaId"],
+        ["logoOnDarkMediaId", "logoOnDarkMediaId"],
+      ]) {
+        if (!formData.has(formField)) continue;
+        const mediaId = String(formData.get(formField) || "").trim();
+
+        if (!mediaId) {
+          patch[field] = null;
+          continue;
+        }
+
+        const media = await prisma.media.findFirst({
+          where: {
+            id: mediaId,
+            shop,
+            active: true,
+          },
+          select: { id: true, url: true, mimetype: true },
+        });
+
+        if (!media || !String(media.mimetype || "").startsWith("image/")) {
+          return json(
+            { success: false, error: "Referência de logo inválida na Biblioteca PMY." },
+            { status: 400 },
+          );
+        }
+
+        patch[field] = media.id;
+        if (field === "logoOnLightMediaId") patch.logoOnLightUrl = media.url;
+        if (field === "logoOnDarkMediaId") patch.logoOnDarkUrl = media.url;
       }
 
       if (formData.has("theme")) {
