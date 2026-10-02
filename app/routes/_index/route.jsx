@@ -2198,8 +2198,8 @@ function CentralDeReservasContent() {
               🧭 {stats.assignmentCount} {stats.assignmentCount === 1 ? ui("escala de guia", "guide assignment") : ui("escalas de guia", "guide assignments")}
             </div>
           )}
-          {(hasBookings || hasAssignments || hasBlocks) && <div className="pmy-calendar-dot"></div>}
-        </div>
+          {(hasBookings || hasAssignments || hasBlocks) && <span className="pmy-calendar-dot"></span>}
+        </button>
       );
     };
 
