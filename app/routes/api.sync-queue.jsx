@@ -45,7 +45,34 @@ export const loader = async ({ request }) => {
     }),
   ]);
 
-  return json({ success: true, stats, jobs });
+  const bookingIds = [...new Set(jobs.map((job) => job.bookingId).filter(Boolean))];
+  const bookingRows = bookingIds.length > 0
+    ? await db.booking.findMany({
+        where: { id: { in: bookingIds } },
+        select: {
+          id: true,
+          bookingRef: true,
+          externalBookingId: true,
+          customerName: true,
+          platform: true,
+          status: true,
+          startTime: true,
+          tour: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+        },
+      })
+    : [];
+  const bookingById = new Map(bookingRows.map((booking) => [booking.id, booking]));
+  const enrichedJobs = jobs.map((job) => ({
+    ...job,
+    booking: job.bookingId ? bookingById.get(job.bookingId) || null : null,
+  }));
+
+  return json({ success: true, stats, jobs: enrichedJobs });
 };
 
 export const action = async ({ request }) => {
