@@ -222,9 +222,19 @@ export function EmptyState({
   );
 }
 
-export function Table({ children, className = "", ...props }) {
+export function Table({
+  children,
+  className = "",
+  scrollLabel = "Scrollable table",
+  ...props
+}) {
   return (
-    <div className="pmy-ds-table-wrap">
+    <div
+      className="pmy-ds-table-wrap"
+      role="region"
+      aria-label={scrollLabel}
+      tabIndex={0}
+    >
       <table className={["pmy-ds-table", className].filter(Boolean).join(" ")} {...props}>
         {children}
       </table>
