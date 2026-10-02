@@ -8,7 +8,7 @@ import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import MediaTab from "../../components/pmy/MediaTab";
-import { Icon } from "../../components/pmy/PmyUI";
+import { ConfirmDialog, Icon, ToastViewport } from "../../components/pmy/PmyUI";
 import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
@@ -63,6 +63,39 @@ function CentralDeReservasContent() {
   );
   const [activeModal, setActiveModal] = useState(null);
   const [openCategories, setOpenCategories] = useState(["Day Trips", "Walking Tours"]);
+  const [uiToast, setUiToast] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const confirmResolverRef = useRef(null);
+
+  const notify = useCallback((message, tone = "info") => {
+    setUiToast({
+      id: Date.now(),
+      message: String(message || ""),
+      tone,
+      closeLabel: lang === "pt" ? "Fechar aviso" : "Close notification",
+    });
+  }, [lang]);
+
+  const requestConfirmation = useCallback((options) => {
+    return new Promise((resolve) => {
+      confirmResolverRef.current?.(false);
+      confirmResolverRef.current = resolve;
+      setConfirmDialog({
+        title: options?.title || (lang === "pt" ? "Confirmar ação" : "Confirm action"),
+        description: options?.description || "",
+        confirmLabel: options?.confirmLabel || (lang === "pt" ? "Confirmar" : "Confirm"),
+        cancelLabel: options?.cancelLabel || (lang === "pt" ? "Cancelar" : "Cancel"),
+        tone: options?.tone || "danger",
+      });
+    });
+  }, [lang]);
+
+  const settleConfirmation = useCallback((accepted) => {
+    const resolve = confirmResolverRef.current;
+    confirmResolverRef.current = null;
+    setConfirmDialog(null);
+    resolve?.(accepted);
+  }, []);
 
   // Identidade visual persistente do negócio.
   // A logo para fundo claro e a versão para fundo escuro ficam no banco.
@@ -1020,7 +1053,10 @@ function CentralDeReservasContent() {
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
         if (!res.ok || !data?.success) {
-          alert(data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."));
+          notify(
+            data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."),
+            "danger",
+          );
           return;
         }
 
@@ -1039,7 +1075,7 @@ function CentralDeReservasContent() {
             : g
         ));
       } catch (error) {
-        alert(error?.message || ui("Erro ao salvar guia.", "Error saving guide."));
+        notify(error?.message || ui("Erro ao salvar guia.", "Error saving guide."), "danger");
         return;
       }
     }
@@ -1049,15 +1085,24 @@ function CentralDeReservasContent() {
   const handleDeleteGuide = async (id) => {
     const guide = guidesList.find((item) => item.id === id);
     if (guide?.shopifyMetaobjectId) {
-      alert(
+      notify(
         ui(
           "Este guia é gerenciado pelo Shopify. Remova ou desative a entrada no metaobjeto Guias.",
           "This guide is managed by Shopify. Remove or disable the entry in the Guides metaobject.",
         ),
+        "warning",
       );
       return;
     }
-    if (!window.confirm("Remover este guia do sistema?")) return;
+    const confirmed = await requestConfirmation({
+      title: ui("Remover guia?", "Remove guide?"),
+      description: ui(
+        "O guia local será removido da Central. Esta ação não pode ser desfeita.",
+        "The local guide will be removed from the Central. This action cannot be undone.",
+      ),
+      confirmLabel: ui("Remover guia", "Remove guide"),
+    });
+    if (!confirmed) return;
 
     if (!String(id).startsWith("temp_")) {
       try {
@@ -1067,17 +1112,21 @@ function CentralDeReservasContent() {
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
         if (!res.ok || !data?.success) {
-          alert(data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."));
+          notify(
+            data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."),
+            "danger",
+          );
           return;
         }
       } catch (error) {
-        alert(error?.message || ui("Erro ao remover guia.", "Error removing guide."));
+        notify(error?.message || ui("Erro ao remover guia.", "Error removing guide."), "danger");
         return;
       }
     }
 
     setGuidesList(prev => prev.filter(g => g.id !== id));
     setEditingGuide(null);
+    notify(ui("Guia removido.", "Guide removed."), "success");
   };
 
   const handleEditGuidePhotoChange = async (e) => {
@@ -1142,7 +1191,15 @@ function CentralDeReservasContent() {
   };
 
   const handleDeleteMedia = async (id) => {
-    if (!window.confirm("Remover esta mídia da biblioteca PMY?")) return;
+    const confirmed = await requestConfirmation({
+      title: ui("Remover mídia?", "Remove media?"),
+      description: ui(
+        "A mídia será removida da Biblioteca PMY se não estiver sendo usada por logo ou guia.",
+        "The media will be removed from the PMY Media Library if it is not used by a logo or guide.",
+      ),
+      confirmLabel: ui("Remover mídia", "Remove media"),
+    });
+    if (!confirmed) return;
 
     setMediaUploadError("");
     const fd = new FormData();
@@ -1152,13 +1209,19 @@ function CentralDeReservasContent() {
     try {
       await requestResourceJson("/", fd);
       setMediaList((current) => current.filter((item) => item.id !== id));
+      notify(ui("Mídia removida.", "Media removed."), "success");
     } catch (error) {
       setMediaUploadError(error?.message || "Erro ao remover mídia.");
     }
   };
 
-  const handleCopyMediaUrl = (url) => {
-    navigator.clipboard.writeText(url).then(() => alert("URL copiada!")).catch(() => {});
+  const handleCopyMediaUrl = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      notify(ui("URL copiada.", "URL copied."), "success");
+    } catch {
+      notify(ui("Não foi possível copiar a URL.", "Could not copy the URL."), "danger");
+    }
   };
 
   const handleTogglePlatformSelection = (key, stateArr, setStateArr) => {
@@ -1662,7 +1725,15 @@ function CentralDeReservasContent() {
   };
 
   const handleRemoveGuideAssignment = async (id) => {
-    if (!window.confirm("Remover esta escala de guia?")) return;
+    const confirmed = await requestConfirmation({
+      title: ui("Remover escala?", "Remove assignment?"),
+      description: ui(
+        "A atribuição do guia será removida desta saída.",
+        "The guide assignment will be removed from this departure.",
+      ),
+      confirmLabel: ui("Remover escala", "Remove assignment"),
+    });
+    if (!confirmed) return;
 
     setGuideAssignmentSaving(true);
     setGuideAssignmentMessage("");
@@ -1732,7 +1803,15 @@ function CentralDeReservasContent() {
   };
 
   const handleRemoveBlock = async (id) => {
-    if (!window.confirm("Remover este bloqueio da disponibilidade central?")) return;
+    const confirmed = await requestConfirmation({
+      title: ui("Remover bloqueio?", "Remove availability block?"),
+      description: ui(
+        "A disponibilidade central voltará a considerar este período após a remoção.",
+        "Central availability will consider this period again after removal.",
+      ),
+      confirmLabel: ui("Remover bloqueio", "Remove block"),
+    });
+    if (!confirmed) return;
 
     try {
       const fd = new FormData();
@@ -1741,12 +1820,12 @@ function CentralDeReservasContent() {
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const result = await res.json();
       if (!res.ok || !result.success) {
-        alert(result.error || "Não foi possível remover o bloqueio.");
+        notify(result.error || ui("Não foi possível remover o bloqueio.", "Could not remove the block."), "danger");
         return;
       }
       window.location.reload();
     } catch (err) {
-      alert(err?.message || "Erro ao remover bloqueio.");
+      notify(err?.message || ui("Erro ao remover bloqueio.", "Error removing block."), "danger");
     }
   };
 
@@ -1804,11 +1883,11 @@ function CentralDeReservasContent() {
       const result = await res.json();
       if (!res.ok || !result.success) {
         setTourCapacities(prev => ({ ...prev, [id]: cur }));
-        alert(result.error || "Não foi possível salvar a capacidade.");
+        notify(result.error || ui("Não foi possível salvar a capacidade.", "Could not save capacity."), "danger");
       }
     } catch (err) {
       setTourCapacities(prev => ({ ...prev, [id]: cur }));
-      alert(err?.message || "Erro ao salvar a capacidade.");
+      notify(err?.message || ui("Erro ao salvar a capacidade.", "Error saving capacity."), "danger");
     }
   };
 
@@ -2023,7 +2102,15 @@ function CentralDeReservasContent() {
     if (!["viator", "civitatis"].includes(key)) return;
 
     const platformName = allPlatforms.find((item) => item.key === key)?.name || key;
-    if (!window.confirm(`Remover a credencial armazenada de ${platformName}?`)) return;
+    const confirmed = await requestConfirmation({
+      title: ui("Remover credencial?", "Remove credential?"),
+      description: ui(
+        `A credencial armazenada de ${platformName} será removida da Central.`,
+        `The stored ${platformName} credential will be removed from the Central.`,
+      ),
+      confirmLabel: ui("Remover credencial", "Remove credential"),
+    });
+    if (!confirmed) return;
 
     setIntegrationCredentialLoading(true);
     setIntegrationCredentialMessage("");
