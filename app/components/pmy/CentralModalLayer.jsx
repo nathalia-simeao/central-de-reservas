@@ -4,7 +4,7 @@ import {
   allPlatforms,
   ddiList,
   getFlagUrl,
-} from "../../config/pmy-central.client";
+} from "../../config/pmy-central-config";
 
 export default function CentralModalLayer(props) {
   const {
