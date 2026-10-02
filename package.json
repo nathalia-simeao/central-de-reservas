@@ -6,7 +6,7 @@
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
-    "deploy": "shopify app deploy",
+    "deploy": "npm run predeploy:shopify && shopify app deploy",
     "config:use": "shopify app config use",
     "env": "shopify app env",
     "start": "HOST=0.0.0.0 react-router-serve ./build/server/index.js",
@@ -19,7 +19,8 @@
     "vite": "vite",
     "typecheck": "react-router typegen && tsc --noEmit",
     "test": "node --experimental-loader ./tests/extension-loader.mjs --test tests/*.test.js",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "predeploy:shopify": "node scripts/assert-production-readiness.mjs"
   },
   "type": "module",
   "engines": {
