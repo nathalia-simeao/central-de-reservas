@@ -413,11 +413,14 @@ export function ToastViewport({
   onDismiss,
   duration = 3600,
 }) {
+  const onDismissRef = React.useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   React.useEffect(() => {
     if (!toast || !duration) return undefined;
-    const timer = window.setTimeout(() => onDismiss?.(), duration);
+    const timer = window.setTimeout(() => onDismissRef.current?.(), duration);
     return () => window.clearTimeout(timer);
-  }, [duration, onDismiss, toast]);
+  }, [duration, toast?.id]);
 
   if (!toast) return null;
 
