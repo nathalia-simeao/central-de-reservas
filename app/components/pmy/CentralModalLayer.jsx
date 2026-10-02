@@ -25,6 +25,7 @@ export default function CentralModalLayer(props) {
     editGuideEmail,
     editGuideName,
     editGuidePhoto,
+    editGuidePhotoMediaId,
     editGuidePhotoRef,
     editGuideUtmId,
     editGuideWhatsapp,
@@ -40,6 +41,8 @@ export default function CentralModalLayer(props) {
     guideAssignmentMessage,
     guideAssignmentSaving,
     guideAssignmentsList,
+    guidePhotoUploadError,
+    guidePhotoUploading,
     guidesList,
     gygConfigActivityId,
     gygConfigCutoff,
@@ -96,6 +99,7 @@ export default function CentralModalLayer(props) {
     setEditGuideEmail,
     setEditGuideName,
     setEditGuidePhoto,
+    setEditGuidePhotoMediaId,
     setEditGuideUtmId,
     setEditGuideWhatsapp,
     setEditingGuide,
@@ -780,8 +784,8 @@ export default function CentralModalLayer(props) {
       content = (
         <PickerModalContent
           allImages={allImages}
-          onSelect={(url) => {
-            if (pickerCallback) { pickerCallback(url); window.__pmyPickerCallback = null; }
+          onSelect={(media) => {
+            if (pickerCallback) { pickerCallback(media); window.__pmyPickerCallback = null; }
             setActiveModal(null);
           }}
         />
@@ -1118,10 +1122,36 @@ export default function CentralModalLayer(props) {
                   className="pmy-ds-migrated-1sos9w" />
                 {!shopifyManaged && (
                   <>
-                    <button type="button" onClick={() => openShopifyFilePicker((url) => setEditGuidePhoto(url))}
-                      title={ui('Escolher do banco da Shopify','Choose from Shopify library')}
-                      className="pmy-ds-migrated-1canwv8"><Icon name="media" size={16} /></button>
-                    <input type="file" accept="image/*" className="pmy-ds-migrated-1cibdmr" ref={editGuidePhotoRef} onChange={handleEditGuidePhotoChange} />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openShopifyFilePicker((media) => {
+                          setEditGuidePhoto(media?.url || null);
+                          setEditGuidePhotoMediaId(media?.id || null);
+                        })
+                      }
+                      title={ui("Escolher da Biblioteca PMY", "Choose from PMY Media Library")}
+                      className="pmy-ds-migrated-1canwv8"
+                    >
+                      <Icon name="media" size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="pmy-btn-secondary pmy-ds-compact-action"
+                      disabled={guidePhotoUploading}
+                      onClick={() => editGuidePhotoRef.current?.click()}
+                    >
+                      {guidePhotoUploading
+                        ? ui("Enviando...", "Uploading...")
+                        : ui("Enviar nova foto", "Upload new photo")}
+                    </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="pmy-ds-migrated-1cibdmr"
+                      ref={editGuidePhotoRef}
+                      onChange={handleEditGuidePhotoChange}
+                    />
                   </>
                 )}
               </div>
@@ -1137,6 +1167,11 @@ export default function CentralModalLayer(props) {
             <button onClick={() => setEditingGuide(null)}
               className="pmy-ds-migrated-6cymc4">&times;</button>
           </div>
+          {guidePhotoUploadError && !shopifyManaged && (
+            <div className="pmy-ds-inline-message is-danger pmy-u-mx-4 pmy-u-mt-3">
+              {guidePhotoUploadError}
+            </div>
+          )}
           {shopifyManaged && (
             <div className="pmy-ds-state-panel pmy-u-mx-4 pmy-u-mt-3">
               <div className="pmy-ds-state-title">
