@@ -157,6 +157,10 @@ export default function CentralModalLayer(props) {
     };
 
     const handleKeyDown = (event) => {
+      if (document.querySelector(".pmy-ds-modal-backdrop [role='dialog']")) {
+        return;
+      }
+
       if (event.key === "Escape") {
         event.preventDefault();
         closeCurrentDialog();
