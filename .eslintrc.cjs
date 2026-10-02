@@ -50,6 +50,10 @@ module.exports = {
       },
       rules: {
         "react/no-unknown-property": ["error", { ignore: ["variant"] }],
+        // This codebase uses plain JS components and centralized TypeScript checking.
+        // Requiring runtime PropTypes on every large dashboard prop object adds noise
+        // without improving the CI signal.
+        "react/prop-types": "off",
       },
     },
 
@@ -91,6 +95,8 @@ module.exports = {
     },
   ],
   globals: {
-    shopify: "readonly"
+    shopify: "readonly",
+    process: "readonly",
+    globalThis: "readonly",
   },
 };
