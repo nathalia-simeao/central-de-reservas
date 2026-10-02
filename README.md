@@ -120,6 +120,22 @@ Em produção, o mesmo fluxo é executado antes do start da aplicação.
 
 O deploy de aplicação é feito pelo pipeline conectado ao branch `main`. Alterações de configuração do app Shopify em TOML também precisam ser publicadas no Shopify quando aplicável.
 
+A configuração Shopify está padronizada na API `2026-04` tanto no runtime quanto nos webhooks. Antes de publicar a configuração do app, use:
+
+```bash
+npm run deploy
+```
+
+Esse comando executa um launch guard antes do `shopify app deploy`. O deploy é bloqueado quando:
+
+- `application_url` ainda aponta para domínio temporário (`.code.run`, Northflank), localhost ou URL sem HTTPS;
+- `redirect_urls` não contém o callback canônico do domínio de produção;
+- `SHOPIFY_APP_URL` não está configurada no ambiente de produção;
+- `SHOPIFY_APP_URL` difere do `application_url` do Shopify;
+- runtime e webhooks deixam de usar a mesma versão de API.
+
+O endereço temporário atual pode continuar sendo usado durante desenvolvimento/homologação, mas deve ser substituído pelo domínio definitivo antes do lançamento.
+
 ## Manutenção do repositório
 
 O repositório não versiona artefatos gerados em `build/` nem páginas de demonstração do template Shopify.
