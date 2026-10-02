@@ -91,12 +91,16 @@ export default function MediaTab(props) {
   return (
     <>
       {mediaPreview ? (
-        <div className="pmy-media-preview-overlay" onClick={() => setMediaPreview(null)}>
+        <div
+          className="pmy-media-preview-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMediaPreview(null);
+          }}
+        >
           <img
             src={mediaPreview}
             alt=""
             className="pmy-media-preview-img"
-            onClick={(event) => event.stopPropagation()}
           />
         </div>
       ) : null}
@@ -180,7 +184,7 @@ export default function MediaTab(props) {
                     {sourceLabel(media.source)}
                   </div>
 
-                  <div className="pmy-media-actions" onClick={(event) => event.stopPropagation()}>
+                  <div className="pmy-media-actions">
                     <Button
                       type="button"
                       variant="secondary"
