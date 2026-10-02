@@ -150,7 +150,6 @@ function CentralDeReservasContent() {
   const [custLang, setCustLang] = useState("Português");
   const [selectedTour, setSelectedTour] = useState("");
   const [tourVariants, setTourVariants] = useState({ adulto: 0, jovem: 0, crianca: 0, senior: 0 });
-  const [activeProductVariants, setActiveProductVariants] = useState(["adulto", "jovem", "crianca", "senior"]);
   const [activeTourLanguages, setActiveTourLanguages] = useState(["Português", "English"]);
   const [generatedLink, setGeneratedLink] = useState("");
   const [bookingDate, setBookingDate] = useState("");
@@ -252,7 +251,6 @@ function CentralDeReservasContent() {
   const [mediaPage, setMediaPage] = useState(0);
   const [mediaHasMore, setMediaHasMore] = useState(false);
   const [showShopifySource, setShowShopifySource] = useState(true);
-  const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit'
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
@@ -412,7 +410,11 @@ function CentralDeReservasContent() {
   const toggleSidebar = () => {
     setSidebarCollapsed((current) => {
       const next = !current;
-      try { localStorage.setItem("pmy_sidebar_collapsed", next ? "1" : "0"); } catch {}
+      try {
+        localStorage.setItem("pmy_sidebar_collapsed", next ? "1" : "0");
+      } catch {
+        // localStorage may be unavailable in restricted browser contexts.
+      }
       return next;
     });
   };
@@ -1016,7 +1018,12 @@ function CentralDeReservasContent() {
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const data = await res.json();
       if (data.success) window.location.reload();
-    } catch {}
+    } catch (error) {
+      notify(
+        error?.message || ui("Não foi possível salvar o guia.", "Could not save guide."),
+        "danger",
+      );
+    }
   };
 
   const handleOpenEditGuide = (guide) => {
@@ -1399,7 +1406,9 @@ function CentralDeReservasContent() {
         try {
           localStorage.removeItem("pmy_logo_url");
           localStorage.removeItem("pmy_theme");
-        } catch {}
+        } catch {
+          // Legacy browser storage cleanup is best-effort only.
+        }
       })
       .catch((error) => {
         console.error("[PMY] legacy settings migration failed:", error);
@@ -1650,7 +1659,7 @@ function CentralDeReservasContent() {
     }
 
     // 2. Extrai dos títulos das variantes
-    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timeRegex = /\b(\d{1,2}[:h]\d{2})(?:\s*[hH])?\b/g;
     const timesFromVariants = new Set();
     for (const v of (tour?.variants || [])) {
       const matches = (v.title || "").matchAll(timeRegex);
@@ -1851,7 +1860,7 @@ function CentralDeReservasContent() {
 
     // 2. Extrai horários únicos dos títulos das variantes
     // Padrão comum: "Adult / 09:30 - Description" ou "09:00 - Title"
-    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timeRegex = /\b(\d{1,2}[:h]\d{2})(?:\s*[hH])?\b/g;
     const timesFromVariants = new Set();
     for (const v of (tour?.variants || [])) {
       const matches = (v.title || "").matchAll(timeRegex);
