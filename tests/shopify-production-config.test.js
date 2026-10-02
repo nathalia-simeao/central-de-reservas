@@ -21,6 +21,18 @@ test("Shopify runtime and webhook configs are aligned on 2026-04", () => {
   assert.match(developmentConfig, /\[webhooks\][\s\S]*api_version = "2026-04"/);
 });
 
+test("production Shopify URLs use the definitive PMY Central domain", () => {
+  assert.match(
+    productionConfig,
+    /application_url = "https:\/\/central\.portugalmeandyou\.com"/,
+  );
+  assert.match(
+    productionConfig,
+    /redirect_urls = \[ "https:\/\/central\.portugalmeandyou\.com\/auth\/callback" \]/,
+  );
+  assert.doesNotMatch(productionConfig, /\.code\.run/);
+});
+
 test("production deploy runs the launch readiness guard first", () => {
   assert.equal(
     packageJson.scripts.deploy,
