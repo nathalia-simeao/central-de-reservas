@@ -222,7 +222,12 @@ export default function IntegrationProductsPanel({
                             </div>
     
                             {/* Tabela */}
-                            <div className="pmy-ds-migrated-6tnpw1">
+                            <div
+                              className="pmy-ds-migrated-6tnpw1 pmy-ds-table-scroll-region"
+                              role="region"
+                              aria-label={tr("Produtos sincronizados", "Synchronized products")}
+                              tabIndex={0}
+                            >
                               <table className="pmy-prod-table">
                                 <thead>
                                   <tr>
