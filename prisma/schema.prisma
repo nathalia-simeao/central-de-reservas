@@ -27,6 +27,17 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
+
+model AppTenantLock {
+  key       String   @id @default("PRIMARY")
+  shop      String   @unique
+  source    String   @default("AUTO")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([shop])
+}
+
 model Tour {
   // ID interno canônico da PMY. Este é o "passaporte" mestre do passeio.
   id                     String        @id @default(uuid())
