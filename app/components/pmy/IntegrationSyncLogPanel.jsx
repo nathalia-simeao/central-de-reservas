@@ -257,7 +257,15 @@ export default function IntegrationSyncLogPanel({
     
                       <div className="pmy-form-box pmy-ds-migrated-q9arce" >
                         {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
-                          <div className="pmy-ds-migrated-1htyqwv">{tr("Carregando histórico de sincronização...", "Loading sync history...")}</div>
+                          <EmptyState
+                            icon="refresh"
+                            compact
+                            title={tr("Carregando histórico", "Loading history")}
+                            description={tr(
+                              "Buscando os eventos mais recentes da fila de sincronização.",
+                              "Fetching the latest synchronization queue events.",
+                            )}
+                          />
                         ) : syncQueueData.jobs.length === 0 ? (
                           <EmptyState
                             icon="refresh"
