@@ -42,7 +42,11 @@ export function requireGygAuth(request) {
       );
 }
 
-export async function recordGygAuthenticatedTraffic(topic, metadata = {}) {
+export async function recordGygAuthenticatedTraffic(
+  topic,
+  metadata = {},
+  response = null,
+) {
   try {
     const payload = {
       source: "AUTHENTICATED_SUPPLIER_API",
@@ -60,13 +64,38 @@ export async function recordGygAuthenticatedTraffic(topic, metadata = {}) {
       }
     }
 
+    let responseSummary = null;
+    let status = "RECEIVED";
+
+    if (response?.clone) {
+      try {
+        const responseBody = await response.clone().json();
+        if (responseBody?.errorCode) {
+          status = "ERROR";
+          responseSummary = {
+            errorCode: String(responseBody.errorCode),
+          };
+        } else {
+          responseSummary = { success: true };
+        }
+      } catch {
+        status = "ERROR";
+        responseSummary = { parseError: true };
+      }
+    }
+
     await prisma.integrationEvent.create({
       data: {
         provider: GYG_PLATFORM,
         externalEventId: `gyg:${topic}:${randomUUID()}`,
         topic: String(topic || "unknown"),
-        status: "RECEIVED",
+        status,
         payload,
+        result: responseSummary,
+        error:
+          status === "ERROR"
+            ? responseSummary?.errorCode || "INVALID_RESPONSE"
+            : null,
         processedAt: new Date(),
       },
     });
