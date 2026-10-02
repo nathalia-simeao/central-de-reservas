@@ -1102,60 +1102,25 @@ function CentralDeReservasContent() {
 
   // HANDLERS DE MÍDIA
   const handleMediaUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setMediaUploading(true);
     setMediaUploadError("");
-    setMediaUploadProgress(10);
+    setMediaUploadProgress(20);
 
     try {
-      const fd = new FormData();
-      fd.append("_action", "uploadMedia");
-      fd.append("filename", file.name);
-      fd.append("mimetype", file.type);
-      fd.append("size", String(file.size));
-      fd.append("category", mediaCategoryInput);
-
-      const data = await requestResourceJson("/", fd);
-      setMediaUploadProgress(30);
-
-      const uploadForm = new FormData();
-      data.parameters.forEach((param) => uploadForm.append(param.name, param.value));
-      uploadForm.append("file", file);
-      setMediaUploadProgress(60);
-
-      const uploadRes = await fetch(data.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: mediaCategoryInput,
+        label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
+        requestResourceJson,
       });
-      if (!uploadRes.ok) {
-        throw new Error("Falha ao enviar o arquivo para o Shopify Files.");
-      }
-
-      setMediaUploadProgress(82);
-
-      const finalizeFd = new FormData();
-      finalizeFd.append("_action", "finalizeMediaUpload");
-      finalizeFd.append("resourceUrl", data.resourceUrl);
-      finalizeFd.append("filename", file.name);
-      finalizeFd.append("mimetype", file.type);
-      finalizeFd.append("category", mediaCategoryInput);
-      finalizeFd.append(
-        "label",
-        mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
-      );
-
-      const finalizeData = await requestResourceJson("/", finalizeFd);
-
-      if (!finalizeData.media) {
-        throw new Error("Falha ao registrar o arquivo na biblioteca PMY.");
-      }
 
       setMediaUploadProgress(100);
       setMediaList((current) => [
-        finalizeData.media,
-        ...current.filter((item) => item.id !== finalizeData.media.id),
+        media,
+        ...current.filter((item) => item.id !== media.id),
       ]);
       setMediaLabelInput("");
     } catch (err) {
