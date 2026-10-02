@@ -56,7 +56,10 @@ const shopify = shopifyApp({
           allowInitialize: true,
         });
       } catch (error) {
-        if (session?.shop) {
+        if (
+          session?.shop &&
+          error?.details?.reason === "FOREIGN_SHOP"
+        ) {
           await prisma.session.deleteMany({
             where: { shop: session.shop },
           });
@@ -91,10 +94,24 @@ export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
 export const authenticate = {
   admin: async (request) => {
     const result = await shopify.authenticate.admin(request);
-    await assertSingleTenantShop(prisma, result?.session?.shop, {
-      context: "admin",
-      allowInitialize: true,
-    });
+
+    try {
+      await assertSingleTenantShop(prisma, result?.session?.shop, {
+        context: "admin",
+        allowInitialize: true,
+      });
+    } catch (error) {
+      if (
+        result?.session?.shop &&
+        error?.details?.reason === "FOREIGN_SHOP"
+      ) {
+        await prisma.session.deleteMany({
+          where: { shop: result.session.shop },
+        });
+      }
+      throw error;
+    }
+
     return result;
   },
 
