@@ -168,6 +168,12 @@ export const action = async ({ request }) => {
 
       if (formData.has("logoUrl")) {
         const logoUrl = String(formData.get("logoUrl") || "").trim();
+        if (logoUrl.startsWith("data:")) {
+          return json(
+            { success: false, error: "A logo deve apontar para uma mídia persistida, não para Data URL." },
+            { status: 400 },
+          );
+        }
         patch.logoUrl = logoUrl || null;
       }
 
