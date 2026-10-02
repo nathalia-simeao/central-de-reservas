@@ -222,7 +222,7 @@ export default function IntegrationProductsPanel({
                             </div>
     
                             {/* Tabela */}
-                            <div className="pmy-ds-migrated-6tnpw1 pmy-ds-table-wrap" role="region" tabIndex={0} aria-label={tr("Produtos do canal", "Channel products")}>
+                            <div className="pmy-ds-migrated-6tnpw1 pmy-ds-table-wrap" role="region" aria-label={tr("Produtos do canal", "Channel products")}>
                               <table className="pmy-prod-table">
                                 <thead>
                                   <tr>
