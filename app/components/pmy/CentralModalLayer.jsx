@@ -78,7 +78,7 @@ export default function CentralModalLayer(props) {
     modalSelectedHour,
     modalSelectedTour,
     moneyValue,
-    openShopifyFilePicker,
+    openMediaLibraryPicker,
     platformConnections,
     platformLabel,
     platformTokenGuide,
@@ -1124,7 +1124,7 @@ export default function CentralModalLayer(props) {
                     <button
                       type="button"
                       onClick={() =>
-                        openShopifyFilePicker((media) => {
+                        openMediaLibraryPicker((media) => {
                           setEditGuidePhoto(media?.url || null);
                           setEditGuidePhotoMediaId(media?.id || null);
                         })
