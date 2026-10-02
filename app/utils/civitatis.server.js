@@ -3,7 +3,6 @@ import db from "../db.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
   createBookingWithCapacityGuard,
-  getCentralAvailability,
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks } from "./availability.server";
 import { localSlotToInstant } from "./gyg-v1.server";

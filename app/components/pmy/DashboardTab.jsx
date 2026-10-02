@@ -1560,6 +1560,9 @@ const IntegrationHealthPanel = ({
   lang,
 }) => {
   const jobs = syncQueueData?.jobs || [];
+  const queueStats = syncQueueData?.stats || {};
+  const queueAttention = Number(queueStats.attention || 0);
+  const queueHealth = String(queueStats.health || "healthy");
   const providerForKey = {
     shopify: "SHOPIFY",
     viator: "VIATOR",
@@ -1619,7 +1622,8 @@ const IntegrationHealthPanel = ({
   });
 
   const healthy = healthRows.filter((row) => row.health === "HEALTHY").length;
-  const attention = healthRows.filter((row) => ["ERROR", "WARNING"].includes(row.health)).length;
+  const channelAttention = healthRows.filter((row) => ["ERROR", "WARNING"].includes(row.health)).length;
+  const attention = channelAttention + (queueAttention > 0 ? 1 : 0);
 
   return (
     <Card>
@@ -1635,6 +1639,21 @@ const IntegrationHealthPanel = ({
           </Badge>
         }
       />
+
+      <div className="pmy-ds-state-panel pmy-u-mb-4">
+        <div className={`pmy-ds-state-title ${queueHealth === "critical" ? "is-danger" : queueHealth === "degraded" ? "is-warning" : "is-success"}`}>
+          {lang === "pt" ? "Fila de sincronização" : "Sync queue"} · {queueHealth === "critical"
+            ? (lang === "pt" ? "atenção crítica" : "critical attention")
+            : queueHealth === "degraded"
+              ? (lang === "pt" ? "atenção necessária" : "attention needed")
+              : (lang === "pt" ? "saudável" : "healthy")}
+        </div>
+        <div className="pmy-ds-state-text">
+          {queueAttention > 0
+            ? `${queueAttention} ${lang === "pt" ? "job(s) exigindo acompanhamento" : "job(s) requiring follow-up"}`
+            : (lang === "pt" ? "Sem jobs em retry, bloqueados ou mortos." : "No retry, blocked or dead jobs.")}
+        </div>
+      </div>
 
       <div className="pmy-ds-list-plain">
         {healthRows.map((row) => (

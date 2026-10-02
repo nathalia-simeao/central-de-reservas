@@ -150,7 +150,6 @@ function CentralDeReservasContent() {
   const [custLang, setCustLang] = useState("Português");
   const [selectedTour, setSelectedTour] = useState("");
   const [tourVariants, setTourVariants] = useState({ adulto: 0, jovem: 0, crianca: 0, senior: 0 });
-  const [activeProductVariants, setActiveProductVariants] = useState(["adulto", "jovem", "crianca", "senior"]);
   const [activeTourLanguages, setActiveTourLanguages] = useState(["Português", "English"]);
   const [generatedLink, setGeneratedLink] = useState("");
   const [bookingDate, setBookingDate] = useState("");
@@ -252,7 +251,6 @@ function CentralDeReservasContent() {
   const [mediaPage, setMediaPage] = useState(0);
   const [mediaHasMore, setMediaHasMore] = useState(false);
   const [showShopifySource, setShowShopifySource] = useState(true);
-  const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit'
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
@@ -412,7 +410,7 @@ function CentralDeReservasContent() {
   const toggleSidebar = () => {
     setSidebarCollapsed((current) => {
       const next = !current;
-      try { localStorage.setItem("pmy_sidebar_collapsed", next ? "1" : "0"); } catch {}
+      try { localStorage.setItem("pmy_sidebar_collapsed", next ? "1" : "0"); } catch { /* Storage may be blocked in embedded contexts. */ }
       return next;
     });
   };
@@ -1016,7 +1014,7 @@ function CentralDeReservasContent() {
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const data = await res.json();
       if (data.success) window.location.reload();
-    } catch {}
+    } catch { /* The form keeps its local state when the request fails. */ }
   };
 
   const handleOpenEditGuide = (guide) => {
@@ -1399,7 +1397,7 @@ function CentralDeReservasContent() {
         try {
           localStorage.removeItem("pmy_logo_url");
           localStorage.removeItem("pmy_theme");
-        } catch {}
+        } catch { /* Legacy localStorage cleanup is best-effort only. */ }
       })
       .catch((error) => {
         console.error("[PMY] legacy settings migration failed:", error);
@@ -1625,13 +1623,10 @@ function CentralDeReservasContent() {
     // Detecta línguas disponíveis baseado no nome do tour
     const title = (tour?.title || "").toLowerCase();
     if (title.includes("español") || title.includes("spanish") || title.includes("espanhol")) {
-      setActiveProductVariants(["adulto","jovem","senior"]);
       setActiveTourLanguages(["Português","English","Español"]);
     } else if (title.includes("french") || title.includes("français")) {
-      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
       setActiveTourLanguages(["Português","English","Français"]);
     } else {
-      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
       setActiveTourLanguages(["Português","English"]);
     }
   };
@@ -1650,7 +1645,7 @@ function CentralDeReservasContent() {
     }
 
     // 2. Extrai dos títulos das variantes
-    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timeRegex = /\b(\d{1,2}[:h]\d{2})(?:\s*[hH])?\b/g;
     const timesFromVariants = new Set();
     for (const v of (tour?.variants || [])) {
       const matches = (v.title || "").matchAll(timeRegex);
@@ -1851,7 +1846,7 @@ function CentralDeReservasContent() {
 
     // 2. Extrai horários únicos dos títulos das variantes
     // Padrão comum: "Adult / 09:30 - Description" ou "09:00 - Title"
-    const timeRegex = /\b(\d{1,2}[:\h]\d{2})(?:\s*[hH])?\b/g;
+    const timeRegex = /\b(\d{1,2}[:h]\d{2})(?:\s*[hH])?\b/g;
     const timesFromVariants = new Set();
     for (const v of (tour?.variants || [])) {
       const matches = (v.title || "").matchAll(timeRegex);
@@ -2173,8 +2168,12 @@ function CentralDeReservasContent() {
       const hasBlocks = getCalendarDayBlocks(day).length > 0;
 
       return (
-        <div key={key} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
-          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setModalSelectedGuide(""); setGuideAssignmentMessage(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
+        <button
+          type="button"
+          key={key}
+          className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
+          onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setModalSelectedGuide(""); setGuideAssignmentMessage(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}
+        >
           <div className="pmy-cal-date-line">{day} - {weekdayLabel}</div>
           <div className="pmy-cal-info-line">
             🏰 {stats.tourCount} {stats.tourCount===1 ? 'Tour com reserva' : 'Tours com reserva'}
@@ -2190,7 +2189,7 @@ function CentralDeReservasContent() {
             </div>
           )}
           {(hasBookings || hasAssignments || hasBlocks) && <div className="pmy-calendar-dot"></div>}
-        </div>
+        </button>
       );
     };
 
