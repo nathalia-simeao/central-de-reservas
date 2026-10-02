@@ -1623,13 +1623,10 @@ function CentralDeReservasContent() {
     // Detecta línguas disponíveis baseado no nome do tour
     const title = (tour?.title || "").toLowerCase();
     if (title.includes("español") || title.includes("spanish") || title.includes("espanhol")) {
-      setActiveProductVariants(["adulto","jovem","senior"]);
       setActiveTourLanguages(["Português","English","Español"]);
     } else if (title.includes("french") || title.includes("français")) {
-      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
       setActiveTourLanguages(["Português","English","Français"]);
     } else {
-      setActiveProductVariants(["adulto","jovem","crianca","senior"]);
       setActiveTourLanguages(["Português","English"]);
     }
   };
