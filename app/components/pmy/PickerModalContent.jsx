@@ -21,7 +21,6 @@ export default function PickerModalContent({ allImages, onSelect }) {
           placeholder="Buscar por nome da imagem..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          autoFocus
           className="pmy-ds-migrated-bitygt"
           onFocus={e => e.target.style.borderColor = '#006600'}
           onBlur={e  => e.target.style.borderColor = '#ddd'}
@@ -35,7 +34,7 @@ export default function PickerModalContent({ allImages, onSelect }) {
       {/* Contador */}
       <div className="pmy-ds-migrated-16q5nnv">
         {filtered.length} de {allImages.length} imagens
-        {search && <span> para "<strong>{search}</strong>"</span>}
+        {search && <span> para &quot;<strong>{search}</strong>&quot;</span>}
       </div>
 
       {/* Grid */}
@@ -48,7 +47,9 @@ export default function PickerModalContent({ allImages, onSelect }) {
             className="pmy-ds-migrated-1vqm17k"
             aria-label={`Selecionar ${img.label || img.filename || "imagem"}`}
             onMouseOver={e => e.currentTarget.style.borderColor = '#006600'}
+            onFocus={e => e.currentTarget.style.borderColor = '#006600'}
             onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}
+            onBlur={e => e.currentTarget.style.borderColor = '#eee'}
           >
             <img src={img.url} alt={img.label || img.filename}
               className="pmy-ds-migrated-1595bs8"
