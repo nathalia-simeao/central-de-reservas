@@ -2422,7 +2422,7 @@ function CentralDeReservasContent() {
             getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange,
             handleCreateBlock, handleGeneratePaymentLink, handleNextMonth, handlePrevMonth,
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
-            imageShape, platformConnections, renderCalendarDays, reservationPlatforms,
+            imageShape, platformConnections, renderCalendarDays, reservationPlatforms, notify,
             selectedTour, setBlockDateTime, setBlockPlatforms, setBlockRecurringDays,
             setBlockSelectedHour, setBookingDate, setBookingTime,
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
@@ -2551,6 +2551,7 @@ function CentralDeReservasContent() {
         modalSelectedTour,
         moneyValue,
         openMediaLibraryPicker,
+        notify,
         platformConnections,
         platformLabel,
         platformTokenGuide,
@@ -2593,6 +2594,22 @@ function CentralDeReservasContent() {
         upcomingCount,
         upcomingDepartures,
       }} />
+
+      <ToastViewport
+        toast={uiToast}
+        onDismiss={() => setUiToast(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.title || ""}
+        description={confirmDialog?.description || ""}
+        confirmLabel={confirmDialog?.confirmLabel}
+        cancelLabel={confirmDialog?.cancelLabel}
+        tone={confirmDialog?.tone || "danger"}
+        onConfirm={() => settleConfirmation(true)}
+        onCancel={() => settleConfirmation(false)}
+      />
     </>
   );
 }
