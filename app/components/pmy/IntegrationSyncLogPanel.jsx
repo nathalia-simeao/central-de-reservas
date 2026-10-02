@@ -1,4 +1,4 @@
-import { Button, EmptyState, Icon, Toast } from "./PmyUI";
+import { Button, EmptyState, ErrorState, Icon, LoadingState, Toast } from "./PmyUI";
 
 export default function IntegrationSyncLogPanel({
   bookings,
@@ -52,7 +52,7 @@ export default function IntegrationSyncLogPanel({
                         </div>
                       </div>
     
-                      {syncQueueError && (
+                      {syncQueueError && syncQueueData.jobs.length > 0 && (
                         <Toast tone="danger" className="pmy-u-mb-4">{syncQueueError}</Toast>
                       )}
     
@@ -257,7 +257,22 @@ export default function IntegrationSyncLogPanel({
     
                       <div className="pmy-form-box pmy-ds-migrated-q9arce" >
                         {syncQueueLoading && syncQueueData.jobs.length === 0 ? (
-                          <div className="pmy-ds-migrated-1htyqwv">{tr("Carregando histórico de sincronização...", "Loading sync history...")}</div>
+                          <LoadingState
+                            compact
+                            title={tr("Carregando histórico de sincronização", "Loading sync history")}
+                            description={tr("Buscando os eventos mais recentes da fila.", "Fetching the latest queue events.")}
+                          />
+                        ) : syncQueueError && syncQueueData.jobs.length === 0 ? (
+                          <ErrorState
+                            compact
+                            title={tr("Não foi possível carregar a fila", "Could not load the queue")}
+                            description={syncQueueError}
+                            action={(
+                              <Button type="button" variant="secondary" size="sm" icon="refresh" onClick={loadSyncQueue}>
+                                {tr("Tentar novamente", "Try again")}
+                              </Button>
+                            )}
+                          />
                         ) : syncQueueData.jobs.length === 0 ? (
                           <EmptyState
                             icon="refresh"
@@ -269,7 +284,7 @@ export default function IntegrationSyncLogPanel({
                             )}
                           />
                         ) : (
-                          <div className="pmy-ds-migrated-13izxgm">
+                          <div className="pmy-ds-migrated-13izxgm pmy-ds-table-wrap" tabIndex={0} aria-label={tr("Histórico de sincronização", "Sync history")}>
                             <table className="pmy-ds-migrated-sq1wms">
                               <thead>
                                 <tr className="pmy-ds-migrated-37kcbg">
