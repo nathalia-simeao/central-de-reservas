@@ -41,17 +41,23 @@ export default function PickerModalContent({ allImages, onSelect }) {
       {/* Grid */}
       <div className="pmy-ds-migrated-1j056d9">
         {filtered.map(img => (
-          <div key={img.id || img.url} onClick={() => onSelect(img)}
-            className="pmy-ds-migrated-1vqm17k"
-            onMouseOver={e => e.currentTarget.style.borderColor = '#006600'}
-            onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
-            <img src={img.url} alt={img.label || img.filename}
+          <button
+            key={img.id || img.url}
+            type="button"
+            onClick={() => onSelect(img)}
+            className="pmy-ds-migrated-1vqm17k pmy-media-picker-item"
+            aria-label={`Selecionar ${img.label || img.filename || "imagem"}`}
+          >
+            <img
+              src={img.url}
+              alt=""
               className="pmy-ds-migrated-1595bs8"
-              onError={e => { e.target.style.display='none'; }} />
-            <div className="pmy-ds-migrated-1b43wd">
+              onError={e => { e.target.style.display='none'; }}
+            />
+            <span className="pmy-ds-migrated-1b43wd">
               {img.label || img.filename || "Sem nome"}
-            </div>
-          </div>
+            </span>
+          </button>
         ))}
         {filtered.length === 0 && (
           <div className="pmy-ds-migrated-1otk903">
