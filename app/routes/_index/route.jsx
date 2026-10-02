@@ -2173,7 +2173,7 @@ function CentralDeReservasContent() {
       const hasBlocks = getCalendarDayBlocks(day).length > 0;
 
       return (
-        <div key={key} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
+        <button type="button" key={key} className={`pmy-calendar-day ${selectedCalendarDay===day?'active':''}`}
           onClick={() => { setSelectedCalendarDay(day); setModalSelectedTour(""); setModalSelectedGuide(""); setGuideAssignmentMessage(""); setIsFormAllocating(false); setActiveModal('calendarDay'); }}>
           <div className="pmy-cal-date-line">{day} - {weekdayLabel}</div>
           <div className="pmy-cal-info-line">
