@@ -1,4 +1,4 @@
-import { isDarkThemeColor } from "../config/pmy-central.client";
+import { isDarkThemeColor } from "../config/pmy-central-config";
 
 export function buildCentralStyles(theme) {
   const dashboardSurfaceIsDark = isDarkThemeColor(theme.surfaceColor || "#FFFFFF");
