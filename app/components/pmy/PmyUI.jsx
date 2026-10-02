@@ -246,6 +246,10 @@ export function Modal({
   const dialogRef = React.useRef(null);
   const titleId = React.useId();
   const previousFocusRef = React.useRef(null);
+  const onCloseRef = React.useRef(onClose);
+  const initialFocusRefRef = React.useRef(initialFocusRef);
+  onCloseRef.current = onClose;
+  initialFocusRefRef.current = initialFocusRef;
 
   React.useEffect(() => {
     if (!open) return undefined;
@@ -262,7 +266,7 @@ export function Modal({
     ].join(",");
 
     const focusInitial = () => {
-      const preferred = initialFocusRef?.current;
+      const preferred = initialFocusRefRef.current?.current;
       const firstFocusable = dialog?.querySelector(focusableSelector);
       (preferred || firstFocusable || dialog)?.focus?.();
     };
@@ -270,7 +274,7 @@ export function Modal({
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
 
@@ -306,7 +310,7 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus?.();
     };
-  }, [initialFocusRef, onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 
