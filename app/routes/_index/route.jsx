@@ -3110,8 +3110,12 @@ function CentralDeReservasContent() {
                     <div>⚙️ Método: <strong>Shopify Admin API (OAuth interno do app)</strong></div>
                     <div className="pmy-ds-migrated-j0srg2">
                       📡 Pedidos em tempo real:{' '}
-                      <strong className={shopifyWebhookStatus?.ok ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
-                        {shopifyWebhookStatus?.ok ? 'Webhooks ativos' : 'Configuração pendente'}
+                      <strong className={shopifyWebhookStatus?.ok === true ? "pmy-ds-state-text is-success" : "pmy-ds-state-text is-warning"}>
+                        {shopifyWebhookStatus?.ok === null
+                          ? ui("Verificando em segundo plano...", "Checking in background...")
+                          : shopifyWebhookStatus?.ok
+                            ? ui("Webhooks ativos", "Webhooks active")
+                            : ui("Configuração pendente", "Configuration pending")}
                       </strong>
                     </div>
                     {shopifyWebhookStatus?.subscriptions?.length > 0 && (
@@ -3119,7 +3123,7 @@ function CentralDeReservasContent() {
                         {shopifyWebhookStatus.subscriptions.map(s => s.topic).join(' · ')}
                       </div>
                     )}
-                    {!shopifyWebhookStatus?.ok && shopifyWebhookStatus?.error && (
+                    {shopifyWebhookStatus?.ok === false && shopifyWebhookStatus?.error && (
                       <div className="pmy-ds-migrated-6nlv6t">
                         {shopifyWebhookStatus.error}
                       </div>
@@ -3127,12 +3131,27 @@ function CentralDeReservasContent() {
                   </div>
                 </div>
                 <div className="pmy-ds-migrated-1ewrw06">
-                  <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> Este app já acessa sua loja via autenticação OAuth do Shopify. Os produtos são puxados automaticamente pelo servidor.
-                  Se os produtos não aparecerem, verifique se existem produtos cadastrados em <strong>Produtos → Todos os produtos</strong> no seu painel Shopify e recarregue a página.
+                  <strong>{ui("ℹ️ Não precisa de token manual.", "ℹ️ No manual token required.")}</strong> {ui(
+                    "A Central abre com o catálogo salvo no banco e atualiza o Shopify em segundo plano, sem travar a página.",
+                    "The Central opens from the cached catalog and refreshes Shopify in the background without blocking the page.",
+                  )}
+                  {" "}{ui(
+                    "Use a sincronização manual apenas quando quiser forçar uma atualização imediata.",
+                    "Use manual sync only when you want to force an immediate refresh.",
+                  )}
                 </div>
                 <div className="pmy-ds-migrated-12y480p">
-                  <button className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => { setConnectingPlatform(null); window.location.reload(); }} >
-                    🔄 Recarregar e Sincronizar Produtos
+                  <button
+                    className="pmy-btn-submit pmy-ds-migrated-ckcaff"
+                    disabled={manualSyncPlatform === "shopify"}
+                    onClick={async () => {
+                      await handleSyncPlatformNow("shopify");
+                      window.location.reload();
+                    }}
+                  >
+                    {manualSyncPlatform === "shopify"
+                      ? ui("Sincronizando...", "Syncing...")
+                      : ui("🔄 Sincronizar Shopify agora", "🔄 Sync Shopify now")}
                   </button>
                   <button onClick={() => window.open('https://admin.shopify.com/store/products', '_blank')}
                     className="pmy-ds-migrated-14rz57k">
