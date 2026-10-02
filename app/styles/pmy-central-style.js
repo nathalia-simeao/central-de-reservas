@@ -125,7 +125,7 @@ export function buildCentralStyles(theme) {
       .pmy-guide-mini-tag { display:flex; align-items:center; gap:6px; background:#f5f5f5; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold; }
       .pmy-guide-mini-img { width:18px; height:18px; border-radius:50%; object-fit:cover; }
   
-      .pmy-accordion-header { display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #eee; cursor:pointer; transition:0.2s; }
+      .pmy-accordion-header { appearance:none; width:100%; background:transparent; color:inherit; font:inherit; display:flex; justify-content:space-between; align-items:center; padding:15px 0; border:0; border-bottom:1px solid #eee; cursor:pointer; transition:0.2s; text-align:left; }
       .pmy-accordion-header:hover { color:var(--primary-green); }
       .pmy-accordion-title { font-size:16px; font-weight:700; }
       .pmy-accordion-content { display:none; padding:15px 0; border-bottom:1px solid #eee; }
@@ -148,7 +148,7 @@ export function buildCentralStyles(theme) {
       .pmy-date-wrapper { position:relative; z-index:101; }
       .pmy-date-btn { display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid rgba(0,0,0,0.1); padding:10px 18px; border-radius:8px; font-weight:600; color:var(--text-dark); cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.02); transition:0.2s; }
       .pmy-date-btn:hover { border-color:var(--primary-green); }
-      .pmy-date-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:90; background:transparent; }
+      .pmy-date-overlay { appearance:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:90; border:0; padding:0; background:transparent; }
       .pmy-date-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:#ffffff; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.15); width:320px; z-index:100; border:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; overflow:hidden; }
       .pmy-date-presets { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee; }
       .pmy-date-preset-item { appearance:none; width:100%; border:0; background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
@@ -164,6 +164,7 @@ export function buildCentralStyles(theme) {
       .pmy-date-apply-btn:hover { background:var(--primary-hover); }
       .pmy-variants-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:5px; }
   
+      .pmy-modal-layer { display:contents; }
       .pmy-modal-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:flex; justify-content:center; align-items:center; z-index:9999; }
       .pmy-modal-overlay [role="dialog"]:focus { outline:none; }
       .pmy-modal-overlay button:focus-visible,
