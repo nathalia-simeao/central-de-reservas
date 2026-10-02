@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { getDraftOrderAttribution } from "../config/pmy-central.client";
+import { getDraftOrderAttribution } from "../config/pmy-central-config";
 
 export function useBookingCheckout({
   bookingDate,
