@@ -197,7 +197,7 @@ export default function GuidesTab(props) {
                   </Badge>
                 </div>
 
-                <div className="pmy-ds-guide-actions" onClick={(event) => event.stopPropagation()}>
+                <div className="pmy-ds-guide-actions">
                   <Button
                     type="button"
                     variant="secondary"
