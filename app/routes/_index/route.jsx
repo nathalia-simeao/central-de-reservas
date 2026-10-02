@@ -2476,7 +2476,7 @@ function CentralDeReservasContent() {
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
             openMediaLibraryPicker, setActiveModal, setGuideDdi, setGuideEmail,
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
-            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
+            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang, notify
           }} />
 
           <SettingsTab {...{
