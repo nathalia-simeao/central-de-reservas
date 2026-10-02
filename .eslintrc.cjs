@@ -18,6 +18,7 @@ module.exports = {
     browser: true,
     commonjs: true,
     es6: true,
+    es2021: true,
   },
   ignorePatterns: ["!**/.server", "!**/.client"],
 
@@ -87,7 +88,10 @@ module.exports = {
         "vite.config.{js,ts}",
         ".graphqlrc.{js,ts}",
         "shopify.server.{js,ts}",
-        "**/*.server.{js,ts}",
+        "**/*.server.{js,jsx,ts,tsx}",
+        "app/routes/api*.{js,jsx,ts,tsx}",
+        "app/routes/webhooks*.{js,jsx,ts,tsx}",
+        "app/services/**/*.{js,jsx,ts,tsx}",
       ],
       env: {
         node: true,
