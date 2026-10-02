@@ -299,12 +299,12 @@ export async function syncShopifyMediaLibrary(prisma, admin, shop) {
 
       if (
         lightMedia?.url &&
+        businessSettings.logoOnLightUrl &&
         (
-          !businessSettings.logoOnLightMediaId ||
-          businessSettings.logoOnLightMediaId !== lightMedia.id ||
+          isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl) ||
           (
-            businessSettings.logoOnLightUrl &&
-            isLikelyTemporaryUploadUrl(businessSettings.logoOnLightUrl)
+            businessSettings.logoOnLightUrl === lightMedia.url &&
+            businessSettings.logoOnLightMediaId !== lightMedia.id
           )
         )
       ) {
@@ -314,12 +314,12 @@ export async function syncShopifyMediaLibrary(prisma, admin, shop) {
 
       if (
         darkMedia?.url &&
+        businessSettings.logoOnDarkUrl &&
         (
-          !businessSettings.logoOnDarkMediaId ||
-          businessSettings.logoOnDarkMediaId !== darkMedia.id ||
+          isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl) ||
           (
-            businessSettings.logoOnDarkUrl &&
-            isLikelyTemporaryUploadUrl(businessSettings.logoOnDarkUrl)
+            businessSettings.logoOnDarkUrl === darkMedia.url &&
+            businessSettings.logoOnDarkMediaId !== darkMedia.id
           )
         )
       ) {
