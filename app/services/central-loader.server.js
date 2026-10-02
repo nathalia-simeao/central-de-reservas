@@ -10,6 +10,11 @@ import {
   getCentralRefreshStatus,
   scheduleCentralRefresh,
 } from "../utils/central-refresh.server";
+import {
+  GYG_CERTIFICATION_STEPS,
+  buildGygCertificationEvidence,
+  summarizeGygOptionMappings,
+} from "../utils/gyg-certification";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -242,6 +247,19 @@ export const loader = async ({ request }) => {
       tour.scheduleSlots.length === 0,
   );
 
+  const gygCertificationEvents = await prisma.integrationEvent.findMany({
+    where: {
+      provider: "GETYOURGUIDE",
+      topic: { in: GYG_CERTIFICATION_STEPS.map((step) => step.key) },
+    },
+    orderBy: { receivedAt: "desc" },
+    take: 100,
+  });
+  const gygCertification = buildGygCertificationEvidence(
+    gygCertificationEvents,
+  );
+  const gygOptionMappings = summarizeGygOptionMappings(tours);
+
   const gygIntegrationStatus = {
     incomingAuthConfigured: Boolean(
       process.env.GYG_INCOMING_USER && process.env.GYG_INCOMING_PASS,
@@ -261,6 +279,15 @@ export const loader = async ({ request }) => {
     mappedTours: gygMappedTours.length,
     readyTours: gygReadyTours.length,
     scheduleMissing: gygScheduleMissing.length,
+    activeOptions: gygOptionMappings.activeOptions,
+    mappedOptions: gygOptionMappings.mappedOptions,
+    optionMappingMissing: gygOptionMappings.optionMappingMissing,
+    trafficVerified: gygCertification.trafficVerified,
+    lastTrafficAt: gygCertification.lastTrafficAt,
+    certificationEvidence: gygCertification.steps,
+    certificationEvidenceVerified: gygCertification.verified,
+    certificationEvidenceTotal: gygCertification.total,
+    technicalEvidenceComplete: gygCertification.technicalEvidenceComplete,
   };
 
   let integrationCredentialStatus = {
