@@ -442,7 +442,7 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, centralRefreshStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, centralRefreshStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsLoadError, setBookingsLoadError] = useState("");
@@ -5816,7 +5816,7 @@ function CentralDeReservasContent() {
             activeTab, setActiveModal, t, totalSalesCount, confirmedRevenueValue, formatMoney,
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, getPeriodLabel,
-            salesByChannel, bookings, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
+            salesByChannel, bookings, bookingsLoading, bookingsLoadError, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
           }} />
 
@@ -5877,6 +5877,7 @@ function CentralDeReservasContent() {
           <MediaTab {...{
             activeTab, handleCopyMediaUrl, handleDeleteMedia, handleMediaUpload,
             mediaCategoryInput, mediaFilter, mediaLabelInput, mediaList, mediaPreview,
+            mediaLoading, mediaLoadError, mediaHasMore, loadMediaLibrary,
             mediaUploadError, mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
             setMediaCategoryInput, setMediaFilter, setMediaLabelInput, setMediaList,
             setMediaPreview, setShowShopifySource, showShopifySource, lang
