@@ -967,6 +967,7 @@ function CentralDeReservasContent() {
   };
 
   const handleOpenEditGuide = (guide) => {
+    setGuidePhotoUploadError("");
     setEditingGuide(guide.id);
     setEditGuideName(guide.name);
     setEditGuideEmail(guide.email || "");
@@ -2492,6 +2493,7 @@ function CentralDeReservasContent() {
         setEditGuideName,
         setEditGuidePhoto,
         setEditGuidePhotoMediaId,
+        setGuidePhotoUploadError,
         setEditGuideUtmId,
         setEditGuideWhatsapp,
         setEditingGuide,
