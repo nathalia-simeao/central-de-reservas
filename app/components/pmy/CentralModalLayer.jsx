@@ -225,9 +225,11 @@ export default function CentralModalLayer(props) {
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
   
     return (
-      <div
-        className="pmy-modal-overlay"
-        onMouseDown={(event) => {
+      <>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
+        <div
+          className="pmy-modal-overlay"
+          onMouseDown={(event) => {
           if (event.target === event.currentTarget) setConnectingPlatform(null);
         }}
       >
@@ -1198,9 +1200,11 @@ export default function CentralModalLayer(props) {
       );
     }
     return (
-      <div
-        className="pmy-modal-overlay"
-        onMouseDown={(event) => {
+      <>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
+        <div
+          className="pmy-modal-overlay"
+          onMouseDown={(event) => {
           if (event.target === event.currentTarget) setActiveModal(null);
         }}
       >
@@ -1219,6 +1223,7 @@ export default function CentralModalLayer(props) {
           <div className="pmy-modal-body">{content}</div>
         </div>
       </div>
+      </>
     );
   };
   
@@ -1230,9 +1235,11 @@ export default function CentralModalLayer(props) {
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
     const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
-      <div
-        className="pmy-modal-overlay"
-        onMouseDown={(event) => {
+      <>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop dismisses only when the backdrop itself is pressed */}
+        <div
+          className="pmy-modal-overlay"
+          onMouseDown={(event) => {
           if (event.target === event.currentTarget) setEditingGuide(null);
         }}
       >
@@ -1404,6 +1411,7 @@ export default function CentralModalLayer(props) {
           </form>
         </div>
       </div>
+      </>
     );
   };
 
