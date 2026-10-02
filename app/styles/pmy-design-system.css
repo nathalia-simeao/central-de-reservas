@@ -260,6 +260,10 @@
   width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
 }
 .pmy-ds-table {
   width: 100%;
@@ -333,6 +337,80 @@
 .pmy-ds-toast--warning { border-color: color-mix(in srgb, var(--pmy-warning) 24%, var(--pmy-ds-border)); }
 .pmy-ds-toast--danger { border-color: color-mix(in srgb, var(--pmy-danger) 24%, var(--pmy-ds-border)); }
 .pmy-ds-toast--info { border-color: color-mix(in srgb, var(--pmy-info) 24%, var(--pmy-ds-border)); }
+
+.pmy-ds-toast-viewport {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10050;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.pmy-ds-toast-viewport .pmy-ds-toast {
+  pointer-events: auto;
+  box-shadow: var(--pmy-shadow-lg);
+}
+.pmy-ds-toast-content {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pmy-space-3);
+}
+.pmy-ds-confirm-copy {
+  margin: 0;
+  color: var(--pmy-ds-text);
+  line-height: 1.6;
+}
+.pmy-ds-modal--confirm {
+  width: min(520px, 100%);
+}
+.pmy-ds-media-preview-modal {
+  width: min(960px, 96vw);
+}
+.pmy-ds-media-preview-modal .pmy-ds-modal__body {
+  display: grid;
+  place-items: center;
+  background: var(--pmy-ds-soft);
+}
+.pmy-ds-media-preview-modal .pmy-media-preview-img {
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}
+.pmy-media-picker-item {
+  appearance: none;
+  width: 100%;
+  padding: 0;
+  background: var(--pmy-ds-surface);
+  color: inherit;
+  text-align: left;
+}
+.pmy-media-picker-item:focus-visible,
+.pmy-accordion-header:focus-visible,
+.pmy-date-preset-item:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pmy-ds-accent) 38%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .pmy-ds-table {
+    min-width: 680px;
+  }
+
+  .pmy-ds-table-wrap {
+    max-width: 100%;
+    border-radius: var(--pmy-radius-md);
+  }
+
+  .pmy-ds-toast-viewport {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
 
 .pmy-ds-section-header {
   display: flex;
@@ -3178,6 +3256,7 @@
   overflow: hidden;
   border: 2px solid var(--pmy-ds-border);
   transition: 0.15s;
+  font: inherit;
 }
 
 .pmy-ds-migrated-1w0i767 {
