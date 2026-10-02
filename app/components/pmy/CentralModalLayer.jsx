@@ -1232,7 +1232,7 @@ export default function CentralModalLayer(props) {
   
   
   const renderEditGuideModal = () => {
-    if (!editingGuide) return null;
+    if (!editingGuide || activeModal === "pickPhotoForGuide") return null;
     const guide = guidesList.find(g => g.id === editingGuide);
     if (!guide) return null;
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
