@@ -6,6 +6,7 @@ import {
   FormField,
   Icon,
   Input,
+  Modal,
   SectionHeader,
   Select,
   Switch,
@@ -88,16 +89,21 @@ export default function MediaTab(props) {
 
   return (
     <>
-      {mediaPreview ? (
-        <div className="pmy-media-preview-overlay" onClick={() => setMediaPreview(null)}>
+      <Modal
+        open={Boolean(mediaPreview)}
+        title={tr("Pré-visualização da mídia", "Media preview")}
+        closeLabel={tr("Fechar pré-visualização", "Close preview")}
+        onClose={() => setMediaPreview(null)}
+        className="pmy-ds-media-preview-modal"
+      >
+        {mediaPreview ? (
           <img
             src={mediaPreview}
-            alt=""
+            alt={tr("Pré-visualização da mídia selecionada", "Selected media preview")}
             className="pmy-media-preview-img"
-            onClick={(event) => event.stopPropagation()}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </Modal>
 
       <div className="pmy-media-layout">
         <div>
