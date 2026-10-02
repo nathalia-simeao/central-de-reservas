@@ -4,7 +4,6 @@ export default function IntegrationProductsPanel({
   activeProdPlatform,
   allPlatforms,
   handleSyncPlatformNow,
-  handleToggleProduct,
   lang,
   manualSyncError,
   manualSyncPlatform,
@@ -227,8 +226,7 @@ export default function IntegrationProductsPanel({
                                     <th>{tr("SKU / ID Externo", "SKU / External ID")}</th>
                                     <th>{tr("Preço", "Price")}</th>
                                     <th>{tr("Sincronizado", "Synced")}</th>
-                                    <th>{tr("Status", "Status")}</th>
-                                    <th className="pmy-ds-migrated-1sl8cua">{tr("Ativo", "Active")}</th>
+                                    <th>{tr("Status no canal", "Channel status")}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -253,27 +251,19 @@ export default function IntegrationProductsPanel({
                                           {prod.active ? tr('Ativo','Active') : tr('Inativo','Inactive')}
                                         </span>
                                       </td>
-                                      <td className="pmy-ds-migrated-1sl8cua">
-                                        <label className="pmy-prod-toggle" title={prod.active ? tr('Desativar produto','Deactivate product') : tr('Ativar produto','Activate product')}>
-                                          <input type="checkbox" checked={prod.active} onChange={()=>handleToggleProduct(activeProdPlatform, prod.id)} />
-                                          <span className="pmy-prod-toggle-slider"></span>
-                                        </label>
-                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
                             </div>
     
-                            {/* Legenda */}
                             <div className="pmy-ds-migrated-12g27kh">
                               <div className="pmy-ds-migrated-181vluz">
-                                <span className="pmy-ds-migrated-oeqypp"></span>
-                                Produto ativo = aparece nas plataformas e aceita reservas
-                              </div>
-                              <div className="pmy-ds-migrated-181vluz">
-                                <span className="pmy-ds-migrated-1yis1w6"></span>
-                                Inativo = oculto na plataforma, sem novas reservas
+                                <Icon name="info" size={14} />
+                                {tr(
+                                  "O status é somente leitura e reflete o último dado retornado pelo canal. Ative ou desative produtos diretamente na plataforma de origem.",
+                                  "Status is read-only and reflects the latest value returned by the channel. Activate or deactivate products in the source platform.",
+                                )}
                               </div>
                             </div>
                           </div>
