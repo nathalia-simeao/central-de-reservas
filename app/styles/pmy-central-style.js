@@ -53,7 +53,7 @@ export function buildCentralStyles(theme) {
         --dashboard-shadow:${dashboardSurfaceIsDark ? "0 18px 45px rgba(0,0,0,0.28)" : "0 18px 45px rgba(22,44,29,0.075)"};
       }
       * { box-sizing:border-box; margin:0; padding:0; font-family:var(--font-family); font-size:var(--font-size); }
-      body, html { overflow-x:hidden; background-color:var(--bg-color); }
+      body, html { background-color:var(--bg-color); }
       .Polaris-Page { padding:0 !important; max-width:100% !important; }
       h1.Polaris-Header-Title { display:none !important; }
       ::-webkit-scrollbar { width:6px; height:0px; }
@@ -71,8 +71,9 @@ export function buildCentralStyles(theme) {
       .pmy-menu-item.active { background-color:var(--primary-green); color:#ffffff; }
       .pmy-sidebar-footer { margin-top:auto; padding:20px; border-top:1px solid #f0f0f0; display:flex; flex-direction:column; align-items:center; gap:15px; }
       .pmy-lang-pill { display:flex; align-items:center; gap:12px; border:1px solid rgba(0,0,0,0.15); border-radius:30px; padding:8px 16px; background:transparent; user-select:none; }
-      .pmy-lang-pill span { cursor:pointer; opacity:0.3; transition:0.2s ease; display:flex; align-items:center; justify-content:center; }
-      .pmy-lang-pill span.active { opacity:1; transform:scale(1.1); }
+      .pmy-lang-pill button { appearance:none; border:0; padding:0; margin:0; background:transparent; color:inherit; cursor:pointer; opacity:0.3; transition:0.2s ease; display:flex; align-items:center; justify-content:center; border-radius:999px; }
+      .pmy-lang-pill button.active { opacity:1; transform:scale(1.1); }
+      .pmy-lang-pill button:focus-visible { outline:2px solid currentColor; outline-offset:3px; }
       .pmy-flag-icon { width:24px; height:16px; object-fit:cover; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
       .pmy-lang-divider { width:1px; height:18px; background:rgba(0,0,0,0.15); }
       .pmy-credit-text { font-size:12px; color:#999; text-align:center; }
@@ -150,9 +151,10 @@ export function buildCentralStyles(theme) {
       .pmy-date-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:90; background:transparent; }
       .pmy-date-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:#ffffff; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.15); width:320px; z-index:100; border:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; overflow:hidden; }
       .pmy-date-presets { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee; }
-      .pmy-date-preset-item { background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
+      .pmy-date-preset-item { appearance:none; width:100%; border:0; background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
       .pmy-date-preset-item:hover { background:#f9f9f9; color:var(--primary-green); }
       .pmy-date-preset-item.active { background:#e6f2e6; color:var(--primary-green); }
+      .pmy-date-preset-item:focus-visible { outline:2px solid var(--primary-green); outline-offset:-3px; }
       .pmy-date-custom { padding:15px; display:flex; flex-direction:column; gap:10px; background:#ffffff; }
       .pmy-date-custom-title { font-size:12px; font-weight:700; color:var(--text-muted); }
       .pmy-date-custom-inputs { display:flex; gap:8px; align-items:center; }
@@ -163,6 +165,15 @@ export function buildCentralStyles(theme) {
       .pmy-variants-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:5px; }
   
       .pmy-modal-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:flex; justify-content:center; align-items:center; z-index:9999; }
+      .pmy-modal-overlay [role="dialog"]:focus { outline:none; }
+      .pmy-modal-overlay button:focus-visible,
+      .pmy-modal-overlay a:focus-visible,
+      .pmy-modal-overlay input:focus-visible,
+      .pmy-modal-overlay select:focus-visible,
+      .pmy-modal-overlay textarea:focus-visible {
+        outline:2px solid var(--primary-green);
+        outline-offset:2px;
+      }
       .pmy-modal { background:#ffffff; width:600px; max-width:90%; max-height:85vh; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.15); }
       .pmy-modal-header { padding:20px 25px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
       .pmy-modal-title { font-size:20px; font-weight:800; color:var(--primary-green); }
@@ -492,8 +503,9 @@ export function buildCentralStyles(theme) {
         max-height:100dvh;
         min-height:0;
         overflow-y:auto;
-        overflow-x:hidden;
+        overflow-x:auto;
         overscroll-behavior:contain;
+        scrollbar-gutter:stable;
         padding:0;
       }
       .pmy-content-inner {
