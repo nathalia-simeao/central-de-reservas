@@ -145,6 +145,11 @@ model Booking {
   @@index([platform, status])
   @@index([commercialSource])
   @@index([platform, externalOrderId])
+  @@index([startTime])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([externalCreatedAt])
+  @@index([externalUpdatedAt])
 }
 
 model Guide {
