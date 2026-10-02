@@ -33,6 +33,7 @@ model Tour {
   title                  String
   productType            String?
   shopifyStatus          String?
+  shopifySnapshot        Json?
   maxCapacity            Int           @default(20)
   capacitySource         String        @default("DEFAULT")
   scheduleSlots          String[]      @default([])
