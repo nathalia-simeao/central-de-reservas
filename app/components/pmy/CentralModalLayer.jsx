@@ -263,8 +263,14 @@ export default function CentralModalLayer(props) {
                           : ui("Configuração segura pendente","Secure configuration pending")}
               </div>
             </div>
-            <button onClick={() => setConnectingPlatform(null)}
-              className="pmy-ds-migrated-1g3pznn">&times;</button>
+            <button
+              type="button"
+              onClick={() => setConnectingPlatform(null)}
+              className="pmy-ds-migrated-1g3pznn"
+              aria-label={ui("Fechar integração", "Close integration")}
+            >
+              &times;
+            </button>
           </div>
   
           <div className="pmy-ds-migrated-16l5m1y">
@@ -1209,7 +1215,14 @@ export default function CentralModalLayer(props) {
         >
           <div className="pmy-modal-header">
             <div className="pmy-modal-title">{title}</div>
-            <button className="pmy-modal-close" onClick={() => setActiveModal(null)}>&times;</button>
+            <button
+              type="button"
+              className="pmy-modal-close"
+              aria-label={ui("Fechar modal", "Close dialog")}
+              onClick={() => setActiveModal(null)}
+            >
+              &times;
+            </button>
           </div>
           <div className="pmy-modal-body">{content}</div>
         </div>
@@ -1285,8 +1298,14 @@ export default function CentralModalLayer(props) {
                 <div className="pmy-ds-migrated-16qi501">{guide.name}</div>
               </div>
             </div>
-            <button onClick={() => setEditingGuide(null)}
-              className="pmy-ds-migrated-6cymc4">&times;</button>
+            <button
+              type="button"
+              onClick={() => setEditingGuide(null)}
+              className="pmy-ds-migrated-6cymc4"
+              aria-label={ui("Fechar edição do guia", "Close guide editor")}
+            >
+              &times;
+            </button>
           </div>
           {guidePhotoUploadError && !shopifyManaged && (
             <div className="pmy-ds-inline-message is-danger pmy-u-mx-4 pmy-u-mt-3">
