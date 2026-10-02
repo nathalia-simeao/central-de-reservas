@@ -2,7 +2,7 @@ import { data } from "react-router";
 
 const json = (body, init) => data(body, init);
 
-export async function handleCentralGuideAction({ action, formData, prisma }) {
+export async function handleCentralGuideAction({ action, formData, prisma, session }) {
   const _action = action;
 
   // Campos editoriais de guias sincronizados são propriedade do Shopify.
@@ -14,6 +14,7 @@ export async function handleCentralGuideAction({ action, formData, prisma }) {
         const email = String(formData.get("email") || "").trim() || null;
         const whatsapp = String(formData.get("whatsapp") || "").trim();
         const submittedPhotoUrl = String(formData.get("photoUrl") || "").trim() || null;
+        const submittedPhotoMediaId = String(formData.get("photoMediaId") || "").trim() || null;
         const utmId = String(formData.get("utmId") || "").trim() || null;
         const baseUrl = String(
           formData.get("baseUrl") || "https://portugalmeandyou.com/",
@@ -32,6 +33,44 @@ export async function handleCentralGuideAction({ action, formData, prisma }) {
   
         const shopifyManaged = Boolean(existing?.shopifyMetaobjectId);
         const name = shopifyManaged ? existing.name : submittedName;
+
+        if (
+          !shopifyManaged &&
+          submittedPhotoUrl &&
+          (submittedPhotoUrl.startsWith("blob:") || submittedPhotoUrl.startsWith("data:"))
+        ) {
+          return json(
+            {
+              success: false,
+              error: "A foto do guia deve vir da Biblioteca PMY e possuir URL persistente.",
+            },
+            { status: 400 },
+          );
+        }
+
+        let photoMedia = null;
+        if (!shopifyManaged && submittedPhotoMediaId) {
+          photoMedia = await prisma.media.findFirst({
+            where: {
+              id: submittedPhotoMediaId,
+              shop: session?.shop || "",
+              active: true,
+              category: "guide",
+            },
+            select: {
+              id: true,
+              url: true,
+              mimetype: true,
+            },
+          });
+
+          if (!photoMedia || !String(photoMedia.mimetype || "").startsWith("image/")) {
+            return json(
+              { success: false, error: "Foto do guia inválida na Biblioteca PMY." },
+              { status: 400 },
+            );
+          }
+        }
         if (!name) {
           return json(
             { success: false, error: "Nome do guia é obrigatório." },
@@ -65,7 +104,8 @@ export async function handleCentralGuideAction({ action, formData, prisma }) {
               : {
                   ...operationalData,
                   name,
-                  photoUrl: submittedPhotoUrl,
+                  photoUrl: photoMedia?.url || submittedPhotoUrl,
+                  photoMediaId: photoMedia?.id || null,
                 },
           });
         } else {
@@ -74,7 +114,8 @@ export async function handleCentralGuideAction({ action, formData, prisma }) {
               name,
               email,
               whatsapp,
-              photoUrl: submittedPhotoUrl,
+              photoUrl: photoMedia?.url || submittedPhotoUrl,
+              photoMediaId: photoMedia?.id || null,
               utmId,
               referralLink,
               source: "CENTRAL",
