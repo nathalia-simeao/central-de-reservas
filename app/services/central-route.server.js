@@ -47,6 +47,7 @@ export const action = async ({ request }) => {
     action: _action,
     formData,
     prisma,
+    session,
   });
   if (guideAction) return guideAction;
 
