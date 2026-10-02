@@ -1525,9 +1525,10 @@ const SyncBookingIssuesPanel = ({
       ) : (
         <div className="pmy-ds-list-plain">
           {issues.map((job) => {
-            const booking = byId.get(job.bookingId);
+            const booking = job.booking || byId.get(job.bookingId);
             const bookingRef = booking?.bookingRef || booking?.externalBookingId || job.bookingId;
             const status = String(job.status || "").toUpperCase();
+            const tourTitle = booking?.tour?.title || null;
 
             return (
               <div key={job.id} className="pmy-ds-list-plain__row">
@@ -1537,6 +1538,7 @@ const SyncBookingIssuesPanel = ({
                     <strong>{bookingRef}</strong>
                     <span className="pmy-ds-list-item__description">
                       {job.provider} · {job.eventType}
+                      {tourTitle ? ` · ${tourTitle}` : ""}
                       {job.error ? ` · ${String(job.error).slice(0, 120)}` : ""}
                     </span>
                   </span>
