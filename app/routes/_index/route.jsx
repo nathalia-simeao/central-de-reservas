@@ -408,6 +408,8 @@ function CentralDeReservasContent() {
     upcomingDepartures,
     tourOptions,
     dashboardUpcomingDepartures,
+    operationalCapacity,
+    criticalDepartures,
     categoriesData,
   } = buildDashboardViewModel({
     bookings,
@@ -771,19 +773,28 @@ function CentralDeReservasContent() {
   }, [requestResourceJson]);
 
   useEffect(() => {
-    if (activeTab !== "integracoes" || intSubTab !== "logs") return undefined;
+    const dashboardActive = activeTab === "dashboard";
+    const integrationLogsActive =
+      activeTab === "integracoes" && intSubTab === "logs";
+
+    if (!dashboardActive && !integrationLogsActive) return undefined;
 
     loadSyncQueue();
-    loadShopifyValidation();
+    if (integrationLogsActive) loadShopifyValidation();
 
-    const queueTimer = window.setInterval(loadSyncQueue, 15000);
-    const validationTimer = window.setInterval(() => {
-      loadShopifyValidation();
-    }, ["WAITING", "CANCELLATION_WAITING"].includes(shopifyValidation?.status) ? 3000 : 15000);
+    const queueTimer = window.setInterval(
+      loadSyncQueue,
+      integrationLogsActive ? 15000 : 30000,
+    );
+    const validationTimer = integrationLogsActive
+      ? window.setInterval(() => {
+          loadShopifyValidation();
+        }, ["WAITING", "CANCELLATION_WAITING"].includes(shopifyValidation?.status) ? 3000 : 15000)
+      : null;
 
     return () => {
       window.clearInterval(queueTimer);
-      window.clearInterval(validationTimer);
+      if (validationTimer) window.clearInterval(validationTimer);
     };
   }, [
     activeTab,
@@ -2310,7 +2321,9 @@ function CentralDeReservasContent() {
             missingFinancialBookings, pricedConfirmedBookings, revenueCurrencies, lang,
             averageTicketValue, canceledCount, cancellationRate, upcomingCount, dashboardUpcomingDepartures, getPeriodLabel,
             salesByChannel, bookings, bookingsLoading, bookingsLoadError, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
-            dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape
+            dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape,
+            operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
+            syncQueueData, syncQueueLoading, syncQueueError
           }} />
 
           <AgendaTab {...{
