@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useId, useRef } from "react";
 import "../../styles/pmy-design-system.css";
 
 const ICON_PATHS = {
@@ -232,6 +232,21 @@ export function Table({ children, className = "", ...props }) {
   );
 }
 
+const PMY_FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(PMY_FOCUSABLE_SELECTOR))
+    .filter((element) => !element.hasAttribute("hidden") && element.getAttribute("aria-hidden") !== "true");
+}
+
 export function Modal({
   open,
   title,
@@ -240,16 +255,82 @@ export function Modal({
   onClose,
   closeLabel = "Close",
   className = "",
+  closeOnBackdrop = true,
 }) {
+  const titleId = useId();
+  const dialogRef = useRef(null);
+  const previousFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const dialog = dialogRef.current;
+    previousFocusRef.current = document.activeElement;
+
+    const focusInitialElement = () => {
+      const firstFocusable = getFocusableElements(dialog)[0];
+      (firstFocusable || dialog)?.focus?.();
+    };
+
+    const animationFrame = window.requestAnimationFrame(focusInitialElement);
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = getFocusableElements(dialog);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="pmy-ds-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose?.();
-    }}>
-      <div className={["pmy-ds-modal", className].filter(Boolean).join(" ")} role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="pmy-ds-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className={["pmy-ds-modal", className].filter(Boolean).join(" ")}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="pmy-ds-modal__header">
-          <h2 className="pmy-ds-modal__title">{title}</h2>
+          <h2 id={titleId} className="pmy-ds-modal__title">{title}</h2>
           <Button variant="ghost" size="sm" icon="close" iconOnly aria-label={closeLabel} onClick={onClose} />
         </div>
         <div className="pmy-ds-modal__body">{children}</div>
@@ -262,9 +343,119 @@ export function Modal({
 export function Toast({ tone = "info", icon, children, className = "", ...props }) {
   const resolvedIcon = icon || (tone === "success" ? "check" : tone === "warning" || tone === "danger" ? "warning" : "info");
   return (
-    <div className={["pmy-ds-toast", `pmy-ds-toast--${tone}`, className].filter(Boolean).join(" ")} role="status" {...props}>
+    <div
+      className={["pmy-ds-toast", `pmy-ds-toast--${tone}`, className].filter(Boolean).join(" ")}
+      role={tone === "danger" ? "alert" : "status"}
+      {...props}
+    >
       <Icon name={resolvedIcon} size={17} />
-      <div>{children}</div>
+      <div className="pmy-ds-toast__content">{children}</div>
+    </div>
+  );
+}
+
+export function ToastViewport({
+  toasts = [],
+  onDismiss,
+  closeLabel = "Dismiss notification",
+}) {
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="pmy-ds-toast-viewport" aria-live="polite" aria-relevant="additions text">
+      {toasts.map((toast) => (
+        <Toast key={toast.id} tone={toast.tone || "info"} className="pmy-ds-toast--floating">
+          <span>{toast.message}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            icon="close"
+            iconOnly
+            className="pmy-ds-toast__close"
+            aria-label={closeLabel}
+            onClick={() => onDismiss?.(toast.id)}
+          />
+        </Toast>
+      ))}
+    </div>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  onConfirm,
+  onCancel,
+  tone = "danger",
+  busy = false,
+}) {
+  return (
+    <Modal
+      open={open}
+      title={title}
+      onClose={onCancel}
+      closeLabel={cancelLabel}
+      className="pmy-ds-modal--confirm"
+      closeOnBackdrop={!busy}
+      footer={(
+        <>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+            {cancelLabel}
+          </Button>
+          <Button type="button" variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} disabled={busy}>
+            {confirmLabel}
+          </Button>
+        </>
+      )}
+    >
+      <p className="pmy-ds-confirm-copy">{description}</p>
+    </Modal>
+  );
+}
+
+export function LoadingState({
+  title = "Loading",
+  description = "",
+  compact = false,
+  className = "",
+}) {
+  return (
+    <div
+      className={["pmy-ds-empty", "pmy-ds-state", "is-loading", compact ? "pmy-ds-empty--compact" : "", className].filter(Boolean).join(" ")}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="pmy-ds-empty__inner">
+        <span className="pmy-ds-empty__icon pmy-ds-state__spinner" aria-hidden="true"><Icon name="refresh" size={compact ? 19 : 22} /></span>
+        <strong className="pmy-ds-empty__title">{title}</strong>
+        {description ? <span className="pmy-ds-empty__description">{description}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+export function ErrorState({
+  title = "Something went wrong",
+  description = "",
+  action = null,
+  compact = false,
+  className = "",
+}) {
+  return (
+    <div
+      className={["pmy-ds-empty", "pmy-ds-state", "is-error", compact ? "pmy-ds-empty--compact" : "", className].filter(Boolean).join(" ")}
+      role="alert"
+    >
+      <div className="pmy-ds-empty__inner">
+        <span className="pmy-ds-empty__icon"><Icon name="warning" size={compact ? 19 : 22} /></span>
+        <strong className="pmy-ds-empty__title">{title}</strong>
+        {description ? <span className="pmy-ds-empty__description">{description}</span> : null}
+        {action ? <div className="pmy-ds-empty__actions">{action}</div> : null}
+      </div>
     </div>
   );
 }
