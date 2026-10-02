@@ -941,14 +941,15 @@ function CentralDeReservasContent() {
     if (!guideName || !guideWhatsapp) return;
     const whatsapp = `${guideDdi} ${guideWhatsapp}`;
     const photoUrl = guidePhoto || null;
+    const photoMediaId = guidePhotoMediaId || null;
     const utmContent = guideName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
     const referralLink = guideUtmId
       ? `https://portugalmeandyou.com/?utm_campaign=${guideUtmId}&utm_source=guia&utm_medium=indicacao&utm_content=${utmContent}`
       : "";
     const tempId = `temp_${Date.now()}`;
-    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150", utmId: guideUtmId, referralLink };
+    const newGuide = { id: tempId, name: guideName, email: guideEmail, whatsapp, photo: photoUrl || "https://via.placeholder.com/150", photoMediaId, utmId: guideUtmId, referralLink };
     setGuidesList(prev => [...prev, newGuide]);
-    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null); setGuideUtmId("");
+    setGuideName(""); setGuideEmail(""); setGuideWhatsapp(""); setGuidePhoto(null); setGuidePhotoMediaId(null); setGuideUtmId("");
     try {
       const fd = new FormData();
       fd.append("_action", "saveGuide");
@@ -957,6 +958,7 @@ function CentralDeReservasContent() {
       fd.append("whatsapp", whatsapp);
       fd.append("utmId", guideUtmId || "");
       if (photoUrl) fd.append("photoUrl", photoUrl);
+      if (photoMediaId) fd.append("photoMediaId", photoMediaId);
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const data = await res.json();
       if (data.success) window.location.reload();
@@ -971,6 +973,7 @@ function CentralDeReservasContent() {
     setEditGuideDdi(parts[0] || "+351");
     setEditGuideWhatsapp(parts.slice(1).join(" ") || "");
     setEditGuidePhoto(guide.photo || null);
+    setEditGuidePhotoMediaId(guide.photoMediaId || null);
     setEditGuideUtmId(guide.utmId || "");
   };
 
@@ -1003,6 +1006,7 @@ function CentralDeReservasContent() {
         fd.append("whatsapp", whatsapp);
         fd.append("utmId", editGuideUtmId || "");
         if (!shopifyManaged && editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
+        if (!shopifyManaged && editGuidePhotoMediaId) fd.append("photoMediaId", editGuidePhotoMediaId);
 
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
@@ -1019,6 +1023,7 @@ function CentralDeReservasContent() {
                 email: editGuideEmail,
                 whatsapp,
                 photo: shopifyManaged ? g.photo : (editGuidePhoto || g.photo),
+                photoMediaId: shopifyManaged ? g.photoMediaId : editGuidePhotoMediaId,
                 utmId: editGuideUtmId,
                 referralLink: editReferralLink,
               }
@@ -1066,9 +1071,33 @@ function CentralDeReservasContent() {
     setEditingGuide(null);
   };
 
-  const handleEditGuidePhotoChange = (e) => {
-    const f = e.target.files[0];
-    if (f) setEditGuidePhoto(URL.createObjectURL(f));
+  const handleEditGuidePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setGuidePhotoUploading(true);
+    setGuidePhotoUploadError("");
+    try {
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "guide",
+        label: `Foto guia - ${editGuideName || "Guia"}`,
+        requestResourceJson,
+      });
+      setEditGuidePhoto(media.url);
+      setEditGuidePhotoMediaId(media.id);
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+    } catch (error) {
+      setGuidePhotoUploadError(
+        error?.message || "Não foi possível enviar a foto do guia.",
+      );
+    } finally {
+      setGuidePhotoUploading(false);
+    }
   };
 
   // HANDLERS DE MÍDIA
@@ -1426,7 +1455,34 @@ function CentralDeReservasContent() {
 
     savePlatformFieldMapping(platform, resetMapping);
   };
-  const handleGuidePhotoChange = (e) => { const f = e.target.files[0]; if (f) setGuidePhoto(URL.createObjectURL(f)); };
+  const handleGuidePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setGuidePhotoUploading(true);
+    setGuidePhotoUploadError("");
+    try {
+      const media = await uploadFileToPmyMediaLibrary({
+        file,
+        category: "guide",
+        label: `Foto guia - ${guideName || "Guia"}`,
+        requestResourceJson,
+      });
+      setGuidePhoto(media.url);
+      setGuidePhotoMediaId(media.id);
+      setMediaList((current) => [
+        media,
+        ...current.filter((item) => item.id !== media.id),
+      ]);
+    } catch (error) {
+      setGuidePhotoUploadError(
+        error?.message || "Não foi possível enviar a foto do guia.",
+      );
+    } finally {
+      setGuidePhotoUploading(false);
+    }
+  };
   const toggleCategory = (n) => setOpenCategories(p => p.includes(n) ? p.filter(c=>c!==n) : [...p,n]);
   const handlePresetSelection = (k) => { setSelectedPeriod(k); setIsDateMenuOpen(false); };
   const handleCustomDateApply = () => { if (customStart && customEnd) { setSelectedPeriod("period_custom"); setIsDateMenuOpen(false); } };
