@@ -448,6 +448,7 @@ export function buildDashboardViewModel({
     canceledCount,
     cancellationRate,
     upcomingCount,
+    upcomingDepartures,
     tourOptions,
     dashboardUpcomingDepartures,
     categoriesData,
