@@ -8,7 +8,7 @@ import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import MediaTab from "../../components/pmy/MediaTab";
-import { Icon } from "../../components/pmy/PmyUI";
+import { ConfirmDialog, Icon, ToastViewport } from "../../components/pmy/PmyUI";
 import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
@@ -63,6 +63,52 @@ function CentralDeReservasContent() {
   );
   const [activeModal, setActiveModal] = useState(null);
   const [openCategories, setOpenCategories] = useState(["Day Trips", "Walking Tours"]);
+
+  // Feedback centralizado: substitui alert()/confirm() nativos por UI acessível.
+  const [toastItems, setToastItems] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const toastSequenceRef = useRef(0);
+  const toastTimersRef = useRef(new Map());
+  const confirmResolverRef = useRef(null);
+
+  const dismissToast = useCallback((id) => {
+    setToastItems((current) => current.filter((item) => item.id !== id));
+    const timer = toastTimersRef.current.get(id);
+    if (timer) window.clearTimeout(timer);
+    toastTimersRef.current.delete(id);
+  }, []);
+
+  const notify = useCallback((message, tone = "info", duration = 4200) => {
+    if (!message) return;
+    const id = `pmy-toast-${++toastSequenceRef.current}`;
+    setToastItems((current) => [...current.slice(-3), { id, message, tone }]);
+
+    const timer = window.setTimeout(() => {
+      setToastItems((current) => current.filter((item) => item.id !== id));
+      toastTimersRef.current.delete(id);
+    }, duration);
+    toastTimersRef.current.set(id, timer);
+  }, []);
+
+  const requestConfirm = useCallback((options) => new Promise((resolve) => {
+    confirmResolverRef.current?.(false);
+    confirmResolverRef.current = resolve;
+    setConfirmDialog(options);
+  }), []);
+
+  const settleConfirm = useCallback((accepted) => {
+    const resolve = confirmResolverRef.current;
+    confirmResolverRef.current = null;
+    setConfirmDialog(null);
+    resolve?.(accepted);
+  }, []);
+
+  useEffect(() => () => {
+    toastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    toastTimersRef.current.clear();
+    confirmResolverRef.current?.(false);
+    confirmResolverRef.current = null;
+  }, []);
 
   // Identidade visual persistente do negócio.
   // A logo para fundo claro e a versão para fundo escuro ficam no banco.
@@ -1020,7 +1066,7 @@ function CentralDeReservasContent() {
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
         if (!res.ok || !data?.success) {
-          alert(data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."));
+          notify(data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."), "danger");
           return;
         }
 
@@ -1039,7 +1085,7 @@ function CentralDeReservasContent() {
             : g
         ));
       } catch (error) {
-        alert(error?.message || ui("Erro ao salvar guia.", "Error saving guide."));
+        notify(error?.message || ui("Erro ao salvar guia.", "Error saving guide."), "danger");
         return;
       }
     }
@@ -1049,15 +1095,26 @@ function CentralDeReservasContent() {
   const handleDeleteGuide = async (id) => {
     const guide = guidesList.find((item) => item.id === id);
     if (guide?.shopifyMetaobjectId) {
-      alert(
+      notify(
         ui(
           "Este guia é gerenciado pelo Shopify. Remova ou desative a entrada no metaobjeto Guias.",
           "This guide is managed by Shopify. Remove or disable the entry in the Guides metaobject.",
         ),
+        "warning",
       );
       return;
     }
-    if (!window.confirm("Remover este guia do sistema?")) return;
+    const confirmed = await requestConfirm({
+      title: ui("Remover guia?", "Remove guide?"),
+      description: ui(
+        "O guia será removido da Central e esta ação não poderá ser desfeita.",
+        "The guide will be removed from the Central and this action cannot be undone.",
+      ),
+      confirmLabel: ui("Remover guia", "Remove guide"),
+      cancelLabel: ui("Cancelar", "Cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     if (!String(id).startsWith("temp_")) {
       try {
@@ -1067,11 +1124,11 @@ function CentralDeReservasContent() {
         const res = await fetch(window.location.href, { method: "POST", body: fd });
         const data = await res.json();
         if (!res.ok || !data?.success) {
-          alert(data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."));
+          notify(data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."), "danger");
           return;
         }
       } catch (error) {
-        alert(error?.message || ui("Erro ao remover guia.", "Error removing guide."));
+        notify(error?.message || ui("Erro ao remover guia.", "Error removing guide."), "danger");
         return;
       }
     }
@@ -1142,7 +1199,17 @@ function CentralDeReservasContent() {
   };
 
   const handleDeleteMedia = async (id) => {
-    if (!window.confirm("Remover esta mídia da biblioteca PMY?")) return;
+    const confirmed = await requestConfirm({
+      title: ui("Remover mídia?", "Remove media?"),
+      description: ui(
+        "A mídia será removida da biblioteca PMY. Referências já usadas no sistema podem deixar de exibir a imagem.",
+        "The media will be removed from the PMY library. Existing references may stop displaying the image.",
+      ),
+      confirmLabel: ui("Remover mídia", "Remove media"),
+      cancelLabel: ui("Cancelar", "Cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     setMediaUploadError("");
     const fd = new FormData();
@@ -1158,7 +1225,9 @@ function CentralDeReservasContent() {
   };
 
   const handleCopyMediaUrl = (url) => {
-    navigator.clipboard.writeText(url).then(() => alert("URL copiada!")).catch(() => {});
+    navigator.clipboard.writeText(url)
+      .then(() => notify(ui("URL copiada!", "URL copied!"), "success"))
+      .catch(() => notify(ui("Não foi possível copiar a URL.", "Could not copy the URL."), "danger"));
   };
 
   const handleTogglePlatformSelection = (key, stateArr, setStateArr) => {
@@ -1662,7 +1731,17 @@ function CentralDeReservasContent() {
   };
 
   const handleRemoveGuideAssignment = async (id) => {
-    if (!window.confirm("Remover esta escala de guia?")) return;
+    const confirmed = await requestConfirm({
+      title: ui("Remover escala?", "Remove assignment?"),
+      description: ui(
+        "A atribuição deste guia para a saída selecionada será removida.",
+        "This guide assignment will be removed from the selected departure.",
+      ),
+      confirmLabel: ui("Remover escala", "Remove assignment"),
+      cancelLabel: ui("Cancelar", "Cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     setGuideAssignmentSaving(true);
     setGuideAssignmentMessage("");
@@ -1732,7 +1811,17 @@ function CentralDeReservasContent() {
   };
 
   const handleRemoveBlock = async (id) => {
-    if (!window.confirm("Remover este bloqueio da disponibilidade central?")) return;
+    const confirmed = await requestConfirm({
+      title: ui("Remover bloqueio?", "Remove block?"),
+      description: ui(
+        "A disponibilidade central voltará a considerar esta data/horário para novas reservas.",
+        "Central availability will consider this date/time for new bookings again.",
+      ),
+      confirmLabel: ui("Remover bloqueio", "Remove block"),
+      cancelLabel: ui("Cancelar", "Cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       const fd = new FormData();
@@ -1741,12 +1830,12 @@ function CentralDeReservasContent() {
       const res = await fetch(window.location.href, { method: "POST", body: fd });
       const result = await res.json();
       if (!res.ok || !result.success) {
-        alert(result.error || "Não foi possível remover o bloqueio.");
+        notify(result.error || ui("Não foi possível remover o bloqueio.", "Could not remove the block."), "danger");
         return;
       }
       window.location.reload();
     } catch (err) {
-      alert(err?.message || "Erro ao remover bloqueio.");
+      notify(err?.message || ui("Erro ao remover bloqueio.", "Error removing block."), "danger");
     }
   };
 
@@ -1804,11 +1893,11 @@ function CentralDeReservasContent() {
       const result = await res.json();
       if (!res.ok || !result.success) {
         setTourCapacities(prev => ({ ...prev, [id]: cur }));
-        alert(result.error || "Não foi possível salvar a capacidade.");
+        notify(result.error || ui("Não foi possível salvar a capacidade.", "Could not save capacity."), "danger");
       }
     } catch (err) {
       setTourCapacities(prev => ({ ...prev, [id]: cur }));
-      alert(err?.message || "Erro ao salvar a capacidade.");
+      notify(err?.message || ui("Erro ao salvar a capacidade.", "Error saving capacity."), "danger");
     }
   };
 
@@ -2023,7 +2112,17 @@ function CentralDeReservasContent() {
     if (!["viator", "civitatis"].includes(key)) return;
 
     const platformName = allPlatforms.find((item) => item.key === key)?.name || key;
-    if (!window.confirm(`Remover a credencial armazenada de ${platformName}?`)) return;
+    const confirmed = await requestConfirm({
+      title: ui("Remover credencial?", "Remove credential?"),
+      description: ui(
+        `A credencial armazenada de ${platformName} será apagada da Central.`,
+        `The stored ${platformName} credential will be removed from the Central.`,
+      ),
+      confirmLabel: ui("Remover credencial", "Remove credential"),
+      cancelLabel: ui("Cancelar", "Cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     setIntegrationCredentialLoading(true);
     setIntegrationCredentialMessage("");
@@ -2255,10 +2354,14 @@ function CentralDeReservasContent() {
               <span className="pmy-menu-label">{lang === "pt" ? "Configurações" : "Settings"}</span>
             </button>
 
-            <div className="pmy-lang-pill">
-              <span className={lang==='pt'?'active':''} onClick={() => setLang('pt')}><img src="https://flagcdn.com/w40/pt.png" alt="PT" className="pmy-flag-icon" /></span>
-              <div className="pmy-lang-divider"></div>
-              <span className={lang==='en'?'active':''} onClick={() => setLang('en')}><img src="https://flagcdn.com/w40/gb.png" alt="EN" className="pmy-flag-icon" /></span>
+            <div className="pmy-lang-pill" role="group" aria-label={ui("Idioma da interface", "Interface language")}>
+              <button type="button" className={lang==='pt'?'active':''} aria-pressed={lang==='pt'} aria-label="Português" onClick={() => setLang('pt')}>
+                <img src="https://flagcdn.com/w40/pt.png" alt="" aria-hidden="true" className="pmy-flag-icon" />
+              </button>
+              <div className="pmy-lang-divider" aria-hidden="true"></div>
+              <button type="button" className={lang==='en'?'active':''} aria-pressed={lang==='en'} aria-label="English" onClick={() => setLang('en')}>
+                <img src="https://flagcdn.com/w40/gb.png" alt="" aria-hidden="true" className="pmy-flag-icon" />
+              </button>
             </div>
             <div className="pmy-credit-text">{t.created_by}</div>
           </div>
@@ -2293,11 +2396,11 @@ function CentralDeReservasContent() {
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
                   <>
-                    <div className="pmy-date-overlay" onClick={() => setIsDateMenuOpen(false)}></div>
+                    <button type="button" className="pmy-date-overlay" aria-label={ui("Fechar filtro de período", "Close period filter")} onClick={() => setIsDateMenuOpen(false)}></button>
                     <div className="pmy-date-dropdown">
                       <div className="pmy-date-presets">
                         {["period_1w","period_15d","period_30d","period_60d","period_90d","period_120d","period_6m","period_1y"].map(k => (
-                          <div key={k} className={`pmy-date-preset-item ${selectedPeriod===k?'active':''}`} onClick={() => handlePresetSelection(k)}>{t[k]}</div>
+                          <button type="button" key={k} className={`pmy-date-preset-item ${selectedPeriod===k?'active':''}`} aria-pressed={selectedPeriod===k} onClick={() => handlePresetSelection(k)}>{t[k]}</button>
                         ))}
                       </div>
                       <div className="pmy-date-custom">
@@ -2505,7 +2608,25 @@ function CentralDeReservasContent() {
         ui,
         upcomingCount,
         upcomingDepartures,
+        notify,
       }} />
+
+      <ToastViewport
+        toasts={toastItems}
+        onDismiss={dismissToast}
+        closeLabel={ui("Fechar notificação", "Dismiss notification")}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.title || ui("Confirmar ação", "Confirm action")}
+        description={confirmDialog?.description || ""}
+        confirmLabel={confirmDialog?.confirmLabel || ui("Confirmar", "Confirm")}
+        cancelLabel={confirmDialog?.cancelLabel || ui("Cancelar", "Cancel")}
+        tone={confirmDialog?.tone || "danger"}
+        onConfirm={() => settleConfirm(true)}
+        onCancel={() => settleConfirm(false)}
+      />
     </>
   );
 }
