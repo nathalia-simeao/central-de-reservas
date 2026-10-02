@@ -303,7 +303,6 @@ export const loader = async ({ request }) => {
   const shopName = session?.shop || "Minha Loja Shopify";
   const shopifyStaff = [];
   const mediaFiles = [];
-  const shopifyImages = [];
 
   const gygMappedTours = (tours || []).filter(
     (tour) => Boolean(tour.gygActivityId),
@@ -396,12 +395,10 @@ export const loader = async ({ request }) => {
     shopName,
     shopifyStaff,
     mediaFiles,
-    shopifyImages,
     dbGuides,
     guideAssignments,
     guideShopifySync,
     shopifyWebhookStatus,
-    centralRefreshStatus: latestRefresh,
     gygIntegrationStatus,
     integrationCredentialStatus,
     businessSettings,
