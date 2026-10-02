@@ -1,4 +1,4 @@
-import { getDashboardRangeForPeriod } from "../config/pmy-central.client";
+import { getDashboardRangeForPeriod } from "../config/pmy-central-config";
 
 export function buildDashboardViewModel({
   bookings,
