@@ -1356,6 +1356,303 @@ const TourPerformanceRanking = ({
   );
 };
 
+const OperationalOccupancyPanel = ({ summary = {}, lang }) => {
+  const occupancy = Math.max(0, Math.min(100, Number(summary?.occupancyRate || 0)));
+  const items = [
+    {
+      key: "occupancy",
+      label: lang === "pt" ? "Ocupação média" : "Average occupancy",
+      value: `${occupancy.toFixed(0)}%`,
+      tone: occupancy >= 85 ? "warning" : "success",
+      detail: lang === "pt" ? "capacidade ponderada" : "weighted capacity",
+    },
+    {
+      key: "available",
+      label: lang === "pt" ? "Vagas disponíveis" : "Available seats",
+      value: Number(summary?.availableSeats || 0),
+      tone: Number(summary?.availableSeats || 0) <= 10 ? "warning" : "neutral",
+      detail: lang === "pt" ? "próximos 30 dias" : "next 30 days",
+    },
+    {
+      key: "tight",
+      label: lang === "pt" ? "Capacidade baixa" : "Low capacity",
+      value: Number(summary?.lowCapacityDepartures || 0),
+      tone: Number(summary?.lowCapacityDepartures || 0) > 0 ? "warning" : "success",
+      detail: lang === "pt" ? "até 3 vagas ou ≥80%" : "≤3 seats or ≥80%",
+    },
+    {
+      key: "full",
+      label: lang === "pt" ? "Saídas lotadas" : "Full departures",
+      value: Number(summary?.fullDepartures || 0),
+      tone: Number(summary?.fullDepartures || 0) > 0 ? "danger" : "success",
+      detail: lang === "pt" ? "sem vagas restantes" : "no seats left",
+    },
+  ];
+
+  return (
+    <Card>
+      <SectionHeader
+        eyebrow={lang === "pt" ? "Capacidade operacional" : "Operational capacity"}
+        title={lang === "pt" ? "Ocupação dos próximos 30 dias" : "Occupancy for the next 30 days"}
+        subtitle={lang === "pt"
+          ? "Leitura consolidada das saídas com capacidade configurada."
+          : "Consolidated view of departures with configured capacity."}
+      />
+
+      <div className="pmy-ds-status-grid">
+        {items.map((item) => (
+          <div key={item.key} className="pmy-ds-status-card">
+            <div className="pmy-ds-status-card__top">
+              <Badge tone={item.tone}>{item.label}</Badge>
+            </div>
+            <strong className="pmy-ds-status-value">{item.value}</strong>
+            <div className="pmy-ds-status-description">{item.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pmy-ds-status-distribution" aria-label={lang === "pt" ? "Taxa de ocupação" : "Occupancy rate"}>
+        <div
+          className="pmy-ds-status-segment is-confirmed"
+          style={{ width: `${occupancy}%` }}
+        />
+      </div>
+      <div className="pmy-ds-status-note">
+        {Number(summary?.departuresWithCapacity || 0)} {lang === "pt"
+          ? "saída(s) com capacidade configurada"
+          : "departure(s) with configured capacity"}
+      </div>
+    </Card>
+  );
+};
+
+const CriticalDeparturesPanel = ({ departures = [], lang }) => {
+  const formatWhen = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat(lang === "pt" ? "pt-PT" : "en-GB", {
+      timeZone: "Europe/Lisbon",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date);
+  };
+
+  return (
+    <Card>
+      <SectionHeader
+        eyebrow={lang === "pt" ? "Atenção operacional" : "Operational attention"}
+        title={lang === "pt" ? "Próximas saídas críticas" : "Critical upcoming departures"}
+        subtitle={lang === "pt"
+          ? "Saídas lotadas, com até 3 vagas ou ocupação a partir de 80%."
+          : "Full departures, departures with 3 or fewer seats, or at least 80% occupancy."}
+      />
+
+      {departures.length === 0 ? (
+        <EmptyState
+          icon="check"
+          title={lang === "pt" ? "Nenhuma saída crítica agora" : "No critical departures right now"}
+          description={lang === "pt"
+            ? "As próximas saídas estão fora da faixa de atenção."
+            : "Upcoming departures are outside the attention threshold."}
+        />
+      ) : (
+        <div className="pmy-ds-list-plain">
+          {departures.slice(0, 8).map((departure) => (
+            <div key={departure.key} className="pmy-ds-list-plain__row">
+              <span className="pmy-ds-list-plain__title">
+                <Icon name="calendar" size={16} />
+                <span>
+                  <strong>{departure.tourTitle}</strong>
+                  <span className="pmy-ds-list-item__description">
+                    {formatWhen(departure.startTime)} · {Number(departure.passengers || 0)} pax · {Number(departure.occupancyRate || 0).toFixed(0)}%
+                  </span>
+                </span>
+              </span>
+              <Badge tone={departure.criticality === "FULL" ? "danger" : "warning"}>
+                {departure.criticality === "FULL"
+                  ? (lang === "pt" ? "Lotado" : "Full")
+                  : `${Number(departure.availableSeats || 0)} ${lang === "pt" ? "vaga(s)" : "seat(s)"}`}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const SyncBookingIssuesPanel = ({
+  bookings = [],
+  syncQueueData = {},
+  syncQueueLoading = false,
+  syncQueueError = "",
+  lang,
+}) => {
+  const byId = new Map((bookings || []).map((booking) => [booking.id, booking]));
+  const issues = (syncQueueData?.jobs || [])
+    .filter((job) => job?.bookingId)
+    .filter((job) => ["RETRY", "DEAD"].includes(String(job?.status || "").toUpperCase()))
+    .slice(0, 8);
+
+  return (
+    <Card>
+      <SectionHeader
+        eyebrow={lang === "pt" ? "Fila de sincronização" : "Sync queue"}
+        title={lang === "pt" ? "Reservas com erro de sincronização" : "Bookings with sync errors"}
+        subtitle={lang === "pt"
+          ? "Erros em retry ou dead-letter que exigem acompanhamento."
+          : "Retry or dead-letter errors that require follow-up."}
+        actions={
+          syncQueueLoading ? <Badge tone="neutral">{lang === "pt" ? "Atualizando..." : "Refreshing..."}</Badge> : null
+        }
+      />
+
+      {syncQueueError ? (
+        <div className="pmy-ds-state-panel is-warning">
+          <div className="pmy-ds-state-title is-warning">{syncQueueError}</div>
+        </div>
+      ) : issues.length === 0 ? (
+        <EmptyState
+          icon="check"
+          title={lang === "pt" ? "Nenhuma reserva com erro ativo" : "No booking sync errors"}
+          description={lang === "pt"
+            ? "A fila não possui reservas em retry ou dead-letter."
+            : "The queue has no bookings in retry or dead-letter."}
+        />
+      ) : (
+        <div className="pmy-ds-list-plain">
+          {issues.map((job) => {
+            const booking = byId.get(job.bookingId);
+            const bookingRef = booking?.bookingRef || booking?.externalBookingId || job.bookingId;
+            const status = String(job.status || "").toUpperCase();
+
+            return (
+              <div key={job.id} className="pmy-ds-list-plain__row">
+                <span className="pmy-ds-list-plain__title">
+                  <Icon name="warning" size={16} />
+                  <span>
+                    <strong>{bookingRef}</strong>
+                    <span className="pmy-ds-list-item__description">
+                      {job.provider} · {job.eventType}
+                      {job.error ? ` · ${String(job.error).slice(0, 120)}` : ""}
+                    </span>
+                  </span>
+                </span>
+                <Badge tone={status === "DEAD" ? "danger" : "warning"}>{status}</Badge>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const IntegrationHealthPanel = ({
+  platformConnections = {},
+  reservationPlatforms = [],
+  syncQueueData = {},
+  lang,
+}) => {
+  const jobs = syncQueueData?.jobs || [];
+  const providerForKey = {
+    shopify: "SHOPIFY",
+    viator: "VIATOR",
+    getyourguide: "GETYOURGUIDE",
+    headout: "HEADOUT",
+    civitatis: "CIVITATIS",
+  };
+
+  const healthRows = reservationPlatforms.map((platform) => {
+    const connection = platformConnections?.[platform.key] || {};
+    const provider = providerForKey[platform.key] || String(platform.key || "").toUpperCase();
+    const providerJobs = jobs.filter((job) => String(job?.provider || "").toUpperCase() === provider);
+    const retryCount = providerJobs.filter((job) => String(job?.status || "").toUpperCase() === "RETRY").length;
+    const deadCount = providerJobs.filter((job) => String(job?.status || "").toUpperCase() === "DEAD").length;
+    const blockedCount = providerJobs.filter((job) => String(job?.status || "").toUpperCase() === "BLOCKED").length;
+
+    let health = "OFF";
+    let tone = "neutral";
+    let label = lang === "pt" ? "Não configurado" : "Not configured";
+
+    if (connection.validationError || deadCount > 0) {
+      health = "ERROR";
+      tone = "danger";
+      label = lang === "pt" ? "Erro" : "Error";
+    } else if (retryCount > 0) {
+      health = "WARNING";
+      tone = "warning";
+      label = lang === "pt" ? "Retry pendente" : "Retry pending";
+    } else if (connection.onboardingPending || connection.available === false) {
+      health = "PENDING";
+      tone = "warning";
+      label = lang === "pt" ? "Onboarding pendente" : "Onboarding pending";
+    } else if (connection.connected) {
+      health = "HEALTHY";
+      tone = "success";
+      label = lang === "pt" ? "Operacional" : "Operational";
+    } else if (connection.configured) {
+      health = "CONFIGURED";
+      tone = "accent";
+      label = lang === "pt" ? "Configurado" : "Configured";
+    }
+
+    return {
+      platform,
+      connection,
+      retryCount,
+      deadCount,
+      blockedCount,
+      health,
+      tone,
+      label,
+    };
+  });
+
+  const healthy = healthRows.filter((row) => row.health === "HEALTHY").length;
+  const attention = healthRows.filter((row) => ["ERROR", "WARNING"].includes(row.health)).length;
+
+  return (
+    <Card>
+      <SectionHeader
+        eyebrow={lang === "pt" ? "Integrações" : "Integrations"}
+        title={lang === "pt" ? "Health dos canais" : "Channel health"}
+        subtitle={lang === "pt"
+          ? "Conexão, validação de credenciais e problemas recentes da fila."
+          : "Connection, credential validation and recent queue issues."}
+        actions={
+          <Badge tone={attention > 0 ? "warning" : "success"}>
+            {healthy}/{healthRows.length} {lang === "pt" ? "operacionais" : "operational"}
+          </Badge>
+        }
+      />
+
+      <div className="pmy-ds-list-plain">
+        {healthRows.map((row) => (
+          <div key={row.platform.key} className="pmy-ds-list-plain__row">
+            <span className="pmy-ds-list-plain__title">
+              <Icon name={row.platform.icon || "link"} size={16} />
+              <span>
+                <strong>{row.platform.name}</strong>
+                <span className="pmy-ds-list-item__description">
+                  {row.deadCount > 0 ? `${row.deadCount} dead · ` : ""}
+                  {row.retryCount > 0 ? `${row.retryCount} retry · ` : ""}
+                  {row.blockedCount > 0 ? `${row.blockedCount} blocked · ` : ""}
+                  {row.connection.lastSync || (lang === "pt" ? "sem sync recente" : "no recent sync")}
+                </span>
+              </span>
+            </span>
+            <Badge tone={row.tone}>{row.label}</Badge>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
 export default function DashboardTab(props) {
   const {
     activeTab,
