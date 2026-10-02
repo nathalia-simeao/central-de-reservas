@@ -1,6 +1,7 @@
 import { data } from "react-router";
 import { authenticate, registerWebhooks } from "../shopify.server";
 import db from "../db.server";
+import { bookingOperationalSelect } from "../utils/booking-select.server";
 import {
   integrationEncryptionReady,
   integrationEnvironmentSecretStatus,
@@ -70,6 +71,7 @@ export const loader = async ({ request }) => {
       where: bookingWindowWhere,
       orderBy: [{ startTime: "asc" }, { createdAt: "desc" }],
       take: 250,
+      select: bookingOperationalSelect,
     }),
     prisma.booking.count({ where: bookingWindowWhere }),
     prisma.blockedDate.findMany({
