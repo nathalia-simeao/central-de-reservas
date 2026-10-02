@@ -282,6 +282,7 @@ export default function IntegrationSyncLogPanel({
                             )}
                           />
                         ) : (
+                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- horizontal table scroll must be keyboard-focusable */}
                           <div className="pmy-ds-migrated-13izxgm pmy-ds-table-wrap" role="region" tabIndex={0} aria-label={tr("Histórico de sincronização", "Sync history")}>
                             <table className="pmy-ds-migrated-sq1wms">
                               <thead>
