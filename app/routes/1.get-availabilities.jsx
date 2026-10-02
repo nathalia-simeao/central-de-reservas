@@ -11,11 +11,16 @@ export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
 
-  await recordGygAuthenticatedTraffic("get-availabilities", { productId });
-
-  return getGygAvailabilities({
+  const response = await getGygAvailabilities({
     productId,
     fromDateTime: url.searchParams.get("fromDateTime"),
     toDateTime: url.searchParams.get("toDateTime"),
   });
+
+  await recordGygAuthenticatedTraffic(
+    "get-availabilities",
+    { productId },
+    response,
+  );
+  return response;
 };
