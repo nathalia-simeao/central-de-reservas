@@ -14,7 +14,6 @@ export default function CentralModalLayer(props) {
     apiSecretInput,
     averageTicketValue,
     bookingCurrency,
-    bookings,
     canceledCount,
     cancellationRate,
     confirmedRevenueValue,
@@ -87,7 +86,6 @@ export default function CentralModalLayer(props) {
     pricedConfirmedBookings,
     realCanceledBookings,
     realConfirmedBookings,
-    revenueByCurrency,
     revenueCurrencies,
     salesByChannel,
     selectedCalendarDay,
@@ -115,7 +113,6 @@ export default function CentralModalLayer(props) {
     setModalSelectedGuide,
     setModalSelectedHour,
     shopifyWebhookStatus,
-    t,
     totalSalesCount,
     tourOptions,
     tours,
@@ -228,7 +225,13 @@ export default function CentralModalLayer(props) {
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
   
     return (
-      <div className="pmy-modal-overlay" onClick={() => setConnectingPlatform(null)}>
+      <div
+        className="pmy-modal-overlay"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setConnectingPlatform(null);
+        }}
+      >
         <div
           className="pmy-connect-modal pmy-ds-migrated-nz4pdt"
           role="dialog"
@@ -236,7 +239,6 @@ export default function CentralModalLayer(props) {
           aria-label={platform.name}
           tabIndex={-1}
           data-pmy-dialog="connection"
-          onClick={e => e.stopPropagation()}
         >
   
           {/* Header */}
@@ -918,12 +920,15 @@ export default function CentralModalLayer(props) {
           {selectedGuideInfo.videoUrl && (
             <div className="pmy-u-mt-3">
               <h4 className="pmy-u-mb-2">{ui("Vídeo", "Video")}</h4>
-              <video
-                controls
-                preload="metadata"
-                src={selectedGuideInfo.videoUrl}
-                className="pmy-guide-profile-video"
-              />
+              <a
+                href={selectedGuideInfo.videoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="pmy-btn-secondary pmy-guide-profile-video-link"
+              >
+                <Icon name="external" size={15} />
+                {ui("Abrir vídeo do guia", "Open guide video")}
+              </a>
             </div>
           )}
   
@@ -1195,7 +1200,13 @@ export default function CentralModalLayer(props) {
       );
     }
     return (
-      <div className="pmy-modal-overlay" onClick={() => setActiveModal(null)}>
+      <div
+        className="pmy-modal-overlay"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setActiveModal(null);
+        }}
+      >
         <div
           className="pmy-modal"
           role="dialog"
@@ -1203,7 +1214,6 @@ export default function CentralModalLayer(props) {
           aria-label={title}
           tabIndex={-1}
           data-pmy-dialog="active"
-          onClick={e => e.stopPropagation()}
         >
           <div className="pmy-modal-header">
             <div className="pmy-modal-title">{title}</div>
@@ -1223,7 +1233,13 @@ export default function CentralModalLayer(props) {
     const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
     const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
-      <div className="pmy-modal-overlay" onClick={() => setEditingGuide(null)}>
+      <div
+        className="pmy-modal-overlay"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setEditingGuide(null);
+        }}
+      >
         <div
           className="pmy-ds-migrated-zuczkc"
           role="dialog"
@@ -1231,7 +1247,6 @@ export default function CentralModalLayer(props) {
           aria-label={ui("Editar guia", "Edit guide")}
           tabIndex={-1}
           data-pmy-dialog="edit-guide"
-          onClick={e => e.stopPropagation()}
         >
           <div className="pmy-ds-migrated-1ig0zoz">
             <div className="pmy-ds-migrated-g4mnio">
@@ -1323,11 +1338,11 @@ export default function CentralModalLayer(props) {
                 )}
               </div>
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
-                <label>E-mail</label>
-                <input type="email" className="pmy-form-input" value={editGuideEmail} onChange={e => setEditGuideEmail(e.target.value)} />
+                <label htmlFor="pmy-edit-guide-email">E-mail</label>
+                <input id="pmy-edit-guide-email" type="email" className="pmy-form-input" value={editGuideEmail} onChange={e => setEditGuideEmail(e.target.value)} />
               </div>
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
-                <label>WhatsApp</label>
+                <label htmlFor="pmy-edit-guide-whatsapp">WhatsApp</label>
                 <div className="pmy-guide-phone-row">
                   <div className="pmy-guide-phone-prefix">
                     <img
@@ -1345,6 +1360,7 @@ export default function CentralModalLayer(props) {
                     </select>
                   </div>
                   <input
+                    id="pmy-edit-guide-whatsapp"
                     type="tel"
                     className="pmy-form-input"
                     placeholder="912 345 678"
