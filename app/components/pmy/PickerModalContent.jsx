@@ -41,7 +41,7 @@ export default function PickerModalContent({ allImages, onSelect }) {
       {/* Grid */}
       <div className="pmy-ds-migrated-1j056d9">
         {filtered.map(img => (
-          <div key={img.id || img.url} onClick={() => onSelect(img.url)}
+          <div key={img.id || img.url} onClick={() => onSelect(img)}
             className="pmy-ds-migrated-1vqm17k"
             onMouseOver={e => e.currentTarget.style.borderColor = '#006600'}
             onMouseOut={e  => e.currentTarget.style.borderColor = '#eee'}>
