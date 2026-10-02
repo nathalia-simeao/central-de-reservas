@@ -1915,14 +1915,19 @@ export default function DashboardTab(props) {
                   </div>
                   {categoriesData.map(cat => (
                     <div key={cat.name}>
-                      <div className="pmy-accordion-header" onClick={() => toggleCategory(cat.name)}>
+                      <button
+                        type="button"
+                        className="pmy-accordion-header"
+                        aria-expanded={openCategories.includes(cat.name)}
+                        onClick={() => toggleCategory(cat.name)}
+                      >
                         <span className="pmy-accordion-title">{cat.name}</span>
                         <Icon
                           name="chevronDown"
                           size={16}
                           className={`pmy-ds-accordion-chevron ${openCategories.includes(cat.name) ? "is-open" : ""}`}
                         />
-                      </div>
+                      </button>
                       <div className={`pmy-accordion-content ${openCategories.includes(cat.name)?'open':''}`}>
                         {cat.toursList.length === 0 ? (
                           <p className="pmy-ds-performance-empty">{lang === "pt" ? "Nenhum passeio nesta categoria." : "No tours in this category."}</p>
