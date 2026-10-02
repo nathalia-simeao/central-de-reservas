@@ -2320,7 +2320,6 @@ function CentralDeReservasContent() {
         editGuideEmail,
         editGuideName,
         editGuidePhoto,
-        editGuidePhotoMediaId,
         editGuidePhotoRef,
         editGuideUtmId,
         editGuideWhatsapp,
