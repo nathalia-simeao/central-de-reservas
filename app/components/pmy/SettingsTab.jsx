@@ -585,7 +585,7 @@ export default function SettingsTab(props) {
           <Badge>{tr("Opcional", "Optional")}</Badge>
         </div>
 
-        <Table className="pmy-mapping-table">
+        <Table className="pmy-mapping-table" scrollLabel={tr("Mapeamento de campos", "Field mapping")}>
           <thead>
             <tr>
               <th>{tr("Campo Interno PMY", "PMY Internal Field")}</th>
