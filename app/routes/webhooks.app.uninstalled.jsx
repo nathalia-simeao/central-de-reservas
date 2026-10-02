@@ -2,7 +2,20 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export const action = async ({ request }) => {
-  const { shop, session, topic } = await authenticate.webhook(request);
+  const {
+    shop,
+    session,
+    topic,
+    tenantAllowed,
+  } = await authenticate.webhook(request);
+
+  if (!tenantAllowed) {
+    if (shop) {
+      await db.session.deleteMany({ where: { shop } });
+    }
+    console.warn(`[TENANT] Ignored ${topic} webhook from non-primary shop ${shop}`);
+    return new Response(null, { status: 200 });
+  }
 
   console.log(`Received ${topic} webhook for ${shop}`);
 
