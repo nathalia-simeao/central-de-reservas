@@ -350,34 +350,66 @@ export function buildDashboardViewModel({
     .sort((a, b) => a.startTime - b.startTime);
   const upcomingCount = upcomingDepartures.length;
   
-  // tourOptions: usa produtos do Shopify (reais) com todos os dados
-  const tourOptions = shopifyProducts.length > 0
-    ? shopifyProducts
-        .filter(p => {
-          const type = String(p.productType || "").toLowerCase();
-          const title = String(p.name || "").toLowerCase();
-          return !type.includes("internal") && !type.includes("operational") && !title.includes("rescheduling fee");
-        })
-        .map(p => ({
-        id: p.id, title: p.name, price: p.price, priceRaw: p.priceRaw,
-        masterTourId: (tours || []).find(mt => mt.shopifyProductId === p.id)?.id || null,
-        maxCapacity: Number((tours || []).find(mt => mt.shopifyProductId === p.id)?.maxCapacity ?? 20),
-        sku: p.sku, image: p.image, imageAlt: p.imageAlt,
-        active: p.active, variants: p.variants, collections: p.collections,
-        scheduleSlots: p.scheduleSlots, description: p.description,
-      }))
-    : (tours || []).map(t => ({
-        id: t.id,
-        masterTourId: t.id,
-        title: t.title,
-        price: null,
-        sku: null,
-        image: null,
-        collections: [],
-        scheduleSlots: t.scheduleSlots || [],
-        variants: t.variants || [],
-        maxCapacity: Number(t.maxCapacity ?? 20),
-      }));
+  // O Dashboard usa o Tour mestre como base e enriquece com dados Shopify
+  // quando disponíveis. Assim, tours ativos apenas em outros canais também entram.
+  const shopifyTourOptions = (shopifyProducts || [])
+    .filter((product) => {
+      const type = String(product.productType || "").toLowerCase();
+      const title = String(product.name || "").toLowerCase();
+      return (
+        !type.includes("internal") &&
+        !type.includes("operational") &&
+        !title.includes("rescheduling fee")
+      );
+    })
+    .map((product) => {
+      const canonical = (tours || []).find(
+        (tour) => tour.shopifyProductId === product.id,
+      );
+      return {
+        id: product.id,
+        title: product.name,
+        price: product.price,
+        priceRaw: product.priceRaw,
+        masterTourId: canonical?.id || null,
+        maxCapacity: Number(canonical?.maxCapacity ?? 20),
+        sku: product.sku,
+        image: product.image,
+        imageAlt: product.imageAlt,
+        active: product.active,
+        variants: product.variants,
+        collections: product.collections,
+        scheduleSlots: product.scheduleSlots,
+        description: product.description,
+      };
+    });
+
+  const representedTourIds = new Set(
+    shopifyTourOptions.map((tour) => tour.masterTourId).filter(Boolean),
+  );
+
+  const nonShopifyTourOptions = (tours || [])
+    .filter((tour) => !representedTourIds.has(tour.id))
+    .map((tour) => ({
+      id: tour.id,
+      masterTourId: tour.id,
+      title: tour.title,
+      price: null,
+      priceRaw: null,
+      sku: null,
+      image: tour.shopifySnapshot?.image || null,
+      imageAlt: tour.shopifySnapshot?.imageAlt || tour.title,
+      active: tour.shopifyStatus !== "INACTIVE",
+      collections: Array.isArray(tour.shopifySnapshot?.collections)
+        ? tour.shopifySnapshot.collections
+        : [],
+      scheduleSlots: tour.scheduleSlots || [],
+      variants: tour.variants || [],
+      maxCapacity: Number(tour.maxCapacity ?? 20),
+      description: tour.shopifySnapshot?.description || "",
+    }));
+
+  const tourOptions = [...shopifyTourOptions, ...nonShopifyTourOptions];
   
   const dashboardUpcomingDepartures = upcomingDepartures.map((departure) => {
     const canonicalTour = (tours || []).find((tour) => tour.id === departure.tourId) || null;
@@ -410,6 +442,83 @@ export function buildDashboardViewModel({
     };
   });
   
+
+  const operationalCapacity = dashboardUpcomingDepartures.reduce(
+    (summary, departure) => {
+      const capacity = Math.max(0, Number(departure?.capacity || 0));
+      const passengers = Math.max(0, Number(departure?.passengers || 0));
+      const availableSeats = Math.max(
+        0,
+        Number(departure?.availableSeats ?? capacity - passengers),
+      );
+      const occupancyRate =
+        capacity > 0 ? Math.min(100, (passengers / capacity) * 100) : 0;
+
+      if (capacity > 0) {
+        summary.totalCapacity += capacity;
+        summary.totalPassengers += Math.min(passengers, capacity);
+        summary.departuresWithCapacity += 1;
+      }
+
+      if (capacity > 0 && availableSeats === 0) {
+        summary.fullDepartures += 1;
+      } else if (
+        capacity > 0 &&
+        (availableSeats <= 3 || occupancyRate >= 80)
+      ) {
+        summary.lowCapacityDepartures += 1;
+      }
+
+      return summary;
+    },
+    {
+      totalCapacity: 0,
+      totalPassengers: 0,
+      departuresWithCapacity: 0,
+      fullDepartures: 0,
+      lowCapacityDepartures: 0,
+    },
+  );
+
+  operationalCapacity.occupancyRate =
+    operationalCapacity.totalCapacity > 0
+      ? (operationalCapacity.totalPassengers / operationalCapacity.totalCapacity) * 100
+      : 0;
+  operationalCapacity.availableSeats = Math.max(
+    0,
+    operationalCapacity.totalCapacity - operationalCapacity.totalPassengers,
+  );
+
+  const criticalDepartures = dashboardUpcomingDepartures
+    .map((departure) => {
+      const capacity = Math.max(0, Number(departure?.capacity || 0));
+      const passengers = Math.max(0, Number(departure?.passengers || 0));
+      const availableSeats = Math.max(
+        0,
+        Number(departure?.availableSeats ?? capacity - passengers),
+      );
+      const occupancyRate =
+        capacity > 0 ? Math.min(100, (passengers / capacity) * 100) : 0;
+
+      return {
+        ...departure,
+        occupancyRate,
+        criticality:
+          capacity > 0 && availableSeats === 0
+            ? "FULL"
+            : capacity > 0 && (availableSeats <= 3 || occupancyRate >= 80)
+              ? "LOW_CAPACITY"
+              : "NORMAL",
+      };
+    })
+    .filter((departure) => departure.criticality !== "NORMAL")
+    .sort((left, right) => {
+      const seatDifference =
+        Number(left.availableSeats || 0) - Number(right.availableSeats || 0);
+      if (seatDifference !== 0) return seatDifference;
+      return new Date(left.startTime) - new Date(right.startTime);
+    });
+
   // Categorias: agrupa pelas coleções do Shopify (dinâmico)
   const allCollections = [...new Set(
     tourOptions.flatMap(t => (t.collections || []).map(c => c.title))
@@ -417,10 +526,20 @@ export function buildDashboardViewModel({
   
   // Se não tiver coleções, fallback por nome
   const categoriesData = allCollections.length > 0
-    ? allCollections.map(colName => ({
-        name: colName,
-        toursList: tourOptions.filter(t => (t.collections || []).some(c => c.title === colName))
-      })).filter(c => c.toursList.length > 0)
+    ? [
+        ...allCollections.map((colName) => ({
+          name: colName,
+          toursList: tourOptions.filter((tour) =>
+            (tour.collections || []).some((collection) => collection.title === colName),
+          ),
+        })),
+        {
+          name: lang === "pt" ? "Outros passeios" : "Other tours",
+          toursList: tourOptions.filter(
+            (tour) => !Array.isArray(tour.collections) || tour.collections.length === 0,
+          ),
+        },
+      ].filter((category) => category.toursList.length > 0)
     : [
         { name: "Day Trips", toursList: tourOptions.filter(t => !t.title.toLowerCase().includes("walking")) },
         { name: "Walking Tours", toursList: tourOptions.filter(t =>  t.title.toLowerCase().includes("walking")) },
@@ -451,6 +570,8 @@ export function buildDashboardViewModel({
     upcomingDepartures,
     tourOptions,
     dashboardUpcomingDepartures,
+    operationalCapacity,
+    criticalDepartures,
     categoriesData,
   };
 }
