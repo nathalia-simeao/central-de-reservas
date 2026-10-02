@@ -81,6 +81,37 @@ const getDraftOrderAttribution = () => {
   return attribution;
 };
 
+
+const getDashboardRangeForPeriod = (selectedPeriod, customStart, customEnd) => {
+  if (selectedPeriod === "period_custom" && customStart && customEnd) {
+    return {
+      start: new Date(`${customStart}T00:00:00`),
+      end: new Date(`${customEnd}T23:59:59.999`),
+    };
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+
+  if (selectedPeriod === "period_6m") {
+    start.setMonth(start.getMonth() - 6);
+  } else if (selectedPeriod === "period_1y") {
+    start.setFullYear(start.getFullYear() - 1);
+  } else {
+    const days = {
+      period_1w: 7,
+      period_15d: 15,
+      period_30d: 30,
+      period_60d: 60,
+      period_90d: 90,
+      period_120d: 120,
+    }[selectedPeriod] || 30;
+    start.setDate(start.getDate() - days);
+  }
+
+  return { start, end };
+};
+
 const ddiList = [
   { code: "+93",   iso: "AF" }, { code: "+355",  iso: "AL" }, { code: "+213",  iso: "DZ" },
   { code: "+376",  iso: "AD" }, { code: "+244",  iso: "AO" }, { code: "+1268", iso: "AG" },
@@ -411,7 +442,14 @@ function isDarkThemeColor(value) {
 }
 
 function CentralDeReservasContent() {
-  const { tours, bookings, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], shopifyImages = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, centralRefreshStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], shopifyImages: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, centralRefreshStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const [bookingsList, setBookingsList] = useState(initialBookings);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsLoadError, setBookingsLoadError] = useState("");
+  const bookingsRequestIdRef = useRef(0);
+  const bookingFilterMountedRef = useRef(false);
+  const bookings = bookingsList;
+
   // Abre modal interno de seleção de imagem (picker interno com busca)
   const openShopifyFilePicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
@@ -563,8 +601,13 @@ function CentralDeReservasContent() {
   const [customName, setCustomName] = useState("");
 
   // BANCO DE MÍDIA
-  // O loader já devolve a biblioteca canônica consolidada no PostgreSQL.
+  // A biblioteca é carregada somente quando a aba/picker precisa dela.
   const [mediaList, setMediaList] = useState(mediaFiles);
+  const [mediaLoaded, setMediaLoaded] = useState(mediaFiles.length > 0);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaLoadError, setMediaLoadError] = useState("");
+  const [mediaPage, setMediaPage] = useState(0);
+  const [mediaHasMore, setMediaHasMore] = useState(false);
   const [showShopifySource, setShowShopifySource] = useState(true);
   const [photoPickerTarget, setPhotoPickerTarget] = useState(null); // 'guide_add' | 'guide_edit'
   const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
@@ -748,35 +791,11 @@ function CentralDeReservasContent() {
 
   // Dashboard financeiro calculado somente com dados reais persistidos em Booking.
   const dashboardNow = new Date();
-
-  const dashboardPeriodRange = (() => {
-    if (selectedPeriod === "period_custom" && customStart && customEnd) {
-      const start = new Date(`${customStart}T00:00:00`);
-      const end = new Date(`${customEnd}T23:59:59.999`);
-      return { start, end };
-    }
-
-    const end = new Date(dashboardNow);
-    const start = new Date(dashboardNow);
-
-    if (selectedPeriod === "period_6m") {
-      start.setMonth(start.getMonth() - 6);
-    } else if (selectedPeriod === "period_1y") {
-      start.setFullYear(start.getFullYear() - 1);
-    } else {
-      const days = {
-        period_1w: 7,
-        period_15d: 15,
-        period_30d: 30,
-        period_60d: 60,
-        period_90d: 90,
-        period_120d: 120,
-      }[selectedPeriod] || 30;
-      start.setDate(start.getDate() - days);
-    }
-
-    return { start, end };
-  })();
+  const dashboardPeriodRange = getDashboardRangeForPeriod(
+    selectedPeriod,
+    customStart,
+    customEnd,
+  );
 
   const bookingStatus = (booking) => String(booking?.status || "").toUpperCase();
   const bookingCreatedAt = (booking) => new Date(booking?.externalCreatedAt || booking?.createdAt || 0);
@@ -1190,17 +1209,18 @@ function CentralDeReservasContent() {
     // ---- HANDLERS / sincronização ----
   const resourceUrl = useCallback((pathname) => {
     const current = new URL(window.location.href);
-    const params = new URLSearchParams();
+    const target = new URL(pathname, current.origin);
 
     // Nunca reaproveitar id_token/session da URL: os tokens Shopify são
     // curtos e precisam ser renovados a cada chamada autenticada.
     for (const key of ["shop", "host", "embedded"]) {
       const value = current.searchParams.get(key);
-      if (value) params.set(key, value);
+      if (value && !target.searchParams.has(key)) {
+        target.searchParams.set(key, value);
+      }
     }
 
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return `${target.pathname}${target.search}`;
   }, []);
 
   const requestResourceJson = useCallback(async (pathname, formData = null) => {
