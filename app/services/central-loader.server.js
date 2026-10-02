@@ -219,7 +219,6 @@ export const loader = async ({ request }) => {
     });
 
   const shopName = session?.shop || "Minha Loja Shopify";
-  const shopifyStaff = [];
   const mediaFiles = [];
 
   const gygMappedTours = (tours || []).filter(
@@ -311,7 +310,6 @@ export const loader = async ({ request }) => {
     blockedDates,
     shopifyProducts,
     shopName,
-    shopifyStaff,
     mediaFiles,
     dbGuides,
     guideAssignments,

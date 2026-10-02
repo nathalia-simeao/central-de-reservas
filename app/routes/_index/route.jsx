@@ -34,7 +34,7 @@ export { loader, action } from "../../services/central-route.server";
 
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", shopifyStaff = [], mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", shopifyStaff: [], mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsLoadError, setBookingsLoadError] = useState("");
@@ -196,7 +196,6 @@ function CentralDeReservasContent() {
   const editGuidePhotoRef = useRef(null);
 
   // H. INTEGRAÇÕES CUSTOMIZADAS
-  const [customName, setCustomName] = useState("");
 
   // BANCO DE MÍDIA
   // A biblioteca é carregada somente quando a aba/picker precisa dela.
@@ -216,9 +215,6 @@ function CentralDeReservasContent() {
   const [mediaCategoryInput, setMediaCategoryInput] = useState("general");
   const [mediaPreview, setMediaPreview] = useState(null); // modal de preview
   const mediaUploadRef = useRef(null);
-  const [customUrl, setCustomUrl] = useState("");
-  const [customKey, setCustomKey] = useState("");
-  const [customIntegrations, setCustomIntegrations] = useState([]);
   const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos" | "logs"
   const [activeProdPlatform, setActiveProdPlatform] = useState("shopify");
   const [manualSyncPlatform, setManualSyncPlatform] = useState(null);
@@ -1158,23 +1154,6 @@ function CentralDeReservasContent() {
     setStateArr(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
-  };
-
-  const handleToggleProduct = (platformKey, productId) => {
-    setPlatformProducts(prev => ({
-      ...prev,
-      [platformKey]: prev[platformKey].map(p =>
-        p.id === productId ? { ...p, active: !p.active, synced: !p.active } : p
-      )
-    }));
-  };
-
-  const handleAddCustomIntegration = (e) => {
-    e.preventDefault();
-    if (customName && customUrl) {
-      setCustomIntegrations([...customIntegrations, { id: Date.now(), name: customName, url: customUrl, key: customKey }]);
-      setCustomName(""); setCustomUrl(""); setCustomKey("");
-    }
   };
 
   const persistBusinessSettings = useCallback(async (patch) => {
@@ -2353,12 +2332,11 @@ function CentralDeReservasContent() {
 
           <IntegrationsTab {...{
             activeTab, activeProdPlatform, allPlatforms, bookings, contentPlatforms,
-            customIntegrations, customKey, customName, customUrl, formatSyncTime,
-            handleAddCustomIntegration, handleDisconnect, handleOpenConnect,
-            handleRequeueSyncJob, handleSyncPlatformNow, handleToggleProduct, intSubTab,
+            formatSyncTime, handleDisconnect, handleOpenConnect,
+            handleRequeueSyncJob, handleSyncPlatformNow, intSubTab,
             lang, loadSyncQueue, manualSyncError, manualSyncPlatform, manualSyncResult,
             platformConnections, platformProducts, reservationPlatforms, runSyncQueueNow,
-            setActiveProdPlatform, setCustomKey, setCustomName, setCustomUrl, setIntSubTab,
+            setActiveProdPlatform, setIntSubTab,
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
             syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,
             shopifyValidation, shopifyValidationError, shopifyValidationLoading,
@@ -2385,7 +2363,7 @@ function CentralDeReservasContent() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            shopifyStaff, t, theme, lang
+            t, theme, lang
           }} />
 
           <MediaTab {...{

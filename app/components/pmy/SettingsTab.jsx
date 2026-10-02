@@ -2,7 +2,6 @@ import {
   Badge,
   Button,
   Card,
-  EmptyState,
   FormField,
   Icon,
   Input,
@@ -41,7 +40,6 @@ export default function SettingsTab(props) {
     reservationPlatforms,
     setActiveMappingPlatform,
     settingsSaveMessage,
-    shopifyStaff,
     theme,
     lang
   } = props;
@@ -532,76 +530,6 @@ export default function SettingsTab(props) {
           >
             {tr("Restaurar padrões", "Restore defaults")}
           </Button>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionHeader
-          eyebrow={tr("Acesso", "Access")}
-          title={tr("Equipe com Acesso ao App", "Team with App Access")}
-          subtitle={tr(
-            "A lista abaixo reflete os usuários do Shopify quando o escopo restrito está disponível. Esse acesso não é necessário para reservas, pedidos ou checkouts.",
-            "The list below reflects Shopify users when the restricted scope is available. This access is not required for bookings, orders or checkouts.",
-          )}
-          actions={
-            <a
-              href="https://admin.shopify.com/settings/account"
-              target="_blank"
-              rel="noreferrer"
-              className="pmy-ds-link"
-            >
-              {tr("Gerenciar no Shopify", "Manage in Shopify")}
-              <Icon name="external" size={14} />
-            </a>
-          }
-        />
-
-        {shopifyStaff.length === 0 ? (
-          <EmptyState
-            icon="users"
-            title={tr("Acesso gerenciado pelo Shopify", "Access managed by Shopify")}
-            description={tr(
-              "A Central não solicita read_users por padrão. Gerencie membros e permissões diretamente no painel do Shopify.",
-              "The Central does not request read_users by default. Manage members and permissions directly in Shopify Admin.",
-            )}
-          />
-        ) : (
-          <div className="pmy-ds-staff-list">
-            {shopifyStaff.map((staff) => (
-              <div key={staff.id} className="pmy-ds-staff-row">
-                {staff.avatar
-                  ? <img src={staff.avatar} alt={staff.name} className="pmy-ds-staff-avatar" />
-                  : <div className="pmy-ds-staff-avatar pmy-ds-staff-avatar--fallback">
-                      {staff.name?.charAt(0)?.toUpperCase() || "?"}
-                    </div>}
-
-                <div className="pmy-ds-grow">
-                  <div className="pmy-ds-staff-name">
-                    {staff.name}
-                    {staff.isOwner ? <Badge tone="accent">{tr("Proprietário", "Owner")}</Badge> : null}
-                    {!staff.active ? <Badge>{tr("Inativo", "Inactive")}</Badge> : null}
-                  </div>
-                  <div className="pmy-ds-staff-meta">{staff.email}</div>
-                  <div className="pmy-ds-staff-meta">{staff.role}</div>
-                </div>
-
-                <div className={`pmy-ds-status-inline ${staff.active ? "is-active" : ""}`}>
-                  <span className="pmy-ds-status-dot" />
-                  {staff.active ? tr("Ativo", "Active") : tr("Inativo", "Inactive")}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="pmy-ds-team-note">
-          <Toast tone="warning">
-            <strong>{tr("Para convidar novos membros:", "To invite new members:")}</strong>{" "}
-            {tr(
-              "vá em Shopify Admin → Configurações → Usuários e permissões → Adicionar membro da equipe.",
-              "go to Shopify Admin → Settings → Users and permissions → Add staff member.",
-            )}
-          </Toast>
         </div>
       </Card>
 

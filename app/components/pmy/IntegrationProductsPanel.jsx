@@ -4,7 +4,6 @@ export default function IntegrationProductsPanel({
   activeProdPlatform,
   allPlatforms,
   handleSyncPlatformNow,
-  handleToggleProduct,
   lang,
   manualSyncError,
   manualSyncPlatform,
@@ -19,7 +18,10 @@ export default function IntegrationProductsPanel({
   return (
     <div>
                       <p className="pmy-ds-migrated-wmzod0">
-                        Visualize e gerencie os produtos dos canais de venda e reserva. Tripadvisor não aparece aqui porque reviews/conteúdo não constituem inventário de reservas separado.
+                        {tr(
+                          "Visualize o catálogo e o status retornados pelos canais de venda e reserva. Alterações de produto continuam sendo feitas na plataforma de origem.",
+                          "View the catalog and status returned by booking and sales channels. Product changes remain managed in the source platform.",
+                        )}
                       </p>
     
                       {/* Tabs de plataformas */}
@@ -148,7 +150,11 @@ export default function IntegrationProductsPanel({
                             <span className="pmy-ds-migrated-u0nbu1"><Icon name="warning" size={24} /></span>
                             <div>
                               <strong className="pmy-ds-migrated-jgrvw9">{tr("Plataforma não conectada", "Platform not connected")}</strong>
-                              <span className="pmy-ds-migrated-1g1y4zs">Conecte esta plataforma na aba <strong>{tr("Conexões", "Connections")}</strong> para gerenciar seus produtos aqui.</span>
+                              <span className="pmy-ds-migrated-1g1y4zs">
+                                {tr("Conecte esta plataforma na aba ", "Connect this platform in the ")}
+                                <strong>{tr("Conexões", "Connections")}</strong>
+                                {tr(" para consultar o catálogo sincronizado.", " tab to view the synchronized catalog.")}
+                              </span>
                             </div>
                           </div>
                         );
@@ -211,10 +217,7 @@ export default function IntegrationProductsPanel({
                                   disabled={manualSyncPlatform===platform?.key}>
                                   {manualSyncPlatform===platform?.key ? tr('Consultando...','Checking...') : tr('Sincronizar agora','Sync now')}
                                 </Button>
-                                <button className="pmy-btn-submit pmy-ds-migrated-1wmgly4" 
-                                  onClick={()=>alert(tr('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.','To add a new product, create it in Shopify first and it will be synced automatically.'))}>
-                                  + Adicionar Produto
-                                </button>
+
                               </div>
                             </div>
     
@@ -227,8 +230,7 @@ export default function IntegrationProductsPanel({
                                     <th>{tr("SKU / ID Externo", "SKU / External ID")}</th>
                                     <th>{tr("Preço", "Price")}</th>
                                     <th>{tr("Sincronizado", "Synced")}</th>
-                                    <th>{tr("Status", "Status")}</th>
-                                    <th className="pmy-ds-migrated-1sl8cua">{tr("Ativo", "Active")}</th>
+                                    <th>{tr("Status no canal", "Channel status")}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -253,27 +255,19 @@ export default function IntegrationProductsPanel({
                                           {prod.active ? tr('Ativo','Active') : tr('Inativo','Inactive')}
                                         </span>
                                       </td>
-                                      <td className="pmy-ds-migrated-1sl8cua">
-                                        <label className="pmy-prod-toggle" title={prod.active ? tr('Desativar produto','Deactivate product') : tr('Ativar produto','Activate product')}>
-                                          <input type="checkbox" checked={prod.active} onChange={()=>handleToggleProduct(activeProdPlatform, prod.id)} />
-                                          <span className="pmy-prod-toggle-slider"></span>
-                                        </label>
-                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
                             </div>
     
-                            {/* Legenda */}
                             <div className="pmy-ds-migrated-12g27kh">
                               <div className="pmy-ds-migrated-181vluz">
-                                <span className="pmy-ds-migrated-oeqypp"></span>
-                                Produto ativo = aparece nas plataformas e aceita reservas
-                              </div>
-                              <div className="pmy-ds-migrated-181vluz">
-                                <span className="pmy-ds-migrated-1yis1w6"></span>
-                                Inativo = oculto na plataforma, sem novas reservas
+                                <Icon name="info" size={14} />
+                                {tr(
+                                  "O status é somente leitura e reflete o último dado retornado pelo canal. Ative ou desative produtos diretamente na plataforma de origem.",
+                                  "Status is read-only and reflects the latest value returned by the channel. Activate or deactivate products in the source platform.",
+                                )}
                               </div>
                             </div>
                           </div>
