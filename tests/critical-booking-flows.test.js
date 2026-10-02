@@ -193,15 +193,12 @@ test("sync queue health aggregates operational states", async () => {
 
   const stats = await getSyncQueueStats(prisma);
 
-  assert.deepEqual(stats, {
-    pending: 2,
-    processing: 0,
-    retry: 1,
-    completed: 12,
-    skipped: 0,
-    blocked: 0,
-    dead: 3,
-  });
+  assert.equal(stats.pending, 2);
+  assert.equal(stats.retry, 1);
+  assert.equal(stats.dead, 3);
+  assert.equal(stats.completed, 12);
+  assert.equal(stats.health, "critical");
+  assert.equal(stats.attention, 4);
 });
 
 test("stored Shopify payload strips customer PII and address data", () => {
