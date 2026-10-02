@@ -1,4 +1,4 @@
-import { Button, Icon } from "./PmyUI";
+import { Button, Icon, Toast } from "./PmyUI";
 
 export default function IntegrationProductsPanel({
   activeProdPlatform,
@@ -53,10 +53,7 @@ export default function IntegrationProductsPanel({
                       {(manualSyncError || (manualSyncResult?.platform === activeProdPlatform)) && (
                         <div className={`pmy-ds-manual-sync-result ${manualSyncError ? "is-error" : "is-success"}`}>
                           {manualSyncError ? (
-                            <div className="pmy-validation-message is-danger">
-                              <Icon name="warning" size={17} />
-                              <span>{manualSyncError}</span>
-                            </div>
+                            <Toast tone="danger">{manualSyncError}</Toast>
                           ) : (() => {
                             const result = manualSyncResult;
                             const products = result?.products || {};
