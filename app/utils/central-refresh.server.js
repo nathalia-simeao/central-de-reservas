@@ -1,6 +1,7 @@
 import { ensureShopifyOrderWebhooks } from "./shopify-webhooks.server";
 import { syncShopifyGuideMetaobjects } from "./shopify-guides.server";
-import { syncPlatformNow } from "./platform-sync.server";
+import { fetchShopifyCatalog } from "./platform-sync.server";
+import { syncShopifyCatalogToMasterTours } from "./tour-passport.server";
 
 const STATE_KEY = "__pmyCentralRefreshState";
 const refreshState =
@@ -360,13 +361,15 @@ async function runCentralRefresh({
   }
 
   try {
-    const result = await syncPlatformNow(prisma, admin, "shopify");
+    const products = await fetchShopifyCatalog(admin);
+    const result = await syncShopifyCatalogToMasterTours(prisma, products);
     state.catalog = {
-      checkedAt: result?.checkedAt || new Date().toISOString(),
-      remote: result?.products?.remote ?? null,
-      central: result?.products?.centralAfter ?? null,
-      created: result?.products?.created ?? 0,
-      updated: result?.products?.updated ?? 0,
+      checkedAt: new Date().toISOString(),
+      remote: products.length,
+      created: result?.created ?? 0,
+      updated: result?.updated ?? 0,
+      variantsCreated: result?.variantsCreated ?? 0,
+      variantsUpdated: result?.variantsUpdated ?? 0,
     };
   } catch (error) {
     errors.push(`catalog: ${error?.message || String(error)}`);
