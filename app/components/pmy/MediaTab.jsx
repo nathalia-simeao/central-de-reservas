@@ -3,9 +3,11 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   FormField,
   Icon,
   Input,
+  LoadingState,
   SectionHeader,
   Select,
   Switch,
@@ -119,14 +121,25 @@ export default function MediaTab(props) {
             </div>
           </div>
 
-          {mediaLoadError ? (
+          {mediaLoadError && mediaList.length > 0 ? (
             <Toast tone="danger">{mediaLoadError}</Toast>
           ) : null}
 
-          {mediaLoading && mediaList.length === 0 ? (
+          {mediaLoadError && mediaList.length === 0 ? (
             <Card>
-              <EmptyState
-                icon="refresh"
+              <ErrorState
+                title={tr("Não foi possível carregar a biblioteca", "Could not load the library")}
+                description={mediaLoadError}
+                action={(
+                  <Button type="button" variant="secondary" icon="refresh" onClick={() => loadMediaLibrary({ reset: true })}>
+                    {tr("Tentar novamente", "Try again")}
+                  </Button>
+                )}
+              />
+            </Card>
+          ) : mediaLoading && mediaList.length === 0 ? (
+            <Card>
+              <LoadingState
                 title={tr("Carregando biblioteca", "Loading library")}
                 description={tr(
                   "Buscando somente a primeira página de mídias.",
