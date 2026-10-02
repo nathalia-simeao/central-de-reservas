@@ -27,7 +27,7 @@ import {
   isDarkThemeColor,
   reservationPlatforms,
   translations,
-} from "../../config/pmy-central.client";
+} from "../../config/pmy-central-config";
 
 export { loader, action } from "../../services/central-route.server";
 
