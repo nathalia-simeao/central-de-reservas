@@ -107,19 +107,12 @@ export const loader = async ({ request }) => {
   // O carregamento da Central agora é somente leitura do PostgreSQL.
   // Shopify/webhooks/guias/mídia são atualizados em stale-while-revalidate,
   // sem bloquear a resposta da página.
-  const refreshBefore = getCentralRefreshStatus(session?.shop);
   scheduleCentralRefresh({
     prisma,
     admin,
     session,
     registerWebhooks,
   });
-  const centralRefreshStatus = {
-    ...refreshBefore,
-    running:
-      refreshBefore.running ||
-      getCentralRefreshStatus(session?.shop).running,
-  };
 
   const bookingWindowWhere = {
     OR: [
@@ -263,6 +256,7 @@ export const loader = async ({ request }) => {
             priceRaw: Number.isFinite(priceRaw) ? priceRaw : 0,
             compareAtPrice: null,
             available: variant.active !== false,
+            currency: variant.currency || null,
           };
         });
       const numericPrices = variants
