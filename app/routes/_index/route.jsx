@@ -43,7 +43,7 @@ function CentralDeReservasContent() {
   const bookings = bookingsList;
 
   // Abre modal interno de seleção de imagem (picker interno com busca)
-  const openShopifyFilePicker = useCallback((onSelect) => {
+  const openMediaLibraryPicker = useCallback((onSelect) => {
     // Armazena callback para usar quando usuário selecionar
     window.__pmyPickerCallback = onSelect;
     setActiveModal('pickPhotoForGuide');
@@ -2273,7 +2273,7 @@ function CentralDeReservasContent() {
             guideDdi, guideEmail, guideName, guidePhoto,
             guidePhotoRef, guideUtmId, guideWhatsapp, guidesList, handleAddGuide,
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
-            openShopifyFilePicker, setActiveModal, setGuideDdi, setGuideEmail,
+            openMediaLibraryPicker, setActiveModal, setGuideDdi, setGuideEmail,
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
             setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
           }} />
@@ -2373,7 +2373,7 @@ function CentralDeReservasContent() {
         modalSelectedHour,
         modalSelectedTour,
         moneyValue,
-        openShopifyFilePicker,
+        openMediaLibraryPicker,
         platformConnections,
         platformLabel,
         platformTokenGuide,
