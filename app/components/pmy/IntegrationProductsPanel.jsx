@@ -18,7 +18,10 @@ export default function IntegrationProductsPanel({
   return (
     <div>
                       <p className="pmy-ds-migrated-wmzod0">
-                        Visualize e gerencie os produtos dos canais de venda e reserva. Tripadvisor não aparece aqui porque reviews/conteúdo não constituem inventário de reservas separado.
+                        {tr(
+                          "Visualize o catálogo e o status retornados pelos canais de venda e reserva. Alterações de produto continuam sendo feitas na plataforma de origem.",
+                          "View the catalog and status returned by booking and sales channels. Product changes remain managed in the source platform.",
+                        )}
                       </p>
     
                       {/* Tabs de plataformas */}
@@ -147,7 +150,11 @@ export default function IntegrationProductsPanel({
                             <span className="pmy-ds-migrated-u0nbu1"><Icon name="warning" size={24} /></span>
                             <div>
                               <strong className="pmy-ds-migrated-jgrvw9">{tr("Plataforma não conectada", "Platform not connected")}</strong>
-                              <span className="pmy-ds-migrated-1g1y4zs">Conecte esta plataforma na aba <strong>{tr("Conexões", "Connections")}</strong> para gerenciar seus produtos aqui.</span>
+                              <span className="pmy-ds-migrated-1g1y4zs">
+                                {tr("Conecte esta plataforma na aba ", "Connect this platform in the ")}
+                                <strong>{tr("Conexões", "Connections")}</strong>
+                                {tr(" para consultar o catálogo sincronizado.", " tab to view the synchronized catalog.")}
+                              </span>
                             </div>
                           </div>
                         );
@@ -210,10 +217,7 @@ export default function IntegrationProductsPanel({
                                   disabled={manualSyncPlatform===platform?.key}>
                                   {manualSyncPlatform===platform?.key ? tr('Consultando...','Checking...') : tr('Sincronizar agora','Sync now')}
                                 </Button>
-                                <button className="pmy-btn-submit pmy-ds-migrated-1wmgly4" 
-                                  onClick={()=>alert(tr('Para adicionar um novo produto, cadastre-o primeiro no Shopify e ele será sincronizado automaticamente.','To add a new product, create it in Shopify first and it will be synced automatically.'))}>
-                                  + Adicionar Produto
-                                </button>
+
                               </div>
                             </div>
     
