@@ -46,7 +46,7 @@ const TERMINAL_STATUSES = new Set([
 
 const RETRY_DELAYS_SECONDS = [60, 300, 900, 3600, 10800, 21600, 43200, 86400];
 
-function normalizeProvider(value) {
+export function normalizeProvider(value) {
   const raw = String(value || "")
     .trim()
     .toUpperCase()
@@ -70,7 +70,7 @@ function asDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function isRetryableHttpStatus(status) {
+export function isRetryableHttpStatus(status) {
   const value = Number(status);
   return (
     !Number.isFinite(value) ||
@@ -474,7 +474,7 @@ async function dispatchToProvider(job) {
   };
 }
 
-function retryDelayMs(attempts) {
+export function retryDelayMs(attempts) {
   const index = Math.min(
     Math.max(Number(attempts || 1) - 1, 0),
     RETRY_DELAYS_SECONDS.length - 1,
