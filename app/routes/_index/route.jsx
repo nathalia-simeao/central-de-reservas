@@ -2404,7 +2404,6 @@ function CentralDeReservasContent() {
                   type="button"
                   className="pmy-date-btn"
                   aria-expanded={isDateMenuOpen}
-                  aria-haspopup="dialog"
                   aria-controls="pmy-dashboard-period-menu"
                   onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}
                 >
@@ -2422,7 +2421,7 @@ function CentralDeReservasContent() {
                     <div
                       id="pmy-dashboard-period-menu"
                       className="pmy-date-dropdown"
-                      role="dialog"
+                      role="group"
                       aria-label={lang === "pt" ? "Selecionar período do dashboard" : "Select dashboard period"}
                     >
                       <div className="pmy-date-presets">
