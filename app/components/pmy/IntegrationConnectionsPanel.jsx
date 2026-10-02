@@ -2,19 +2,11 @@ import { Button, Icon } from "./PmyUI";
 
 export default function IntegrationConnectionsPanel({
   contentPlatforms,
-  customIntegrations,
-  customKey,
-  customName,
-  customUrl,
-  handleAddCustomIntegration,
   handleDisconnect,
   handleOpenConnect,
   lang,
   platformConnections,
   reservationPlatforms,
-  setCustomKey,
-  setCustomName,
-  setCustomUrl,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
 
@@ -173,22 +165,6 @@ export default function IntegrationConnectionsPanel({
                             </div>
                           );
                         })}
-                        {customIntegrations.map(c => (
-                          <div className="pmy-int-card-v2 connected pmy-ds-migrated-15s4y9o" key={c.id} >
-                            <div className="pmy-int-top"><span className="pmy-int-logo-v2"><Icon name="settings" size={22} /></span><span className="pmy-int-sync-info">Custom API</span></div>
-                            <div className="pmy-int-name-v2">{c.name}</div>
-                            <div className="pmy-int-desc-v2 pmy-ds-migrated-tlps5h" >Endpoint: {c.url}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="pmy-form-box pmy-ds-migrated-8xzf4b" >
-                        <h3 className="pmy-ds-heading-with-icon"><Icon name="link" size={17} /> {tr("Conectar Nova Plataforma via API", "Connect New Platform via API")}</h3>
-                        <form onSubmit={handleAddCustomIntegration}>
-                          <div className="pmy-form-group"><label>{tr("Nome da Plataforma:", "Platform Name:")}</label><input type="text" className="pmy-form-input" placeholder={tr('Ex: Agência Parceira LX','E.g. Partner Agency LX')} value={customName} onChange={e=>setCustomName(e.target.value)} required /></div>
-                          <div className="pmy-form-group"><label>{tr("Endpoint da API (URL):", "API Endpoint (URL):")}</label><input type="url" className="pmy-form-input" placeholder="https://api.parceiro.com/v1/bookings" value={customUrl} onChange={e=>setCustomUrl(e.target.value)} required /></div>
-                          <div className="pmy-form-group"><label>{tr("Chave da API / Token:", "API Key / Token:")}</label><input type="password" className="pmy-form-input" placeholder="pmy_live_key_..." value={customKey} onChange={e=>setCustomKey(e.target.value)} /></div>
-                          <button type="submit" className="pmy-btn-submit pmy-ds-migrated-1fwqvmo" >{tr("Ativar Integração Customizada", "Activate Custom Integration")}</button>
-                        </form>
                       </div>
                     </div>
   );
