@@ -1269,6 +1269,174 @@ function CentralDeReservasContent() {
     return payload;
   }, [resourceUrl]);
 
+  const loadBookingsForRange = useCallback(async (start, end) => {
+    const requestId = ++bookingsRequestIdRef.current;
+    setBookingsLoading(true);
+    setBookingsLoadError("");
+
+    try {
+      let page = 1;
+      let hasMore = true;
+      let collected = [];
+      let lastPage = null;
+
+      while (hasMore && page <= 20) {
+        const params = new URLSearchParams({
+          start: new Date(start).toISOString(),
+          end: new Date(end).toISOString(),
+          page: String(page),
+          pageSize: "200",
+        });
+        const payload = await requestResourceJson(
+          `/api/bookings?${params.toString()}`,
+        );
+
+        if (requestId !== bookingsRequestIdRef.current) return;
+
+        collected = [
+          ...collected,
+          ...(Array.isArray(payload?.items) ? payload.items : []),
+        ];
+        lastPage = payload?.page || null;
+        hasMore = Boolean(payload?.page?.hasMore);
+        page += 1;
+      }
+
+      if (requestId !== bookingsRequestIdRef.current) return;
+
+      const unique = new Map(
+        collected
+          .filter((booking) => booking?.id)
+          .map((booking) => [booking.id, booking]),
+      );
+      setBookingsList([...unique.values()]);
+
+      if (hasMore) {
+        setBookingsLoadError(
+          lang === "en"
+            ? "This period has more than 4,000 bookings. Narrow the date range for a complete view."
+            : "Este período possui mais de 4.000 reservas. Reduza o intervalo para uma visão completa.",
+        );
+      } else if (lastPage?.total != null && collected.length < Number(lastPage.total)) {
+        setBookingsLoadError(
+          lang === "en"
+            ? "Some bookings could not be loaded for this period."
+            : "Parte das reservas deste período não pôde ser carregada.",
+        );
+      }
+    } catch (error) {
+      if (requestId !== bookingsRequestIdRef.current) return;
+      setBookingsLoadError(
+        error?.message ||
+          (lang === "en"
+            ? "Could not load bookings for this period."
+            : "Não foi possível carregar as reservas deste período."),
+      );
+    } finally {
+      if (requestId === bookingsRequestIdRef.current) {
+        setBookingsLoading(false);
+      }
+    }
+  }, [lang, requestResourceJson]);
+
+  const bookingFilterKey =
+    selectedPeriod === "period_custom"
+      ? `${selectedPeriod}:${customStart}:${customEnd}`
+      : selectedPeriod;
+
+  useEffect(() => {
+    const firstRun = !bookingFilterMountedRef.current;
+    if (firstRun) {
+      bookingFilterMountedRef.current = true;
+      if (!bookingPage?.hasMore) return;
+    }
+
+    if (
+      selectedPeriod === "period_custom" &&
+      (!customStart || !customEnd)
+    ) {
+      return;
+    }
+
+    const range = getDashboardRangeForPeriod(
+      selectedPeriod,
+      customStart,
+      customEnd,
+    );
+    loadBookingsForRange(range.start, range.end);
+  }, [
+    bookingFilterKey,
+    bookingPage?.hasMore,
+    customEnd,
+    customStart,
+    loadBookingsForRange,
+    selectedPeriod,
+  ]);
+
+  const loadMediaLibrary = useCallback(async ({
+    reset = false,
+    refreshShopify = false,
+  } = {}) => {
+    if (mediaLoading) return;
+
+    setMediaLoading(true);
+    setMediaLoadError("");
+
+    try {
+      let payload;
+      if (refreshShopify) {
+        const formData = new FormData();
+        formData.append("_action", "refreshShopify");
+        payload = await requestResourceJson("/api/media-library", formData);
+      } else {
+        const nextPage = reset ? 1 : Math.max(1, mediaPage + 1);
+        const params = new URLSearchParams({
+          page: String(nextPage),
+          pageSize: "60",
+        });
+        payload = await requestResourceJson(
+          `/api/media-library?${params.toString()}`,
+        );
+      }
+
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setMediaList((current) => {
+        if (reset || refreshShopify) return items;
+        const merged = new Map(
+          [...current, ...items]
+            .filter((item) => item?.id)
+            .map((item) => [item.id, item]),
+        );
+        return [...merged.values()];
+      });
+      setMediaPage(Number(payload?.page?.current || 1));
+      setMediaHasMore(Boolean(payload?.page?.hasMore));
+      setMediaLoaded(true);
+    } catch (error) {
+      setMediaLoadError(
+        error?.message ||
+          (lang === "en"
+            ? "Could not load the media library."
+            : "Não foi possível carregar a biblioteca de mídia."),
+      );
+    } finally {
+      setMediaLoading(false);
+    }
+  }, [lang, mediaLoading, mediaPage, requestResourceJson]);
+
+  useEffect(() => {
+    const needsMedia =
+      activeTab === "midias" || activeModal === "pickPhotoForGuide";
+    if (!needsMedia || mediaLoaded || mediaLoading) return;
+    loadMediaLibrary({ reset: true });
+  }, [
+    activeModal,
+    activeTab,
+    loadMediaLibrary,
+    mediaLoaded,
+    mediaLoading,
+  ]);
+
   const loadShopifyValidation = useCallback(async () => {
     try {
       const payload = await requestResourceJson("/api/shopify-validation");
