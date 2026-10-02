@@ -86,9 +86,25 @@ Nunca commitar credenciais. A produção depende das variáveis configuradas no 
 - `SHOPIFY_API_KEY`
 - `SHOPIFY_API_SECRET`
 - `SHOPIFY_APP_URL`
+- `PMY_PRIMARY_SHOP` (recomendado em produção; usar o domínio canônico `*.myshopify.com`)
 - credenciais específicas das integrações habilitadas
 
 Integrações sem credenciais obrigatórias configuradas devem falhar de forma fechada, sem valores padrão no código.
+
+## Modelo de tenancy
+
+A Central de Reservas PMY é **single-tenant por decisão arquitetural**. Os modelos operacionais centrais (`Tour`, `Booking`, `Guide`, `BlockedDate` e relacionados) não são compartilhados entre lojas.
+
+O banco possui um `AppTenantLock` persistente que vincula a base a uma única loja Shopify. O lock é imutável por execução normal e é validado em:
+
+- autenticação administrativa do app;
+- instalação/autorização Shopify;
+- chamadas administrativas sem sessão;
+- webhooks Shopify.
+
+Uma tentativa de usar o mesmo banco por outra loja é bloqueada antes de qualquer gravação operacional. Webhooks de outra loja são autenticados e descartados com HTTP 200 para evitar retries sem contaminar a base.
+
+Quando `PMY_PRIMARY_SHOP` não está configurado, a aplicação tenta inferir a loja já existente a partir de `BusinessSetting`, `PlatformFieldMapping`, `Media` e sessões. Se houver evidência de mais de uma loja, a inicialização falha de forma fechada até `PMY_PRIMARY_SHOP` ser definido explicitamente.
 
 ## Banco e migrações
 
@@ -113,4 +129,6 @@ O repositório não versiona artefatos gerados em `build/` nem páginas de demon
 - Não adicionar segredos, tokens ou credenciais ao repositório.
 - Não reintroduzir fallbacks de autenticação em integrações.
 - Dados operacionais persistentes devem ficar no PostgreSQL, não em `localStorage`.
+- Não remover ou sobrescrever manualmente o `AppTenantLock` em produção sem uma migração deliberada de tenant.
+- Ambientes de desenvolvimento não devem apontar para o banco de produção usando uma loja Shopify diferente.
 - O diretório `build/` é gerado no CI e não deve ser versionado.
