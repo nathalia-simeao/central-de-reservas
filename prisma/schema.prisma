@@ -237,6 +237,7 @@ model Media {
 
   @@unique([shop, source, externalId], map: "Media_shop_source_externalId_key")
   @@index([shop, active])
+  @@index([shop, active, createdAt])
   @@index([source])
   @@index([category])
 }
