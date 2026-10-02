@@ -272,6 +272,21 @@
   font-family: var(--pmy-font-ui);
   font-size: var(--pmy-type-sm);
 }
+
+.pmy-ds-table-scroll-region {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+.pmy-ds-table-wrap:focus-visible,
+.pmy-ds-table-scroll-region:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pmy-ds-accent) 32%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--pmy-radius-sm);
+}
 .pmy-ds-table th {
   padding: 10px 12px;
   border-bottom: 1px solid var(--pmy-ds-border);
