@@ -137,7 +137,7 @@ function normalizeDateKey(value) {
     return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
   }
 
-  const european = raw.match(/\b(\d{1,2})[/.\-](\d{1,2})[/.\-](20\d{2})\b/);
+  const european = raw.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](20\d{2})\b/);
   if (european) {
     return `${european[3]}-${european[2].padStart(2, "0")}-${european[1].padStart(2, "0")}`;
   }
