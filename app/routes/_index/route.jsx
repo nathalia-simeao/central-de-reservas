@@ -82,6 +82,7 @@ function CentralDeReservasContent() {
   const [settingsSaveMessage, setSettingsSaveMessage] = useState("");
   const settingsSaveTimerRef = useRef(null);
   const settingsMessageTimerRef = useRef(null);
+  const legacyDataLogoMigrationRef = useRef(false);
 
   const sidebarIsDark = isDarkThemeColor(theme.sidebarBg);
   const activeSidebarLogoUrl = sidebarIsDark
@@ -1210,6 +1211,101 @@ function CentralDeReservasContent() {
       });
     }, 350);
   }, [persistBusinessSettings]);
+
+  useEffect(() => {
+    if (legacyDataLogoMigrationRef.current || !businessSettings) return;
+
+    const candidates = [
+      {
+        variant: "light",
+        value: businessSettings.logoOnLightUrl || businessSettings.logoUrl || "",
+      },
+      {
+        variant: "dark",
+        value: businessSettings.logoOnDarkUrl || "",
+      },
+    ].filter((item) => String(item.value || "").startsWith("data:"));
+
+    if (candidates.length === 0) return;
+    legacyDataLogoMigrationRef.current = true;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        for (const candidate of candidates) {
+          const response = await fetch(candidate.value);
+          const blob = await response.blob();
+          const extension =
+            blob.type === "image/svg+xml"
+              ? "svg"
+              : blob.type === "image/webp"
+                ? "webp"
+                : blob.type === "image/jpeg"
+                  ? "jpg"
+                  : "png";
+          const file = new File(
+            [blob],
+            `pmy-logo-${candidate.variant}.${extension}`,
+            { type: blob.type || "image/png" },
+          );
+
+          const media = await uploadFileToPmyMediaLibrary({
+            file,
+            category: "logo",
+            label:
+              candidate.variant === "dark"
+                ? "Logo para fundo escuro"
+                : "Logo para fundo claro",
+            requestResourceJson,
+          });
+
+          if (cancelled) return;
+
+          const mediaField =
+            candidate.variant === "dark"
+              ? "logoOnDarkMediaId"
+              : "logoOnLightMediaId";
+          const urlField =
+            candidate.variant === "dark"
+              ? "logoOnDarkUrl"
+              : "logoOnLightUrl";
+
+          await persistBusinessSettings({
+            [mediaField]: media.id,
+            [urlField]: media.url,
+            ...(candidate.variant === "light" ? { logoUrl: null } : {}),
+          });
+
+          if (cancelled) return;
+          if (candidate.variant === "dark") setLogoOnDarkUrl(media.url);
+          else setLogoOnLightUrl(media.url);
+
+          setMediaList((current) => [
+            media,
+            ...current.filter((item) => item.id !== media.id),
+          ]);
+        }
+
+        if (!cancelled) {
+          setSettingsSaveMessage(
+            "Logo antiga migrada para a Biblioteca PMY ✓",
+          );
+        }
+      } catch (error) {
+        console.error("[PMY] legacy Data URL logo migration failed:", error);
+        if (!cancelled) {
+          setSettingsSaveMessage(
+            "A logo antiga precisa ser reenviada para a Biblioteca PMY.",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessSettings, persistBusinessSettings, requestResourceJson]);
 
   useEffect(() => {
     if (businessSettings) return;
