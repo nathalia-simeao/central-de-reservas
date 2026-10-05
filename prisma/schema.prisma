@@ -65,6 +65,7 @@ model Tour {
   airbnbExperienceId     String?       @unique
 
   variants               TourVariant[]
+  gygProductOptions       GygProductOption[]
   bookings               Booking[]
   blockedDates           BlockedDate[]
   guideAssignments       GuideAssignment[]
@@ -82,7 +83,9 @@ model TourVariant {
   tour              Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
   shopifyVariantId  String?  @unique
-  gygOptionId       String?  @unique
+  gygOptionId       String?  @unique // legado; novo mapeamento vive em GygProductOption
+  gygProductOptionId String?
+  gygProductOption   GygProductOption? @relation(fields: [gygProductOptionId], references: [id], onDelete: SetNull)
   viatorOptionCode  String?  @unique
   headoutVariantId  String?  @unique
   civitatisOptionId String?  @unique
@@ -101,6 +104,26 @@ model TourVariant {
   @@index([sku])
   @@index([passengerCategory])
   @@index([startTimeSlot])
+  @@index([gygProductOptionId])
+}
+
+model GygProductOption {
+  // Produto externo da PMY conectado a UMA opção vendável do GetYourGuide.
+  // O próprio id é o supplier productId enviado ao Integrator Portal.
+  id          String        @id @default(uuid())
+  tourId      String
+  tour        Tour          @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  optionKey   String
+  title       String
+  gygOptionId String?       @unique
+  active      Boolean       @default(true)
+  variants    TourVariant[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+
+  @@unique([tourId, optionKey])
+  @@index([tourId])
+  @@index([active])
 }
 
 model Booking {
