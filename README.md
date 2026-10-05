@@ -156,7 +156,7 @@ A atualização proativa de disponibilidade usa o endpoint remoto `notify-availa
 
 A Central não considera o canal conectado apenas porque essas variáveis existem. O status de conexão exige tráfego autenticado e o painel mantém uma matriz de evidências para Availability, Reserve, Cancel Reservation, Book, Cancel Booking e Notify Availability. A conclusão dessa matriz é evidência técnica interna; a certificação final continua dependendo da aprovação do GetYourGuide.
 
-O mapeamento operacional deve registrar o identificador da atividade e os option IDs disponibilizados no Integrator Portal antes da bateria de certificação.
+O mapeamento operacional é feito no nível da opção vendável. Cada `GygProductOption` possui um UUID próprio, usado como `supplier productId`/External Product ID da PMY no Integrator Portal. Categorias de ingresso como ADULT, CHILD, YOUTH e SENIOR permanecem dentro da mesma opção e não ganham product IDs separados. A Central agrupa automaticamente as variantes Shopify por escolha operacional (horário + serviço/pacote), preserva o Tour mestre como entidade-pai e registra o `gygOptionId` remoto em cada opção. O antigo UUID do Tour continua aceito apenas como compatibilidade temporária para self-tests já configurados antes desta migração.
 
 ## Manutenção do repositório
 

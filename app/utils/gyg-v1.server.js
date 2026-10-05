@@ -7,7 +7,11 @@ import {
 } from "./capacity.server";
 import { getActiveAvailabilityBlocks, getDatePartsInTimeZone } from "./availability.server";
 import { checkGygBasicAuth } from "./gyg.server";
-import { resolveTourByPlatformId } from "./tour-passport.server";
+import {
+  gygProductCategories,
+  gygProductScheduleSlots,
+  resolveGygProduct,
+} from "./gyg-product-options.server";
 import {
   enqueueBookingSync,
   SYNC_EVENT_TYPES,
@@ -265,16 +269,8 @@ function normalizeCategory(value) {
   return String(value || "").trim().toUpperCase();
 }
 
-function categoriesForTour(tour) {
-  return new Set(
-    (tour?.variants || [])
-      .filter((variant) => variant.active !== false && variant.passengerCategory)
-      .map((variant) => normalizeCategory(variant.passengerCategory)),
-  );
-}
-
-function isGroupOnlyTour(tour) {
-  const categories = categoriesForTour(tour);
+function isGroupOnlyProduct(product) {
+  const categories = gygProductCategories(product);
   return (
     categories.has("GROUP") &&
     !INDIVIDUAL_CATEGORIES.some((category) => categories.has(category))
@@ -396,18 +392,19 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
   }
 
   try {
-    const tour = await resolveTourByPlatformId(prisma, GYG_PLATFORM, productId);
-    if (!tour) {
+    const product = await resolveGygProduct(prisma, productId);
+    if (!product) {
       return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
     }
 
+    const tour = product.tour;
     const timeZone = tour.timezone || "Europe/Lisbon";
-    const scheduleSlots = [...new Set(tour.scheduleSlots || [])].sort();
+    const scheduleSlots = gygProductScheduleSlots(product);
 
     // Group/private inventory has different vacancy semantics in GYG (groups,
     // not individual seats). Keep those options offline until that model is
     // explicitly configured instead of accidentally overselling.
-    if (isGroupOnlyTour(tour)) {
+    if (isGroupOnlyProduct(product)) {
       return gygV1Success({ availabilities: [] });
     }
 
@@ -452,7 +449,7 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
         });
 
         const price = tour.gygPriceOverApi
-          ? pricingForSlot(tour, timeKey)
+          ? pricingForSlot({ variants: product.variants }, timeKey)
           : { currency: null, retailPrices: null, ambiguous: false };
         const entry = {
           dateTime: slotIso(dateKey, timeKey, timeZone),
@@ -535,10 +532,12 @@ export async function reserveGyg(data) {
       });
     }
 
-    const tour = await resolveTourByPlatformId(prisma, GYG_PLATFORM, productId);
-    if (!tour) return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
+    const product = await resolveGygProduct(prisma, productId);
+    if (!product) return gygV1Error("INVALID_PRODUCT", "The requested product does not exist.");
 
-    if (isGroupOnlyTour(tour)) {
+    const tour = product.tour;
+
+    if (isGroupOnlyProduct(product)) {
       return gygV1Error(
         "INVALID_TICKET_CATEGORY",
         "This PMY product uses group/private pricing and is not enabled for GYG individual inventory yet.",
@@ -564,7 +563,8 @@ export async function reserveGyg(data) {
       startTime,
       tour.timezone || "Europe/Lisbon",
     );
-    const supported = categoriesForTour(tour);
+    const supported = gygProductCategories(product);
+    const productScheduleSlots = gygProductScheduleSlots(product);
     for (const item of data.bookingItems || []) {
       const category = normalizeCategory(item?.category);
       if (category && !supported.has(category)) {
@@ -575,7 +575,7 @@ export async function reserveGyg(data) {
       }
     }
 
-    if (!slot || !(tour.scheduleSlots || []).includes(slot.timeKey)) {
+    if (!slot || !productScheduleSlots.includes(slot.timeKey)) {
       return gygV1Error(
         "NO_AVAILABILITY",
         "The requested timeslot is not available for this product.",
@@ -738,14 +738,19 @@ export async function bookGyg(data) {
       );
     }
 
-    const requestedTour = data?.productId
-      ? await resolveTourByPlatformId(prisma, GYG_PLATFORM, data.productId)
+    const requestedProduct = data?.productId
+      ? await resolveGygProduct(prisma, data.productId)
       : null;
 
-    if (!requestedTour || requestedTour.id !== booking.tourId) {
+    if (
+      !requestedProduct ||
+      requestedProduct.tour.id !== booking.tourId ||
+      (booking.externalProductId &&
+        String(booking.externalProductId) !== String(data.productId))
+    ) {
       return gygV1Error(
         "INVALID_RESERVATION",
-        "productId does not match the reserved PMY tour.",
+        "productId does not match the reserved PMY option.",
       );
     }
 
@@ -895,15 +900,16 @@ export async function cancelGygBooking(data) {
     }
 
     if (data?.productId) {
-      const requestedTour = await resolveTourByPlatformId(
-        prisma,
-        GYG_PLATFORM,
-        data.productId,
-      );
-      if (!requestedTour || requestedTour.id !== booking.tourId) {
+      const requestedProduct = await resolveGygProduct(prisma, data.productId);
+      if (
+        !requestedProduct ||
+        requestedProduct.tour.id !== booking.tourId ||
+        (booking.externalProductId &&
+          String(booking.externalProductId) !== String(data.productId))
+      ) {
         return gygV1Error(
           "INVALID_BOOKING",
-          "productId does not match the confirmed PMY booking.",
+          "productId does not match the confirmed PMY option.",
         );
       }
     }
@@ -1024,16 +1030,22 @@ export async function notifyGygTourAvailabilityWindow({
   try {
     const tour = await prisma.tour.findUnique({
       where: { id: tourId },
-      include: { variants: true },
+      include: {
+        variants: true,
+        gygProductOptions: {
+          include: { variants: true },
+        },
+      },
     });
 
-    if (!tour?.gygActivityId) {
-      return { sent: false, reason: "TOUR_NOT_MAPPED_TO_GYG" };
-    }
+    const mappedOptions = (tour?.gygProductOptions || []).filter(
+      (option) =>
+        option.active !== false &&
+        Boolean(String(option.gygOptionId || "").trim()),
+    );
 
-    const scheduleSlots = [...new Set(tour.scheduleSlots || [])].sort();
-    if (scheduleSlots.length === 0) {
-      return { sent: false, reason: "TOUR_SCHEDULE_NOT_CONFIGURED" };
+    if (!tour || mappedOptions.length === 0) {
+      return { sent: false, reason: "TOUR_NOT_MAPPED_TO_GYG" };
     }
 
     const timeZone = tour.timezone || "Europe/Lisbon";
@@ -1053,43 +1065,85 @@ export async function notifyGygTourAvailabilityWindow({
       getActiveAvailabilityBlocks(prisma, tour.id),
     ]);
 
-    const updates = [];
-    let dateKey = dateKeyFromInstant(from, timeZone);
+    const results = [];
+    const startDateKey = dateKeyFromInstant(from, timeZone);
     const endDateKey = dateKeyFromInstant(to, timeZone);
     const now = new Date();
 
-    while (dateKey && endDateKey && dateKey <= endDateKey) {
-      for (const timeKey of scheduleSlots) {
-        const instant = localSlotToInstant(dateKey, timeKey, timeZone);
-        if (!instant || instant < from || instant > to) continue;
+    for (const option of mappedOptions) {
+      const product = {
+        ...option,
+        tour,
+        variants: option.variants || [],
+        legacyTourProductId: false,
+      };
 
-        const availability = calculateAvailabilityForCalendarSlotFromLoaded({
-          tour,
-          bookings,
-          blocks,
-          dateKey,
-          timeKey,
-          platform: "getyourguide",
-          now,
+      if (isGroupOnlyProduct(product)) {
+        results.push({
+          productId: option.id,
+          sent: false,
+          reason: "GROUP_INVENTORY_NOT_ENABLED",
         });
-
-        updates.push({
-          dateTime: slotIso(dateKey, timeKey, timeZone),
-          vacancies: availability.remainingSeats,
-        });
+        continue;
       }
 
-      dateKey = nextDateKey(dateKey);
+      const scheduleSlots = gygProductScheduleSlots(product);
+      if (scheduleSlots.length === 0) {
+        results.push({
+          productId: option.id,
+          sent: false,
+          reason: "OPTION_SCHEDULE_NOT_CONFIGURED",
+        });
+        continue;
+      }
+
+      const updates = [];
+      let dateKey = startDateKey;
+
+      while (dateKey && endDateKey && dateKey <= endDateKey) {
+        for (const timeKey of scheduleSlots) {
+          const instant = localSlotToInstant(dateKey, timeKey, timeZone);
+          if (!instant || instant < from || instant > to) continue;
+
+          const availability = calculateAvailabilityForCalendarSlotFromLoaded({
+            tour,
+            bookings,
+            blocks,
+            dateKey,
+            timeKey,
+            platform: "getyourguide",
+            now,
+          });
+
+          updates.push({
+            dateTime: slotIso(dateKey, timeKey, timeZone),
+            vacancies: availability.remainingSeats,
+          });
+        }
+
+        dateKey = nextDateKey(dateKey);
+      }
+
+      if (updates.length === 0) {
+        results.push({
+          productId: option.id,
+          sent: false,
+          reason: "NO_FUTURE_SLOTS",
+        });
+        continue;
+      }
+
+      const result = await notifyGygAvailabilityUpdate({
+        productId: option.id,
+        availabilities: updates,
+      });
+      results.push({ productId: option.id, ...result });
     }
 
-    if (updates.length === 0) {
-      return { sent: false, reason: "NO_FUTURE_SLOTS" };
-    }
-
-    return notifyGygAvailabilityUpdate({
-      productId: tour.id,
-      availabilities: updates,
-    });
+    return {
+      sent: results.some((result) => result.sent),
+      results,
+    };
   } catch (error) {
     console.error("[GYG v1] notify tour availability window failed", error);
     return {
@@ -1108,13 +1162,16 @@ export async function notifyGygSlotAvailability({
   try {
     const tour = await prisma.tour.findUnique({
       where: { id: tourId },
-      include: { variants: true },
+      include: {
+        variants: true,
+        gygProductOptions: {
+          include: { variants: true },
+        },
+      },
     });
 
-    // gygActivityId acts as the marker that this PMY Tour has been mapped
-    // to a GetYourGuide option. The supplier productId remains the PMY Tour ID.
-    if (!tour?.gygActivityId) {
-      return { sent: false, reason: "TOUR_NOT_MAPPED_TO_GYG" };
+    if (!tour) {
+      return { sent: false, reason: "TOUR_NOT_FOUND" };
     }
 
     const parts = getDatePartsInTimeZone(
@@ -1149,15 +1206,50 @@ export async function notifyGygSlotAvailability({
       return { sent: false, reason: "INVALID_SLOT" };
     }
 
-    return notifyGygAvailabilityUpdate({
-      productId: tour.id,
-      availabilities: [
-        {
-          dateTime,
-          vacancies: availability.remainingSeats,
-        },
-      ],
+    const mappedOptions = (tour.gygProductOptions || []).filter((option) => {
+      if (
+        option.active === false ||
+        !String(option.gygOptionId || "").trim()
+      ) {
+        return false;
+      }
+
+      const product = {
+        ...option,
+        tour,
+        variants: option.variants || [],
+        legacyTourProductId: false,
+      };
+
+      return (
+        !isGroupOnlyProduct(product) &&
+        gygProductScheduleSlots(product).includes(parts.timeKey)
+      );
     });
+
+    if (mappedOptions.length === 0) {
+      return { sent: false, reason: "NO_MAPPED_OPTION_FOR_SLOT" };
+    }
+
+    const results = [];
+    for (const option of mappedOptions) {
+      const result = await notifyGygAvailabilityUpdate({
+        productId: option.id,
+        availabilities: [
+          {
+            dateTime,
+            vacancies: availability.remainingSeats,
+          },
+        ],
+      });
+      results.push({ productId: option.id, ...result });
+    }
+
+    return {
+      sent: results.some((result) => result.sent),
+      results,
+      remainingSeats: availability.remainingSeats,
+    };
   } catch (error) {
     console.error("[GYG v1] notify slot availability failed", error);
     return {
@@ -1167,3 +1259,4 @@ export async function notifyGygSlotAvailability({
     };
   }
 }
+

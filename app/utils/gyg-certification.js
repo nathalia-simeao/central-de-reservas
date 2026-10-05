@@ -100,21 +100,26 @@ export function buildGygCertificationEvidence(events = []) {
 }
 
 export function summarizeGygOptionMappings(tours = []) {
-  const mappedTours = (tours || []).filter((tour) => Boolean(tour?.gygActivityId));
-  const variants = mappedTours.flatMap((tour) =>
-    (tour?.variants || [])
-      .filter((variant) => variant?.active !== false)
-      .map((variant) => ({ tour, variant })),
+  const activeOptions = (tours || []).flatMap((tour) =>
+    (tour?.gygProductOptions || [])
+      .filter((option) => option?.active !== false)
+      .map((option) => ({ tour, option })),
   );
 
-  const mapped = variants.filter(({ variant }) =>
-    Boolean(String(variant?.gygOptionId || "").trim()),
+  const mapped = activeOptions.filter(({ option }) =>
+    Boolean(String(option?.gygOptionId || "").trim()),
+  );
+
+  const mappedTourIds = new Set(
+    activeOptions
+      .filter(({ option }) => Boolean(String(option?.gygOptionId || "").trim()))
+      .map(({ tour }) => tour.id),
   );
 
   return {
-    mappedTours: mappedTours.length,
-    activeOptions: variants.length,
+    mappedTours: mappedTourIds.size,
+    activeOptions: activeOptions.length,
     mappedOptions: mapped.length,
-    optionMappingMissing: Math.max(0, variants.length - mapped.length),
+    optionMappingMissing: Math.max(0, activeOptions.length - mapped.length),
   };
 }

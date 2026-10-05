@@ -373,8 +373,8 @@ export default function CentralModalLayer(props) {
                   </div>
                   <div className="pmy-gyg-quick-map__hint">
                     {ui(
-                      "Selecione o passeio e copie o Supplier productId para o campo “Valid product ID” do Integrator Portal.",
-                      "Select the tour and copy the Supplier productId into the Integrator Portal “Valid product ID” field.",
+                      "Selecione o passeio e copie o Supplier productId da opção vendável que será testada no campo “Valid product ID” do Integrator Portal.",
+                      "Select the tour and copy the sellable option Supplier productId into the Integrator Portal “Valid product ID” field.",
                     )}
                   </div>
                   <div className="pmy-form-group pmy-u-mt-2">
@@ -399,36 +399,67 @@ export default function CentralModalLayer(props) {
                   </div>
 
                   {selectedGygTour && (
-                    <div className="pmy-gyg-product-id">
-                      <div className="pmy-gyg-product-id__meta">
-                        <span className="pmy-gyg-product-id__label">
-                          {ui("Supplier productId da PMY", "PMY Supplier productId")}
-                        </span>
-                        <code className="pmy-gyg-product-id__value">{selectedGygTour.id}</code>
-                      </div>
-                      <button
-                        type="button"
-                        className="pmy-gyg-product-id__copy"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(selectedGygTour.id);
-                            notify(
-                              ui("Supplier productId copiado.", "Supplier productId copied."),
-                              "success",
-                            );
-                          } catch {
-                            notify(
-                              ui(
-                                "Não consegui copiar automaticamente. Selecione o código e copie manualmente.",
-                                "Could not copy automatically. Select the code and copy it manually.",
-                              ),
-                              "warning",
-                            );
-                          }
-                        }}
-                      >
-                        {ui("Copiar ID", "Copy ID")}
-                      </button>
+                    <div className="pmy-u-mt-2">
+                      {(selectedGygTour.gygProductOptions || [])
+                        .filter((option) => option.active !== false)
+                        .map((option) => {
+                          const times = [...new Set(
+                            (option.variants || [])
+                              .map((variant) => variant.startTimeSlot)
+                              .filter(Boolean),
+                          )].sort();
+                          const categories = [...new Set(
+                            (option.variants || [])
+                              .map((variant) => variant.passengerCategory)
+                              .filter(Boolean),
+                          )].sort();
+
+                          return (
+                            <div className="pmy-gyg-product-id" key={option.id}>
+                              <div className="pmy-gyg-product-id__meta">
+                                <span className="pmy-gyg-product-id__label">
+                                  {option.title}
+                                </span>
+                                <code className="pmy-gyg-product-id__value">{option.id}</code>
+                                <span className="pmy-ds-migrated-1x192bc">
+                                  {times.length ? times.join(", ") : ui("sem horário", "no time")}
+                                  {categories.length ? ` · ${categories.join(", ")}` : ""}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="pmy-gyg-product-id__copy"
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(option.id);
+                                    notify(
+                                      ui("Supplier productId da opção copiado.", "Option Supplier productId copied."),
+                                      "success",
+                                    );
+                                  } catch {
+                                    notify(
+                                      ui(
+                                        "Não consegui copiar automaticamente. Selecione o código e copie manualmente.",
+                                        "Could not copy automatically. Select the code and copy it manually.",
+                                      ),
+                                      "warning",
+                                    );
+                                  }
+                                }}
+                              >
+                                {ui("Copiar ID", "Copy ID")}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      {(selectedGygTour.gygProductOptions || []).filter((option) => option.active !== false).length === 0 && (
+                        <div className="pmy-ds-state-panel is-warning">
+                          {ui(
+                            "As opções operacionais ainda estão sendo geradas a partir das variantes do Shopify. Sincronize o Shopify e atualize a Central.",
+                            "Operational options are still being generated from Shopify variants. Sync Shopify and refresh the Central.",
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -502,17 +533,24 @@ export default function CentralModalLayer(props) {
                   {selectedGygTour && (
                     <>
                       <div className="pmy-ds-migrated-18lu7h0">
-                        <div className="pmy-ds-migrated-qric2k">{ui("Supplier productId da PMY", "PMY supplier productId")}</div>
-                        <code className="pmy-ds-migrated-h8ux69">{selectedGygTour.id}</code>
+                        <div className="pmy-ds-migrated-qric2k">
+                          {ui("Tour mestre PMY", "PMY master tour")}
+                        </div>
                         <div className="pmy-ds-migrated-1k9dgzl">
-                          Capacidade central: <strong>{selectedGygTour.maxCapacity}</strong> · fonte: {selectedGygTour.capacitySource}
+                          {ui("Capacidade central:", "Central capacity:")} <strong>{selectedGygTour.maxCapacity}</strong> · {ui("fonte:", "source:")} {selectedGygTour.capacitySource}
+                        </div>
+                        <div className="pmy-ds-migrated-1x192bc">
+                          {ui(
+                            "O Tour mestre organiza o catálogo. O GetYourGuide recebe um supplier productId diferente para cada opção vendável abaixo.",
+                            "The master tour organizes the catalog. GetYourGuide receives a different supplier productId for each sellable option below.",
+                          )}
                         </div>
                       </div>
   
                       <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >
-                        <label className="pmy-ds-migrated-1ygjrzr">{ui("ID da atividade/opção no GetYourGuide", "GetYourGuide activity/option ID")}</label>
+                        <label className="pmy-ds-migrated-1ygjrzr">{ui("ID da atividade no GetYourGuide (opcional)", "GetYourGuide activity ID (optional)")}</label>
                         <input className="pmy-form-input" value={gygConfigActivityId} onChange={(e) => setGygConfigActivityId(e.target.value)}
-                          placeholder={ui('Cole o ID do produto/opção correspondente no GYG','Paste the corresponding product/option ID from GYG')} />
+                          placeholder={ui('Cole o ID da atividade correspondente no GYG, se desejar registrar','Paste the corresponding GYG activity ID if you want to record it')} />
                       </div>
 
                       <div className="pmy-form-group pmy-ds-migrated-1bzrduz">
@@ -521,33 +559,49 @@ export default function CentralModalLayer(props) {
                         </label>
                         <div className="pmy-ds-migrated-1x192bc">
                           {ui(
-                            "Registre o option ID do GetYourGuide para cada variante/opção operacional da PMY. IDs vazios continuam explicitamente pendentes.",
-                            "Store the GetYourGuide option ID for each PMY operational variant/option. Empty IDs remain explicitly pending.",
+                            "Cada bloco abaixo é uma opção vendável da PMY. ADULT, CHILD, YOUTH e SENIOR permanecem como categorias da opção, não como productIds separados.",
+                            "Each block below is one sellable PMY option. ADULT, CHILD, YOUTH and SENIOR remain ticket categories inside the option, not separate productIds.",
                           )}
                         </div>
-                        {(selectedGygTour.variants || [])
-                          .filter((variant) => variant.active !== false)
-                          .map((variant) => (
-                            <div key={variant.id} className="pmy-u-mt-2">
-                              <label className="pmy-ds-migrated-1ygjrzr" htmlFor={`gyg-option-${variant.id}`}>
-                                {variant.title || variant.sku || variant.passengerCategory || ui("Opção PMY", "PMY option")}
-                                {variant.startTimeSlot ? ` · ${variant.startTimeSlot}` : ""}
-                                {variant.passengerCategory ? ` · ${variant.passengerCategory}` : ""}
-                              </label>
-                              <input
-                                id={`gyg-option-${variant.id}`}
-                                className="pmy-form-input"
-                                value={gygConfigOptions?.[variant.id] || ""}
-                                onChange={(event) =>
-                                  setGygConfigOptions((current) => ({
-                                    ...(current || {}),
-                                    [variant.id]: event.target.value,
-                                  }))
-                                }
-                                placeholder={ui("GYG option ID", "GYG option ID")}
-                              />
-                            </div>
-                          ))}
+                        {(selectedGygTour.gygProductOptions || [])
+                          .filter((option) => option.active !== false)
+                          .map((option) => {
+                            const times = [...new Set(
+                              (option.variants || [])
+                                .map((variant) => variant.startTimeSlot)
+                                .filter(Boolean),
+                            )].sort();
+                            const categories = [...new Set(
+                              (option.variants || [])
+                                .map((variant) => variant.passengerCategory)
+                                .filter(Boolean),
+                            )].sort();
+
+                            return (
+                              <div key={option.id} className="pmy-gyg-option-map-card">
+                                <label className="pmy-ds-migrated-1ygjrzr" htmlFor={`gyg-option-${option.id}`}>
+                                  {option.title}
+                                </label>
+                                <div className="pmy-ds-migrated-1x192bc">
+                                  <strong>Supplier productId:</strong> <code>{option.id}</code>
+                                  {times.length ? ` · ${times.join(", ")}` : ""}
+                                  {categories.length ? ` · ${categories.join(", ")}` : ""}
+                                </div>
+                                <input
+                                  id={`gyg-option-${option.id}`}
+                                  className="pmy-form-input pmy-u-mt-2"
+                                  value={gygConfigOptions?.[option.id] || ""}
+                                  onChange={(event) =>
+                                    setGygConfigOptions((current) => ({
+                                      ...(current || {}),
+                                      [option.id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder={ui("GYG option ID", "GYG option ID")}
+                                />
+                              </div>
+                            );
+                          })}
                       </div>
   
                       <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >

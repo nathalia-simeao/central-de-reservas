@@ -68,7 +68,13 @@ export const loader = async ({ request }) => {
     platformFieldMappings,
   ] = await Promise.all([
     prisma.tour.findMany({
-      include: { variants: true },
+      include: {
+        variants: true,
+        gygProductOptions: {
+          include: { variants: true },
+          orderBy: { title: "asc" },
+        },
+      },
       orderBy: { title: "asc" },
     }),
     prisma.booking.findMany({
@@ -226,25 +232,45 @@ export const loader = async ({ request }) => {
   const shopName = session?.shop || "Minha Loja Shopify";
   const mediaFiles = [];
 
-  const gygMappedTours = (tours || []).filter(
-    (tour) => Boolean(tour.gygActivityId),
+  const gygMappedTours = (tours || []).filter((tour) =>
+    (tour.gygProductOptions || []).some(
+      (option) =>
+        option.active !== false &&
+        Boolean(String(option.gygOptionId || "").trim()),
+    ),
   );
-  const gygReadyTours = gygMappedTours.filter(
-    (tour) =>
-      Array.isArray(tour.scheduleSlots) &&
-      tour.scheduleSlots.length > 0 &&
-      (tour.variants || []).some(
-        (variant) =>
-          variant.active !== false &&
-          ["ADULT", "CHILD", "YOUTH", "SENIOR"].includes(
-            String(variant.passengerCategory || "").toUpperCase(),
+  const gygReadyTours = gygMappedTours.filter((tour) =>
+    (tour.gygProductOptions || []).some(
+      (option) =>
+        option.active !== false &&
+        Boolean(String(option.gygOptionId || "").trim()) &&
+        (option.variants || []).some(
+          (variant) =>
+            variant.active !== false &&
+            ["ADULT", "CHILD", "YOUTH", "SENIOR", "GROUP"].includes(
+              String(variant.passengerCategory || "").toUpperCase(),
+            ),
+        ) &&
+        (option.variants || []).some(
+          (variant) =>
+            variant.active !== false && Boolean(variant.startTimeSlot),
+        ),
+    ),
+  );
+  const gygScheduleMissing = gygMappedTours.filter((tour) =>
+    (tour.gygProductOptions || [])
+      .filter(
+        (option) =>
+          option.active !== false &&
+          Boolean(String(option.gygOptionId || "").trim()),
+      )
+      .some(
+        (option) =>
+          !(option.variants || []).some(
+            (variant) =>
+              variant.active !== false && Boolean(variant.startTimeSlot),
           ),
       ),
-  );
-  const gygScheduleMissing = gygMappedTours.filter(
-    (tour) =>
-      !Array.isArray(tour.scheduleSlots) ||
-      tour.scheduleSlots.length === 0,
   );
 
   const gygCertificationEvents = await prisma.integrationEvent.findMany({

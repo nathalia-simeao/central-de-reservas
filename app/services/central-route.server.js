@@ -416,7 +416,12 @@ export const action = async ({ request }) => {
 
       const existingTour = await prisma.tour.findUnique({
         where: { id },
-        include: { variants: true },
+        include: {
+          variants: true,
+          gygProductOptions: {
+            include: { variants: true },
+          },
+        },
       });
       if (!existingTour) {
         return json({ success: false, error: "Tour mestre não encontrado." }, { status: 404 });
@@ -490,14 +495,14 @@ export const action = async ({ request }) => {
             throw new Error("object required");
           }
 
-          const allowedVariantIds = new Set(
-            (existingTour.variants || []).map((variant) => variant.id),
+          const allowedOptionIds = new Set(
+            (existingTour.gygProductOptions || []).map((option) => option.id),
           );
           optionMappings = Object.fromEntries(
             Object.entries(parsed)
-              .filter(([variantId]) => allowedVariantIds.has(variantId))
-              .map(([variantId, value]) => [
-                variantId,
+              .filter(([optionId]) => allowedOptionIds.has(optionId))
+              .map(([optionId, value]) => [
+                optionId,
                 String(value || "").trim() || null,
               ]),
           );
@@ -520,7 +525,7 @@ export const action = async ({ request }) => {
         }
 
         if (optionIds.length > 0) {
-          const conflict = await prisma.tourVariant.findFirst({
+          const conflict = await prisma.gygProductOption.findFirst({
             where: {
               gygOptionId: { in: optionIds },
               tourId: { not: id },
@@ -551,14 +556,14 @@ export const action = async ({ request }) => {
       ];
 
       if (optionMappings) {
-        for (const variant of existingTour.variants || []) {
-          if (!Object.prototype.hasOwnProperty.call(optionMappings, variant.id)) {
+        for (const option of existingTour.gygProductOptions || []) {
+          if (!Object.prototype.hasOwnProperty.call(optionMappings, option.id)) {
             continue;
           }
           operations.push(
-            prisma.tourVariant.update({
-              where: { id: variant.id },
-              data: { gygOptionId: optionMappings[variant.id] },
+            prisma.gygProductOption.update({
+              where: { id: option.id },
+              data: { gygOptionId: optionMappings[option.id] },
             }),
           );
         }
@@ -568,7 +573,13 @@ export const action = async ({ request }) => {
 
       const tour = await prisma.tour.findUnique({
         where: { id },
-        include: { variants: true },
+        include: {
+          variants: true,
+          gygProductOptions: {
+            include: { variants: true },
+            orderBy: { title: "asc" },
+          },
+        },
       });
 
       await enqueueAvailabilitySync(prisma, {

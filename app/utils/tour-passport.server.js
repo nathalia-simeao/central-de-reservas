@@ -1,3 +1,5 @@
+import { syncGygProductOptionsForTour } from "./gyg-product-options.server";
+
 const PLATFORM_TOUR_FIELD = {
   SHOPIFY: "shopifyProductId",
   GETYOURGUIDE: "gygActivityId",
@@ -313,6 +315,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       created += 1;
       variantsCreated += tour.variants.length;
       byProductId.set(product.id, tour);
+      await syncGygProductOptionsForTour(prisma, tour.id);
       await syncCatalogAvailabilityBlocks(prisma, tour, product);
       continue;
     }
@@ -437,6 +440,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       }
     }
 
+    await syncGygProductOptionsForTour(prisma, tour.id);
     await syncCatalogAvailabilityBlocks(prisma, tour, product);
   }
 
@@ -464,19 +468,41 @@ export async function resolveTourByPlatformId(prisma, platform, externalId) {
     return tour;
   }
 
-  // Compatibility alias for GYG option-level mapping. The canonical supplier
-  // productId remains the PMY Tour id, but an option id can still resolve the
-  // owning Tour during certification and troubleshooting.
-  const option = await prisma.tourVariant.findUnique({
+  // GetYourGuide is mapped at option level. Resolve either the canonical
+  // supplier productId (GygProductOption.id) or the remote GYG option id.
+  const productOption = await prisma.gygProductOption.findFirst({
+    where: {
+      OR: [{ id }, { gygOptionId: id }],
+    },
+    include: {
+      tour: {
+        include: {
+          variants: true,
+          gygProductOptions: {
+            include: { variants: true },
+          },
+        },
+      },
+    },
+  });
+  if (productOption?.tour) return productOption.tour;
+
+  // Legacy compatibility for mappings created before GygProductOption existed.
+  const legacyVariant = await prisma.tourVariant.findUnique({
     where: { gygOptionId: id },
     include: {
       tour: {
-        include: { variants: true },
+        include: {
+          variants: true,
+          gygProductOptions: {
+            include: { variants: true },
+          },
+        },
       },
     },
   });
 
-  return option?.tour || null;
+  return legacyVariant?.tour || null;
 }
 
 export function buildTourPassportUpdate(formData) {

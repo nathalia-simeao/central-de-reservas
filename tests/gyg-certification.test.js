@@ -89,23 +89,25 @@ test("outbound notify requires a processed response from GYG", () => {
 test("GYG option mapping summary exposes unmapped operational options", () => {
   const summary = summarizeGygOptionMappings([
     {
-      gygActivityId: "activity-1",
-      variants: [
-        { id: "v1", active: true, gygOptionId: "option-1" },
-        { id: "v2", active: true, gygOptionId: null },
-        { id: "v3", active: false, gygOptionId: null },
+      id: "tour-1",
+      gygProductOptions: [
+        { id: "o1", active: true, gygOptionId: "gyg-option-1" },
+        { id: "o2", active: true, gygOptionId: null },
+        { id: "o3", active: false, gygOptionId: null },
       ],
     },
     {
-      gygActivityId: null,
-      variants: [{ id: "v4", active: true, gygOptionId: null }],
+      id: "tour-2",
+      gygProductOptions: [
+        { id: "o4", active: true, gygOptionId: null },
+      ],
     },
   ]);
 
   assert.deepEqual(summary, {
     mappedTours: 1,
-    activeOptions: 2,
+    activeOptions: 3,
     mappedOptions: 1,
-    optionMappingMissing: 1,
+    optionMappingMissing: 2,
   });
 });
