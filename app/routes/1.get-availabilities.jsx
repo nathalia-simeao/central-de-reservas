@@ -5,7 +5,7 @@ import {
 } from "../utils/gyg-v1.server";
 
 export const loader = async ({ request }) => {
-  const authError = requireGygAuth(request);
+  const authError = requireGygAuth(request, "get-availabilities");
   if (authError) return authError;
 
   const url = new URL(request.url);
