@@ -1,3 +1,5 @@
+import { syncGygProductOptionsForTour } from "./gyg-product-options.server";
+
 const PLATFORM_TOUR_FIELD = {
   SHOPIFY: "shopifyProductId",
   GETYOURGUIDE: "gygActivityId",
@@ -313,6 +315,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       created += 1;
       variantsCreated += tour.variants.length;
       byProductId.set(product.id, tour);
+      await syncGygProductOptionsForTour(prisma, tour.id);
       await syncCatalogAvailabilityBlocks(prisma, tour, product);
       continue;
     }
@@ -437,6 +440,7 @@ export async function syncShopifyCatalogToMasterTours(prisma, products = []) {
       }
     }
 
+    await syncGygProductOptionsForTour(prisma, tour.id);
     await syncCatalogAvailabilityBlocks(prisma, tour, product);
   }
 
