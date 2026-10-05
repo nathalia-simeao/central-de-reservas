@@ -33,8 +33,33 @@ export function gygV1Error(errorCode, errorMessage, extra = {}) {
   return json({ errorCode, errorMessage, ...extra });
 }
 
-export function requireGygAuth(request) {
-  return checkGygBasicAuth(request)
+function gygRequestTrace(request, topic) {
+  try {
+    const url = new URL(request.url);
+    const authHeader = request.headers.get("Authorization") || "";
+    const trace = {
+      topic: String(topic || "unknown"),
+      method: request.method,
+      pathname: url.pathname,
+      productId: url.searchParams.get("productId") || null,
+      fromDateTime: url.searchParams.get("fromDateTime") || null,
+      toDateTime: url.searchParams.get("toDateTime") || null,
+      authPresent: Boolean(authHeader),
+      authSchemeBasic: authHeader.startsWith("Basic "),
+      authValid: checkGygBasicAuth(request),
+      contentType: request.headers.get("content-type") || null,
+      userAgent: request.headers.get("user-agent") || null,
+    };
+    console.info("[GYG inbound]", JSON.stringify(trace));
+    return trace.authValid;
+  } catch (error) {
+    console.error("[GYG inbound] trace failed", error);
+    return checkGygBasicAuth(request);
+  }
+}
+
+export function requireGygAuth(request, topic = "unknown") {
+  return gygRequestTrace(request, topic)
     ? null
     : gygV1Error(
         "AUTHORIZATION_FAILURE",
@@ -83,6 +108,16 @@ export async function recordGygAuthenticatedTraffic(
         responseSummary = { parseError: true };
       }
     }
+
+    console.info(
+      "[GYG outbound]",
+      JSON.stringify({
+        topic: String(topic || "unknown"),
+        status,
+        responseSummary,
+        productId: payload.productId || null,
+      }),
+    );
 
     await prisma.integrationEvent.create({
       data: {
