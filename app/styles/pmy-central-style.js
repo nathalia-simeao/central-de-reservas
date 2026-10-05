@@ -356,6 +356,13 @@ export function buildCentralStyles(theme) {
         cursor:pointer;
       }
       .pmy-gyg-product-id__copy:hover { background:var(--primary-hover); }
+      .pmy-gyg-option-map-card {
+        margin-top:12px;
+        padding:14px;
+        border:1px solid #dbe9dd;
+        border-radius:10px;
+        background:#fff;
+      }
       .pmy-connect-oauth-btn { width:100%; padding:13px; border-radius:10px; border:1.5px solid #ddd; background:#fff; font-weight:700; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:0.2s; color:var(--text-dark); margin-bottom:10px; }
       .pmy-connect-oauth-btn:hover { border-color:var(--primary-green); background:#f5fcf5; }
   
