@@ -6,7 +6,7 @@ import {
 } from "../utils/gyg-v1.server";
 
 export const action = async ({ request }) => {
-  const authError = requireGygAuth(request);
+  const authError = requireGygAuth(request, "book");
   if (authError) return authError;
 
   const parsed = await readGygBody(request);
