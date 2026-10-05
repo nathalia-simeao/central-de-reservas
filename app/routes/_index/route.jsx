@@ -1932,9 +1932,9 @@ function CentralDeReservasContent() {
     setGygConfigActivityId(tour?.gygActivityId || "");
     setGygConfigOptions(
       Object.fromEntries(
-        (tour?.variants || []).map((variant) => [
-          variant.id,
-          variant.gygOptionId || "",
+        (tour?.gygProductOptions || []).map((option) => [
+          option.id,
+          option.gygOptionId || "",
         ]),
       ),
     );
