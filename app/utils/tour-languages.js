@@ -38,6 +38,23 @@ export function extractTourLanguages(tour) {
     }
   }
 
+  const metafields = tour?.metafields || {};
+  for (const key of [
+    "languages_info",
+    "languages",
+    "language",
+    "idiomas",
+    "idioma",
+  ]) {
+    const raw = metafields?.[key];
+    for (const language of String(raw || "")
+      .split(/[,;|\n]+/)
+      .map((item) => clean(item))
+      .filter(Boolean)) {
+      add(language);
+    }
+  }
+
   return [...values.values()];
 }
 
