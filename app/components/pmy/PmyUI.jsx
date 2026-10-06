@@ -202,6 +202,189 @@ export function Select({ className = "", children, ...props }) {
   return <select className={["pmy-ds-input", className].filter(Boolean).join(" ")} {...props}>{children}</select>;
 }
 
+export function DropdownSelect({
+  value = "",
+  options = [],
+  onChange,
+  placeholder = "Selecione",
+  searchable = false,
+  searchPlaceholder = "Pesquisar...",
+  emptyLabel = "Nenhuma opção encontrada.",
+  disabled = false,
+  required = false,
+  className = "",
+  ariaLabel,
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapperRef = useRef(null);
+  const triggerRef = useRef(null);
+  const searchRef = useRef(null);
+
+  const normalizedQuery = String(query || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  const visibleOptions = normalizedQuery
+    ? options.filter((option) =>
+        String(option?.label || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
+    : options;
+
+  const selectedOption = options.find(
+    (option) => String(option?.value ?? "") === String(value ?? ""),
+  );
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!wrapperRef.current?.contains(event.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+        triggerRef.current?.focus?.();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    const focusTimer = searchable
+      ? window.setTimeout(() => searchRef.current?.focus?.(), 0)
+      : null;
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      if (focusTimer) window.clearTimeout(focusTimer);
+    };
+  }, [open, searchable]);
+
+  const selectOption = (option) => {
+    if (option?.disabled) return;
+    onChange?.(option?.value ?? "", option);
+    setOpen(false);
+    setQuery("");
+    triggerRef.current?.focus?.();
+  };
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={["pmy-ds-dropdown", className].filter(Boolean).join(" ")}
+      data-required={required ? "true" : undefined}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className={[
+          "pmy-ds-input",
+          "pmy-ds-dropdown__trigger",
+          open ? "is-open" : "",
+          !selectedOption ? "is-placeholder" : "",
+        ].filter(Boolean).join(" ")}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel || placeholder}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen((current) => !current);
+          if (open) setQuery("");
+        }}
+        onKeyDown={(event) => {
+          if (disabled) return;
+          if (["ArrowDown", "ArrowUp"].includes(event.key) && !open) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span className="pmy-ds-dropdown__value">
+          {selectedOption?.label || placeholder}
+        </span>
+        <Icon
+          name="chevronDown"
+          size={17}
+          className={["pmy-ds-dropdown__chevron", open ? "is-open" : ""].filter(Boolean).join(" ")}
+        />
+      </button>
+
+      {open ? (
+        <div className="pmy-ds-dropdown__popover">
+          {searchable ? (
+            <div className="pmy-ds-dropdown__search-wrap">
+              <Icon name="search" size={16} />
+              <input
+                ref={searchRef}
+                type="search"
+                className="pmy-ds-dropdown__search"
+                value={query}
+                placeholder={searchPlaceholder}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+          ) : null}
+
+          <div
+            className="pmy-ds-dropdown__list"
+            role="listbox"
+            aria-label={ariaLabel || placeholder}
+          >
+            {visibleOptions.length > 0 ? (
+              visibleOptions.map((option) => {
+                const selected =
+                  String(option?.value ?? "") === String(value ?? "");
+                return (
+                  <button
+                    key={String(option?.value ?? option?.label)}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    disabled={option?.disabled}
+                    className={[
+                      "pmy-ds-dropdown__option",
+                      selected ? "is-selected" : "",
+                    ].filter(Boolean).join(" ")}
+                    onClick={() => selectOption(option)}
+                  >
+                    <span className="pmy-ds-dropdown__option-text">
+                      <span className="pmy-ds-dropdown__option-label">
+                        {option?.label}
+                      </span>
+                      {option?.meta ? (
+                        <span className="pmy-ds-dropdown__option-meta">
+                          {option.meta}
+                        </span>
+                      ) : null}
+                    </span>
+                    {selected ? <Icon name="check" size={16} /> : null}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="pmy-ds-dropdown__empty">{emptyLabel}</div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function parseDateKey(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
