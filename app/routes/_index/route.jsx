@@ -32,6 +32,11 @@ import {
 
 export { loader, action } from "../../services/central-route.server";
 
+export const headers = () => ({
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+});
 
 function CentralDeReservasContent() {
   const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
