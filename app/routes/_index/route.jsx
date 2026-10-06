@@ -1667,19 +1667,18 @@ function CentralDeReservasContent() {
       );
     };
 
-    // Primeiro usa o catálogo persistido para resposta instantânea.
+    // Usa o catálogo persistido para uma resposta imediata, mas sempre
+    // confirma no Shopify para produtos Shopify. Assim um snapshot antigo
+    // (ou um fallback PT/EN salvo antes) nunca ganha da fonte real.
     const cachedLanguages = extractTourLanguages(tour);
-    applyLanguages(cachedLanguages);
+    if (cachedLanguages.length > 0) {
+      applyLanguages(cachedLanguages);
+    }
 
-    // Se o snapshot ainda não tiver a dimensão de idioma (ex.: primeiro
-    // acesso após este deploy), consulta as opções atuais do produto Shopify.
-    if (
-      cachedLanguages.length === 0 &&
-      String(tour?.id || "").startsWith("gid://shopify/Product/")
-    ) {
+    if (String(tour?.id || "").startsWith("gid://shopify/Product/")) {
       try {
         const payload = await requestResourceJson(
-          `/api/tour-languages?productId=${encodeURIComponent(tour.id)}`,
+          `/api/tour-languages?productId=${encodeURIComponent(tour.id)}&ts=${Date.now()}`,
         );
 
         if (requestId !== tourLanguageRequestIdRef.current) return;
@@ -1687,10 +1686,18 @@ function CentralDeReservasContent() {
           ? payload.languages.filter(Boolean)
           : [];
 
-        if (liveLanguages.length > 0) applyLanguages(liveLanguages);
+        if (liveLanguages.length > 0) {
+          applyLanguages(liveLanguages);
+          return;
+        }
       } catch (error) {
         console.warn("[PMY] tour language lookup failed", error);
       }
+    }
+
+    // Só cai no fallback quando nenhuma fonte real trouxe idioma.
+    if (cachedLanguages.length === 0) {
+      applyLanguages(["Português", "English"]);
     }
   };
 
