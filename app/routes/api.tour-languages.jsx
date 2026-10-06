@@ -20,6 +20,13 @@ function isLanguageOption(value) {
   );
 }
 
+function splitLanguageList(value) {
+  return clean(value)
+    .split(/[,;|\n]+/)
+    .map((item) => clean(item))
+    .filter(Boolean);
+}
+
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const url = new URL(request.url);
@@ -40,6 +47,12 @@ export const loader = async ({ request }) => {
           options {
             name
             values
+          }
+          metafields(first: 30, namespace: "custom") {
+            nodes {
+              key
+              value
+            }
           }
           variants(first: 100) {
             nodes {
@@ -90,6 +103,16 @@ export const loader = async ({ request }) => {
   for (const variant of product?.variants?.nodes || []) {
     for (const option of variant?.selectedOptions || []) {
       if (isLanguageOption(option?.name)) add(option?.value);
+    }
+  }
+
+  for (const metafield of product?.metafields?.nodes || []) {
+    if (
+      ["languages_info", "languages", "language", "idiomas", "idioma"].includes(
+        normalized(metafield?.key),
+      )
+    ) {
+      for (const language of splitLanguageList(metafield?.value)) add(language);
     }
   }
 
