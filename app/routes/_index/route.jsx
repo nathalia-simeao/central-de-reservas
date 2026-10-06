@@ -45,6 +45,7 @@ function CentralDeReservasContent() {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsLoadError, setBookingsLoadError] = useState("");
   const bookingsRequestIdRef = useRef(0);
+  const tourLanguageRequestIdRef = useRef(0);
   const bookingFilterMountedRef = useRef(false);
   const bookings = bookingsList;
 
@@ -1633,7 +1634,9 @@ function CentralDeReservasContent() {
   const handlePresetSelection = (k) => { setSelectedPeriod(k); setIsDateMenuOpen(false); };
   const handleCustomDateApply = () => { if (customStart && customEnd) { setSelectedPeriod("period_custom"); setIsDateMenuOpen(false); } };
 
-  const handleTourSelectionChange = (id) => {
+  const handleTourSelectionChange = async (id) => {
+    const requestId = ++tourLanguageRequestIdRef.current;
+
     setSelectedTour(id);
     setTourVariants({ adulto:0, jovem:0, crianca:0, senior:0 });
     setGeneratedLink("");
@@ -1644,25 +1647,51 @@ function CentralDeReservasContent() {
     const availableTimes = getBookingTimesForTour(tour);
     setBookingTime(availableTimes[0] || "");
 
-    // Idiomas agora vêm das opções/variantes reais do produto Shopify.
-    // Só usamos o fallback legado quando o produto realmente não expõe uma
-    // dimensão de idioma.
-    const languages = extractTourLanguages(tour);
-    const nextLanguages = languages.length > 0
-      ? languages
-      : ["Português", "English"];
+    const applyLanguages = (languages) => {
+      if (requestId !== tourLanguageRequestIdRef.current) return;
 
-    setActiveTourLanguages(nextLanguages);
-    setCustLang((current) =>
-      nextLanguages.some(
-        (language) =>
-          String(language).localeCompare(String(current), undefined, {
-            sensitivity: "base",
-          }) === 0,
-      )
-        ? current
-        : nextLanguages[0],
-    );
+      const nextLanguages = languages.length > 0
+        ? languages
+        : ["Português", "English"];
+
+      setActiveTourLanguages(nextLanguages);
+      setCustLang((current) =>
+        nextLanguages.some(
+          (language) =>
+            String(language).localeCompare(String(current), undefined, {
+              sensitivity: "base",
+            }) === 0,
+        )
+          ? current
+          : nextLanguages[0],
+      );
+    };
+
+    // Primeiro usa o catálogo persistido para resposta instantânea.
+    const cachedLanguages = extractTourLanguages(tour);
+    applyLanguages(cachedLanguages);
+
+    // Se o snapshot ainda não tiver a dimensão de idioma (ex.: primeiro
+    // acesso após este deploy), consulta as opções atuais do produto Shopify.
+    if (
+      cachedLanguages.length === 0 &&
+      String(tour?.id || "").startsWith("gid://shopify/Product/")
+    ) {
+      try {
+        const payload = await requestResourceJson(
+          `/api/tour-languages?productId=${encodeURIComponent(tour.id)}`,
+        );
+
+        if (requestId !== tourLanguageRequestIdRef.current) return;
+        const liveLanguages = Array.isArray(payload?.languages)
+          ? payload.languages.filter(Boolean)
+          : [];
+
+        if (liveLanguages.length > 0) applyLanguages(liveLanguages);
+      } catch (error) {
+        console.warn("[PMY] tour language lookup failed", error);
+      }
+    }
   };
 
   const handleModalTourChange = (id) => {
