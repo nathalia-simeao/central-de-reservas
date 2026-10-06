@@ -378,6 +378,8 @@ export function buildDashboardViewModel({
         imageAlt: product.imageAlt,
         active: product.active,
         variants: product.variants,
+        options: Array.isArray(product.options) ? product.options : [],
+        languages: Array.isArray(product.languages) ? product.languages : [],
         collections: product.collections,
         scheduleSlots: product.scheduleSlots,
         description: product.description,
@@ -403,8 +405,22 @@ export function buildDashboardViewModel({
       collections: Array.isArray(tour.shopifySnapshot?.collections)
         ? tour.shopifySnapshot.collections
         : [],
+      options: Array.isArray(tour.shopifySnapshot?.options)
+        ? tour.shopifySnapshot.options
+        : [],
+      languages: Array.isArray(tour.shopifySnapshot?.languages)
+        ? tour.shopifySnapshot.languages
+        : [],
       scheduleSlots: tour.scheduleSlots || [],
-      variants: tour.variants || [],
+      variants: (tour.variants || []).map((variant) => ({
+        ...variant,
+        selectedOptions:
+          tour.shopifySnapshot?.variantOptions &&
+          typeof tour.shopifySnapshot.variantOptions === "object" &&
+          Array.isArray(tour.shopifySnapshot.variantOptions[variant.shopifyVariantId])
+            ? tour.shopifySnapshot.variantOptions[variant.shopifyVariantId]
+            : [],
+      })),
       maxCapacity: Number(tour.maxCapacity ?? 20),
       description: tour.shopifySnapshot?.description || "",
     }));
