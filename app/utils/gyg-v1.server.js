@@ -253,6 +253,30 @@ function slotIso(dateKey, timeKey, timeZone = "Europe/Lisbon") {
   return `${dateKey}T${timeKey}:00${timezoneOffsetForInstant(instant, timeZone)}`;
 }
 
+export function formatGygDateTime(value, timeZone = "Europe/Lisbon") {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = timeZoneParts(date, timeZone);
+  const pad = (part) => String(part).padStart(2, "0");
+  const offset = timezoneOffsetForInstant(date, timeZone);
+
+  return [
+    String(parts.year).padStart(4, "0"),
+    "-",
+    pad(parts.month),
+    "-",
+    pad(parts.day),
+    "T",
+    pad(parts.hour),
+    ":",
+    pad(parts.minute),
+    ":",
+    pad(parts.second),
+    offset,
+  ].join("");
+}
+
 function nextDateKey(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
   const next = new Date(Date.UTC(year, month - 1, day + 1, 12, 0, 0));
@@ -515,6 +539,11 @@ export async function reserveGyg(data) {
         platform: GYG_PLATFORM,
         externalBookingId: gygBookingReference,
       },
+      include: {
+        tour: {
+          select: { timezone: true },
+        },
+      },
     });
 
     if (existingBooking) {
@@ -527,9 +556,12 @@ export async function reserveGyg(data) {
 
       return gygV1Success({
         reservationReference: responseBookingReference(existingBooking),
-        reservationExpiration: existingBooking.holdExpiresAt
-          ? new Date(existingBooking.holdExpiresAt).toISOString()
-          : new Date(Date.now() + HOLD_MINUTES * 60 * 1000).toISOString(),
+        reservationExpiration: formatGygDateTime(
+          existingBooking.holdExpiresAt
+            ? new Date(existingBooking.holdExpiresAt)
+            : new Date(Date.now() + HOLD_MINUTES * 60 * 1000),
+          existingBooking.tour?.timezone || "Europe/Lisbon",
+        ),
       });
     }
 
@@ -633,7 +665,10 @@ export async function reserveGyg(data) {
 
     return gygV1Success({
       reservationReference: responseBookingReference(booking),
-      reservationExpiration: expiration.toISOString(),
+      reservationExpiration: formatGygDateTime(
+        expiration,
+        tour.timezone || "Europe/Lisbon",
+      ),
     });
   } catch (error) {
     console.error("[GYG v1] reserve failed", error);
