@@ -116,6 +116,22 @@ export default function AgendaTab(props) {
       blockMessage.toLowerCase().includes(term),
     );
 
+  const formatBlockDate = (value) => {
+    if (!value) return "";
+
+    let dateKey = "";
+    if (typeof value === "string") {
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) dateKey = `${match[1]}-${match[2]}-${match[3]}`;
+    } else if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      dateKey = value.toISOString().slice(0, 10);
+    }
+
+    if (!dateKey) return String(value);
+    const [year, month, day] = dateKey.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
   const selectedBlockTour = blockTourId
     ? tourOptions.find((tour) => tour.id === blockTourId)
     : null;
@@ -493,7 +509,13 @@ export default function AgendaTab(props) {
                   </div>
                 </div>
 
-                <FormField label={t.block_select_hour}>
+                <FormField
+                  label={t.block_select_hour}
+                  hint={tr(
+                    "Escolha um horário para bloquear somente aquela saída. Ex.: 14:00 fica fechado e 10:00 continua disponível.",
+                    "Choose one time to block only that departure. Example: 14:00 is closed while 10:00 remains available.",
+                  )}
+                >
                   <Select
                     value={blockSelectedHour}
                     onChange={(event) => setBlockSelectedHour(event.target.value)}
@@ -523,6 +545,15 @@ export default function AgendaTab(props) {
                       {tr(
                         "Nenhum horário encontrado. Os horários são extraídos automaticamente das variantes do produto ou do metafield schedule.",
                         "No time found. Times are automatically extracted from product variants or from the schedule metafield.",
+                      )}
+                    </Toast>
+                  ) : null}
+
+                  {blockSelectedHour !== "ALL" ? (
+                    <Toast tone="info">
+                      {tr(
+                        `Somente a saída das ${blockSelectedHour} será bloqueada nesta regra. Os outros horários do mesmo dia continuam vendáveis.`,
+                        `Only the ${blockSelectedHour} departure will be blocked by this rule. Other times on the same day remain sellable.`,
                       )}
                     </Toast>
                   ) : null}
@@ -659,7 +690,7 @@ export default function AgendaTab(props) {
                       </div>
                       <div className="pmy-ds-block-row__meta">
                         {block.date
-                          ? String(block.date).slice(0, 10)
+                          ? formatBlockDate(block.date)
                           : `${tr("dia da semana", "weekday")} ${block.dayOfWeek}`}
                         {" · "}
                         {block.timeSlot === "ALL" || !block.timeSlot
