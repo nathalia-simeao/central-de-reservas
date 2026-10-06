@@ -10,6 +10,41 @@ function clean(value) {
   return String(value ?? "").trim();
 }
 
+function normalizeOptionName(value) {
+  return clean(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isLanguageOptionName(value) {
+  return ["language", "languages", "idioma", "idiomas", "lingua", "linguas"].includes(
+    normalizeOptionName(value),
+  );
+}
+
+function extractProductLanguages(product) {
+  const values = new Set();
+
+  for (const option of product?.options || []) {
+    if (!isLanguageOptionName(option?.name)) continue;
+    for (const value of option?.values || []) {
+      const language = clean(value);
+      if (language) values.add(language);
+    }
+  }
+
+  for (const variant of product?.variants || []) {
+    for (const selected of variant?.selectedOptions || []) {
+      if (!isLanguageOptionName(selected?.name)) continue;
+      const language = clean(selected?.value);
+      if (language) values.add(language);
+    }
+  }
+
+  return [...values];
+}
+
 function scheduleFromProduct(product) {
   const configured = Array.isArray(product?.scheduleSlots)
     ? product.scheduleSlots.filter(Boolean).map(String).sort()
@@ -74,6 +109,10 @@ export async function fetchShopifyCatalog(admin) {
             collections(first: 5) {
               edges { node { id title } }
             }
+            options {
+              name
+              values
+            }
             variants(first: 50) {
               edges {
                 node {
@@ -83,6 +122,10 @@ export async function fetchShopifyCatalog(admin) {
                   price
                   compareAtPrice
                   availableForSale
+                  selectedOptions {
+                    name
+                    value
+                  }
                 }
               }
             }
@@ -112,6 +155,12 @@ export async function fetchShopifyCatalog(admin) {
         ? `€${Number(variant.compareAtPrice).toFixed(0)}`
         : null,
       available: variant.availableForSale,
+      selectedOptions: Array.isArray(variant.selectedOptions)
+        ? variant.selectedOptions.map((option) => ({
+            name: option?.name || "",
+            value: option?.value || "",
+          }))
+        : [],
     }));
 
     const metafields = {};
@@ -134,6 +183,18 @@ export async function fetchShopifyCatalog(admin) {
       ? Math.min(...variants.map((variant) => variant.priceRaw))
       : 0;
 
+    const options = Array.isArray(node.options)
+      ? node.options.map((option) => ({
+          name: option?.name || "",
+          values: Array.isArray(option?.values) ? option.values.filter(Boolean) : [],
+        }))
+      : [];
+
+    const languages = extractProductLanguages({
+      options,
+      variants,
+    });
+
     return {
       id: node.id,
       name: node.title,
@@ -147,6 +208,8 @@ export async function fetchShopifyCatalog(admin) {
       image: node.featuredImage?.url || null,
       imageAlt: node.featuredImage?.altText || node.title,
       variants,
+      options,
+      languages,
       collections,
       scheduleSlots,
       metafields,
