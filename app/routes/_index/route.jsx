@@ -7,7 +7,6 @@ import AgendaTab from "../../components/pmy/AgendaTab";
 import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
-import MediaTab from "../../components/pmy/MediaTab";
 import { ConfirmDialog, Icon, ToastViewport } from "../../components/pmy/PmyUI";
 import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
@@ -415,7 +414,6 @@ function CentralDeReservasContent() {
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
     { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
-    { key: "midias", icon: "media", label: lang === "pt" ? "Banco de Mídias" : "Media Library" },
   ];
 
   const openNavigationTab = (key) => {
@@ -713,8 +711,7 @@ function CentralDeReservasContent() {
   }, [lang, mediaLoading, mediaPage, requestResourceJson]);
 
   useEffect(() => {
-    const needsMedia =
-      activeTab === "midias" || activeModal === "pickPhotoForGuide";
+    const needsMedia = activeModal === "pickPhotoForGuide";
     if (!needsMedia || mediaLoaded || mediaLoading) return;
     loadMediaLibrary({ reset: true });
   }, [
@@ -2445,7 +2442,6 @@ function CentralDeReservasContent() {
               {activeTab==='integracoes' && t.integrations_title}
               {activeTab==='guias' && t.guides_title}
               {activeTab==='configuracoes' && t.settings_title}
-              {activeTab==='midias' && (lang === 'pt' ? 'Banco de Mídias' : 'Media Library')}
             </h1>
               </div>
             </div>
@@ -2540,14 +2536,6 @@ function CentralDeReservasContent() {
             t, theme, lang
           }} />
 
-          <MediaTab {...{
-            activeTab, handleCopyMediaUrl, handleDeleteMedia, handleMediaUpload,
-            mediaCategoryInput, mediaFilter, mediaLabelInput, mediaList, mediaPreview,
-            mediaLoading, mediaLoadError, mediaHasMore, loadMediaLibrary,
-            mediaUploadError, mediaUploadProgress, mediaUploadRef, mediaUploading, setActiveModal,
-            setMediaCategoryInput, setMediaFilter, setMediaLabelInput, setMediaList,
-            setMediaPreview, setShowShopifySource, showShopifySource, lang
-          }} />
 
           </div>
         </main>

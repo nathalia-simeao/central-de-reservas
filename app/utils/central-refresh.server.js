@@ -393,11 +393,9 @@ async function runCentralRefresh({
     errors.push(`guides: ${error?.message || String(error)}`);
   }
 
-  try {
-    state.media = await syncShopifyMediaLibrary(prisma, admin, shop);
-  } catch (error) {
-    errors.push(`media: ${error?.message || String(error)}`);
-  }
+  // Shopify Files remains the source of truth. The Central no longer mirrors
+  // the full media library into PostgreSQL during background refreshes.
+  state.media = null;
 
   state.lastError = errors.length ? errors.join(" | ") : null;
 }
