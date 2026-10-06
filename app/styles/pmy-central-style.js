@@ -938,8 +938,8 @@ export function buildCentralStyles(theme) {
         height:9px;
         display:inline-block;
         border-radius:3px;
-        background:color-mix(in srgb, var(--primary-green) 28%, transparent);
-        border:1px solid color-mix(in srgb, var(--primary-green) 30%, transparent);
+        background:color-mix(in srgb, #2f6fdb 30%, transparent);
+        border:1px solid color-mix(in srgb, #2f6fdb 58%, transparent);
       }
       .pmy-legend-line {
         width:16px;
@@ -986,9 +986,15 @@ export function buildCentralStyles(theme) {
         font-weight:700;
       }
       .pmy-trend-x-label { font-size:10px; }
+      .pmy-trend-axis-label--bookings {
+        fill:#2f6fdb;
+      }
+      .pmy-trend-axis-label--revenue {
+        fill:var(--primary-green);
+      }
       .pmy-trend-bar {
-        fill:color-mix(in srgb, var(--primary-green) 24%, transparent);
-        stroke:color-mix(in srgb, var(--primary-green) 34%, transparent);
+        fill:color-mix(in srgb, #2f6fdb 30%, transparent);
+        stroke:#2f6fdb;
         stroke-width:1;
         transition:opacity .16s ease;
       }
@@ -1052,6 +1058,8 @@ export function buildCentralStyles(theme) {
         text-transform:uppercase;
         letter-spacing:.08em;
       }
+      .pmy-trend-axis-caption--bookings { color:#2f6fdb; }
+      .pmy-trend-axis-caption--revenue { color:var(--primary-green); }
       .pmy-trend-empty {
         min-height:260px;
         display:flex;
