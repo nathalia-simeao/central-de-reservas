@@ -202,6 +202,12 @@ export const loader = async ({ request }) => {
             compareAtPrice: null,
             available: variant.active !== false,
             currency: variant.currency || null,
+            selectedOptions:
+              snapshot.variantOptions &&
+              typeof snapshot.variantOptions === "object" &&
+              Array.isArray(snapshot.variantOptions[variant.shopifyVariantId])
+                ? snapshot.variantOptions[variant.shopifyVariantId]
+                : [],
           };
         });
       const numericPrices = variants
