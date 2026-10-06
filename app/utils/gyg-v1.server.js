@@ -395,10 +395,48 @@ function responseBookingReference(booking) {
   return booking?.id || null;
 }
 
-function ticketsForBooking() {
-  // PMY currently uses GetYourGuide's voucher. We therefore return no
-  // supplier-generated ticket codes until PMY introduces its own QR/barcode flow.
-  return [];
+export function ticketsForBooking(booking) {
+  const reference = String(
+    booking?.id || booking?.bookingRef || booking?.externalBookingId || "booking",
+  )
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 48);
+
+  const categories = [
+    ["ADULT", Number(booking?.adults || 0)],
+    ["CHILD", Number(booking?.children || 0)],
+    ["YOUTH", Number(booking?.youths || 0)],
+    ["SENIOR", Number(booking?.seniors || 0)],
+  ];
+
+  const tickets = [];
+  for (const [category, rawCount] of categories) {
+    const count = Number.isInteger(rawCount) && rawCount > 0 ? rawCount : 0;
+    for (let index = 1; index <= count; index += 1) {
+      tickets.push({
+        category,
+        ticketCode: `PMY-${reference}-${category}-${index}`,
+        ticketCodeType: "QR_CODE",
+      });
+    }
+  }
+
+  return tickets;
+}
+
+export function bookingMatchesGygRequest(booking, { productId, startTime, counts }) {
+  if (!booking || !startTime || !counts) return false;
+
+  return (
+    (!booking.externalProductId ||
+      String(booking.externalProductId) === String(productId)) &&
+    new Date(booking.startTime).getTime() === startTime.getTime() &&
+    Number(booking.totalParticipants || 0) === counts.totalParticipants &&
+    Number(booking.adults || 0) === counts.adults &&
+    Number(booking.children || 0) === counts.children &&
+    Number(booking.youths || 0) === counts.youths &&
+    Number(booking.seniors || 0) === counts.seniors
+  );
 }
 
 export async function getGygAvailabilities({ productId, fromDateTime, toDateTime }) {
@@ -534,35 +572,52 @@ export async function reserveGyg(data) {
   }
 
   try {
-    const existingBooking = await prisma.booking.findFirst({
+    const existingBookings = await prisma.booking.findMany({
       where: {
         platform: GYG_PLATFORM,
-        externalBookingId: gygBookingReference,
+        OR: [
+          { externalBookingId: gygBookingReference },
+          { bookingRef: gygBookingReference },
+        ],
       },
       include: {
         tour: {
           select: { timezone: true },
         },
       },
+      orderBy: { updatedAt: "desc" },
     });
 
-    if (existingBooking) {
-      if (existingBooking.status === "CANCELED") {
-        return gygV1Error(
-          "INVALID_RESERVATION",
-          "This GetYourGuide booking reference was already cancelled.",
-        );
-      }
+    const matchingExisting = existingBookings.find(
+      (booking) =>
+        booking.status !== "CANCELED" &&
+        bookingMatchesGygRequest(booking, {
+          productId,
+          startTime,
+          counts,
+        }),
+    );
 
+    if (matchingExisting) {
       return gygV1Success({
-        reservationReference: responseBookingReference(existingBooking),
+        reservationReference: responseBookingReference(matchingExisting),
         reservationExpiration: formatGygDateTime(
-          existingBooking.holdExpiresAt
-            ? new Date(existingBooking.holdExpiresAt)
+          matchingExisting.holdExpiresAt
+            ? new Date(matchingExisting.holdExpiresAt)
             : new Date(Date.now() + HOLD_MINUTES * 60 * 1000),
-          existingBooking.tour?.timezone || "Europe/Lisbon",
+          matchingExisting.tour?.timezone || "Europe/Lisbon",
         ),
       });
+    }
+
+    if (
+      existingBookings.length > 0 &&
+      existingBookings.every((booking) => booking.status === "CANCELED")
+    ) {
+      return gygV1Error(
+        "INVALID_RESERVATION",
+        "This GetYourGuide booking reference was already cancelled.",
+      );
     }
 
     const product = await resolveGygProduct(prisma, productId);
@@ -620,11 +675,26 @@ export async function reserveGyg(data) {
     }
 
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
+    const isBookingChange = existingBookings.some(
+      (booking) => booking.status === "CONFIRMED",
+    );
+    const reservationExternalId = isBookingChange
+      ? [
+          gygBookingReference,
+          "change",
+          startTime.toISOString(),
+          counts.adults,
+          counts.children,
+          counts.youths,
+          counts.seniors,
+        ].join(":")
+      : gygBookingReference;
+
     const guarded = await createBookingWithCapacityGuard(prisma, {
       tourId: tour.id,
       startTime,
       platform: GYG_PLATFORM,
-      externalBookingId: gygBookingReference,
+      externalBookingId: reservationExternalId,
       requestedSeats: counts.totalParticipants,
       bookingData: {
         customerName: "GetYourGuide Customer",
@@ -632,7 +702,7 @@ export async function reserveGyg(data) {
         platform: GYG_PLATFORM,
         status: "PENDING",
         bookingRef: gygBookingReference,
-        externalBookingId: gygBookingReference,
+        externalBookingId: reservationExternalId,
         externalProductId: String(productId),
         adults: counts.adults,
         children: counts.children,
@@ -691,20 +761,28 @@ export async function cancelGygReservation(data) {
   }
 
   try {
-    const booking = await prisma.booking.findFirst({
-      where: {
-        platform: GYG_PLATFORM,
-        OR: [
-          ...(reservationReference ? [{ id: reservationReference }] : []),
-          ...(gygBookingReference
-            ? [
-                { externalBookingId: gygBookingReference },
-                { bookingRef: gygBookingReference },
-              ]
-            : []),
-        ],
-      },
-    });
+    let booking = reservationReference
+      ? await prisma.booking.findFirst({
+          where: {
+            platform: GYG_PLATFORM,
+            id: reservationReference,
+          },
+        })
+      : null;
+
+    if (!booking && gygBookingReference) {
+      booking = await prisma.booking.findFirst({
+        where: {
+          platform: GYG_PLATFORM,
+          status: "PENDING",
+          OR: [
+            { externalBookingId: gygBookingReference },
+            { bookingRef: gygBookingReference },
+          ],
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
 
     if (!booking || booking.status === "CANCELED") {
       return gygV1Success({});
@@ -875,7 +953,7 @@ export async function bookGyg(data) {
           .toUpperCase()
           .slice(0, 3) || null,
         bookingRef: gygBookingReference,
-        externalBookingId: gygBookingReference,
+        externalBookingId: booking.externalBookingId || gygBookingReference,
         externalProductId: data?.productId || booking.externalProductId,
         syncStatus: "SYNCED",
         lastSyncedAt: new Date(),
@@ -918,20 +996,28 @@ export async function cancelGygBooking(data) {
   }
 
   try {
-    const booking = await prisma.booking.findFirst({
-      where: {
-        platform: GYG_PLATFORM,
-        OR: [
-          ...(bookingReference ? [{ id: bookingReference }] : []),
-          ...(gygBookingReference
-            ? [
-                { externalBookingId: gygBookingReference },
-                { bookingRef: gygBookingReference },
-              ]
-            : []),
-        ],
-      },
-    });
+    let booking = bookingReference
+      ? await prisma.booking.findFirst({
+          where: {
+            platform: GYG_PLATFORM,
+            id: bookingReference,
+          },
+        })
+      : null;
+
+    if (!booking && gygBookingReference) {
+      booking = await prisma.booking.findFirst({
+        where: {
+          platform: GYG_PLATFORM,
+          status: "CONFIRMED",
+          OR: [
+            { externalBookingId: gygBookingReference },
+            { bookingRef: gygBookingReference },
+          ],
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
 
     if (!booking) {
       return gygV1Error(
