@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import "../../styles/pmy-design-system.css";
 
 const ICON_PATHS = {
@@ -200,6 +200,227 @@ export function Input({ className = "", ...props }) {
 
 export function Select({ className = "", children, ...props }) {
   return <select className={["pmy-ds-input", className].filter(Boolean).join(" ")} {...props}>{children}</select>;
+}
+
+function parseDateKey(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day, 12, 0, 0);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) return null;
+  return date;
+}
+
+function dateKey(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    "-",
+    pad(date.getMonth() + 1),
+    "-",
+    pad(date.getDate()),
+  ].join("");
+}
+
+export function DatePicker({
+  value = "",
+  onChange,
+  locale = "pt-PT",
+  placeholder = "dd/mm/aaaa",
+  todayLabel = "Hoje",
+  clearLabel = "Limpar",
+  previousMonthLabel = "Mês anterior",
+  nextMonthLabel = "Próximo mês",
+  className = "",
+  min = "",
+  max = "",
+  ...props
+}) {
+  const parsedValue = parseDateKey(value);
+  const initialDate = parsedValue || new Date();
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(initialDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
+  const wrapperRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEffect(() => {
+    if (!parsedValue) return;
+    setViewYear(parsedValue.getFullYear());
+    setViewMonth(parsedValue.getMonth());
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      if (!wrapperRef.current?.contains(event.target)) setOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus?.();
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const firstDay = new Date(viewYear, viewMonth, 1, 12, 0, 0);
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0, 12, 0, 0).getDate();
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const monthFormatter = new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+  });
+  const displayFormatter = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  const weekStart = new Date(2026, 0, 5, 12, 0, 0);
+  const weekdays = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + index);
+    return weekdayFormatter.format(day);
+  });
+  const minDate = parseDateKey(min);
+  const maxDate = parseDateKey(max);
+  const today = new Date();
+  const todayKey = dateKey(today);
+
+  const cells = [];
+  for (let index = 0; index < mondayOffset; index += 1) {
+    cells.push({ key: `empty-${index}`, empty: true });
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(viewYear, viewMonth, day, 12, 0, 0);
+    const key = dateKey(date);
+    const disabled =
+      (minDate && date < minDate) ||
+      (maxDate && date > maxDate);
+    cells.push({ key, date, day, disabled });
+  }
+
+  const changeMonth = (direction) => {
+    const next = new Date(viewYear, viewMonth + direction, 1, 12, 0, 0);
+    setViewYear(next.getFullYear());
+    setViewMonth(next.getMonth());
+  };
+
+  const selectDate = (date) => {
+    const nextValue = dateKey(date);
+    onChange?.({ target: { value: nextValue } });
+    setOpen(false);
+    triggerRef.current?.focus?.();
+  };
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={["pmy-ds-date-picker", className].filter(Boolean).join(" ")}
+      {...props}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className={["pmy-ds-input", "pmy-ds-date-picker__trigger", open ? "is-open" : ""].filter(Boolean).join(" ")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={value ? "" : "pmy-ds-date-picker__placeholder"}>
+          {parsedValue ? displayFormatter.format(parsedValue) : placeholder}
+        </span>
+        <Icon name="calendar" size={17} />
+      </button>
+
+      {open ? (
+        <div className="pmy-ds-date-picker__popover" role="dialog" aria-label={placeholder}>
+          <div className="pmy-ds-date-picker__header">
+            <button
+              type="button"
+              className="pmy-ds-date-picker__nav"
+              aria-label={previousMonthLabel}
+              onClick={() => changeMonth(-1)}
+            >
+              <Icon name="chevronLeft" size={18} />
+            </button>
+            <strong className="pmy-ds-date-picker__month">
+              {monthFormatter.format(firstDay)}
+            </strong>
+            <button
+              type="button"
+              className="pmy-ds-date-picker__nav"
+              aria-label={nextMonthLabel}
+              onClick={() => changeMonth(1)}
+            >
+              <Icon name="chevronRight" size={18} />
+            </button>
+          </div>
+
+          <div className="pmy-ds-date-picker__weekdays" aria-hidden="true">
+            {weekdays.map((weekday, index) => (
+              <span key={`${weekday}-${index}`}>{weekday}</span>
+            ))}
+          </div>
+
+          <div className="pmy-ds-date-picker__grid">
+            {cells.map((cell) =>
+              cell.empty ? (
+                <span key={cell.key} className="pmy-ds-date-picker__spacer" />
+              ) : (
+                <button
+                  key={cell.key}
+                  type="button"
+                  className={[
+                    "pmy-ds-date-picker__day",
+                    cell.key === value ? "is-selected" : "",
+                    cell.key === todayKey ? "is-today" : "",
+                  ].filter(Boolean).join(" ")}
+                  disabled={cell.disabled}
+                  aria-pressed={cell.key === value}
+                  onClick={() => selectDate(cell.date)}
+                >
+                  {cell.day}
+                </button>
+              ),
+            )}
+          </div>
+
+          <div className="pmy-ds-date-picker__footer">
+            <button
+              type="button"
+              className="pmy-ds-date-picker__footer-action"
+              onClick={() => {
+                onChange?.({ target: { value: "" } });
+                setOpen(false);
+              }}
+            >
+              {clearLabel}
+            </button>
+            <button
+              type="button"
+              className="pmy-ds-date-picker__footer-action is-primary"
+              onClick={() => selectDate(today)}
+            >
+              {todayLabel}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function EmptyState({
