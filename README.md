@@ -120,6 +120,8 @@ Em produção, o mesmo fluxo é executado antes do start da aplicação.
 
 O deploy de aplicação é feito pelo pipeline conectado ao branch `main`. Alterações de configuração do app Shopify em TOML também precisam ser publicadas no Shopify quando aplicável.
 
+O serviço de produção deve manter pelo menos uma instância saudável durante rollouts; um novo commit em `main` também força uma nova execução do pipeline quando for necessário recuperar um deploy interrompido.
+
 A configuração Shopify está padronizada na API `2026-04` tanto no runtime quanto nos webhooks. Antes de publicar a configuração do app, use:
 
 ```bash
