@@ -1831,6 +1831,7 @@ function CentralDeReservasContent() {
 
   const handleBlockTourSelectionChange = (id) => {
     setBlockTourId(id);
+    setBlockSelectedHour("ALL");
     const tour = tourOptions.find(t => t.id === id);
 
     // 1. Tenta metafield 'schedule' primeiro
