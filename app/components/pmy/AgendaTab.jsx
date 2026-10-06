@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  DatePicker,
   EmptyState,
   FormField,
   Icon,
@@ -445,10 +446,15 @@ export default function AgendaTab(props) {
             </FormField>
 
             <FormField label={t.form_date_time}>
-              <Input
-                type="date"
+              <DatePicker
                 value={blockDateTime}
                 onChange={(event) => setBlockDateTime(event.target.value)}
+                locale={lang === "pt" ? "pt-PT" : "en-GB"}
+                placeholder={tr("Selecione uma data", "Select a date")}
+                todayLabel={tr("Hoje", "Today")}
+                clearLabel={tr("Limpar", "Clear")}
+                previousMonthLabel={tr("Mês anterior", "Previous month")}
+                nextMonthLabel={tr("Próximo mês", "Next month")}
               />
             </FormField>
 
