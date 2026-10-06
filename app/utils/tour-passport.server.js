@@ -108,6 +108,17 @@ function buildShopifySnapshot(product) {
     image: product?.image || null,
     imageAlt: product?.imageAlt || product?.name || null,
     collections: Array.isArray(product?.collections) ? product.collections : [],
+    languages: Array.isArray(product?.languages)
+      ? product.languages.map(clean).filter(Boolean)
+      : [],
+    options: Array.isArray(product?.options)
+      ? product.options.map((option) => ({
+          name: clean(option?.name),
+          values: Array.isArray(option?.values)
+            ? option.values.map(clean).filter(Boolean)
+            : [],
+        }))
+      : [],
     metafields:
       product?.metafields && typeof product.metafields === "object"
         ? product.metafields
