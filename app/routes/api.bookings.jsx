@@ -80,7 +80,13 @@ export const loader = async ({ request }) => {
 
   return json({
     success: true,
-    items,
+    items: items.map((booking) => ({
+      ...booking,
+      totalPrice:
+        booking?.totalPrice === null || booking?.totalPrice === undefined
+          ? null
+          : String(booking.totalPrice),
+    })),
     page: {
       current: page,
       pageSize,
