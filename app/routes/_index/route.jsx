@@ -493,26 +493,38 @@ function CentralDeReservasContent() {
   }, []);
 
   const requestResourceJson = useCallback(async (pathname, formData = null) => {
-    // App Bridge v4 intercepta o fetch global e injeta automaticamente
-    // um ID token Shopify atualizado em requisições same-origin.
-    const response = await fetch(resourceUrl(pathname), {
+    const headers = {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    };
+
+    // O App Bridge normalmente intercepta fetch() e injeta o ID token sozinho,
+    // mas alguns contextos embedded podem não aplicar essa interceptação.
+    // Quando disponível, enviamos um token novo explicitamente para tornar
+    // as resource routes determinísticas e evitar redirects HTML de autenticação.
+    try {
+      const idToken = await window.shopify?.idToken?.();
+      if (idToken) headers.Authorization = `Bearer ${idToken}`;
+    } catch {
+      // Mantém o fetch compatível com a interceptação automática do App Bridge.
+    }
+
+    const targetUrl = resourceUrl(pathname);
+    const response = await fetch(targetUrl, {
       method: formData ? "POST" : "GET",
       body: formData || undefined,
       credentials: "include",
-      headers: {
-        Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-      },
+      headers,
     });
 
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
     const bodyText = await response.text();
 
     if (!contentType.includes("application/json")) {
-      const location = response.url || resourceUrl(pathname);
+      const location = response.url || targetUrl;
       if (/<!doctype|<html/i.test(bodyText)) {
         throw new Error(
-          `A chamada autenticada foi redirecionada pelo Shopify (HTTP ${response.status}). Destino: ${location}`,
+          `A chamada autenticada retornou HTML em vez de JSON (HTTP ${response.status}). Destino: ${location}`,
         );
       }
       throw new Error(
