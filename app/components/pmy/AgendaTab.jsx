@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 
+import { variantMatchesTourLanguage } from "../../utils/tour-languages";
+
 import {
   Badge,
   Button,
@@ -217,7 +219,13 @@ export default function AgendaTab(props) {
             </FormField>
 
             {selectedTour ? (
-              <FormField label={t.form_lang}>
+              <FormField
+                label={t.form_lang}
+                hint={tr(
+                  "Idiomas disponíveis neste passeio, carregados das opções e variantes do Shopify.",
+                  "Languages available for this tour, loaded from Shopify product options and variants.",
+                )}
+              >
                 <DropdownSelect
                   key={`booking-language-${selectedTour}`}
                   className="pmy-booking-language-dropdown"
@@ -237,8 +245,10 @@ export default function AgendaTab(props) {
               const selected = tourOptions.find((tour) => tour.id === selectedTour);
               const realVariants = selected?.variants || [];
               const timeOptions = getBookingTimesForTour(selected);
-              const visibleVariants = realVariants.filter((variant) =>
-                variantMatchesBookingTime(variant, bookingTime),
+              const visibleVariants = realVariants.filter(
+                (variant) =>
+                  variantMatchesBookingTime(variant, bookingTime) &&
+                  variantMatchesTourLanguage(variant, custLang),
               );
               const today = getLisbonToday();
               const todayKey = `${today.year}-${String(today.monthIndex + 1).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`;
