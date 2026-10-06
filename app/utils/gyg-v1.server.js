@@ -499,6 +499,7 @@ export async function reserveGyg(data) {
     return gygV1Error(
       "INVALID_TICKET_CATEGORY",
       `The ticket category ${counts.invalidCategory} is not supported.`,
+      { ticketCategory: counts.invalidCategory },
     );
   }
   if (counts.totalParticipants < 1) {
@@ -538,9 +539,12 @@ export async function reserveGyg(data) {
     const tour = product.tour;
 
     if (isGroupOnlyProduct(product)) {
+      const requestedCategory =
+        normalizeCategory(data.bookingItems?.[0]?.category) || "GROUP";
       return gygV1Error(
         "INVALID_TICKET_CATEGORY",
         "This PMY product uses group/private pricing and is not enabled for GYG individual inventory yet.",
+        { ticketCategory: requestedCategory },
       );
     }
 
@@ -571,6 +575,7 @@ export async function reserveGyg(data) {
         return gygV1Error(
           "INVALID_TICKET_CATEGORY",
           `The ticket category ${category} is not configured for this product.`,
+          { ticketCategory: category },
         );
       }
     }
@@ -773,6 +778,7 @@ export async function bookGyg(data) {
       return gygV1Error(
         "INVALID_TICKET_CATEGORY",
         `The ticket category ${confirmedCounts.invalidCategory} is not supported.`,
+        { ticketCategory: confirmedCounts.invalidCategory },
       );
     }
     if (
