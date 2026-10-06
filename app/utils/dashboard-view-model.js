@@ -380,6 +380,10 @@ export function buildDashboardViewModel({
         variants: product.variants,
         options: Array.isArray(product.options) ? product.options : [],
         languages: Array.isArray(product.languages) ? product.languages : [],
+        metafields:
+          product.metafields && typeof product.metafields === "object"
+            ? product.metafields
+            : {},
         collections: product.collections,
         scheduleSlots: product.scheduleSlots,
         description: product.description,
@@ -411,6 +415,11 @@ export function buildDashboardViewModel({
       languages: Array.isArray(tour.shopifySnapshot?.languages)
         ? tour.shopifySnapshot.languages
         : [],
+      metafields:
+        tour.shopifySnapshot?.metafields &&
+        typeof tour.shopifySnapshot.metafields === "object"
+          ? tour.shopifySnapshot.metafields
+          : {},
       scheduleSlots: tour.scheduleSlots || [],
       variants: (tour.variants || []).map((variant) => ({
         ...variant,
