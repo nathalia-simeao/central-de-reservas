@@ -12,6 +12,7 @@ import { ConfirmDialog, Icon, ToastViewport } from "../../components/pmy/PmyUI";
 import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
+import { extractTourLanguages } from "../../utils/tour-languages";
 import { useBookingCheckout } from "../../hooks/useBookingCheckout";
 import { buildCentralStyles } from "../../styles/pmy-central-style";
 import { uploadFileToPmyMediaLibrary } from "../../utils/media-library.client";
@@ -1638,18 +1639,30 @@ function CentralDeReservasContent() {
     setGeneratedLink("");
     setDraftOrderInfo(null);
     setDraftOrderError("");
+
     const tour = tourOptions.find(t => t.id === id);
     const availableTimes = getBookingTimesForTour(tour);
     setBookingTime(availableTimes[0] || "");
-    // Detecta línguas disponíveis baseado no nome do tour
-    const title = (tour?.title || "").toLowerCase();
-    if (title.includes("español") || title.includes("spanish") || title.includes("espanhol")) {
-      setActiveTourLanguages(["Português","English","Español"]);
-    } else if (title.includes("french") || title.includes("français")) {
-      setActiveTourLanguages(["Português","English","Français"]);
-    } else {
-      setActiveTourLanguages(["Português","English"]);
-    }
+
+    // Idiomas agora vêm das opções/variantes reais do produto Shopify.
+    // Só usamos o fallback legado quando o produto realmente não expõe uma
+    // dimensão de idioma.
+    const languages = extractTourLanguages(tour);
+    const nextLanguages = languages.length > 0
+      ? languages
+      : ["Português", "English"];
+
+    setActiveTourLanguages(nextLanguages);
+    setCustLang((current) =>
+      nextLanguages.some(
+        (language) =>
+          String(language).localeCompare(String(current), undefined, {
+            sensitivity: "base",
+          }) === 0,
+      )
+        ? current
+        : nextLanguages[0],
+    );
   };
 
   const handleModalTourChange = (id) => {
