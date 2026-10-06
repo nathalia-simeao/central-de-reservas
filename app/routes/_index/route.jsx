@@ -1021,10 +1021,14 @@ function CentralDeReservasContent() {
       fd.append("utmId", guideUtmId || "");
       if (photoUrl) fd.append("photoUrl", photoUrl);
       if (photoMediaId) fd.append("photoMediaId", photoMediaId);
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const data = await res.json();
-      if (data.success) window.location.reload();
-    } catch { /* The form keeps its local state when the request fails. */ }
+      await requestResourceJson("/api/guides", fd);
+      window.location.reload();
+    } catch (error) {
+      notify(
+        error?.message || ui("Erro ao salvar guia.", "Error saving guide."),
+        "danger",
+      );
+    }
   };
 
   const handleOpenEditGuide = (guide) => {
@@ -1071,12 +1075,7 @@ function CentralDeReservasContent() {
         if (!shopifyManaged && editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
         if (!shopifyManaged && editGuidePhotoMediaId) fd.append("photoMediaId", editGuidePhotoMediaId);
 
-        const res = await fetch(window.location.href, { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok || !data?.success) {
-          notify(data?.error || ui("Não foi possível salvar o guia.", "Could not save guide."), "danger");
-          return;
-        }
+        await requestResourceJson("/api/guides", fd);
 
         setGuidesList(prev => prev.map(g =>
           g.id === editingGuide
@@ -1129,12 +1128,7 @@ function CentralDeReservasContent() {
         const fd = new FormData();
         fd.append("_action", "deleteGuide");
         fd.append("id", id);
-        const res = await fetch(window.location.href, { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok || !data?.success) {
-          notify(data?.error || ui("Não foi possível remover o guia.", "Could not remove guide."), "danger");
-          return;
-        }
+        await requestResourceJson("/api/guides", fd);
       } catch (error) {
         notify(error?.message || ui("Erro ao remover guia.", "Error removing guide."), "danger");
         return;
@@ -1713,12 +1707,7 @@ function CentralDeReservasContent() {
       fd.append("date", guideAssignmentDateKey());
       fd.append("time", modalSelectedHour);
 
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        setGuideAssignmentMessage(result.error || "Não foi possível publicar a escala.");
-        return;
-      }
+      const result = await requestResourceJson("/api/guides", fd);
 
       setGuideAssignmentsList((current) => [
         ...current.filter((item) => item.id !== result.assignment.id),
@@ -1754,12 +1743,7 @@ function CentralDeReservasContent() {
       const fd = new FormData();
       fd.append("_action", "removeGuideAssignment");
       fd.append("id", id);
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        setGuideAssignmentMessage(result.error || "Não foi possível remover a escala.");
-        return;
-      }
+      const result = await requestResourceJson("/api/guides", fd);
 
       setGuideAssignmentsList((current) => current.filter((item) => item.id !== id));
       setGuideAssignmentMessage(result.message || "Escala removida.");
