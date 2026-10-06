@@ -5,12 +5,12 @@ import {
   Button,
   Card,
   DatePicker,
+  DropdownSelect,
   EmptyState,
   FormField,
   Icon,
   Input,
   SectionHeader,
-  Select,
   Tabs,
   Toast,
 } from "./PmyUI";
@@ -188,28 +188,42 @@ export default function AgendaTab(props) {
               />
             </FormField>
 
-            <FormField label={t.form_select_tour} required>
-              <Select
+            <FormField
+              label={t.form_select_tour}
+              hint={tr(
+                "Pesquise pelo nome do passeio. O preço geral foi removido porque podia representar a variante infantil/mais barata.",
+                "Search by tour name. The generic price was removed because it could represent the child/lowest-priced variant.",
+              )}
+              required
+            >
+              <DropdownSelect
                 value={selectedTour}
-                onChange={(event) => handleTourSelectionChange(event.target.value)}
+                onChange={(value) => handleTourSelectionChange(value)}
+                placeholder={tr("Selecione um passeio", "Select a tour")}
+                searchable
+                searchPlaceholder={tr("Pesquisar passeio...", "Search tour...")}
+                emptyLabel={tr("Nenhum passeio encontrado.", "No tours found.")}
+                ariaLabel={t.form_select_tour}
                 required
-              >
-                <option value="">-- {t.form_select_tour} --</option>
-                {tourOptions.map((tour) => (
-                  <option key={tour.id} value={tour.id}>
-                    {tour.title}{tour.price ? ` — ${tour.price}` : ""}
-                  </option>
-                ))}
-              </Select>
+                options={tourOptions.map((tour) => ({
+                  value: tour.id,
+                  label: tour.title,
+                }))}
+              />
             </FormField>
 
             {selectedTour ? (
               <FormField label={t.form_lang}>
-                <Select value={custLang} onChange={(event) => setCustLang(event.target.value)}>
-                  {activeTourLanguages.map((language) => (
-                    <option key={language} value={language}>{language}</option>
-                  ))}
-                </Select>
+                <DropdownSelect
+                  value={custLang}
+                  onChange={setCustLang}
+                  placeholder={tr("Selecione o idioma", "Select language")}
+                  ariaLabel={t.form_lang}
+                  options={activeTourLanguages.map((language) => ({
+                    value: language,
+                    label: language,
+                  }))}
+                />
               </FormField>
             ) : null}
 
@@ -238,21 +252,22 @@ export default function AgendaTab(props) {
 
                     <FormField label={tr("Horário do Tour", "Tour Time")} required>
                       {timeOptions.length > 0 ? (
-                        <Select
+                        <DropdownSelect
                           value={bookingTime}
-                          onChange={(event) => {
-                            setBookingTime(event.target.value);
+                          onChange={(value) => {
+                            setBookingTime(value);
                             setTourVariants({ adulto: 0, jovem: 0, crianca: 0, senior: 0 });
                             setGeneratedLink("");
                             setDraftOrderInfo(null);
                           }}
+                          placeholder={tr("Selecione o horário", "Select time")}
+                          ariaLabel={tr("Horário do Tour", "Tour Time")}
                           required
-                        >
-                          <option value="">-- {tr("Horário", "Time")} --</option>
-                          {timeOptions.map((slot) => (
-                            <option key={slot} value={slot}>{slot}</option>
-                          ))}
-                        </Select>
+                          options={timeOptions.map((slot) => ({
+                            value: slot,
+                            label: slot,
+                          }))}
+                        />
                       ) : (
                         <Input
                           type="time"
@@ -483,29 +498,34 @@ export default function AgendaTab(props) {
                     "The options below are extracted from the tour's real variants. Choosing 14:00 makes every variant at that time unavailable while the other times remain sellable.",
                   )}
                 >
-                  <Select
+                  <DropdownSelect
                     value={blockSelectedHour}
-                    onChange={(event) => setBlockSelectedHour(event.target.value)}
-                  >
-                    <option value="ALL">{tr("Todos os horários do dia", "All times that day")}</option>
-                    {tourAvailableHours.map((hour) => {
-                      const variantsAtHour = (selectedBlockTour.variants || []).filter((variant) =>
-                        (variant.title || "").includes(hour),
-                      );
-
-                      return (
-                        <option key={hour} value={hour}>
-                          {hour}
-                          {variantsAtHour.length > 0
-                            ? ` — ${variantsAtHour.length} ${tr(
+                    onChange={setBlockSelectedHour}
+                    placeholder={tr("Selecione o horário", "Select time")}
+                    ariaLabel={tr("Horário a bloquear", "Time to block")}
+                    options={[
+                      {
+                        value: "ALL",
+                        label: tr("Todos os horários do dia", "All times that day"),
+                        meta: tr("Bloqueia todas as saídas desta data", "Blocks every departure on this date"),
+                      },
+                      ...tourAvailableHours.map((hour) => {
+                        const variantsAtHour = (selectedBlockTour.variants || []).filter((variant) =>
+                          (variant.title || "").includes(hour),
+                        );
+                        return {
+                          value: hour,
+                          label: hour,
+                          meta: variantsAtHour.length > 0
+                            ? `${variantsAtHour.length} ${tr(
                                 variantsAtHour.length > 1 ? "variantes vinculadas" : "variante vinculada",
                                 variantsAtHour.length > 1 ? "linked variants" : "linked variant",
                               )}`
-                            : ""}
-                        </option>
-                      );
-                    })}
-                  </Select>
+                            : tr("Saída específica", "Specific departure"),
+                        };
+                      }),
+                    ]}
+                  />
 
                   {tourAvailableHours.length === 0 ? (
                     <Toast tone="warning">
@@ -800,9 +820,6 @@ export default function AgendaTab(props) {
                   <div>
                     <strong className="pmy-ds-tour-row__title">{tour.title}</strong>
                     <div className="pmy-ds-tour-row__meta">
-                      {tour.price ? (
-                        <span className="pmy-ds-accent">{tour.price} · </span>
-                      ) : null}
                       {tr("Capacidade", "Capacity")}: {capacity}{" "}
                       {lang === "en"
                         ? `person${capacity === 1 ? "" : "s"} per time`
