@@ -119,6 +119,19 @@ function buildShopifySnapshot(product) {
             : [],
         }))
       : [],
+    variantOptions: Object.fromEntries(
+      (product?.variants || [])
+        .filter((variant) => variant?.id)
+        .map((variant) => [
+          variant.id,
+          Array.isArray(variant?.selectedOptions)
+            ? variant.selectedOptions.map((option) => ({
+                name: clean(option?.name),
+                value: clean(option?.value),
+              }))
+            : [],
+        ]),
+    ),
     metafields:
       product?.metafields && typeof product.metafields === "object"
         ? product.metafields
