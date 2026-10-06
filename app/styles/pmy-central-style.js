@@ -933,6 +933,8 @@ export function buildCentralStyles(theme) {
         color:#676e69;
         font-weight:700;
       }
+      .pmy-trend-legend-bookings { color:#2f6fdb !important; }
+      .pmy-trend-legend-revenue { color:var(--primary-green) !important; }
       .pmy-legend-bar {
         width:9px;
         height:9px;
@@ -993,10 +995,18 @@ export function buildCentralStyles(theme) {
         fill:var(--primary-green);
       }
       .pmy-trend-bar {
-        fill:color-mix(in srgb, #2f6fdb 30%, transparent);
+        fill:#2f6fdb;
+        fill-opacity:.28;
         stroke:#2f6fdb;
-        stroke-width:1;
+        stroke-width:1.2;
         transition:opacity .16s ease;
+      }
+      .pmy-trend-booking-point {
+        fill:var(--surface-color);
+        stroke:#2f6fdb;
+        stroke-width:2.4;
+        filter:drop-shadow(0 2px 5px color-mix(in srgb, #2f6fdb 18%, transparent));
+        transition:r .12s ease;
       }
       .pmy-trend-line {
         stroke:var(--primary-green);
