@@ -162,6 +162,8 @@ export default function AgendaTab(props) {
             )}
           />
 
+          {/* Booking controls intentionally use PMY DropdownSelect instead of native <select>.
+              Keep generic/lowest variant prices out of the tour picker; prices belong to ticket variants below. */}
           <form onSubmit={handleGeneratePaymentLink} className="pmy-ds-form-stack">
             <FormField label={t.form_customer} required>
               <Input
@@ -197,6 +199,8 @@ export default function AgendaTab(props) {
               required
             >
               <DropdownSelect
+                key={`booking-tour-${lang}`}
+                className="pmy-booking-tour-dropdown"
                 value={selectedTour}
                 onChange={(value) => handleTourSelectionChange(value)}
                 placeholder={tr("Selecione um passeio", "Select a tour")}
@@ -215,6 +219,8 @@ export default function AgendaTab(props) {
             {selectedTour ? (
               <FormField label={t.form_lang}>
                 <DropdownSelect
+                  key={`booking-language-${selectedTour}`}
+                  className="pmy-booking-language-dropdown"
                   value={custLang}
                   onChange={setCustLang}
                   placeholder={tr("Selecione o idioma", "Select language")}
@@ -253,6 +259,8 @@ export default function AgendaTab(props) {
                     <FormField label={tr("Horário do Tour", "Tour Time")} required>
                       {timeOptions.length > 0 ? (
                         <DropdownSelect
+                          key={`booking-time-${selectedTour}`}
+                          className="pmy-booking-time-dropdown"
                           value={bookingTime}
                           onChange={(value) => {
                             setBookingTime(value);
