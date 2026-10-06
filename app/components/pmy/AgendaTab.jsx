@@ -507,6 +507,8 @@ export default function AgendaTab(props) {
                   )}
                 >
                   <DropdownSelect
+                    key={`block-time-${blockTourId}-${lang}`}
+                    className="pmy-block-time-dropdown"
                     value={blockSelectedHour}
                     onChange={setBlockSelectedHour}
                     placeholder={tr("Selecione o horário", "Select time")}
