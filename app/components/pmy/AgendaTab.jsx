@@ -476,6 +476,56 @@ export default function AgendaTab(props) {
 
             {blockTourId && selectedBlockTour ? (
               <>
+                <FormField
+                  label={tr("Horário a bloquear", "Time to block")}
+                  hint={tr(
+                    "As opções abaixo são extraídas das variantes reais do passeio. Ao escolher 14:00, todas as variantes daquele horário ficam indisponíveis e os demais horários continuam vendáveis.",
+                    "The options below are extracted from the tour's real variants. Choosing 14:00 makes every variant at that time unavailable while the other times remain sellable.",
+                  )}
+                >
+                  <Select
+                    value={blockSelectedHour}
+                    onChange={(event) => setBlockSelectedHour(event.target.value)}
+                  >
+                    <option value="ALL">{tr("Todos os horários do dia", "All times that day")}</option>
+                    {tourAvailableHours.map((hour) => {
+                      const variantsAtHour = (selectedBlockTour.variants || []).filter((variant) =>
+                        (variant.title || "").includes(hour),
+                      );
+
+                      return (
+                        <option key={hour} value={hour}>
+                          {hour}
+                          {variantsAtHour.length > 0
+                            ? ` — ${variantsAtHour.length} ${tr(
+                                variantsAtHour.length > 1 ? "variantes vinculadas" : "variante vinculada",
+                                variantsAtHour.length > 1 ? "linked variants" : "linked variant",
+                              )}`
+                            : ""}
+                        </option>
+                      );
+                    })}
+                  </Select>
+
+                  {tourAvailableHours.length === 0 ? (
+                    <Toast tone="warning">
+                      {tr(
+                        "Nenhum horário foi encontrado nas variantes ou no metafield schedule deste passeio.",
+                        "No time was found in this tour's variants or schedule metafield.",
+                      )}
+                    </Toast>
+                  ) : null}
+
+                  {blockSelectedHour !== "ALL" ? (
+                    <Toast tone="info">
+                      {tr(
+                        `Bloqueio pontual: ${blockSelectedHour}. Os demais horários deste passeio continuam disponíveis neste dia.`,
+                        `Time-specific block: ${blockSelectedHour}. The tour's other times remain available on this day.`,
+                      )}
+                    </Toast>
+                  ) : null}
+                </FormField>
+
                 <div className="pmy-ds-tour-summary">
                   {selectedBlockTour.image ? (
                     <img
@@ -494,70 +544,22 @@ export default function AgendaTab(props) {
                     <div className="pmy-ds-tour-summary__meta">
                       {selectedBlockTour.collections?.map((collection) => collection.title).join(" · ")}
                     </div>
-
-                    {selectedBlockTour.variants?.length > 1 ? (
-                      <div className="pmy-ds-chip-row">
-                        {selectedBlockTour.variants.map((variant, index) => (
-                          <Badge key={index}>
-                            {variant.title === "Default Title"
-                              ? tr("Ingresso", "Ticket")
-                              : variant.title}
+                    <div className="pmy-ds-chip-row">
+                      {tourAvailableHours.length > 0 ? (
+                        tourAvailableHours.map((hour) => (
+                          <Badge
+                            key={hour}
+                            tone={blockSelectedHour === hour ? "accent" : "neutral"}
+                          >
+                            {hour}
                           </Badge>
-                        ))}
-                      </div>
-                    ) : null}
+                        ))
+                      ) : (
+                        <Badge>{tr("Sem horários detectados", "No times detected")}</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                <FormField
-                  label={t.block_select_hour}
-                  hint={tr(
-                    "Escolha um horário para bloquear somente aquela saída. Ex.: 14:00 fica fechado e 10:00 continua disponível.",
-                    "Choose one time to block only that departure. Example: 14:00 is closed while 10:00 remains available.",
-                  )}
-                >
-                  <Select
-                    value={blockSelectedHour}
-                    onChange={(event) => setBlockSelectedHour(event.target.value)}
-                  >
-                    <option value="ALL">{tr("Bloquear todos os horários", "Block all times")}</option>
-                    {tourAvailableHours.map((hour) => {
-                      const variantsAtHour = (selectedBlockTour.variants || []).filter((variant) =>
-                        (variant.title || "").includes(hour),
-                      );
-
-                      return (
-                        <option key={hour} value={hour}>
-                          {hour}
-                          {variantsAtHour.length > 0
-                            ? ` — ${variantsAtHour.length} ${tr(
-                                variantsAtHour.length > 1 ? "variantes" : "variante",
-                                variantsAtHour.length > 1 ? "variants" : "variant",
-                              )}`
-                            : ""}
-                        </option>
-                      );
-                    })}
-                  </Select>
-
-                  {tourAvailableHours.length === 0 ? (
-                    <Toast tone="warning">
-                      {tr(
-                        "Nenhum horário encontrado. Os horários são extraídos automaticamente das variantes do produto ou do metafield schedule.",
-                        "No time found. Times are automatically extracted from product variants or from the schedule metafield.",
-                      )}
-                    </Toast>
-                  ) : null}
-
-                  {blockSelectedHour !== "ALL" ? (
-                    <Toast tone="info">
-                      {tr(
-                        `Somente a saída das ${blockSelectedHour} será bloqueada nesta regra. Os outros horários do mesmo dia continuam vendáveis.`,
-                        `Only the ${blockSelectedHour} departure will be blocked by this rule. Other times on the same day remain sellable.`,
-                      )}
-                    </Toast>
-                  ) : null}
-                </FormField>
 
                 {selectedBlockTour.metafields &&
                 Object.keys(selectedBlockTour.metafields).length > 0 ? (
