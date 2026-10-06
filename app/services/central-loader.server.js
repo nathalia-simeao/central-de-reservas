@@ -19,6 +19,20 @@ import {
 const prisma = db;
 const json = (body, init) => data(body, init);
 
+function bookingForClient(booking) {
+  return {
+    ...booking,
+    // Prisma Decimal is a class instance. React Router's initial single-fetch
+    // payload may preserve it differently from a normal JSON resource request,
+    // which made the first dashboard render lose revenue values until another
+    // request happened. Send a plain primitive in every payload.
+    totalPrice:
+      booking?.totalPrice === null || booking?.totalPrice === undefined
+        ? null
+        : String(booking.totalPrice),
+  };
+}
+
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const now = new Date();
@@ -137,6 +151,8 @@ export const loader = async ({ request }) => {
         })
       : Promise.resolve([]),
   ]);
+
+  bookings = bookings.map(bookingForClient);
 
   // Migração legada apenas em memória: o loader não escreve mais no banco.
   if (
