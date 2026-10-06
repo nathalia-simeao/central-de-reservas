@@ -45,3 +45,14 @@ test("variantMatchesTourLanguage filters only variants that expose a language di
   assert.equal(variantMatchesTourLanguage(englishVariant, "Português"), false);
   assert.equal(variantMatchesTourLanguage({ selectedOptions: [] }, "English"), true);
 });
+
+
+test("extractTourLanguages reads custom.languages_info from Shopify product metafields", () => {
+  const languages = extractTourLanguages({
+    metafields: {
+      languages_info: "English, Spanish, Portuguese",
+    },
+  });
+
+  assert.deepEqual(languages, ["English", "Spanish", "Portuguese"]);
+});
