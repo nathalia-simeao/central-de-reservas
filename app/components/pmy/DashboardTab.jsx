@@ -172,15 +172,30 @@ const TrendChart = ({
               const y = bookingsY(item.bookings);
               const barHeight = margin.top + plotHeight - y;
               return (
-                <rect
-                  key={`bar-${item.key}`}
-                  x={xCenter(index) - barWidth / 2}
-                  y={y}
-                  width={barWidth}
-                  height={Math.max(1.5, barHeight)}
-                  rx={Math.min(6, barWidth / 2)}
-                  className="pmy-trend-bar"
-                />
+                <g key={`bar-${item.key}`}>
+                  <rect
+                    x={xCenter(index) - barWidth / 2}
+                    y={y}
+                    width={barWidth}
+                    height={Math.max(1.5, barHeight)}
+                    rx={Math.min(6, barWidth / 2)}
+                    className="pmy-trend-bar"
+                    fill="#2f6fdb"
+                    fillOpacity="0.28"
+                    stroke="#2f6fdb"
+                  />
+                  {item.bookings > 0 ? (
+                    <circle
+                      cx={xCenter(index)}
+                      cy={y}
+                      r={activeIndex === index ? 4.5 : 3.2}
+                      className="pmy-trend-booking-point"
+                      fill="#ffffff"
+                      stroke="#2f6fdb"
+                      strokeWidth="2.4"
+                    />
+                  ) : null}
+                </g>
               );
             })}
 
