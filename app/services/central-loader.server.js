@@ -230,6 +230,8 @@ export const loader = async ({ request }) => {
         image: snapshot.image || null,
         imageAlt: snapshot.imageAlt || tour.title,
         variants,
+        options: Array.isArray(snapshot.options) ? snapshot.options : [],
+        languages: Array.isArray(snapshot.languages) ? snapshot.languages : [],
         collections: Array.isArray(snapshot.collections)
           ? snapshot.collections
           : [],
