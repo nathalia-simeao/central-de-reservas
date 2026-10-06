@@ -1798,13 +1798,7 @@ function CentralDeReservasContent() {
       fd.append("platforms", JSON.stringify(blockPlatforms));
       fd.append("reason", "Bloqueio manual na Agenda Central");
 
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        setBlockMessage(result.error || "Não foi possível salvar o bloqueio.");
-        return;
-      }
+      const result = await requestResourceJson("/api/availability-blocks", fd);
 
       setBlockMessage(result.message || "Bloqueio salvo na Agenda Central.");
       window.location.reload();
@@ -1832,12 +1826,7 @@ function CentralDeReservasContent() {
       const fd = new FormData();
       fd.append("_action", "removeBlock");
       fd.append("id", id);
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        notify(result.error || ui("Não foi possível remover o bloqueio.", "Could not remove the block."), "danger");
-        return;
-      }
+      await requestResourceJson("/api/availability-blocks", fd);
       window.location.reload();
     } catch (err) {
       notify(err?.message || ui("Erro ao remover bloqueio.", "Error removing block."), "danger");
