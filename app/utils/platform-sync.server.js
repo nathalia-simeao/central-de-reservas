@@ -23,6 +23,13 @@ function isLanguageOptionName(value) {
   );
 }
 
+function splitLanguageList(value) {
+  return clean(value)
+    .split(/[,;|\n]+/)
+    .map((item) => clean(item))
+    .filter(Boolean);
+}
+
 function extractProductLanguages(product) {
   const values = new Set();
 
@@ -39,6 +46,19 @@ function extractProductLanguages(product) {
       if (!isLanguageOptionName(selected?.name)) continue;
       const language = clean(selected?.value);
       if (language) values.add(language);
+    }
+  }
+
+  const metafields = product?.metafields || {};
+  for (const key of [
+    "languages_info",
+    "languages",
+    "language",
+    "idiomas",
+    "idioma",
+  ]) {
+    for (const language of splitLanguageList(metafields?.[key])) {
+      values.add(language);
     }
   }
 
@@ -193,6 +213,7 @@ export async function fetchShopifyCatalog(admin) {
     const languages = extractProductLanguages({
       options,
       variants,
+      metafields,
     });
 
     return {
