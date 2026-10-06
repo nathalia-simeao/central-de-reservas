@@ -149,19 +149,32 @@ export function buildCentralStyles(theme) {
       .pmy-date-btn { display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid rgba(0,0,0,0.1); padding:10px 18px; border-radius:8px; font-weight:600; color:var(--text-dark); cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.02); transition:0.2s; }
       .pmy-date-btn:hover { border-color:var(--primary-green); }
       .pmy-date-overlay { appearance:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:90; border:0; padding:0; background:transparent; }
-      .pmy-date-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:#ffffff; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.15); width:320px; z-index:100; border:1px solid rgba(0,0,0,0.05); display:flex; flex-direction:column; overflow:hidden; }
-      .pmy-date-presets { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee; }
-      .pmy-date-preset-item { appearance:none; width:100%; border:0; background:#ffffff; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
-      .pmy-date-preset-item:hover { background:#f9f9f9; color:var(--primary-green); }
-      .pmy-date-preset-item.active { background:#e6f2e6; color:var(--primary-green); }
+      .pmy-date-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:var(--surface-color); border-radius:16px; box-shadow:0 18px 46px rgba(0,0,0,0.16); width:min(390px,calc(100vw - 32px)); z-index:100; border:1px solid var(--pmy-border); display:flex; flex-direction:column; overflow:visible; }
+      .pmy-date-presets { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--pmy-border); border-radius:16px 16px 0 0; overflow:hidden; }
+      .pmy-date-preset-item { appearance:none; width:100%; border:0; background:var(--surface-color); padding:11px 10px; font-size:12px; font-weight:800; cursor:pointer; text-align:center; color:var(--text-dark); transition:0.2s; }
+      .pmy-date-preset-item:hover { background:color-mix(in srgb,var(--primary-green) 6%,var(--surface-color)); color:var(--primary-green); }
+      .pmy-date-preset-item.active { background:var(--pmy-green-soft); color:var(--primary-green); }
       .pmy-date-preset-item:focus-visible { outline:2px solid var(--primary-green); outline-offset:-3px; }
-      .pmy-date-custom { padding:15px; display:flex; flex-direction:column; gap:10px; background:#ffffff; }
-      .pmy-date-custom-title { font-size:12px; font-weight:700; color:var(--text-muted); }
-      .pmy-date-custom-inputs { display:flex; gap:8px; align-items:center; }
-      .pmy-date-custom-inputs input { flex:1; padding:8px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:13px; color:var(--text-dark); outline:none; }
-      .pmy-date-custom-inputs input:focus { border-color:var(--primary-green); }
-      .pmy-date-apply-btn { background:var(--primary-green); color:#fff; border:none; padding:9px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px; transition:0.2s; text-align:center; width:100%; }
+      .pmy-date-custom { padding:16px; display:flex; flex-direction:column; gap:12px; background:var(--surface-color); border-radius:0 0 16px 16px; }
+      .pmy-date-custom-title { font-size:11px; font-weight:850; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+      .pmy-date-custom-inputs { display:grid; grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr); gap:8px; align-items:center; }
+      .pmy-dashboard-date-picker { min-width:0; }
+      .pmy-dashboard-date-picker .pmy-ds-date-picker__trigger { min-height:42px; border-radius:12px; background:var(--surface-color); font-size:12px; font-weight:700; }
+      .pmy-dashboard-date-picker--start .pmy-ds-date-picker__popover { left:0; right:auto; }
+      .pmy-dashboard-date-picker--end .pmy-ds-date-picker__popover { left:auto; right:0; }
+      .pmy-date-custom-separator { display:grid; place-items:center; color:var(--text-muted); font-size:14px; font-weight:900; }
+      .pmy-date-apply-btn { background:var(--primary-green); color:#fff; border:none; padding:10px 12px; min-height:40px; border-radius:10px; font-weight:800; cursor:pointer; font-size:13px; transition:0.2s; text-align:center; width:100%; }
       .pmy-date-apply-btn:hover { background:var(--primary-hover); }
+      @media (max-width: 520px) {
+        .pmy-date-custom-inputs { grid-template-columns:1fr; }
+        .pmy-date-custom-separator { transform:rotate(90deg); }
+        .pmy-dashboard-date-picker--start .pmy-ds-date-picker__popover,
+        .pmy-dashboard-date-picker--end .pmy-ds-date-picker__popover {
+          left:0;
+          right:auto;
+          width:min(340px,calc(100vw - 48px));
+        }
+      }
       .pmy-variants-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:5px; }
   
       .pmy-modal-layer { display:contents; }

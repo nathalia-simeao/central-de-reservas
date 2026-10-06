@@ -7,7 +7,7 @@ import AgendaTab from "../../components/pmy/AgendaTab";
 import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
-import { ConfirmDialog, Icon, ToastViewport } from "../../components/pmy/PmyUI";
+import { ConfirmDialog, DatePicker, Icon, ToastViewport } from "../../components/pmy/PmyUI";
 import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
@@ -2460,9 +2460,29 @@ function CentralDeReservasContent() {
                       <div className="pmy-date-custom">
                         <div className="pmy-date-custom-title">{t.period_custom}</div>
                         <div className="pmy-date-custom-inputs">
-                          <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} />
-                          <span className="pmy-ds-migrated-chpnty">-</span>
-                          <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
+                          <DatePicker
+                            className="pmy-dashboard-date-picker pmy-dashboard-date-picker--start"
+                            value={customStart}
+                            onChange={(event) => setCustomStart(event.target.value)}
+                            locale={lang === "pt" ? "pt-PT" : "en-GB"}
+                            placeholder={lang === "pt" ? "Data inicial" : "Start date"}
+                            todayLabel={lang === "pt" ? "Hoje" : "Today"}
+                            clearLabel={lang === "pt" ? "Limpar" : "Clear"}
+                            previousMonthLabel={lang === "pt" ? "Mês anterior" : "Previous month"}
+                            nextMonthLabel={lang === "pt" ? "Próximo mês" : "Next month"}
+                          />
+                          <span className="pmy-date-custom-separator" aria-hidden="true">→</span>
+                          <DatePicker
+                            className="pmy-dashboard-date-picker pmy-dashboard-date-picker--end"
+                            value={customEnd}
+                            onChange={(event) => setCustomEnd(event.target.value)}
+                            locale={lang === "pt" ? "pt-PT" : "en-GB"}
+                            placeholder={lang === "pt" ? "Data final" : "End date"}
+                            todayLabel={lang === "pt" ? "Hoje" : "Today"}
+                            clearLabel={lang === "pt" ? "Limpar" : "Clear"}
+                            previousMonthLabel={lang === "pt" ? "Mês anterior" : "Previous month"}
+                            nextMonthLabel={lang === "pt" ? "Próximo mês" : "Next month"}
+                          />
                         </div>
                         <button className="pmy-date-apply-btn" onClick={handleCustomDateApply}>{t.btn_apply}</button>
                       </div>
