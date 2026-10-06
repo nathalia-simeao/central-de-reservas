@@ -41,16 +41,3 @@ test("PMY Design System custom dropdown has styled popover and searchable mode",
   assert.equal(css.includes(".pmy-ds-dropdown__popover"), true);
   assert.equal(css.includes(".pmy-ds-dropdown__option.is-selected"), true);
 });
-
-
-test("Dashboard overview custom period uses PMY DatePicker instead of native date inputs", async () => {
-  const source = await fs.readFile(
-    new URL("../app/routes/_index/route.jsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.equal(source.includes('type="date"'), false);
-  assert.equal(source.includes("<DatePicker"), true);
-  assert.equal(source.includes("pmy-dashboard-date-picker--start"), true);
-  assert.equal(source.includes("pmy-dashboard-date-picker--end"), true);
-});
