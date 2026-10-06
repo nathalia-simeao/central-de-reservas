@@ -145,7 +145,7 @@ const TrendChart = ({
               const ratio = maxBookings === 0 ? 1 : value / maxBookings;
               const y = margin.top + plotHeight - ratio * plotHeight;
               return (
-                <text key={`b-${index}`} x={margin.left - 12} y={y + 4} textAnchor="end" className="pmy-trend-axis-label">
+                <text key={`b-${index}`} x={margin.left - 12} y={y + 4} textAnchor="end" className="pmy-trend-axis-label pmy-trend-axis-label--bookings">
                   {Math.round(value)}
                 </text>
               );
@@ -159,7 +159,7 @@ const TrendChart = ({
                 maximumFractionDigits: value >= 1000 ? 1 : 0,
               }).format(value);
               return (
-                <text key={`r-${index}`} x={width - margin.right + 12} y={y + 4} textAnchor="start" className="pmy-trend-axis-label">
+                <text key={`r-${index}`} x={width - margin.right + 12} y={y + 4} textAnchor="start" className="pmy-trend-axis-label pmy-trend-axis-label--revenue">
                   {compact}
                 </text>
               );
@@ -240,8 +240,10 @@ const TrendChart = ({
           </svg>
 
           <div className="pmy-trend-axis-captions">
-            <span>{lang === "pt" ? "Reservas" : "Bookings"}</span>
-            <span>{currency}</span>
+            <span className="pmy-trend-axis-caption--bookings">
+              {lang === "pt" ? "Reservas" : "Bookings"}
+            </span>
+            <span className="pmy-trend-axis-caption--revenue">{currency}</span>
           </div>
         </div>
       )}
