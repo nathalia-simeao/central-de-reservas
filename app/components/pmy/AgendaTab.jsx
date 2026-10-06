@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 import {
   Badge,
   Button,
@@ -77,6 +79,33 @@ export default function AgendaTab(props) {
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
+
+  const [blockTourSearch, setBlockTourSearch] = useState("");
+  const [blockTourPickerOpen, setBlockTourPickerOpen] = useState(false);
+
+  const normalizedBlockTourSearch = blockTourSearch
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  const filteredBlockTours = useMemo(() => {
+    const source = [...(tourOptions || [])].sort((left, right) =>
+      String(left.title || "").localeCompare(String(right.title || ""), lang === "pt" ? "pt" : "en"),
+    );
+
+    if (!normalizedBlockTourSearch) return source.slice(0, 12);
+
+    return source
+      .filter((tour) =>
+        String(tour.title || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .includes(normalizedBlockTourSearch),
+      )
+      .slice(0, 12);
+  }, [lang, normalizedBlockTourSearch, tourOptions]);
 
   if (activeTab !== "agenda") return null;
 
@@ -342,18 +371,65 @@ export default function AgendaTab(props) {
           />
 
           <form onSubmit={handleCreateBlock} className="pmy-ds-form-stack">
-            <FormField label={t.form_select_tour}>
-              <Select
-                value={blockTourId}
-                onChange={(event) => handleBlockTourSelectionChange(event.target.value)}
-              >
-                <option value="">-- {t.form_select_tour} --</option>
-                {tourOptions.map((tour) => (
-                  <option key={tour.id} value={tour.id}>
-                    {tour.title}{tour.price ? ` — ${tour.price}` : ""}
-                  </option>
-                ))}
-              </Select>
+            <FormField
+              label={t.form_select_tour}
+              hint={tr(
+                "Pesquise pelo nome do passeio. Preços não aparecem aqui porque não interferem no bloqueio.",
+                "Search by tour name. Prices are hidden here because they do not affect availability blocks.",
+              )}
+            >
+              <div className="pmy-ds-tour-picker">
+                <Input
+                  type="search"
+                  value={blockTourSearch}
+                  placeholder={tr("Pesquisar passeio...", "Search tour...")}
+                  autoComplete="off"
+                  onFocus={() => setBlockTourPickerOpen(true)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setBlockTourPickerOpen(false);
+                  }}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setBlockTourSearch(nextValue);
+                    setBlockTourPickerOpen(true);
+
+                    if (
+                      blockTourId &&
+                      nextValue !== String(selectedBlockTour?.title || "")
+                    ) {
+                      handleBlockTourSelectionChange("");
+                    }
+                  }}
+                />
+
+                {blockTourPickerOpen ? (
+                  <div className="pmy-ds-tour-picker__results">
+                    {filteredBlockTours.length > 0 ? (
+                      filteredBlockTours.map((tour) => (
+                        <button
+                          key={tour.id}
+                          type="button"
+                          className={`pmy-ds-tour-picker__option${blockTourId === tour.id ? " is-selected" : ""}`}
+                          onClick={() => {
+                            handleBlockTourSelectionChange(tour.id);
+                            setBlockTourSearch(tour.title || "");
+                            setBlockTourPickerOpen(false);
+                          }}
+                        >
+                          <span>{tour.title}</span>
+                          {blockTourId === tour.id ? (
+                            <Badge tone="success">{tr("Selecionado", "Selected")}</Badge>
+                          ) : null}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="pmy-ds-tour-picker__empty">
+                        {tr("Nenhum passeio encontrado.", "No tours found.")}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </FormField>
 
             <FormField label={t.block_days_week}>
@@ -395,9 +471,6 @@ export default function AgendaTab(props) {
                     <div className="pmy-ds-tour-summary__title">{selectedBlockTour.title}</div>
                     <div className="pmy-ds-tour-summary__meta">
                       {selectedBlockTour.collections?.map((collection) => collection.title).join(" · ")}
-                      {selectedBlockTour.price ? (
-                        <> · <strong className="pmy-ds-accent">{selectedBlockTour.price}</strong></>
-                      ) : null}
                     </div>
 
                     {selectedBlockTour.variants?.length > 1 ? (
@@ -406,7 +479,7 @@ export default function AgendaTab(props) {
                           <Badge key={index}>
                             {variant.title === "Default Title"
                               ? tr("Ingresso", "Ticket")
-                              : variant.title}: {variant.price}
+                              : variant.title}
                           </Badge>
                         ))}
                       </div>
