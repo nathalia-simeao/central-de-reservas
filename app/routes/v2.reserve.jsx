@@ -1,5 +1,6 @@
 import {
   readViatorJson,
+  recordViatorAuthenticatedTraffic,
   requireViatorAuth,
   viatorReserve,
 } from "../utils/viator.server";
@@ -11,5 +12,14 @@ export const action = async ({ request }) => {
   const parsed = await readViatorJson(request, "v2");
   if (parsed.error) return parsed.error;
 
-  return viatorReserve(parsed.data);
+  const response = await viatorReserve(parsed.data);
+  await recordViatorAuthenticatedTraffic(
+    "reserve",
+    {
+      supplierId: parsed.data?.supplierId,
+      productOptionId: parsed.data?.productOptionId,
+    },
+    response,
+  );
+  return response;
 };
