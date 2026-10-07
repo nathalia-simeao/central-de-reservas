@@ -284,19 +284,46 @@ function CentralDeReservasContent() {
   // as reservas chegam normalmente, mas não existe um "listar catálogo remoto" para
   // preencher esta tela. Por isso exibimos desde o carregamento os tours mestre já
   // mapeados ao GYG, usando o mesmo conjunto auditado pelo sync manual.
-  const initialGygProducts = (tours || [])
-    .filter((tour) => Boolean(tour.gygActivityId))
-    .map((tour) => ({
-      id: tour.gygActivityId,
-      name: tour.title,
-      active: tour.shopifyStatus !== "INACTIVE",
-      synced: true,
-      sku: tour.gygActivityId,
-      price: "—",
-      variants: tour.variants || [],
-      scheduleSlots: tour.scheduleSlots || [],
-      masterTourId: tour.id,
-    }));
+  const initialGygProducts = (tours || []).flatMap((tour) =>
+    (tour.gygProductOptions || [])
+      .filter((option) => option.active !== false)
+      .map((option) => {
+        const optionVariants = (option.variants || []).filter(
+          (variant) => variant.active !== false,
+        );
+        const prices = optionVariants
+          .map((variant) => Number(variant.price))
+          .filter((value) => Number.isFinite(value) && value > 0);
+        const minPrice = prices.length ? Math.min(...prices) : null;
+        const currency =
+          optionVariants.find((variant) => variant.currency)?.currency || "EUR";
+        const scheduleSlots = [
+          ...new Set(
+            optionVariants
+              .map((variant) => variant.startTimeSlot)
+              .filter(Boolean),
+          ),
+        ].sort();
+
+        return {
+          id: option.id,
+          name: option.title
+            ? `${tour.title} · ${option.title}`
+            : tour.title,
+          active: tour.shopifyStatus !== "INACTIVE" && option.active !== false,
+          synced: true,
+          sku: option.gygOptionId || option.id,
+          price:
+            minPrice != null
+              ? `${currency === "EUR" ? "€" : `${currency} `}${minPrice.toFixed(0)}`
+              : "—",
+          variants: optionVariants,
+          scheduleSlots,
+          masterTourId: tour.id,
+          gygOptionId: option.gygOptionId || null,
+        };
+      }),
+  );
 
   const [platformProducts, setPlatformProducts] = useState({
     shopify:      shopifyProducts,

@@ -113,6 +113,42 @@ function productItemFromTour(tour, platform) {
   };
 }
 
+function productItemFromGygOption(tour, option) {
+  const variants = (option?.variants || []).filter(
+    (variant) => variant?.active !== false,
+  );
+  const prices = variants
+    .map((variant) => Number(variant?.price))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  const currency =
+    variants.find((variant) => variant?.currency)?.currency || "EUR";
+  const scheduleSlots = [
+    ...new Set(
+      variants
+        .map((variant) => variant?.startTimeSlot)
+        .filter(Boolean),
+    ),
+  ].sort();
+
+  return {
+    id: option.id,
+    name: option?.title ? `${tour.title} · ${option.title}` : tour.title,
+    active: tour.shopifyStatus !== "INACTIVE" && option?.active !== false,
+    synced: true,
+    sku: option?.gygOptionId || option.id,
+    price:
+      minPrice != null
+        ? `${currency === "EUR" ? "€" : `${currency} `}${minPrice.toFixed(0)}`
+        : "—",
+    variants,
+    scheduleSlots,
+    masterTourId: tour.id,
+    gygOptionId: option?.gygOptionId || null,
+  };
+}
+
+
 export async function fetchShopifyCatalog(admin) {
   const response = await admin.graphql(`
     query ManualPlatformSyncCatalog {
@@ -597,13 +633,30 @@ async function syncShopify(prisma, admin) {
 async function syncGetYourGuide(prisma) {
   const checkedAt = new Date().toISOString();
   const tours = await prisma.tour.findMany({
-    where: { gygActivityId: { not: null } },
-    include: { variants: true },
+    where: {
+      gygProductOptions: {
+        some: { active: true },
+      },
+    },
+    include: {
+      variants: true,
+      gygProductOptions: {
+        where: { active: true },
+        include: { variants: true },
+        orderBy: { title: "asc" },
+      },
+    },
     orderBy: { title: "asc" },
   });
   const bookings = await prisma.booking.count({
     where: { platform: "GETYOURGUIDE" },
   });
+
+  const productItems = tours.flatMap((tour) =>
+    (tour.gygProductOptions || []).map((option) =>
+      productItemFromGygOption(tour, option),
+    ),
+  );
 
   const deliveries = await Promise.all(
     tours.map(async (tour) => {
@@ -630,8 +683,9 @@ async function syncGetYourGuide(prisma) {
       "TOUR_SCHEDULE_NOT_CONFIGURED",
     ].includes(item.reason),
   );
-  const scheduleMissing = tours.filter(
-    (tour) => !Array.isArray(tour.scheduleSlots) || tour.scheduleSlots.length === 0,
+
+  const scheduleMissing = productItems.filter(
+    (item) => !Array.isArray(item.scheduleSlots) || item.scheduleSlots.length === 0,
   );
 
   const result = {
@@ -639,20 +693,20 @@ async function syncGetYourGuide(prisma) {
     mode: "PUSH_API",
     checkedAt,
     scopeNote:
-      "A Supplier API do GYG não oferece leitura do catálogo/reservas do parceiro nesta integração. A verificação real envia novamente a disponibilidade dos próximos 30 dias e compara mapeamentos locais.",
+      "O GetYourGuide usa a Supplier API da PMY. Esta tela mostra os Supplier products/opções ativos cadastrados na Central; as reservas entram por chamadas autenticadas do GYG e a verificação publica disponibilidade para os próximos 30 dias.",
     differences: failed.length + scheduleMissing.length,
     products: {
       remote: null,
-      centralBefore: tours.length,
-      centralAfter: tours.length,
+      centralBefore: productItems.length,
+      centralAfter: productItems.length,
       missingInCentral: [],
       missingInChannel: [],
-      changed: scheduleMissing.map((tour) => ({
-        id: tour.gygActivityId,
-        name: tour.title,
-        reason: "Tour mapeado no GYG sem horários configurados na Central.",
+      changed: scheduleMissing.map((item) => ({
+        id: item.id,
+        name: item.name,
+        reason: "Supplier product do GYG sem horário ativo configurado na Central.",
       })),
-      items: tours.map((tour) => productItemFromTour(tour, "getyourguide")),
+      items: productItems,
     },
     reservations: {
       remoteChecked: null,
@@ -669,10 +723,11 @@ async function syncGetYourGuide(prisma) {
       differences: failed.length + scheduleMissing.length,
       deliveries,
       detail:
-        "A Central tentou publicar a janela de disponibilidade de 30 dias para cada tour mapeado no GYG.",
+        "A Central tentou publicar a janela de disponibilidade de 30 dias para cada tour que possui Supplier products ativos no GYG.",
     },
     notes: [
-      "Reservas do GYG entram na Central pelas chamadas da Supplier API; não existe leitura remota de reservas implementada para o botão.",
+      "A Supplier API do GYG não fornece uma listagem remota do catálogo para este fluxo. A tabela representa os Supplier productIds ativos que a Central expõe ao GetYourGuide.",
+      "Reservas do GYG entram na Central pelas chamadas autenticadas da Supplier API; por isso elas podem chegar normalmente mesmo sem leitura remota do catálogo.",
       failed.length
         ? `${failed.length} envio(s) ao GYG não foram aceitos e aparecem como diferença.`
         : "Nenhuma falha de envio de disponibilidade detectada.",
