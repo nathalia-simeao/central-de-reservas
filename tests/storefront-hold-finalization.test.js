@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 
 test("storefront nonce failures are finalized and do not leave PROCESSING forever", async () => {
   const source = await fs.readFile(
-    new URL("../app/routes/api.storefront-hold.jsx", import.meta.url),
+    new URL("../app/utils/storefront-hold.server.js", import.meta.url),
     "utf8",
   );
 

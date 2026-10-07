@@ -1,5 +1,5 @@
 import { authenticate } from "../shopify.server";
-import { handleStorefrontHoldAction } from "./api.storefront-hold";
+import { handleStorefrontHoldAction } from "../utils/storefront-hold.server";
 
 export const loader = async ({ request }) => {
   await authenticate.public.appProxy(request);

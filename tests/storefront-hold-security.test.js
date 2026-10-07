@@ -72,7 +72,7 @@ test("storefront rate limiter blocks excessive reserve attempts", () => {
 
 test("storefront hold mutations are routed through a signed Shopify app proxy", async () => {
   const direct = await fs.readFile(
-    new URL("../app/routes/api.storefront-hold.jsx", import.meta.url),
+    new URL("../app/utils/storefront-hold.server.js", import.meta.url),
     "utf8",
   );
   const proxy = await fs.readFile(
