@@ -279,14 +279,31 @@ function CentralDeReservasContent() {
   const [shopifyValidationLoading, setShopifyValidationLoading] = useState(false);
   const [shopifyValidationCancelLoading, setShopifyValidationCancelLoading] = useState(false);
   const [shopifyValidationError, setShopifyValidationError] = useState("");
-  // platformProducts: Shopify vem do loader (dados reais).
-  // Demais plataformas ficam vazias até que a integração via API seja configurada.
+  // Produtos por plataforma.
+  // Shopify vem do catálogo remoto. No GetYourGuide a Supplier API é inbound/push:
+  // as reservas chegam normalmente, mas não existe um "listar catálogo remoto" para
+  // preencher esta tela. Por isso exibimos desde o carregamento os tours mestre já
+  // mapeados ao GYG, usando o mesmo conjunto auditado pelo sync manual.
+  const initialGygProducts = (tours || [])
+    .filter((tour) => Boolean(tour.gygActivityId))
+    .map((tour) => ({
+      id: tour.gygActivityId,
+      name: tour.title,
+      active: tour.shopifyStatus !== "INACTIVE",
+      synced: true,
+      sku: tour.gygActivityId,
+      price: "—",
+      variants: tour.variants || [],
+      scheduleSlots: tour.scheduleSlots || [],
+      masterTourId: tour.id,
+    }));
+
   const [platformProducts, setPlatformProducts] = useState({
-    shopify:      shopifyProducts,  // dados reais da sua loja Shopify
-    viator:       [],               // preenchido após conectar Viator API
-    getyourguide: [],               // preenchido após conectar GYG API
-    headout:      [],               // preenchido após conectar Headout API
-    civitatis:    [],               // preenchido após conectar Civitatis API
+    shopify:      shopifyProducts,
+    viator:       [],
+    getyourguide: initialGygProducts,
+    headout:      [],
+    civitatis:    [],
   });
 
   // I. CONEXÕES DE PLATAFORMAS
