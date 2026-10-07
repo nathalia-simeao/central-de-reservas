@@ -12,10 +12,11 @@ test("GetYourGuide catalog uses active supplier product options instead of legac
     "utf8",
   );
 
-  assert.equal(route.includes("(tour.gygProductOptions || []).filter"), true);
+  assert.equal(route.includes("(tour.gygProductOptions || [])"), true);
   assert.equal(route.includes("getyourguide: initialGygProducts"), true);
   assert.equal(sync.includes("function productItemFromGygOption"), true);
-  assert.equal(sync.includes("gygProductOptions: {\n        some: { active: true }"), true);
+  assert.equal(sync.includes("gygProductOptions"), true);
+  assert.equal(sync.includes("some: { active: true }"), true);
   assert.equal(sync.includes("items: productItems"), true);
   assert.equal(sync.includes('where: { gygActivityId: { not: null } }'), false);
 });

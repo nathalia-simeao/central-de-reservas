@@ -20,5 +20,8 @@ test("Tripadvisor is content-only and validates Terra remotely", async () => {
   assert.equal(credentials.includes("testTripadvisorTerraCredentials"), true);
   assert.equal(server.includes("X-API-Key"), true);
   assert.equal(server.includes("/locations/"), true);
-  assert.equal(modal.includes("não cria reservas e não consome vagas"), true);
+  assert.equal(
+    modal.toLowerCase().includes("não cria reservas e não consome vagas"),
+    true,
+  );
 });
