@@ -1761,8 +1761,12 @@ export default function DashboardTab(props) {
                   0,
                 );
                 const channelCount = salesByChannel.length;
+                const financiallyCoveredBookings = Math.max(
+                  0,
+                  totalSalesCount - missingFinancialBookings.length,
+                );
                 const financeCoverage = totalSalesCount > 0
-                  ? Math.round((pricedConfirmedBookings.length / totalSalesCount) * 100)
+                  ? Math.round((financiallyCoveredBookings / totalSalesCount) * 100)
                   : 0;
 
                 const kpis = [
@@ -1839,35 +1843,59 @@ export default function DashboardTab(props) {
                       ))}
                     </section>
 
-                    <section className="pmy-dashboard-status-strip">
-                      <div className="pmy-dashboard-status-item">
+                    <section className="pmy-dashboard-status-strip" aria-label={lang === "pt" ? "Detalhes operacionais" : "Operational details"}>
+                      <button
+                        type="button"
+                        className="pmy-dashboard-status-item"
+                        onClick={() => setActiveModal("passengers")}
+                        aria-label={lang === "pt" ? "Ver passageiros confirmados" : "View confirmed passengers"}
+                      >
                         <span className="pmy-dashboard-status-dot is-good" />
                         <div>
                           <strong>{confirmedPassengers}</strong>
                           <span>{lang === "pt" ? "passageiros confirmados" : "confirmed passengers"}</span>
                         </div>
-                      </div>
-                      <div className="pmy-dashboard-status-item">
+                        <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
+                      </button>
+                      <button
+                        type="button"
+                        className="pmy-dashboard-status-item"
+                        onClick={() => setActiveModal("sales")}
+                        aria-label={lang === "pt" ? "Ver canais com vendas" : "View sales channels"}
+                      >
                         <span className="pmy-dashboard-status-dot is-info" />
                         <div>
                           <strong>{channelCount}</strong>
                           <span>{lang === "pt" ? "canais com vendas" : "channels with sales"}</span>
                         </div>
-                      </div>
-                      <div className="pmy-dashboard-status-item">
+                        <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
+                      </button>
+                      <button
+                        type="button"
+                        className="pmy-dashboard-status-item"
+                        onClick={() => setActiveModal("financeCoverage")}
+                        aria-label={lang === "pt" ? "Entender cobertura financeira" : "Understand financial coverage"}
+                      >
                         <span className={`pmy-dashboard-status-dot ${financeCoverage === 100 ? "is-good" : "is-warning"}`} />
                         <div>
                           <strong>{financeCoverage}%</strong>
                           <span>{lang === "pt" ? "cobertura financeira" : "financial coverage"}</span>
                         </div>
-                      </div>
-                      <div className="pmy-dashboard-status-item">
+                        <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
+                      </button>
+                      <button
+                        type="button"
+                        className="pmy-dashboard-status-item"
+                        onClick={() => setActiveModal("currencies")}
+                        aria-label={lang === "pt" ? "Ver moedas do período" : "View currencies in period"}
+                      >
                         <span className={`pmy-dashboard-status-dot ${revenueCurrencies.length <= 1 ? "is-good" : "is-warning"}`} />
                         <div>
                           <strong>{revenueCurrencies.length || 0}</strong>
                           <span>{lang === "pt" ? "moedas no período" : "currencies in period"}</span>
                         </div>
-                      </div>
+                        <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
+                      </button>
                     </section>
                   </>
                 );

@@ -88,6 +88,7 @@ export default function CentralModalLayer(props) {
     pricedConfirmedBookings,
     realCanceledBookings,
     realConfirmedBookings,
+    revenueByCurrency,
     revenueCurrencies,
     salesByChannel,
     selectedCalendarDay,
@@ -1220,6 +1221,173 @@ export default function CentralModalLayer(props) {
               </div>
             </div>
           )}
+        </div>
+      );
+    } else if (activeModal === 'passengers') {
+      const confirmedPassengers = realConfirmedBookings.reduce(
+        (total, booking) => total + Number(booking?.totalParticipants || 0),
+        0,
+      );
+      title = lang === 'pt' ? "Passageiros confirmados" : "Confirmed Passengers";
+      content = (
+        <div>
+          <div className="pmy-ds-state-panel is-success pmy-u-mb-4">
+            <div className="pmy-ds-state-title is-success">
+              {confirmedPassengers} {lang === 'pt' ? "passageiros" : "passengers"}
+            </div>
+            <div className="pmy-ds-state-text">
+              {realConfirmedBookings.length} {lang === 'pt'
+                ? "reservas confirmadas no período. Abaixo está o titular de cada compra."
+                : "confirmed bookings in the period. The purchaser for each booking is listed below."}
+            </div>
+          </div>
+          {realConfirmedBookings.length === 0 ? (
+            <p className="pmy-ds-migrated-qx2f5l">
+              {lang === 'pt' ? "Nenhuma reserva confirmada no período." : "No confirmed bookings in the period."}
+            </p>
+          ) : realConfirmedBookings.map((booking) => {
+            const tour = (tours || []).find((item) => item.id === booking.tourId);
+            const start = new Date(booking.startTime);
+            return (
+              <div className="pmy-list-item" key={booking.id}>
+                <div>
+                  <strong>{booking.customerName || (lang === 'pt' ? "Cliente não informado" : "Customer not provided")}</strong>
+                  <div className="pmy-ds-migrated-1imkwof">
+                    {booking.customerEmail ? `${booking.customerEmail} · ` : ""}
+                    {platformLabel(booking.platform)} · {Number(booking.totalParticipants || 0)} pax
+                  </div>
+                  <div className="pmy-ds-migrated-1761q2k">
+                    {tour?.title || (lang === 'pt' ? "Passeio" : "Tour")}
+                    {!Number.isNaN(start.getTime())
+                      ? ` · ${start.toLocaleString(lang === 'pt' ? 'pt-PT' : 'en-GB', {
+                          timeZone: 'Europe/Lisbon',
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`
+                      : ""}
+                  </div>
+                </div>
+                <span className="pmy-ds-state-text is-success pmy-u-extrabold">
+                  {Number(booking.totalParticipants || 0)} pax
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    } else if (activeModal === 'financeCoverage') {
+      const coveredCount = Math.max(
+        0,
+        totalSalesCount - missingFinancialBookings.length,
+      );
+      const financeCoverage = totalSalesCount > 0
+        ? Math.round((coveredCount / totalSalesCount) * 100)
+        : 0;
+      title = lang === 'pt' ? "Cobertura financeira" : "Financial Coverage";
+      content = (
+        <div>
+          <div className={`pmy-ds-state-panel ${financeCoverage === 100 ? "is-success" : "is-warning"} pmy-u-mb-4`}>
+            <div className={`pmy-ds-state-title ${financeCoverage === 100 ? "is-success" : "is-warning"}`}>
+              {financeCoverage}%
+            </div>
+            <div className="pmy-ds-state-text">
+              {lang === 'pt'
+                ? `${coveredCount} de ${totalSalesCount} reservas confirmadas têm valor e moeda preenchidos. A moeda não precisa ser EUR para contar como coberta.`
+                : `${coveredCount} of ${totalSalesCount} confirmed bookings have both amount and currency. A booking does not need to be in EUR to count as covered.`}
+            </div>
+          </div>
+          <div className="pmy-ds-panel-soft pmy-u-mb-4">
+            <strong>{lang === 'pt' ? "Como é calculado?" : "How is it calculated?"}</strong>
+            <p className="pmy-u-mt-2">
+              {lang === 'pt'
+                ? "Cobertura financeira = reservas confirmadas com preço + moeda ÷ total de reservas confirmadas. Reservas em outra moeda continuam cobertas."
+                : "Financial coverage = confirmed bookings with price + currency ÷ total confirmed bookings. Bookings in another currency still count as covered."}
+            </p>
+          </div>
+          {missingFinancialBookings.length === 0 ? (
+            <div className="pmy-ds-state-panel is-success">
+              <div className="pmy-ds-state-title is-success">
+                {lang === 'pt' ? "Todas as reservas têm dados financeiros." : "All bookings have financial data."}
+              </div>
+            </div>
+          ) : (
+            <>
+              <h4 className="pmy-u-mb-2">
+                {lang === 'pt' ? "Reservas que reduzem a cobertura" : "Bookings reducing coverage"}
+              </h4>
+              {missingFinancialBookings.map((booking) => {
+                const amount = moneyValue(booking);
+                const currency = bookingCurrency(booking);
+                return (
+                  <div className="pmy-list-item" key={booking.id}>
+                    <div>
+                      <strong>{booking.customerName || (lang === 'pt' ? "Cliente não informado" : "Customer not provided")}</strong>
+                      <div className="pmy-ds-migrated-1imkwof">
+                        {platformLabel(booking.platform)} · {Number(booking.totalParticipants || 0)} pax
+                      </div>
+                    </div>
+                    <span className="pmy-ds-state-text is-warning pmy-u-extrabold">
+                      {amount === null
+                        ? (lang === 'pt' ? "Sem valor" : "No amount")
+                        : !currency
+                          ? (lang === 'pt' ? "Sem moeda" : "No currency")
+                          : (lang === 'pt' ? "Dado incompleto" : "Incomplete data")}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      );
+    } else if (activeModal === 'currencies') {
+      const currencyRows = revenueCurrencies.map((currency) => {
+        const currencyBookings = realConfirmedBookings.filter(
+          (booking) => bookingCurrency(booking) === currency && moneyValue(booking) !== null,
+        );
+        return {
+          currency,
+          bookings: currencyBookings.length,
+          passengers: currencyBookings.reduce(
+            (total, booking) => total + Number(booking?.totalParticipants || 0),
+            0,
+          ),
+          amount: Number(revenueByCurrency?.[currency] || 0),
+        };
+      });
+      title = lang === 'pt' ? "Moedas no período" : "Currencies in Period";
+      content = (
+        <div>
+          <div className="pmy-ds-state-panel pmy-u-mb-4">
+            <div className="pmy-ds-state-title">
+              {revenueCurrencies.length} {lang === 'pt' ? "moeda(s) detectada(s)" : "currency/currencies detected"}
+            </div>
+            <div className="pmy-ds-state-text">
+              {lang === 'pt'
+                ? "Cada moeda é mantida separada. A Central não soma EUR, USD, GBP ou outras moedas como se fossem equivalentes."
+                : "Each currency is kept separate. The Central never adds EUR, USD, GBP or other currencies as if they were equivalent."}
+            </div>
+          </div>
+          {currencyRows.length === 0 ? (
+            <p className="pmy-ds-migrated-qx2f5l">
+              {lang === 'pt' ? "Nenhuma moeda com valor financeiro no período." : "No currency with financial value in the period."}
+            </p>
+          ) : currencyRows.map((row) => (
+            <div className="pmy-list-item" key={row.currency}>
+              <div>
+                <strong>{row.currency}</strong>
+                <div className="pmy-ds-migrated-1imkwof">
+                  {row.bookings} {lang === 'pt' ? "reservas" : "bookings"} · {row.passengers} pax
+                </div>
+              </div>
+              <span className="pmy-ds-state-text is-success pmy-u-extrabold">
+                {formatMoney(row.amount, row.currency)}
+              </span>
+            </div>
+          ))}
         </div>
       );
     } else if (activeModal === 'sales') {

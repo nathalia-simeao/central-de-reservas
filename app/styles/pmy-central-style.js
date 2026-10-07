@@ -834,12 +834,39 @@ export function buildCentralStyles(theme) {
         box-shadow:0 10px 28px rgba(22,44,29,.045);
       }
       .pmy-dashboard-status-item {
+        appearance:none;
+        width:100%;
+        border:0;
         background:color-mix(in srgb, var(--surface-color) 96%, var(--bg-color) 4%);
         padding:12px 15px;
         display:flex;
         align-items:center;
         gap:10px;
         min-width:0;
+        text-align:left;
+        font:inherit;
+        color:inherit;
+        cursor:pointer;
+        transition:background .16s ease, color .16s ease;
+      }
+      .pmy-dashboard-status-item:hover,
+      .pmy-dashboard-status-item:focus-visible {
+        background:color-mix(in srgb, var(--primary-green) 6%, var(--surface-color));
+        outline:none;
+      }
+      .pmy-dashboard-status-item:focus-visible {
+        box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--primary-green) 42%, transparent);
+      }
+      .pmy-dashboard-status-expand {
+        margin-left:auto;
+        flex:0 0 auto;
+        color:#9ca3af;
+        transition:transform .16s ease, color .16s ease;
+      }
+      .pmy-dashboard-status-item:hover .pmy-dashboard-status-expand,
+      .pmy-dashboard-status-item:focus-visible .pmy-dashboard-status-expand {
+        color:var(--primary-green);
+        transform:translateX(2px);
       }
       .pmy-dashboard-status-item > div {
         display:flex;
