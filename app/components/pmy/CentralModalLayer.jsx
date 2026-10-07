@@ -802,7 +802,7 @@ export default function CentralModalLayer(props) {
             {/* ── VIATOR / CIVITATIS: credencial real no backend ── */}
             {isManagedCredential && (
               <div>
-                <div className={`pmy-ds-state-panel ${conn.connected ? "is-success" : conn.validationError ? "is-danger" : conn.configured ? "" : "is-warning"}`}>
+                <div className={`pmy-ds-state-panel ${isTripadvisor ? "pmy-u-mt-3 " : ""}${conn.connected ? "is-success" : conn.validationError ? "is-danger" : conn.configured ? "" : "is-warning"}`}>
                   <div className={`pmy-ds-state-title ${conn.connected ? "is-success" : conn.validationError ? "is-danger" : conn.configured ? "" : "is-warning"}`}>
                     {conn.connected
                       ? ui("Canal conectado por tráfego autenticado", "Channel connected by authenticated traffic")
