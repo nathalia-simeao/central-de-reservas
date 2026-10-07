@@ -65,6 +65,9 @@ export default function CentralModalLayer(props) {
     civitatisOnboardingError,
     civitatisOnboardingLoading,
     civitatisOnboardingStatus,
+    tripadvisorContent,
+    tripadvisorContentError,
+    tripadvisorContentLoading,
     handleConfirmConnect,
     handleDeleteGuide,
     handleDisconnect,
@@ -81,6 +84,7 @@ export default function CentralModalLayer(props) {
     handleViatorDisconnectMapping,
     loadViatorOnboarding,
     loadCivitatisOnboarding,
+    loadTripadvisorContent,
     integrationCredentialLoading,
     integrationCredentialMessage,
     integrationCredentialStatus,
@@ -241,7 +245,7 @@ export default function CentralModalLayer(props) {
     const isViator = connectingPlatform === 'viator';
     const isCivitatis = connectingPlatform === 'civitatis';
     const isTripadvisor = connectingPlatform === 'tripadvisor';
-    const isManagedCredential = ['viator', 'civitatis'].includes(connectingPlatform);
+    const isManagedCredential = ['viator', 'civitatis', 'tripadvisor'].includes(connectingPlatform);
     const isHeadout = connectingPlatform === 'headout';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
   
@@ -683,47 +687,105 @@ export default function CentralModalLayer(props) {
               </div>
             )}
   
-            {/* ── TRIPADVISOR: conteúdo/reputação, não canal de reservas ── */}
+            {/* ── TRIPADVISOR: conteúdo/reputação, fora do inventário ── */}
             {isTripadvisor && (
               <div>
-                <div className="pmy-ds-migrated-126x48q">
-                  <div className="pmy-ds-migrated-1ddsok5">
-                    🦉 Tripadvisor = Conteúdo & Reputação
+                <div className="pmy-ds-state-panel">
+                  <div className="pmy-ds-state-title">
+                    {ui("Tripadvisor Terra · Conteúdo & Reputação", "Tripadvisor Terra · Content & Reputation")}
                   </div>
-                  <div className="pmy-ds-migrated-1y98iuh">
-                    <div>⭐ Reviews e ratings: <strong>Tripadvisor Terra API</strong></div>
-                    <div>📷 Fotos e dados da localização: <strong>Tripadvisor Terra API</strong></div>
-                    <div>🎟️ Reservas de tours/atividades: <strong>{ui("geridas pela integração Viator", "managed by the Viator integration")}</strong></div>
-                    <div>🚫 Agenda, vagas, bloqueios e overbooking: <strong>{ui("Tripadvisor não entra como canal separado", "Tripadvisor is not treated as a separate channel")}</strong></div>
+                  <div className="pmy-ds-state-text">
+                    {ui(
+                      "Esta conexão é separada da Viator. Ela serve para consumir conteúdo do Tripadvisor na Central: nota, reviews, fotos e dados da localização. Não cria reservas e não consome vagas.",
+                      "This connection is separate from Viator. It is used to consume Tripadvisor content in the Central: rating, reviews, photos and location data. It does not create bookings or consume capacity.",
+                    )}
                   </div>
                 </div>
-  
-                <div className="pmy-ds-migrated-12pzgqr">
-                  <strong>{ui("Sem duplicar reservas.", "No duplicate bookings.")}</strong> Quando uma experiência da PMY aparece no Tripadvisor, o inventário e as reservas são distribuídos pela Viator. A Central deve contabilizar essa venda como Viator, não como um segundo canal Tripadvisor.
-                </div>
-  
-                <div className="pmy-ds-migrated-1t8mads">
-                  <div className="pmy-ds-migrated-1efxhyu">{ui("O que poderemos integrar separadamente", "What we can integrate separately")}</div>
-                  <ul className="pmy-ds-migrated-1dhnes7">
-                    <li>{ui("reviews recentes da empresa/localização", "recent company/location reviews")}</li>
-                    <li>{ui("nota média e quantidade de avaliações", "average rating and review count")}</li>
-                    <li>{ui("fotos e dados públicos da localização", "public location photos and data")}</li>
-                    <li>{ui("widgets/links de reputação no site e na Central, quando permitido pelo plano Terra", "reputation widgets/links on the website and in the Central, when allowed by the Terra plan")}</li>
-                  </ul>
-                </div>
-  
-                <div className="pmy-ds-migrated-12y480p">
-                  <button type="button" onClick={() => window.open('https://docs.terra.tripadvisor.com/docs/overview', '_blank')}
-                    className="pmy-ds-migrated-bhqwnz">
-                    Abrir documentação Terra ↗
+
+                {tripadvisorContent?.location ? (
+                  <div className="pmy-ds-panel-soft pmy-u-mt-3">
+                    <strong>{tripadvisorContent.location.name}</strong>
+                    <div className="pmy-ds-list-plain pmy-u-mt-2">
+                      <div className="pmy-ds-list-plain__row">
+                        <span>{ui("Nota", "Rating")}</span>
+                        <strong>{tripadvisorContent.location.rating ?? "—"}</strong>
+                      </div>
+                      <div className="pmy-ds-list-plain__row">
+                        <span>{ui("Avaliações", "Reviews")}</span>
+                        <strong>{tripadvisorContent.location.reviewCount ?? "—"}</strong>
+                      </div>
+                      <div className="pmy-ds-list-plain__row">
+                        <span>{ui("Fotos", "Photos")}</span>
+                        <strong>{tripadvisorContent.location.photoCount ?? "—"}</strong>
+                      </div>
+                    </div>
+
+                    {tripadvisorContent.reviewsAccess === false && (
+                      <div className="pmy-ds-inline-message is-warning pmy-u-mt-2">
+                        {ui(
+                          "A API Key funciona, mas o plano Terra atual não liberou o endpoint de reviews.",
+                          "The API key works, but the current Terra plan does not include the reviews endpoint.",
+                        )}
+                      </div>
+                    )}
+
+                    {(tripadvisorContent.reviews || []).length > 0 && (
+                      <div className="pmy-u-mt-3">
+                        <strong>{ui("Reviews recentes", "Recent reviews")}</strong>
+                        <div className="pmy-ds-list-plain pmy-u-mt-2">
+                          {tripadvisorContent.reviews.slice(0, 5).map((review, index) => (
+                            <div className="pmy-ds-list-plain__row" key={review.id || index}>
+                              <span>
+                                <strong>{review.title || ui("Avaliação", "Review")}</strong>
+                                <span className="pmy-ds-list-item__description">
+                                  {review.author || "Tripadvisor"}{review.rating ? ` · ${review.rating}/5` : ""}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : tripadvisorContent?.configured ? (
+                  <div className="pmy-ds-inline-message is-warning pmy-u-mt-3">
+                    {ui(
+                      "API Terra conectada. Falta informar o Tripadvisor Location ID da Portugal Me & You para carregar reputação e reviews.",
+                      "Terra API connected. Add the Portugal Me & You Tripadvisor Location ID to load reputation and reviews.",
+                    )}
+                  </div>
+                ) : null}
+
+                {tripadvisorContentError && (
+                  <div className="pmy-ds-inline-message is-danger pmy-u-mt-3">
+                    {tripadvisorContentError}
+                  </div>
+                )}
+
+                <div className="pmy-ds-actions pmy-u-mt-3">
+                  <button
+                    type="button"
+                    className="pmy-btn-secondary"
+                    onClick={() => window.open("https://www.tripadvisor.com/developers", "_blank")}
+                  >
+                    {ui("Abrir Tripadvisor Developers ↗", "Open Tripadvisor Developers ↗")}
                   </button>
-                  <button type="button" className="pmy-btn-submit pmy-ds-migrated-ckcaff" onClick={() => setConnectingPlatform(null)} >
-                    Fechar
-                  </button>
+                  {tripadvisorContent?.configured && (
+                    <button
+                      type="button"
+                      className="pmy-btn-secondary"
+                      disabled={tripadvisorContentLoading}
+                      onClick={loadTripadvisorContent}
+                    >
+                      {tripadvisorContentLoading
+                        ? ui("Atualizando...", "Refreshing...")
+                        : ui("Atualizar conteúdo", "Refresh content")}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-  
+
             {/* ── VIATOR / CIVITATIS: credencial real no backend ── */}
             {isManagedCredential && (
               <div>
@@ -802,7 +864,7 @@ export default function CentralModalLayer(props) {
                         />
                       </div>
   
-                      {connectingPlatform === "viator" && (
+                      {(connectingPlatform === "viator" || connectingPlatform === "tripadvisor") && (
                         <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
                           <label className="pmy-ds-migrated-18dm9zi">{guide.field2Label}</label>
                           <input

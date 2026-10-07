@@ -352,11 +352,12 @@ function CentralDeReservasContent() {
           : "Credenciais pendentes",
     },
     tripadvisor: {
-      connected: false,
-      configured: false,
+      ...providerConnectionFromStatus("TRIPADVISOR", false),
       contentOnly: true,
       accountName: "Tripadvisor Terra",
-      lastSync: "Não é canal de reservas",
+      lastSync:
+        providerConnectionFromStatus("TRIPADVISOR", false).lastSync ||
+        "Não é canal de reservas",
     },
     headout: {
       connected: false,
@@ -383,6 +384,9 @@ function CentralDeReservasContent() {
   const [civitatisOnboardingStatus, setCivitatisOnboardingStatus] = useState(null);
   const [civitatisOnboardingLoading, setCivitatisOnboardingLoading] = useState(false);
   const [civitatisOnboardingError, setCivitatisOnboardingError] = useState("");
+  const [tripadvisorContent, setTripadvisorContent] = useState(null);
+  const [tripadvisorContentLoading, setTripadvisorContentLoading] = useState(false);
+  const [tripadvisorContentError, setTripadvisorContentError] = useState("");
 
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
@@ -2171,6 +2175,23 @@ function CentralDeReservasContent() {
     }
   };
 
+  const loadTripadvisorContent = async () => {
+    setTripadvisorContentLoading(true);
+    setTripadvisorContentError("");
+    try {
+      const payload = await requestResourceJson("/api/tripadvisor-content");
+      setTripadvisorContent(payload);
+      return payload;
+    } catch (error) {
+      setTripadvisorContentError(
+        error?.message || "Falha ao consultar o Tripadvisor Terra.",
+      );
+      return null;
+    } finally {
+      setTripadvisorContentLoading(false);
+    }
+  };
+
   const handleOpenConnect = (key) => {
     setConnectingPlatform(key);
     setApiKeyInput("");
@@ -2189,6 +2210,10 @@ function CentralDeReservasContent() {
     if (key === "civitatis") {
       setCivitatisOnboardingError("");
       void loadCivitatisOnboarding();
+    }
+    if (key === "tripadvisor") {
+      setTripadvisorContentError("");
+      void loadTripadvisorContent();
     }
   };
 
@@ -2209,7 +2234,7 @@ function CentralDeReservasContent() {
   };
 
   const handleConfirmConnect = async (key) => {
-    if (!["viator", "civitatis"].includes(key)) return;
+    if (!["viator", "civitatis", "tripadvisor"].includes(key)) return;
 
     setIntegrationCredentialLoading(true);
     setIntegrationCredentialMessage("");
@@ -2222,9 +2247,12 @@ function CentralDeReservasContent() {
       if (key === "viator") {
         fd.append("apiKey", apiKeyInput.trim());
         fd.append("supplierId", apiSecretInput.trim());
-      } else {
+      } else if (key === "civitatis") {
         fd.append("token", apiKeyInput.trim());
         fd.append("environment", integrationEnvironmentInput);
+      } else if (key === "tripadvisor") {
+        fd.append("apiKey", apiKeyInput.trim());
+        fd.append("locationId", apiSecretInput.trim());
       }
 
       const payload = await callIntegrationCredentialApi(fd);
@@ -2241,6 +2269,9 @@ function CentralDeReservasContent() {
       if (key === "civitatis") {
         void loadCivitatisOnboarding();
       }
+      if (key === "tripadvisor") {
+        void loadTripadvisorContent();
+      }
     } catch (error) {
       if (error?.integrationStatus) {
         applyCredentialStatus(key, error.integrationStatus);
@@ -2254,7 +2285,7 @@ function CentralDeReservasContent() {
   };
 
   const handleTestIntegrationCredential = async (key) => {
-    if (!["viator", "civitatis"].includes(key)) return;
+    if (!["viator", "civitatis", "tripadvisor"].includes(key)) return;
 
     setIntegrationCredentialLoading(true);
     setIntegrationCredentialMessage("");
@@ -2265,7 +2296,9 @@ function CentralDeReservasContent() {
       const payload = await callIntegrationCredentialApi(fd);
       applyCredentialStatus(key, payload.status);
       setIntegrationCredentialMessage(
-        "Teste técnico local concluído. A conexão continua aguardando tráfego autenticado real do canal.",
+        key === "tripadvisor"
+          ? "Tripadvisor Terra validado diretamente na API."
+          : "Teste técnico local concluído. A conexão continua aguardando tráfego autenticado real do canal.",
       );
     } catch (error) {
       if (error?.integrationStatus) {
@@ -2280,7 +2313,7 @@ function CentralDeReservasContent() {
   };
 
   const handleDisconnect = async (key) => {
-    if (!["viator", "civitatis"].includes(key)) return;
+    if (!["viator", "civitatis", "tripadvisor"].includes(key)) return;
 
     const platformName = allPlatforms.find((item) => item.key === key)?.name || key;
     const confirmed = await requestConfirm({
@@ -2449,13 +2482,15 @@ function CentralDeReservasContent() {
     },
     tripadvisor: {
       steps: [
-        "Para tours e atividades, a distribuição de reservas da PMY acontece pela Viator, inclusive no Tripadvisor",
-        "O Tripadvisor Terra API é uma integração separada para conteúdo, reviews, ratings, fotos e dados de localização",
-        "Se ativarmos o Terra, a chave ficará somente nos Secrets do servidor e nunca será colada nesta tela",
+        "Crie ou acesse sua conta no Tripadvisor Developers / Terra e gere uma API Key.",
+        "Cole a API Key aqui; a Central criptografa o valor no IntegrationSecret e valida a chave diretamente contra a Terra API.",
+        "O Location ID é opcional no primeiro teste. Depois, informe o ID da página da Portugal Me & You no Tripadvisor para carregar nota, reviews e dados da localização.",
+        "Tripadvisor continua fora da Agenda e do inventário: reservas de experiências seguem pela integração Viator.",
       ],
-      field1Label: null,
-      field1Placeholder: null,
-      field2Label: null,
+      field1Label: "API Key do Tripadvisor Terra",
+      field1Placeholder: "Cole sua API Key Terra",
+      field2Label: "Tripadvisor Location ID (opcional)",
+      field2Placeholder: "Somente números",
     },
   };
 
@@ -2736,6 +2771,9 @@ function CentralDeReservasContent() {
         civitatisOnboardingError,
         civitatisOnboardingLoading,
         civitatisOnboardingStatus,
+        tripadvisorContent,
+        tripadvisorContentError,
+        tripadvisorContentLoading,
         handleConfirmConnect,
         handleDeleteGuide,
         handleDisconnect,
@@ -2752,6 +2790,7 @@ function CentralDeReservasContent() {
         handleViatorDisconnectMapping,
         loadViatorOnboarding,
         loadCivitatisOnboarding,
+        loadTripadvisorContent,
         integrationCredentialLoading,
         integrationCredentialMessage,
         integrationCredentialStatus,

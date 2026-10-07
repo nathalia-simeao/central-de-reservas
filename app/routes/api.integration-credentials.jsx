@@ -16,10 +16,11 @@ import {
   validateViatorSupplierId,
 } from "../utils/viator.server";
 import { requireCivitatisAuth } from "../utils/civitatis.server";
+import { testTripadvisorTerraCredentials } from "../utils/tripadvisor.server";
 
 const json = (body, init) => data(body, init);
-const MANAGED_PROVIDERS = new Set(["VIATOR", "CIVITATIS"]);
-const KNOWN_PROVIDERS = new Set(["VIATOR", "CIVITATIS", "HEADOUT"]);
+const MANAGED_PROVIDERS = new Set(["VIATOR", "CIVITATIS", "TRIPADVISOR"]);
+const KNOWN_PROVIDERS = new Set(["VIATOR", "CIVITATIS", "HEADOUT", "TRIPADVISOR"]);
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -44,6 +45,13 @@ function publicCapabilities() {
       testMode: "CENTRAL_AUTH",
       description:
         "A Civitatis chama a Supplier API da PMY. A Central valida token e ambiente contra o mesmo middleware usado nas requisições reais.",
+    },
+    TRIPADVISOR: {
+      managed: true,
+      direction: "OUTBOUND_CONTENT_API",
+      testMode: "REMOTE_TERRA_API",
+      description:
+        "A Central consulta a Tripadvisor Terra API para conteúdo, reviews, ratings, fotos e dados da localização. Não participa de reservas nem do inventário.",
     },
     HEADOUT: {
       managed: false,
@@ -120,6 +128,19 @@ async function testStoredCredential(provider) {
       status: "LOCAL_CHECK",
       message:
         "Credencial criptografada carregada e aceita pelo middleware local da Supplier API. Isso não confirma tráfego da Civitatis; aguardando a primeira requisição autenticada real para marcar como conectado.",
+    });
+  }
+
+  if (provider === "TRIPADVISOR") {
+    const apiKey = clean(stored.credentials.apiKey);
+    const locationId = clean(stored.credentials.locationId);
+    await testTripadvisorTerraCredentials({ apiKey, locationId });
+
+    return updateIntegrationValidation(db, provider, {
+      status: "CONNECTED",
+      message: locationId
+        ? "Tripadvisor Terra conectado e Location ID validado com sucesso."
+        : "Tripadvisor Terra conectado. API Key validada; falta informar o Location ID da Portugal Me & You para carregar reputação e reviews.",
     });
   }
 
@@ -241,6 +262,33 @@ export const action = async ({ request }) => {
             source: "PMY_CENTRAL_UI",
           },
         });
+      } else if (provider === "TRIPADVISOR") {
+        const apiKey = clean(formData.get("apiKey"));
+        const locationId = clean(formData.get("locationId"));
+
+        if (!apiKey || apiKey.length < 8) {
+          return json(
+            { success: false, error: "Informe uma API Key válida do Tripadvisor Terra." },
+            { status: 400 },
+          );
+        }
+        if (locationId && !/^\d+$/.test(locationId)) {
+          return json(
+            { success: false, error: "O Tripadvisor Location ID deve conter somente números." },
+            { status: 400 },
+          );
+        }
+
+        await storeIntegrationCredentials(db, {
+          provider,
+          credentials: { apiKey, locationId: locationId || null },
+          environment: "terra",
+          status: "CONFIGURED",
+          metadata: {
+            direction: "OUTBOUND_CONTENT_API",
+            source: "PMY_CENTRAL_UI",
+          },
+        });
       }
 
       const status = await testStoredCredential(provider);
@@ -248,7 +296,9 @@ export const action = async ({ request }) => {
         success: true,
         status,
         message:
-          "Credencial salva com criptografia e teste técnico local concluído. A conexão só será confirmada após tráfego autenticado real do canal.",
+          provider === "TRIPADVISOR"
+            ? "Credencial Tripadvisor Terra salva com criptografia e validada diretamente na API."
+            : "Credencial salva com criptografia e teste técnico local concluído. A conexão só será confirmada após tráfego autenticado real do canal.",
       });
     } catch (error) {
       console.error("[PMY] integration credential save/test failed", error);
