@@ -16,7 +16,7 @@ export const action = async ({ request }) => {
   const response = await viatorAvailabilityCheck(parsed.data);
   if (response.ok) {
     try {
-      const payload = await response.clone().json();
+      await response.clone().json();
       if (response.ok) {
         void recordViatorEvidence(db, "AVAILABILITY_CHECK", {
           receivedAt: new Date().toISOString(),

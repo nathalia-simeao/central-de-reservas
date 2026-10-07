@@ -505,6 +505,8 @@ export async function handleStorefrontHoldAction(
   request,
   { authenticatedProxy = false, shop = null } = {},
 ) {
+  let registeredRequestId = null;
+
   try {
     if (!authenticatedProxy) {
       const error = new Error("Storefront mutations must use the signed Shopify App Proxy.");
@@ -618,6 +620,7 @@ export async function handleStorefrontHoldAction(
       clientKey,
       shop,
     });
+    registeredRequestId = requestId;
 
     if (requestState.state === "REPLAY") {
       const replay = requestState.event?.result || {};
@@ -695,21 +698,31 @@ export async function handleStorefrontHoldAction(
       holds,
     };
 
-    await completeStorefrontRequest(db, {
-      requestId,
-      result: {
-        holds,
-        expiresAt: holdExpiresAt.toISOString(),
-      },
-    });
+    try {
+      await completeStorefrontRequest(db, {
+        requestId,
+        result: {
+          holds,
+          expiresAt: holdExpiresAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      await releaseHolds(
+        holds.map((hold) => hold.holdId),
+        "storefront_idempotency_finalize_failed",
+      );
+      await failStorefrontRequest(db, {
+        requestId,
+        error: error?.message || "Could not finalize storefront idempotency state.",
+      }).catch(() => null);
+      throw error;
+    }
 
     return json(request, resultPayload);
   } catch (error) {
-    const parsedRequestId =
-      typeof error?.requestId === "string" ? error.requestId : null;
-    if (parsedRequestId) {
+    if (registeredRequestId) {
       await failStorefrontRequest(db, {
-        requestId: parsedRequestId,
+        requestId: registeredRequestId,
         error: error?.message || "Storefront hold failed.",
       }).catch(() => null);
     }

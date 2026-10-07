@@ -253,18 +253,9 @@ function CentralDeReservasContent() {
   const [mediaList, setMediaList] = useState(mediaFiles);
   const [mediaLoaded, setMediaLoaded] = useState(mediaFiles.length > 0);
   const [mediaLoading, setMediaLoading] = useState(false);
-  const [mediaLoadError, setMediaLoadError] = useState("");
+  const [, setMediaLoadError] = useState("");
   const [mediaPage, setMediaPage] = useState(0);
-  const [mediaHasMore, setMediaHasMore] = useState(false);
-  const [showShopifySource, setShowShopifySource] = useState(true);
-  const [mediaFilter, setMediaFilter] = useState("all"); // all | logo | guide | tour | general
-  const [mediaUploading, setMediaUploading] = useState(false);
-  const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
-  const [mediaUploadError, setMediaUploadError] = useState("");
-  const [mediaLabelInput, setMediaLabelInput] = useState("");
-  const [mediaCategoryInput, setMediaCategoryInput] = useState("general");
-  const [mediaPreview, setMediaPreview] = useState(null); // modal de preview
-  const mediaUploadRef = useRef(null);
+  const [, setMediaHasMore] = useState(false);
   const [intSubTab, setIntSubTab] = useState("conexoes"); // "conexoes" | "produtos" | "logs"
   const [activeProdPlatform, setActiveProdPlatform] = useState("shopify");
   const [manualSyncPlatform, setManualSyncPlatform] = useState(null);
@@ -1240,70 +1231,6 @@ function CentralDeReservasContent() {
     } finally {
       setGuidePhotoUploading(false);
     }
-  };
-
-  // HANDLERS DE MÍDIA
-  const handleMediaUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setMediaUploading(true);
-    setMediaUploadError("");
-    setMediaUploadProgress(20);
-
-    try {
-      const media = await uploadFileToPmyMediaLibrary({
-        file,
-        category: mediaCategoryInput,
-        label: mediaLabelInput || file.name.replace(/\.[^/.]+$/, ""),
-        requestResourceJson,
-      });
-
-      setMediaUploadProgress(100);
-      setMediaList((current) => [
-        media,
-        ...current.filter((item) => item.id !== media.id),
-      ]);
-      setMediaLabelInput("");
-    } catch (err) {
-      setMediaUploadError(err?.message || "Não foi possível enviar a mídia.");
-    } finally {
-      setMediaUploading(false);
-      window.setTimeout(() => setMediaUploadProgress(0), 250);
-      if (mediaUploadRef.current) mediaUploadRef.current.value = "";
-    }
-  };
-
-  const handleDeleteMedia = async (id) => {
-    const confirmed = await requestConfirm({
-      title: ui("Remover mídia?", "Remove media?"),
-      description: ui(
-        "A mídia será removida da biblioteca PMY. Referências já usadas no sistema podem deixar de exibir a imagem.",
-        "The media will be removed from the PMY library. Existing references may stop displaying the image.",
-      ),
-      confirmLabel: ui("Remover mídia", "Remove media"),
-      cancelLabel: ui("Cancelar", "Cancel"),
-      tone: "danger",
-    });
-    if (!confirmed) return;
-
-    setMediaUploadError("");
-    const fd = new FormData();
-    fd.append("_action", "deleteMedia");
-    fd.append("id", id);
-
-    try {
-      await requestResourceJson("/api/central-actions", fd);
-      setMediaList((current) => current.filter((item) => item.id !== id));
-    } catch (error) {
-      setMediaUploadError(error?.message || "Erro ao remover mídia.");
-    }
-  };
-
-  const handleCopyMediaUrl = (url) => {
-    navigator.clipboard.writeText(url)
-      .then(() => notify(ui("URL copiada!", "URL copied!"), "success"))
-      .catch(() => notify(ui("Não foi possível copiar a URL.", "Could not copy the URL."), "danger"));
   };
 
   const handleTogglePlatformSelection = (key, stateArr, setStateArr) => {

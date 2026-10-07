@@ -16,7 +16,7 @@ export const action = async ({ request }) => {
   const response = await viatorCalendar(parsed.data);
   if (response.ok) {
     try {
-      const payload = await response.clone().json();
+      await response.clone().json();
       if (response.ok) {
         void recordViatorEvidence(db, "CALENDAR", {
           receivedAt: new Date().toISOString(),
