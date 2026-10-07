@@ -58,7 +58,7 @@ model Tour {
   // IDs do mesmo passeio em cada canal.
   shopifyProductId       String?       @unique
   gygActivityId          String?       @unique
-  viatorProductCode      String?       @unique
+  viatorProductCode      String?
   viatorTourGradeCode    String?
   headoutId              String?       @unique
   civitatisId            String?       @unique
@@ -75,6 +75,7 @@ model Tour {
 
   @@index([title])
   @@index([productType])
+  @@unique([viatorProductCode, viatorTourGradeCode], map: "Tour_viatorProductCode_viatorTourGradeCode_key")
 }
 
 model TourVariant {
