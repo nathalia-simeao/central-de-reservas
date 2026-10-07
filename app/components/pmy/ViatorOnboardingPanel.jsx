@@ -119,22 +119,25 @@ export default function ViatorOnboardingPanel({
         </div>
         <div className="pmy-ds-list-plain">
           {(status?.endpoints || []).map((endpoint) => (
-            <div className="pmy-ds-list-plain__row" key={endpoint.key}>
-              <span>
-                <strong>{endpoint.label}</strong>
-                <span className="pmy-ds-list-item__description">
+            <div className="pmy-ds-list-plain__row pmy-viator-endpoint-row" key={endpoint.key}>
+              <div className="pmy-viator-endpoint-main">
+                <strong className="pmy-viator-endpoint-label">{endpoint.label}</strong>
+                <span className="pmy-ds-list-item__description pmy-viator-endpoint-meta">
                   {endpoint.method} · {endpoint.version}
                   {endpoint.verified ? " · " + tr("verificado", "verified") : ""}
                 </span>
-                <code className="pmy-ds-code-note">{endpoint.url}</code>
-              </span>
-              <button
+                <code className="pmy-ds-code-note pmy-viator-endpoint-url">{endpoint.url}</code>
+              </div>
+              <Button
                 type="button"
-                className="pmy-btn-secondary pmy-ds-compact-action"
+                variant="secondary"
+                size="sm"
+                icon="copy"
+                className="pmy-viator-endpoint-copy"
                 onClick={() => navigator.clipboard?.writeText(endpoint.url)}
               >
                 {tr("Copiar", "Copy")}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
