@@ -142,23 +142,66 @@ export default function IntegrationConnectionsPanel({
                           <div className="pmy-ds-migrated-htnqm2">{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>
                         </div>
                         {contentPlatforms.map(platform => {
+                          const conn = platformConnections[platform.key] || {};
+                          const isConnected = Boolean(conn.connected);
+                          const isConfigured = Boolean(conn.configured);
+                          const statusLabel = isConnected
+                            ? tr("CONECTADO · TERRA API", "CONNECTED · TERRA API")
+                            : conn.validationError
+                              ? tr("ERRO NA CREDENCIAL", "CREDENTIAL ERROR")
+                              : isConfigured
+                                ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
+                                : tr("NÃO CONFIGURADO", "NOT CONFIGURED");
+
                           return (
-                            <div key={platform.key} className="pmy-int-card-v2 pmy-ds-migrated-1btvbiy" >
+                            <div
+                              key={platform.key}
+                              className={[
+                                "pmy-int-card-v2",
+                                isConnected ? "connected" : "",
+                                conn.validationError ? "is-error" : "",
+                                isConfigured && !isConnected && !conn.validationError ? "is-configured" : "",
+                                "pmy-ds-migrated-1btvbiy",
+                              ].filter(Boolean).join(" ")}
+                            >
                               <div className="pmy-int-top">
                                 <span className="pmy-int-logo-v2"><Icon name={platform.icon} size={22} /></span>
-                                <span className="pmy-int-sync-info">{tr("Conteúdo", "Content")}</span>
+                                {conn.lastSync ? (
+                                  <span className="pmy-int-sync-info">
+                                    <Icon name="clock" size={12} /> {conn.lastSync}
+                                  </span>
+                                ) : (
+                                  <span className="pmy-int-sync-info">{tr("Conteúdo", "Content")}</span>
+                                )}
                               </div>
                               <div className="pmy-ds-migrated-1gcp9k1">
-                                <span className="pmy-int-status-dot pmy-ds-migrated-1ezk5zw" ></span>
-                                <span className="pmy-ds-migrated-1xorh95">
-                                  CONTEÚDO / REVIEWS
+                                <span
+                                  className={"pmy-int-status-dot " + (isConnected ? "on" : conn.validationError ? "error" : isConfigured ? "configured" : "off")}
+                                ></span>
+                                <span className={"pmy-ds-connection-state " + (isConnected ? "is-connected" : conn.validationError ? "is-error" : isConfigured ? "is-configured" : "")}>
+                                  {statusLabel}
                                 </span>
                               </div>
                               <div className="pmy-int-name-v2">{platform.name}</div>
                               <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
+                              {conn.validationError && (
+                                <div className="pmy-int-connection-note is-error">
+                                  {conn.lastValidationMessage || tr(
+                                    "O último teste da credencial falhou. Abra a integração para revisar os dados.",
+                                    "The last credential test failed. Open the integration to review the data.",
+                                  )}
+                                </div>
+                              )}
                               <div className="pmy-int-actions">
-                                <Button variant="secondary" size="sm" icon="star" onClick={()=>handleOpenConnect(platform.key)}>
-                                  {tr("Ver integração de conteúdo", "View content integration")}
+                                <Button
+                                  variant={isConnected || isConfigured ? "secondary" : "primary"}
+                                  size="sm"
+                                  icon="star"
+                                  onClick={()=>handleOpenConnect(platform.key)}
+                                >
+                                  {isConnected
+                                    ? tr("Gerenciar integração de conteúdo", "Manage content integration")
+                                    : tr("Configurar integração de conteúdo", "Configure content integration")}
                                 </Button>
                               </div>
                             </div>
