@@ -58,14 +58,14 @@ export async function testTripadvisorTerraCredentials({ apiKey, locationId = nul
       throw new Error("Tripadvisor Location ID deve conter somente números.");
     }
     const payload = await terraGet(key, "/locations/" + location, {
-      version: 2,
+      version: 1,
       locale: "pt-PT",
     });
     return { mode: "LOCATION", location: payload };
   }
 
-  const payload = await terraGet(key, "/catalog/locations/search", {
-    version: 2,
+  const payload = await terraGet(key, "/locations/search", {
+    version: 1,
     query: "Lisbon",
     size: 1,
   });
@@ -123,7 +123,7 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
   }
 
   const location = await terraGet(key, "/locations/" + id, {
-    version: 2,
+    version: 1,
     locale: ["pt-PT", "en-US"],
   });
 
@@ -132,7 +132,7 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
   let reviewsError = null;
   try {
     const reviewPayload = await terraGet(key, "/locations/" + id + "/reviews", {
-      version: 2,
+      version: 1,
       locale: "pt-PT",
       size: 5,
     });
