@@ -248,6 +248,28 @@ export default function CentralModalLayer(props) {
     const isManagedCredential = ['viator', 'civitatis', 'tripadvisor'].includes(connectingPlatform);
     const isHeadout = connectingPlatform === 'headout';
     const selectedGygTour = (tours || []).find((tour) => tour.id === gygConfigTourId) || null;
+    const modalAwaitingExternal =
+      Boolean(conn?.awaitingExternalResponse) ||
+      (Boolean(conn?.configured) && !conn?.connected && !conn?.validationError) ||
+      (isGyg && Boolean(gygIntegrationStatus?.credentialsReady) && !gygIntegrationStatus?.trafficVerified);
+    const modalPending =
+      !modalAwaitingExternal &&
+      (Boolean(conn?.onboardingPending) || conn?.available === false);
+    const modalRequired =
+      !conn?.connected &&
+      !conn?.validationError &&
+      !modalAwaitingExternal &&
+      !modalPending &&
+      !isShopify;
+    const modalStatusClass = conn?.connected || isShopify
+      ? "is-status-connected"
+      : conn?.validationError || modalRequired
+        ? "is-status-required"
+        : modalAwaitingExternal
+          ? "is-status-waiting"
+          : modalPending
+            ? "is-status-pending"
+            : "";
   
     return (
       <div
@@ -257,7 +279,7 @@ export default function CentralModalLayer(props) {
         }}
       >
         <div
-          className="pmy-connect-modal pmy-ds-migrated-nz4pdt"
+          className={`pmy-connect-modal pmy-ds-migrated-nz4pdt ${modalStatusClass}`}
           role="dialog"
           aria-modal="true"
           aria-label={platform.name}

@@ -364,6 +364,8 @@ function CentralDeReservasContent() {
       configured: false,
       available: false,
       onboardingPending: true,
+      awaitingExternalResponse: true,
+      requestReference: "#28980",
     },
     civitatis: providerConnectionFromStatus(
       "CIVITATIS",

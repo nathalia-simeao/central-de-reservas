@@ -37,28 +37,30 @@ export default function IntegrationConnectionsPanel({
                           const isPendingOnboarding =
                             conn.onboardingPending || conn.available === false;
                           const isConfigured = Boolean(conn.configured);
+                          const isAwaitingExternal = Boolean(conn.awaitingExternalResponse) ||
+                            (isConfigured && !conn.connected && !conn.validationError);
                           const statusLabel = conn.connected
                             ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
                             : conn.validationError
                               ? tr("ERRO NA CREDENCIAL", "CREDENTIAL ERROR")
-                              : isConfigured
-                                ? tr("CREDENCIAL CONFIGURADA", "CREDENTIAL CONFIGURED")
+                              : isAwaitingExternal
+                                ? tr("AGUARDANDO RESPOSTA / VALIDAÇÃO", "AWAITING RESPONSE / VALIDATION")
                               : isPendingOnboarding
                                 ? tr("ONBOARDING PENDENTE", "ONBOARDING PENDING")
-                                : tr("NÃO CONFIGURADO", "NOT CONFIGURED");
+                                : tr("FALTA CONFIGURAR", "CONFIGURATION REQUIRED");
                           const statusClass = conn.connected
                             ? "is-connected"
                             : conn.validationError
                               ? "is-error"
-                              : isConfigured
+                              : isAwaitingExternal
                                 ? "is-configured"
                               : isPendingOnboarding
                                 ? "is-pending"
-                                : "";
+                                : "is-required";
                           const actionLabel = conn.connected
                             ? tr("Gerenciar integração", "Manage integration")
-                            : isConfigured
-                              ? tr("Gerenciar credencial", "Manage credential")
+                            : isAwaitingExternal
+                              ? tr("Ver andamento", "View progress")
                               : isPendingOnboarding
                                 ? tr("Ver status", "View status")
                                 : tr("Configurar", "Configure");
@@ -69,8 +71,9 @@ export default function IntegrationConnectionsPanel({
                               className={[
                                 `pmy-int-card-v2 ${conn.connected ? "connected" : ""}`,
                                 conn.validationError ? "is-error" : "",
-                                isConfigured && !conn.connected && !conn.validationError ? "is-configured" : "",
-                                isPendingOnboarding ? "is-pending" : "",
+                                isAwaitingExternal ? "is-configured" : "",
+                                isPendingOnboarding && !isAwaitingExternal ? "is-pending" : "",
+                                !conn.connected && !conn.validationError && !isPendingOnboarding && !isAwaitingExternal ? "is-required" : "",
                                 "pmy-ds-migrated-15s4y9o",
                               ].filter(Boolean).join(" ")}
                             >
@@ -84,7 +87,7 @@ export default function IntegrationConnectionsPanel({
                               </div>
                               <div className="pmy-ds-migrated-1gcp9k1">
                                 <span
-                                  className={`pmy-int-status-dot ${conn.connected ? "on" : conn.validationError ? "error" : isConfigured ? "configured" : isPendingOnboarding ? "pending" : "off"}`}
+                                  className={`pmy-int-status-dot ${conn.connected ? "on" : conn.validationError ? "error" : isAwaitingExternal ? "configured" : isPendingOnboarding ? "pending" : "required"}`}
                                 ></span>
                                 <span className={`pmy-ds-connection-state ${statusClass}`}>
                                   {statusLabel}
@@ -100,12 +103,17 @@ export default function IntegrationConnectionsPanel({
                                   )}
                                 </div>
                               )}
-                              {isConfigured && !conn.connected && !conn.validationError && (
-                                <div className="pmy-int-connection-note">
-                                  {tr(
-                                    "A credencial está salva no backend e o caminho técnico local foi testado. O canal só vira conectado quando a Central receber uma chamada autenticada real.",
-                                    "The credential is stored on the backend and the local technical path was tested. The channel becomes connected only after the Central receives a real authenticated request.",
-                                  )}
+                              {isAwaitingExternal && (
+                                <div className="pmy-int-connection-note is-waiting">
+                                  {conn.awaitingExternalResponse
+                                    ? tr(
+                                        "A solicitação técnica já foi enviada e agora depende de resposta/validação da plataforma.",
+                                        "The technical request has already been submitted and now depends on the platform response/validation.",
+                                      )
+                                    : tr(
+                                        "A credencial está salva no backend e o caminho técnico local foi testado. A conexão aguarda validação ou tráfego autenticado real do canal.",
+                                        "The credential is stored on the backend and the local technical path was tested. The connection is waiting for validation or real authenticated traffic.",
+                                      )}
                                 </div>
                               )}
                               {isPendingOnboarding && (
@@ -118,7 +126,7 @@ export default function IntegrationConnectionsPanel({
                               )}
                               <div className="pmy-int-actions">
                                 <Button
-                                  variant={conn.connected || isConfigured || isPendingOnboarding ? "secondary" : "primary"}
+                                  variant={conn.connected || isAwaitingExternal || isPendingOnboarding ? "secondary" : "primary"}
                                   size="sm"
                                   icon={isPendingOnboarding ? "clock" : "settings"}
                                   onClick={()=>handleOpenConnect(platform.key)}

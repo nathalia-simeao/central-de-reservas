@@ -261,9 +261,29 @@ export function buildCentralStyles(theme) {
       .pmy-int-card-v2 { background:#ffffff; border-radius:14px; padding:22px; box-shadow:0 4px 16px rgba(0,0,0,0.04); display:flex; flex-direction:column; border:1.5px solid transparent; transition:0.25s ease; position:relative; overflow:hidden; }
       .pmy-int-card-v2:hover { border-color:var(--primary-green); transform:translateY(-2px); box-shadow:0 10px 30px rgba(0,0,0,0.08); }
       .pmy-int-card-v2.connected { border-color:#b8e6b8; }
-      .pmy-int-card-v2.connected::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--primary-green); }
+      .pmy-int-card-v2.connected::before,
+      .pmy-int-card-v2.is-required::before,
+      .pmy-int-card-v2.is-pending::before,
+      .pmy-int-card-v2.is-configured::before,
+      .pmy-int-card-v2.is-error::before {
+        content:'';
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        height:3px;
+      }
+      .pmy-int-card-v2.connected::before { background:var(--primary-green); }
+      .pmy-int-card-v2.is-required::before,
+      .pmy-int-card-v2.is-error::before { background:#d93025; }
+      .pmy-int-card-v2.is-pending::before { background:#d99a00; }
+      .pmy-int-card-v2.is-configured::before { background:#2f6f9f; }
       .pmy-int-status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
       .pmy-int-status-dot.on { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.2); }
+      .pmy-int-status-dot.error,
+      .pmy-int-status-dot.required { background:#d93025; box-shadow:0 0 0 3px rgba(217,48,37,0.12); }
+      .pmy-int-status-dot.pending { background:#d99a00; box-shadow:0 0 0 3px rgba(217,154,0,0.14); }
+      .pmy-int-status-dot.configured { background:#2f6f9f; box-shadow:0 0 0 3px rgba(47,111,159,0.14); }
       .pmy-int-status-dot.off { background:#d1d5db; }
       .pmy-int-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
       .pmy-int-logo-v2 { font-size:36px; line-height:1; }
@@ -289,7 +309,22 @@ export function buildCentralStyles(theme) {
         overflow:hidden !important;
         display:flex;
         flex-direction:column;
+        position:relative;
       }
+      .pmy-connect-modal::before {
+        content:'';
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        height:4px;
+        z-index:5;
+        background:transparent;
+      }
+      .pmy-connect-modal.is-status-connected::before { background:var(--primary-green); }
+      .pmy-connect-modal.is-status-required::before { background:#d93025; }
+      .pmy-connect-modal.is-status-pending::before { background:#d99a00; }
+      .pmy-connect-modal.is-status-waiting::before { background:#2f6f9f; }
       .pmy-connect-modal__header {
         flex:0 0 auto;
         position:relative;
@@ -1715,3 +1750,12 @@ export function buildCentralStyles(theme) {
       }
     `;
 }
+
+      .pmy-ds-connection-state.is-required { color:#b42318; }
+      .pmy-ds-connection-state.is-pending { color:#9a6700; }
+      .pmy-ds-connection-state.is-configured { color:#245b83; }
+      .pmy-int-connection-note.is-waiting {
+        border-color:color-mix(in srgb, #2f6f9f 24%, transparent);
+        background:color-mix(in srgb, #2f6f9f 8%, #fff);
+        color:#245b83;
+      }
