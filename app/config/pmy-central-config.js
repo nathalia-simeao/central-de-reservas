@@ -301,10 +301,12 @@ export const defaultMappings = {
     price: "bookingItems[].retailPrice", currency: "currency", bookingRef: "gygBookingReference", language: "supplier option",
   },
   headout: {
-    customerName: "firstName + lastName", tourId: "experienceId",
-    startTime: "slotDate + slotStartTime", status: "bookingStatus",
-    email: "customerEmail", phone: "customerPhone", quantity: "unitItems[adults].quantity",
-    price: "priceDetails.totalAmount", currency: "priceDetails.currency", bookingRef: "headoutBookingId", language: "variantLanguage",
+    customerName: "PENDING_SUPPLIER_CONTRACT", tourId: "PENDING_SUPPLIER_CONTRACT",
+    startTime: "PENDING_SUPPLIER_CONTRACT", status: "PENDING_SUPPLIER_CONTRACT",
+    email: "PENDING_SUPPLIER_CONTRACT", phone: "PENDING_SUPPLIER_CONTRACT",
+    quantity: "PENDING_SUPPLIER_CONTRACT", price: "PENDING_SUPPLIER_CONTRACT",
+    currency: "PENDING_SUPPLIER_CONTRACT", bookingRef: "PENDING_SUPPLIER_CONTRACT",
+    language: "PENDING_SUPPLIER_CONTRACT",
   },
   civitatis: {
     customerName: "unitItems[].contact.fullName / contact.fullName", tourId: "productId",

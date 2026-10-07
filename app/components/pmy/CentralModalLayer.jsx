@@ -4,6 +4,7 @@ import { Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
 import CivitatisOnboardingPanel from "./CivitatisOnboardingPanel";
+import HeadoutOnboardingPanel from "./HeadoutOnboardingPanel";
 import {
   allPlatforms,
   ddiList,
@@ -953,30 +954,12 @@ export default function CentralModalLayer(props) {
               />
             )}
 
-            {/* ── HEADOUT: sem adapter verificável, sem campos falsos ── */}
+            {/* ── HEADOUT: supplier connectivity aguardando liberação ── */}
             {isHeadout && (
-              <div>
-                <div className="pmy-ds-state-panel is-warning">
-                  <div className="pmy-ds-state-title is-warning">
-                    {ui("Integração ainda não liberada para credenciais", "Integration not yet enabled for credentials")}
-                  </div>
-                  <div className="pmy-ds-migrated-rhcrii">
-                    {ui(
-                      "A Central já possui a arquitetura de canal e mapeamento, mas ainda não há uma API Headout concedida à conta PMY que possamos testar. Por isso os campos de API Key foram removidos. O canal não será exibido como conectado até existir uma verificação real.",
-                      "The Central already has the channel and mapping architecture, but PMY has not yet been granted a Headout API that can be tested. API key fields are therefore hidden. The channel will not appear as connected until a real verification exists.",
-                    )}
-                  </div>
-                </div>
-                <div className="pmy-ds-migrated-12y480p">
-                  <button
-                    type="button"
-                    className="pmy-btn-submit pmy-ds-migrated-ckcaff"
-                    onClick={() => setConnectingPlatform(null)}
-                  >
-                    {ui("Fechar", "Close")}
-                  </button>
-                </div>
-              </div>
+              <HeadoutOnboardingPanel
+                lang={lang}
+                tours={tours}
+              />
             )}
   
           </div>

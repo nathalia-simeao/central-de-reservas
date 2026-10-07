@@ -2427,9 +2427,10 @@ function CentralDeReservasContent() {
     },
     headout: {
       steps: [
-        "O onboarding Headout está aguardando acesso/API concedido à conta PMY.",
-        "Enquanto não houver um endpoint verificável, a Central não aceita nem exibe campos de API Key.",
-        "Isso evita marcar o canal como conectado sem uma verificação real.",
+        "A PMY usa a Headout como Supply Partner, não como distribuidora do inventário Headout.",
+        "A API pública Headout-Auth é para Affiliate/API/Booking Partners e não deve ser usada como adapter de fornecedor da PMY.",
+        "O pedido de integração do RMS próprio Reservas Unificadas já foi enviado à Headout.",
+        "Credenciais só serão habilitadas quando a Headout confirmar o contrato técnico de conectividade para fornecedor.",
       ],
       field1Label: null,
       field1Placeholder: null,
