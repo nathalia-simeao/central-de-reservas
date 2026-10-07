@@ -89,8 +89,10 @@ test("storefront hold mutations are routed through a signed Shopify app proxy", 
   );
 
   assert.equal(proxy.includes("authenticate.public.appProxy(request)"), true);
+  assert.equal(direct.includes('STOREFRONT_APP_PROXY_ENFORCED'), true);
   assert.equal(direct.includes('status: 307'), true);
   assert.equal(direct.includes('/apps/pmy-central/hold'), true);
+  assert.equal(direct.includes('legacyOriginAllowed: true'), true);
   assert.equal(direct.includes('method === "OPTIONS"'), true);
   assert.equal(shopify.includes('"write_app_proxy"'), true);
   assert.equal(toml.includes("[app_proxy]"), true);

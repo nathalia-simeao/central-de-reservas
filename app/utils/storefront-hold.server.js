@@ -503,12 +503,16 @@ export async function storefrontHoldLoader({ request }) {
 
 export async function handleStorefrontHoldAction(
   request,
-  { authenticatedProxy = false, shop = null } = {},
+  {
+    authenticatedProxy = false,
+    legacyOriginAllowed = false,
+    shop = null,
+  } = {},
 ) {
   let registeredRequestId = null;
 
   try {
-    if (!authenticatedProxy) {
+    if (!authenticatedProxy && !legacyOriginAllowed) {
       const error = new Error("Storefront mutations must use the signed Shopify App Proxy.");
       error.status = 403;
       error.code = "APP_PROXY_REQUIRED";
@@ -787,14 +791,31 @@ export async function handleStorefrontHoldDirectAction({ request }) {
   }
 
   const origin = request.headers.get("origin");
-  const proxyUrl = new URL("/apps/pmy-central/hold", origin);
+  const enforceProxy =
+    String(process.env.STOREFRONT_APP_PROXY_ENFORCED || "")
+      .trim()
+      .toLowerCase() === "true";
 
-  return new Response(null, {
-    status: 307,
-    headers: {
-      ...requestHeaders(request),
-      Location: proxyUrl.toString(),
-      "X-PMY-Security-Upgrade": "shopify-app-proxy",
-    },
+  if (enforceProxy) {
+    const proxyUrl = new URL("/apps/pmy-central/hold", origin);
+
+    return new Response(null, {
+      status: 307,
+      headers: {
+        ...requestHeaders(request),
+        Location: proxyUrl.toString(),
+        "X-PMY-Security-Mode": "shopify-app-proxy",
+      },
+    });
+  }
+
+  // Safe rollout bridge: until the Shopify App Proxy version is released,
+  // preserve the existing storefront checkout while still applying nonce
+  // idempotency, payload validation and rate limiting. This fallback must be
+  // disabled by setting STOREFRONT_APP_PROXY_ENFORCED=true after proxy activation.
+  return handleStorefrontHoldAction(request, {
+    authenticatedProxy: false,
+    legacyOriginAllowed: true,
+    shop: new URL(origin).hostname,
   });
 }
