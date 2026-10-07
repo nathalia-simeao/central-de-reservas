@@ -59,6 +59,7 @@ model Tour {
   shopifyProductId       String?       @unique
   gygActivityId          String?       @unique
   viatorProductCode      String?       @unique
+  viatorTourGradeCode    String?
   headoutId              String?       @unique
   civitatisId            String?       @unique
   tripadvisorProductCode String?       @unique
