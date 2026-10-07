@@ -91,21 +91,24 @@ export default function CivitatisOnboardingPanel({
         </div>
         <div className="pmy-ds-list-plain">
           {(status?.endpoints || []).map((endpoint) => (
-            <div className="pmy-ds-list-plain__row" key={endpoint.key}>
-              <span>
-                <strong>{endpoint.label}</strong>
-                <span className="pmy-ds-list-item__description">
+            <div className="pmy-ds-list-plain__row pmy-civitatis-endpoint-row" key={endpoint.key}>
+              <div className="pmy-civitatis-endpoint-main">
+                <strong className="pmy-civitatis-endpoint-label">{endpoint.label}</strong>
+                <span className="pmy-ds-list-item__description pmy-civitatis-endpoint-meta">
                   {endpoint.method}{endpoint.verified ? " · " + tr("verificado", "verified") : ""}
                 </span>
-                <code className="pmy-ds-code-note">{endpoint.url}</code>
-              </span>
-              <button
+                <code className="pmy-ds-code-note pmy-civitatis-endpoint-url">{endpoint.url}</code>
+              </div>
+              <Button
                 type="button"
-                className="pmy-btn-secondary pmy-ds-compact-action"
+                variant="secondary"
+                size="sm"
+                icon="copy"
+                className="pmy-civitatis-endpoint-copy"
                 onClick={() => navigator.clipboard?.writeText(endpoint.url)}
               >
                 {tr("Copiar", "Copy")}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -123,21 +126,24 @@ export default function CivitatisOnboardingPanel({
         </div>
         <div className="pmy-ds-list-plain">
           {(status?.localProducts || []).filter((product) => product.ready).map((product) => (
-            <div className="pmy-ds-list-plain__row" key={product.id}>
-              <span>
-                <strong>{product.title}</strong>
-                <span className="pmy-ds-list-item__description">
+            <div className="pmy-ds-list-plain__row pmy-civitatis-product-row" key={product.id}>
+              <div className="pmy-civitatis-product-main">
+                <strong className="pmy-civitatis-product-label">{product.title}</strong>
+                <span className="pmy-ds-list-item__description pmy-civitatis-product-meta">
                   {product.optionId} · {(product.scheduleSlots || []).join(", ")} · {(product.categories || []).join(", ")}
                 </span>
-                <code className="pmy-ds-code-note">{product.id}</code>
-              </span>
-              <button
+                <code className="pmy-ds-code-note pmy-civitatis-product-id">{product.id}</code>
+              </div>
+              <Button
                 type="button"
-                className="pmy-btn-secondary pmy-ds-compact-action"
+                variant="secondary"
+                size="sm"
+                icon="copy"
+                className="pmy-civitatis-product-copy"
                 onClick={() => navigator.clipboard?.writeText(product.id)}
               >
                 {tr("Copiar ID", "Copy ID")}
-              </button>
+              </Button>
             </div>
           ))}
         </div>

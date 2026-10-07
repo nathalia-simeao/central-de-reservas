@@ -893,10 +893,11 @@ export default function CentralModalLayer(props) {
   
                       {connectingPlatform === "civitatis" && (
                         <>
-                          <div className="pmy-ds-actions pmy-u-mt-2 pmy-u-mb-2">
-                            <button
+                          <div className="pmy-ds-actions pmy-civitatis-token-actions">
+                            <Button
                               type="button"
-                              className="pmy-btn-secondary"
+                              variant="secondary"
+                              icon="refresh"
                               onClick={() => {
                                 const bytes = new Uint8Array(32);
                                 crypto.getRandomValues(bytes);
@@ -907,10 +908,11 @@ export default function CentralModalLayer(props) {
                               }}
                             >
                               {ui("Gerar token seguro", "Generate secure token")}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
-                              className="pmy-btn-secondary"
+                              variant="secondary"
+                              icon="copy"
                               disabled={!apiKeyInput.trim()}
                               onClick={async () => {
                                 try {
@@ -934,15 +936,15 @@ export default function CentralModalLayer(props) {
                               }}
                             >
                               {ui("Copiar token", "Copy token")}
-                            </button>
+                            </Button>
                           </div>
-                          <div className="pmy-ds-inline-message is-warning pmy-u-mb-2">
+                          <div className="pmy-ds-inline-message is-warning pmy-civitatis-token-warning">
                             {ui(
                               "Importante: copie o token antes de salvar. Depois ele fica criptografado e não será exibido novamente.",
                               "Important: copy the token before saving. Afterwards it is encrypted and will not be displayed again.",
                             )}
                           </div>
-                          <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
+                          <div className="pmy-form-group pmy-ds-migrated-1x7aa6i pmy-civitatis-environment-field">
                             <label className="pmy-ds-migrated-18dm9zi">{ui("Ambiente", "Environment")}</label>
                             <select
                               className="pmy-form-input"
