@@ -1746,6 +1746,102 @@ export function buildCentralStyles(theme) {
         color:#245b83;
       }
 
+      @media (max-width: 820px) {
+        .pmy-dashboard-kpi-grid {
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:12px;
+        }
+        .pmy-kpi-card.is-featured {
+          grid-column:span 2;
+        }
+        .pmy-dashboard-status-strip {
+          grid-template-columns:repeat(2,minmax(0,1fr));
+        }
+        .pmy-trend-chart {
+          min-width:620px;
+          min-height:230px;
+        }
+        .pmy-trend-chart-wrap {
+          overflow-x:auto;
+          overscroll-behavior-inline:contain;
+          -webkit-overflow-scrolling:touch;
+          scrollbar-width:thin;
+          padding-bottom:8px;
+        }
+        .pmy-trend-tooltip {
+          position:sticky;
+          left:12px !important;
+          width:max-content;
+          max-width:calc(100vw - 64px);
+        }
+      }
+
+      @media (max-width: 620px) {
+        .pmy-dashboard { gap:12px; }
+        .pmy-dashboard-kpi-grid {
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:10px;
+        }
+        .pmy-kpi-card {
+          min-height:142px;
+          padding:14px;
+        }
+        .pmy-kpi-card.is-featured {
+          grid-column:span 2;
+        }
+        .pmy-kpi-label {
+          font-size:11px;
+          line-height:1.25;
+        }
+        .pmy-kpi-value {
+          font-size:clamp(23px,8vw,29px);
+          white-space:normal;
+          overflow:visible;
+          overflow-wrap:anywhere;
+        }
+        .pmy-kpi-detail {
+          font-size:11px;
+        }
+        .pmy-dashboard-status-item span:not(.pmy-dashboard-status-dot) {
+          white-space:normal;
+          overflow:visible;
+        }
+        .pmy-trend-card {
+          padding:16px 12px 12px;
+        }
+        .pmy-trend-chart {
+          min-width:560px;
+          min-height:210px;
+        }
+        .pmy-trend-title {
+          font-size:20px;
+        }
+        .pmy-trend-meta {
+          gap:7px;
+        }
+        .pmy-trend-legend {
+          gap:9px;
+        }
+        .pmy-trend-empty {
+          min-height:180px;
+          padding:24px 12px;
+        }
+        .pmy-ds-performance-card {
+          padding:0 16px 16px !important;
+        }
+        .pmy-ds-performance-header {
+          padding:18px 0 12px;
+        }
+        .pmy-tour-item {
+          min-width:0;
+        }
+        .pmy-tour-details,
+        .pmy-tour-name {
+          min-width:0;
+          overflow-wrap:anywhere;
+        }
+      }
+
       @media (max-width: 430px) {
         .pmy-dashboard-kpi-grid { grid-template-columns:1fr; }
         .pmy-dashboard-status-strip { grid-template-columns:1fr; }

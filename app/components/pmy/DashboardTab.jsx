@@ -1056,26 +1056,41 @@ const UpcomingDeparturesPanel = ({
                     </div>
                   </div>
 
-                  <strong className="pmy-ds-departure-date">
+                  <strong
+                    className="pmy-ds-departure-date"
+                    data-label={lang === "pt" ? "Data" : "Date"}
+                  >
                     {formatDate(departure.startTime)}
                   </strong>
 
-                  <strong className="pmy-ds-departure-time">
+                  <strong
+                    className="pmy-ds-departure-time"
+                    data-label={lang === "pt" ? "Horário" : "Time"}
+                  >
                     {formatTime(departure.startTime)}
                   </strong>
 
-                  <div className="pmy-ds-departure-pax">
+                  <div
+                    className="pmy-ds-departure-pax"
+                    data-label={lang === "pt" ? "Passageiros" : "Passengers"}
+                  >
                     <strong>{departure.passengers}</strong>
                     <span>pax</span>
                   </div>
 
-                  <div className="pmy-ds-departure-channels">
+                  <div
+                    className="pmy-ds-departure-channels"
+                    data-label={lang === "pt" ? "Canais" : "Channels"}
+                  >
                     {(departure.platforms || []).map((platform) => (
                       <Badge key={platform}>{platform}</Badge>
                     ))}
                   </div>
 
-                  <div className="pmy-ds-departure-seats">
+                  <div
+                    className="pmy-ds-departure-seats"
+                    data-label={lang === "pt" ? "Vagas disponíveis" : "Available seats"}
+                  >
                     <span className={[
                       "pmy-ds-seat-count",
                       isFull ? "is-full" : "",
