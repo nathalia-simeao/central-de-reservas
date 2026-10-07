@@ -1,4 +1,12 @@
 import { data } from "react-router";
+import {
+  beginStorefrontRequest,
+  completeStorefrontRequest,
+  consumeStorefrontRateLimit,
+  failStorefrontRequest,
+  storefrontClientKey,
+  storefrontReserveFingerprint,
+} from "../utils/storefront-security.server";
 import db from "../db.server";
 import {
   createBookingWithCapacityGuard,
@@ -63,10 +71,13 @@ function requestHeaders(request) {
   return headers;
 }
 
-function json(request, body, status = 200) {
+function json(request, body, status = 200, extraHeaders = {}) {
   return data(body, {
     status,
-    headers: requestHeaders(request),
+    headers: {
+      ...requestHeaders(request),
+      ...extraHeaders,
+    },
   });
 }
 
@@ -130,6 +141,32 @@ async function releaseHolds(holdIds, reason) {
   const released = [];
 
   for (const holdId of [...new Set(holdIds.map((id) => clean(id)).filter(Boolean))]) {
+    const existing = await db.booking.findUnique({
+      where: { id: holdId },
+      select: {
+        id: true,
+        status: true,
+        syncStatus: true,
+        rawPayload: true,
+      },
+    });
+
+    const kind =
+      existing?.rawPayload &&
+      typeof existing.rawPayload === "object" &&
+      !Array.isArray(existing.rawPayload)
+        ? String(existing.rawPayload.kind || "")
+        : "";
+
+    if (
+      !existing ||
+      existing.status !== "PENDING" ||
+      (existing.syncStatus !== "STOREFRONT_HOLD" &&
+        kind !== "STOREFRONT_CHECKOUT_HOLD")
+    ) {
+      continue;
+    }
+
     const result = await releaseBookingHold(db, holdId, reason);
     if (result.released && result.booking) {
       released.push(result.booking.id);
@@ -464,9 +501,17 @@ export const loader = async ({ request }) => {
   );
 };
 
-export const action = async ({ request }) => {
+export async function handleStorefrontHoldAction(
+  request,
+  { authenticatedProxy = false, shop = null } = {},
+) {
   try {
-    assertStorefrontOrigin(request);
+    if (!authenticatedProxy) {
+      const error = new Error("Storefront mutations must use the signed Shopify App Proxy.");
+      error.status = 403;
+      error.code = "APP_PROXY_REQUIRED";
+      throw error;
+    }
 
     if (request.method.toUpperCase() !== "POST") {
       return json(
@@ -476,8 +521,47 @@ export const action = async ({ request }) => {
       );
     }
 
+    const contentLength = Number.parseInt(
+      request.headers.get("content-length") || "0",
+      10,
+    );
+    if (Number.isFinite(contentLength) && contentLength > 65536) {
+      return json(
+        request,
+        {
+          success: false,
+          error: "Request payload is too large.",
+          code: "PAYLOAD_TOO_LARGE",
+        },
+        413,
+      );
+    }
+
     const payload = parseBody(await request.text());
     const action = clean(payload?.action, 32).toLowerCase() || "reserve";
+    const clientKey = storefrontClientKey(request, shop);
+    const rate = consumeStorefrontRateLimit({
+      key: clientKey,
+      action,
+    });
+
+    if (!rate.allowed) {
+      return json(
+        request,
+        {
+          success: false,
+          error: "Too many checkout attempts. Please wait a moment and try again.",
+          code: "STOREFRONT_RATE_LIMITED",
+          retryAfterSeconds: rate.retryAfterSeconds,
+        },
+        429,
+        {
+          "Retry-After": String(rate.retryAfterSeconds),
+          "X-RateLimit-Limit": String(rate.limit),
+          "X-RateLimit-Remaining": "0",
+        },
+      );
+    }
 
     if (action === "release") {
       const holdIds = Array.isArray(payload?.holdIds) ? payload.holdIds : [];
@@ -523,7 +607,62 @@ export const action = async ({ request }) => {
       );
     }
 
-    const groups = await canonicalizeGroups(rawGroups.map(validateGroup));
+    const validatedGroups = rawGroups.map(validateGroup);
+    const fingerprint = storefrontReserveFingerprint({
+      requestId,
+      groups: validatedGroups,
+    });
+    const requestState = await beginStorefrontRequest(db, {
+      requestId,
+      fingerprint,
+      clientKey,
+      shop,
+    });
+
+    if (requestState.state === "REPLAY") {
+      const replay = requestState.event?.result || {};
+      const replayHolds = Array.isArray(replay?.holds) ? replay.holds : [];
+      const replayHoldIds = replayHolds
+        .map((item) => clean(item?.holdId))
+        .filter(Boolean);
+      const expiresAt = replay?.expiresAt ? new Date(replay.expiresAt) : null;
+
+      if (
+        replayHoldIds.length &&
+        expiresAt &&
+        !Number.isNaN(expiresAt.getTime()) &&
+        expiresAt > new Date()
+      ) {
+        const active = await db.booking.count({
+          where: {
+            id: { in: replayHoldIds },
+            status: "PENDING",
+            holdExpiresAt: { gt: new Date() },
+          },
+        });
+
+        if (active === replayHoldIds.length) {
+          return json(request, {
+            success: true,
+            idempotent: true,
+            holdMinutes: HOLD_MINUTES,
+            holds: replayHolds,
+          });
+        }
+      }
+
+      return json(
+        request,
+        {
+          success: false,
+          error: "This checkout request ID has already been used and its hold is no longer active. Start a new checkout.",
+          code: "REQUEST_ID_EXPIRED",
+        },
+        409,
+      );
+    }
+
+    const groups = await canonicalizeGroups(validatedGroups);
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
     const holds = [];
 
@@ -543,15 +682,37 @@ export const action = async ({ request }) => {
         holds.map((hold) => hold.holdId),
         "storefront_group_reservation_rolled_back",
       );
+      await failStorefrontRequest(db, {
+        requestId,
+        error: error?.message || "Storefront hold failed.",
+      }).catch(() => null);
       throw error;
     }
 
-    return json(request, {
+    const resultPayload = {
       success: true,
       holdMinutes: HOLD_MINUTES,
       holds,
+    };
+
+    await completeStorefrontRequest(db, {
+      requestId,
+      result: {
+        holds,
+        expiresAt: holdExpiresAt.toISOString(),
+      },
     });
+
+    return json(request, resultPayload);
   } catch (error) {
+    const parsedRequestId =
+      typeof error?.requestId === "string" ? error.requestId : null;
+    if (parsedRequestId) {
+      await failStorefrontRequest(db, {
+        requestId: parsedRequestId,
+        error: error?.message || "Storefront hold failed.",
+      }).catch(() => null);
+    }
     console.error("[PMY] storefront capacity guard failed:", error);
     return json(
       request,
@@ -564,4 +725,63 @@ export const action = async ({ request }) => {
       Number(error?.status) || 500,
     );
   }
+}
+
+export const action = async ({ request }) => {
+  const method = request.method.toUpperCase();
+
+  if (method === "OPTIONS") {
+    const origin = request.headers.get("origin") || "";
+    if (!ALLOWED_ORIGINS.has(origin)) {
+      return new Response(null, { status: 403 });
+    }
+
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...requestHeaders(request),
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "600",
+      },
+    });
+  }
+
+  try {
+    assertStorefrontOrigin(request);
+  } catch (error) {
+    return json(
+      request,
+      {
+        success: false,
+        error: error?.message || "Storefront origin is not authorized.",
+        code: error?.code || "STOREFRONT_ORIGIN_NOT_ALLOWED",
+      },
+      Number(error?.status) || 403,
+    );
+  }
+
+  if (method !== "POST") {
+    return json(
+      request,
+      {
+        success: false,
+        error: "Method not allowed.",
+        code: "METHOD_NOT_ALLOWED",
+      },
+      405,
+    );
+  }
+
+  const origin = request.headers.get("origin");
+  const proxyUrl = new URL("/apps/pmy-central/hold", origin);
+
+  return new Response(null, {
+    status: 307,
+    headers: {
+      ...requestHeaders(request),
+      Location: proxyUrl.toString(),
+      "X-PMY-Security-Upgrade": "shopify-app-proxy",
+    },
+  });
 };

@@ -19,6 +19,7 @@ const configuredScopes = [
   "write_orders",
   "write_draft_orders",
   "write_files",
+  "write_app_proxy",
 ];
 
 const shopify = shopifyApp({
@@ -114,6 +115,23 @@ export const authenticate = {
     }
 
     return result;
+  },
+
+  public: {
+    appProxy: async (request) => {
+      const result = await shopify.authenticate.public.appProxy(request);
+      const proxyShop =
+        result?.session?.shop ||
+        new URL(request.url).searchParams.get("shop") ||
+        null;
+
+      await assertSingleTenantShop(prisma, proxyShop, {
+        context: "appProxy",
+        allowInitialize: false,
+      });
+
+      return result;
+    },
   },
 
   webhook: async (request) => {

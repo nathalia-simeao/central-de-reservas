@@ -7,10 +7,15 @@ embedded = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,read_orders,write_orders,write_draft_orders,write_files,read_metaobjects,write_metaobjects,write_metaobject_definitions"
+scopes = "read_products,read_orders,write_orders,write_draft_orders,write_files,read_metaobjects,write_metaobjects,write_metaobject_definitions,write_app_proxy"
 
 [auth]
 redirect_urls = [ "https://central.portugalmeandyou.com/auth/callback" ]
+
+[app_proxy]
+url = "/app-proxy/pmy"
+prefix = "apps"
+subpath = "pmy-central"
 
 [webhooks]
 api_version = "2026-04"
