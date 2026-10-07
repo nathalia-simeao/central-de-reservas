@@ -704,7 +704,11 @@ export default function CentralModalLayer(props) {
 
                 {tripadvisorContent?.location ? (
                   <div className="pmy-ds-panel-soft pmy-u-mt-3">
-                    <strong>{tripadvisorContent.location.name}</strong>
+                    <strong>
+                      {typeof tripadvisorContent.location.name === "string"
+                        ? tripadvisorContent.location.name
+                        : tripadvisorContent.location.name?.value || "Portugal Me & You"}
+                    </strong>
                     <div className="pmy-ds-list-plain pmy-u-mt-2">
                       <div className="pmy-ds-list-plain__row">
                         <span>{ui("Nota", "Rating")}</span>
@@ -736,9 +740,16 @@ export default function CentralModalLayer(props) {
                           {tripadvisorContent.reviews.slice(0, 5).map((review, index) => (
                             <div className="pmy-ds-list-plain__row" key={review.id || index}>
                               <span>
-                                <strong>{review.title || ui("Avaliação", "Review")}</strong>
+                                <strong>
+                                  {typeof review.title === "string"
+                                    ? review.title
+                                    : review.title?.value || ui("Avaliação", "Review")}
+                                </strong>
                                 <span className="pmy-ds-list-item__description">
-                                  {review.author || "Tripadvisor"}{review.rating ? ` · ${review.rating}/5` : ""}
+                                  {typeof review.author === "string"
+                                    ? review.author
+                                    : review.author?.value || "Tripadvisor"}
+                                  {review.rating ? ` · ${review.rating}/5` : ""}
                                 </span>
                               </span>
                             </div>

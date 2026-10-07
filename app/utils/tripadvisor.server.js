@@ -72,10 +72,29 @@ export async function testTripadvisorTerraCredentials({ apiKey, locationId = nul
   return { mode: "CATALOG", resultCount: Array.isArray(payload?.data) ? payload.data.length : 0 };
 }
 
+function localizedText(value) {
+  if (value == null) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const primary =
+      value.find((item) => item && typeof item === "object" && item.primary) ||
+      value[0];
+    return localizedText(primary);
+  }
+  if (typeof value === "object") {
+    for (const key of ["value", "name", "text", "title", "display_name", "displayName"]) {
+      const resolved = localizedText(value[key]);
+      if (resolved) return resolved;
+    }
+  }
+  return null;
+}
+
 function translatedValue(items) {
-  if (!Array.isArray(items)) return null;
-  const primary = items.find((item) => item?.primary) || items[0];
-  return primary?.value || primary?.name || null;
+  return localizedText(items);
 }
 
 function ratingValue(location) {
@@ -153,7 +172,10 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
     reviewsError,
     location: {
       id: location?.id || id,
-      name: translatedValue(location?.names) || location?.name || "Tripadvisor Location",
+      name:
+        translatedValue(location?.names) ||
+        localizedText(location?.name) ||
+        "Tripadvisor Location",
       rating: ratingValue(location),
       reviewCount: reviewCount(location),
       photoCount: Number(location?.photos?.total_count ?? location?.photo_count ?? 0) || null,
@@ -167,8 +189,8 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
     },
     reviews: reviews.map((review) => ({
       id: review?.id || null,
-      title: review?.title || null,
-      text: review?.text || null,
+      title: localizedText(review?.title),
+      text: localizedText(review?.text),
       rating: Number(review?.rating?.overall ?? review?.rating ?? 0) || null,
       publishedAt:
         review?.published_date ||
@@ -176,10 +198,9 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
         review?.published_at ||
         null,
       author:
-        review?.reviewer?.display_name ||
-        review?.reviewer?.name ||
-        review?.username ||
-        null,
+        localizedText(review?.reviewer?.display_name) ||
+        localizedText(review?.reviewer?.name) ||
+        localizedText(review?.username),
     })),
   };
 }
