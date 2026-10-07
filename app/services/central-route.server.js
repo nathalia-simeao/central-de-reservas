@@ -407,6 +407,160 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "saveViatorTourConfig") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      if (!id) {
+        return json({ success: false, error: "Tour ID is required." }, { status: 400 });
+      }
+
+      const existingTour = await prisma.tour.findUnique({
+        where: { id },
+        include: { variants: true },
+      });
+      if (!existingTour) {
+        return json(
+          { success: false, error: "Tour mestre não encontrado." },
+          { status: 404 },
+        );
+      }
+
+      const viatorProductCode =
+        String(formData.get("viatorProductCode") || "").trim() || null;
+      const viatorTourGradeCode =
+        String(formData.get("viatorTourGradeCode") || "").trim() || null;
+
+      if (viatorProductCode) {
+        if (viatorProductCode.length > 50 || viatorProductCode.includes("|")) {
+          return json(
+            {
+              success: false,
+              error:
+                "O Viator productCode/SupplierProductCode deve ter no máximo 50 caracteres e não pode conter |.",
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      if (viatorTourGradeCode && !viatorProductCode) {
+        return json(
+          {
+            success: false,
+            error: "Informe o Viator productCode antes do tourGradeCode.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (viatorProductCode && viatorTourGradeCode) {
+        const conflict = await prisma.tour.findFirst({
+          where: {
+            id: { not: id },
+            viatorProductCode,
+            viatorTourGradeCode,
+          },
+          select: { id: true, title: true },
+        });
+        if (conflict) {
+          return json(
+            {
+              success: false,
+              error:
+                `O par ${viatorProductCode} / ${viatorTourGradeCode} já está ligado ao tour "${conflict.title}".`,
+            },
+            { status: 409 },
+          );
+        }
+      }
+
+      const timezone = String(
+        formData.get("timezone") || existingTour.timezone || "Europe/Lisbon",
+      ).trim();
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: timezone }).format(new Date());
+      } catch {
+        return json({ success: false, error: "Fuso horário inválido." }, { status: 400 });
+      }
+
+      const cutoffRaw = String(formData.get("bookingCutoffSeconds") || "").trim();
+      let bookingCutoffSeconds = existingTour.bookingCutoffSeconds;
+      if (cutoffRaw) {
+        bookingCutoffSeconds = Number.parseInt(cutoffRaw, 10);
+        if (
+          !Number.isInteger(bookingCutoffSeconds) ||
+          bookingCutoffSeconds < 0 ||
+          bookingCutoffSeconds > 604800
+        ) {
+          return json(
+            { success: false, error: "Cutoff deve ficar entre 0 e 604800 segundos." },
+            { status: 400 },
+          );
+        }
+      }
+
+      const update = {
+        viatorProductCode,
+        viatorTourGradeCode,
+        timezone,
+        bookingCutoffSeconds,
+      };
+
+      const scheduleRaw = String(formData.get("scheduleSlots") || "").trim();
+      if (scheduleRaw) {
+        const scheduleSlots = [
+          ...new Set(
+            scheduleRaw
+              .split(/[,;|\s]+/)
+              .map((slot) => slot.trim())
+              .filter(Boolean)
+              .map((slot) => {
+                const match = slot.match(/^([01]?\d|2[0-3])[:hH](\d{2})$/);
+                return match
+                  ? `${match[1].padStart(2, "0")}:${match[2]}`
+                  : null;
+              })
+              .filter(Boolean),
+          ),
+        ].sort();
+
+        if (scheduleSlots.length === 0) {
+          return json(
+            { success: false, error: "Informe horários válidos no formato HH:MM." },
+            { status: 400 },
+          );
+        }
+        update.scheduleSlots = scheduleSlots;
+        update.scheduleSource = "MANUAL";
+      }
+
+      const tour = await prisma.tour.update({
+        where: { id },
+        data: update,
+        include: { variants: true },
+      });
+
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.AVAILABILITY_CHANGED,
+        tourId: tour.id,
+        scope: "TOUR",
+        sourcePlatform: "CENTRAL",
+        force: true,
+        aggregateType: "TOUR",
+        aggregateId: tour.id,
+        payload: { origin: "VIATOR_TOUR_CONFIG_UPDATED" },
+      });
+
+      return json({ success: true, tour });
+    } catch (error) {
+      console.error("[PMY] saveViatorTourConfig error:", error);
+      return json(
+        { success: false, error: error?.message || "Falha ao salvar configuração Viator." },
+        { status: 500 },
+      );
+    }
+  }
+
   if (_action === "saveGygTourConfig") {
     try {
       const id = String(formData.get("id") || "").trim();
