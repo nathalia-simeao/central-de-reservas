@@ -307,10 +307,13 @@ export const defaultMappings = {
     price: "priceDetails.totalAmount", currency: "priceDetails.currency", bookingRef: "headoutBookingId", language: "variantLanguage",
   },
   civitatis: {
-    customerName: "nombre + apellidos", tourId: "id_actividad",
-    startTime: "fecha_salida + hora_salida", status: "estado_reserva",
-    email: "email_cliente", phone: "telefono_cliente", quantity: "adultos + ninos + bebes",
-    price: "importe_total", currency: "divisa", bookingRef: "localizador", language: "idioma_tour",
+    customerName: "unitItems[].contact.fullName / contact.fullName", tourId: "productId",
+    startTime: "availabilityId → localDateTimeStart", status: "hold → confirm → cancel",
+    email: "unitItems[].contact.emailAddress / contact.emailAddress",
+    phone: "unitItems[].contact.phoneNumber / contact.phoneNumber",
+    quantity: "unitItems[].unitId",
+    price: "pricing.retail (capability pricing)", currency: "currency / availableCurrencies",
+    bookingRef: "resellerReference", language: "contact.locales[0]",
   },
   shopify: {
     customerName: "customer.first_name + customer.last_name", tourId: "line_items[0].product_id",

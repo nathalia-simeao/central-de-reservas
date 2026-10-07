@@ -155,6 +155,14 @@ function pricingRate() {
   return Number.isFinite(value) && value > 0 && value <= 1 ? value : null;
 }
 
+export function civitatisPricingConfigured() {
+  return Boolean(pricingRate());
+}
+
+export function civitatisPickupsConfigured() {
+  return false;
+}
+
 export function validateCivitatisCapabilities(request) {
   const capabilities = civitatisCapabilities(request);
 

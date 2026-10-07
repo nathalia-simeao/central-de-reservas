@@ -1,3 +1,5 @@
+import db from "../db.server";
+import { recordCivitatisEvidence } from "../utils/civitatis-onboarding.server";
 import {
   civitatisAvailability,
   readCivitatisJson,
@@ -15,5 +17,12 @@ export const action = async ({ request }) => {
   const parsed = await readCivitatisJson(request);
   if (parsed.error) return parsed.error;
 
-  return civitatisAvailability(request, parsed.data);
+  const response = await civitatisAvailability(request, parsed.data);
+  if (response.ok) {
+    void recordCivitatisEvidence(db, "AVAILABILITY", {
+      productId: parsed.data?.productId || null,
+      receivedAt: new Date().toISOString(),
+    });
+  }
+  return response;
 };

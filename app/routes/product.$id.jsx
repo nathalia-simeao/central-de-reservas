@@ -1,3 +1,5 @@
+import db from "../db.server";
+import { recordCivitatisEvidence } from "../utils/civitatis-onboarding.server";
 import {
   civitatisProduct,
   requireCivitatisAuth,
@@ -11,5 +13,12 @@ export const loader = async ({ request, params }) => {
   const capabilityError = validateCivitatisCapabilities(request);
   if (capabilityError) return capabilityError;
 
-  return civitatisProduct(params.id);
+  const response = await civitatisProduct(params.id);
+  if (response.ok) {
+    void recordCivitatisEvidence(db, "PRODUCT", {
+      productId: params.id,
+      receivedAt: new Date().toISOString(),
+    });
+  }
+  return response;
 };

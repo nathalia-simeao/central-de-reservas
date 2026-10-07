@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
+import CivitatisOnboardingPanel from "./CivitatisOnboardingPanel";
 import {
   allPlatforms,
   ddiList,
@@ -60,6 +61,9 @@ export default function CentralModalLayer(props) {
     viatorOnboardingError,
     viatorOnboardingLoading,
     viatorOnboardingStatus,
+    civitatisOnboardingError,
+    civitatisOnboardingLoading,
+    civitatisOnboardingStatus,
     handleConfirmConnect,
     handleDeleteGuide,
     handleDisconnect,
@@ -75,6 +79,7 @@ export default function CentralModalLayer(props) {
     handleViatorConnectMapping,
     handleViatorDisconnectMapping,
     loadViatorOnboarding,
+    loadCivitatisOnboarding,
     integrationCredentialLoading,
     integrationCredentialMessage,
     integrationCredentialStatus,
@@ -233,6 +238,7 @@ export default function CentralModalLayer(props) {
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
     const isViator = connectingPlatform === 'viator';
+    const isCivitatis = connectingPlatform === 'civitatis';
     const isTripadvisor = connectingPlatform === 'tripadvisor';
     const isManagedCredential = ['viator', 'civitatis'].includes(connectingPlatform);
     const isHeadout = connectingPlatform === 'headout';
@@ -810,17 +816,68 @@ export default function CentralModalLayer(props) {
                       )}
   
                       {connectingPlatform === "civitatis" && (
-                        <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
-                          <label className="pmy-ds-migrated-18dm9zi">{ui("Ambiente", "Environment")}</label>
-                          <select
-                            className="pmy-form-input"
-                            value={integrationEnvironmentInput}
-                            onChange={(event) => setIntegrationEnvironmentInput(event.target.value)}
-                          >
-                            <option value="test">test</option>
-                            <option value="live">live</option>
-                          </select>
-                        </div>
+                        <>
+                          <div className="pmy-ds-actions pmy-u-mt-2 pmy-u-mb-2">
+                            <button
+                              type="button"
+                              className="pmy-btn-secondary"
+                              onClick={() => {
+                                const bytes = new Uint8Array(32);
+                                crypto.getRandomValues(bytes);
+                                const token = Array.from(bytes, (byte) =>
+                                  byte.toString(16).padStart(2, "0"),
+                                ).join("");
+                                setApiKeyInput(token);
+                              }}
+                            >
+                              {ui("Gerar token seguro", "Generate secure token")}
+                            </button>
+                            <button
+                              type="button"
+                              className="pmy-btn-secondary"
+                              disabled={!apiKeyInput.trim()}
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(apiKeyInput.trim());
+                                  notify(
+                                    ui(
+                                      "Token copiado. Guarde-o para enviar à Civitatis.",
+                                      "Token copied. Keep it to provide to Civitatis.",
+                                    ),
+                                    "success",
+                                  );
+                                } catch {
+                                  notify(
+                                    ui(
+                                      "Não consegui copiar automaticamente. Copie o token manualmente antes de salvar.",
+                                      "Could not copy automatically. Copy the token manually before saving.",
+                                    ),
+                                    "warning",
+                                  );
+                                }
+                              }}
+                            >
+                              {ui("Copiar token", "Copy token")}
+                            </button>
+                          </div>
+                          <div className="pmy-ds-inline-message is-warning pmy-u-mb-2">
+                            {ui(
+                              "Importante: copie o token antes de salvar. Depois ele fica criptografado e não será exibido novamente.",
+                              "Important: copy the token before saving. Afterwards it is encrypted and will not be displayed again.",
+                            )}
+                          </div>
+                          <div className="pmy-form-group pmy-ds-migrated-1x7aa6i">
+                            <label className="pmy-ds-migrated-18dm9zi">{ui("Ambiente", "Environment")}</label>
+                            <select
+                              className="pmy-form-input"
+                              value={integrationEnvironmentInput}
+                              onChange={(event) => setIntegrationEnvironmentInput(event.target.value)}
+                            >
+                              <option value="test">test</option>
+                              <option value="live">live</option>
+                            </select>
+                          </div>
+                        </>
                       )}
                     </div>
   
@@ -883,6 +940,16 @@ export default function CentralModalLayer(props) {
                 onDisconnectMapping={handleViatorDisconnectMapping}
                 onRefresh={() => loadViatorOnboarding({ includeCatalog: true })}
                 status={viatorOnboardingStatus}
+              />
+            )}
+
+            {isCivitatis && (
+              <CivitatisOnboardingPanel
+                error={civitatisOnboardingError}
+                lang={lang}
+                loading={civitatisOnboardingLoading}
+                onRefresh={loadCivitatisOnboarding}
+                status={civitatisOnboardingStatus}
               />
             )}
 

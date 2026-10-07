@@ -380,6 +380,9 @@ function CentralDeReservasContent() {
   const [viatorOnboardingLoading, setViatorOnboardingLoading] = useState(false);
   const [viatorOnboardingError, setViatorOnboardingError] = useState("");
   const [viatorMappingBusy, setViatorMappingBusy] = useState(null);
+  const [civitatisOnboardingStatus, setCivitatisOnboardingStatus] = useState(null);
+  const [civitatisOnboardingLoading, setCivitatisOnboardingLoading] = useState(false);
+  const [civitatisOnboardingError, setCivitatisOnboardingError] = useState("");
 
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
@@ -2151,6 +2154,23 @@ function CentralDeReservasContent() {
     }
   };
 
+  const loadCivitatisOnboarding = async () => {
+    setCivitatisOnboardingLoading(true);
+    setCivitatisOnboardingError("");
+    try {
+      const payload = await requestResourceJson("/api/civitatis-onboarding");
+      setCivitatisOnboardingStatus(payload.status || null);
+      return payload;
+    } catch (error) {
+      setCivitatisOnboardingError(
+        error?.message || "Falha ao consultar o onboarding Civitatis.",
+      );
+      return null;
+    } finally {
+      setCivitatisOnboardingLoading(false);
+    }
+  };
+
   const handleOpenConnect = (key) => {
     setConnectingPlatform(key);
     setApiKeyInput("");
@@ -2165,6 +2185,10 @@ function CentralDeReservasContent() {
     if (key === "viator") {
       setViatorOnboardingError("");
       void loadViatorOnboarding();
+    }
+    if (key === "civitatis") {
+      setCivitatisOnboardingError("");
+      void loadCivitatisOnboarding();
     }
   };
 
@@ -2213,6 +2237,9 @@ function CentralDeReservasContent() {
       );
       if (key === "viator") {
         void loadViatorOnboarding();
+      }
+      if (key === "civitatis") {
+        void loadCivitatisOnboarding();
       }
     } catch (error) {
       if (error?.integrationStatus) {
@@ -2410,13 +2437,13 @@ function CentralDeReservasContent() {
     },
     civitatis: {
       steps: [
-        "Use o token definido no onboarding da Civitatis/OCTO para a Supplier API da PMY.",
+        "A Civitatis chama a Operator API da PMY. Portanto, o token é gerado por nós e fornecido à equipa de Product Operations.",
+        "Começamos no ambiente test e só mudamos para live após a validação da Civitatis.",
         "Ao salvar, a Central criptografa o token no IntegrationSecret.",
-        "O teste valida token e ambiente usando o mesmo middleware dos endpoints reais.",
         "O canal só aparece como conectado depois de uma chamada autenticada real da Civitatis.",
       ],
-      field1Label: "Token Civitatis / OCTO",
-      field1Placeholder: "Cole o token recebido no onboarding",
+      field1Label: "Token Bearer que a PMY fornecerá à Civitatis",
+      field1Placeholder: "Gere um token seguro abaixo ou cole um token já acordado",
       field2Label: null,
     },
     tripadvisor: {
@@ -2705,6 +2732,9 @@ function CentralDeReservasContent() {
         viatorOnboardingError,
         viatorOnboardingLoading,
         viatorOnboardingStatus,
+        civitatisOnboardingError,
+        civitatisOnboardingLoading,
+        civitatisOnboardingStatus,
         handleConfirmConnect,
         handleDeleteGuide,
         handleDisconnect,
@@ -2720,6 +2750,7 @@ function CentralDeReservasContent() {
         handleViatorConnectMapping,
         handleViatorDisconnectMapping,
         loadViatorOnboarding,
+        loadCivitatisOnboarding,
         integrationCredentialLoading,
         integrationCredentialMessage,
         integrationCredentialStatus,

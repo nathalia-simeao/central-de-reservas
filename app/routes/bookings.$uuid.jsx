@@ -1,3 +1,5 @@
+import db from "../db.server";
+import { recordCivitatisEvidence } from "../utils/civitatis-onboarding.server";
 import {
   civitatisCancelBooking,
   civitatisGetBooking,
@@ -16,7 +18,14 @@ export const loader = async ({ request, params }) => {
   const validationError = await validate(request);
   if (validationError) return validationError;
 
-  return civitatisGetBooking(params.uuid);
+  const response = await civitatisGetBooking(params.uuid);
+  if (response.ok) {
+    void recordCivitatisEvidence(db, "BOOKING_GET", {
+      uuid: params.uuid,
+      receivedAt: new Date().toISOString(),
+    });
+  }
+  return response;
 };
 
 export const action = async ({ request, params }) => {
@@ -36,5 +45,12 @@ export const action = async ({ request, params }) => {
     );
   }
 
-  return civitatisCancelBooking(params.uuid);
+  const response = await civitatisCancelBooking(params.uuid);
+  if (response.ok) {
+    void recordCivitatisEvidence(db, "BOOKING_CANCEL", {
+      uuid: params.uuid,
+      receivedAt: new Date().toISOString(),
+    });
+  }
+  return response;
 };
