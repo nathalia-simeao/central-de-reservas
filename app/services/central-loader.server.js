@@ -15,6 +15,11 @@ import {
   buildGygCertificationEvidence,
   summarizeGygOptionMappings,
 } from "../utils/gyg-certification";
+import {
+  VIATOR_CERTIFICATION_STEPS,
+  buildViatorCertificationEvidence,
+  summarizeViatorMappings,
+} from "../utils/viator-certification";
 
 const prisma = db;
 const json = (body, init) => data(body, init);
@@ -310,6 +315,20 @@ export const loader = async ({ request }) => {
   );
   const gygOptionMappings = summarizeGygOptionMappings(tours);
 
+
+  const viatorCertificationEvents = await prisma.integrationEvent.findMany({
+    where: {
+      provider: "VIATOR",
+      topic: { in: VIATOR_CERTIFICATION_STEPS.map((step) => step.key) },
+    },
+    orderBy: { receivedAt: "desc" },
+    take: 150,
+  });
+  const viatorCertification = buildViatorCertificationEvidence(
+    viatorCertificationEvents,
+  );
+  const viatorMappings = summarizeViatorMappings(tours);
+
   const gygIntegrationStatus = {
     incomingAuthConfigured: Boolean(
       process.env.GYG_INCOMING_USER && process.env.GYG_INCOMING_PASS,
@@ -352,6 +371,48 @@ export const loader = async ({ request }) => {
     console.error("[PMY] integration credential status load failed:", error);
   }
 
+  const viatorCredential =
+    integrationCredentialStatus.statuses.find(
+      (item) => String(item?.provider || "").toUpperCase() === "VIATOR",
+    ) || null;
+  const viatorEnvConfigured = Boolean(
+    integrationCredentialStatus?.environment?.viator?.configured,
+  );
+  const appBase = String(process.env.SHOPIFY_APP_URL || "").replace(/\/+$/, "");
+  const viatorIntegrationStatus = {
+    credentialsReady: Boolean(viatorCredential?.hasCredential || viatorEnvConfigured),
+    connected: viatorCredential?.status === "CONNECTED",
+    credentialStatus: viatorCredential?.status || null,
+    lastValidationStatus: viatorCredential?.lastValidationStatus || null,
+    lastValidationMessage: viatorCredential?.lastValidationMessage || null,
+    lastValidatedAt: viatorCredential?.lastValidatedAt || null,
+    endpointBase: appBase,
+    endpoints: {
+      tourList: `${appBase}/tourlist`,
+      availabilityCheck: `${appBase}/v2/availability/check`,
+      availabilityCalendar: `${appBase}/v2/availability/calendar`,
+      reserve: `${appBase}/v2/reserve`,
+      booking: `${appBase}/booking`,
+      bookingAmendment: `${appBase}/booking-amendment`,
+      bookingCancellation: `${appBase}/booking-cancellation`,
+    },
+    mappingApiBase: String(
+      process.env.VIATOR_API_BASE || "https://api.viator.com",
+    ).replace(/\/+$/, ""),
+    activeTours: viatorMappings.activeTours,
+    mappedTours: viatorMappings.mappedTours,
+    fullyMappedTours: viatorMappings.fullyMappedTours,
+    readyTours: viatorMappings.readyTours,
+    mappingMissing: viatorMappings.mappingMissing,
+    optionMappingMissing: viatorMappings.optionMappingMissing,
+    trafficVerified: viatorCertification.trafficVerified,
+    lastTrafficAt: viatorCertification.lastTrafficAt,
+    certificationEvidence: viatorCertification.steps,
+    certificationEvidenceVerified: viatorCertification.verifiedRequired,
+    certificationEvidenceTotal: viatorCertification.requiredTotal,
+    technicalEvidenceComplete: viatorCertification.technicalEvidenceComplete,
+  };
+
   const latestRefresh = getCentralRefreshStatus(session?.shop);
   const shopifyWebhookStatus =
     latestRefresh.webhookStatus || {
@@ -393,6 +454,7 @@ export const loader = async ({ request }) => {
     guideShopifySync,
     shopifyWebhookStatus,
     gygIntegrationStatus,
+    viatorIntegrationStatus,
     integrationCredentialStatus,
     businessSettings,
     platformFieldMappings,
