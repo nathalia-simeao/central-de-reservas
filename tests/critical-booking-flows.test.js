@@ -239,6 +239,24 @@ test("stored Shopify payload strips customer PII and address data", () => {
   assert.equal(minimized.attributes[0].name, "PMY UTM Source");
 });
 
+test("checkout hold payload persists the Shopify invoice URL for the secure redirect", () => {
+  const invoiceUrl =
+    "https://example-shop.myshopify.com/1234567890/invoices/abc123";
+
+  const minimized = minimizeCheckoutHoldPayload({
+    kind: "CENTRAL_CHECKOUT_HOLD",
+    draftOrderId: "gid://shopify/DraftOrder/123",
+    draftOrderName: "#D123",
+    invoiceUrl,
+    date: "2026-10-10",
+    time: "10:00",
+    productId: "gid://shopify/Product/123",
+  });
+
+  assert.equal(minimized.invoiceUrl, invoiceUrl);
+  assert.equal(minimized.draftOrderId, "gid://shopify/DraftOrder/123");
+});
+
 test("checkout raw payload does not duplicate customer identity", () => {
   const minimized = minimizeCheckoutHoldPayload({
     kind: "CENTRAL_CHECKOUT_HOLD",

@@ -500,6 +500,7 @@ export const action = async ({ request }) => {
           shop: session?.shop || null,
           draftOrderId: draftOrder.id,
           draftOrderName: draftOrder.name || null,
+          invoiceUrl: draftOrder.invoiceUrl,
           date,
           time,
           language,
