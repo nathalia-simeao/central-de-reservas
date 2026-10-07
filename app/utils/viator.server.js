@@ -124,6 +124,86 @@ export async function requireViatorAuth(
   );
 }
 
+export async function recordViatorAuthenticatedTraffic(
+  topic,
+  metadata = {},
+  response = null,
+) {
+  try {
+    const payload = {
+      source: "AUTHENTICATED_SUPPLIER_API",
+    };
+
+    for (const key of [
+      "supplierId",
+      "productOptionId",
+      "supplierProductCode",
+      "bookingReference",
+      "availabilityHoldReference",
+      "reference",
+    ]) {
+      const value = metadata?.[key];
+      if (value !== undefined && value !== null && String(value).trim()) {
+        payload[key] = String(value);
+      }
+    }
+
+    let status = "RECEIVED";
+    let responseSummary = null;
+    let error = null;
+
+    if (response?.clone) {
+      try {
+        const responseBody = await response.clone().json();
+        const v1Status = String(
+          responseBody?.data?.RequestStatus?.Status || "",
+        ).toUpperCase();
+        const responseError =
+          responseBody?.error ||
+          responseBody?.errorCode ||
+          responseBody?.data?.RequestStatus?.Error?.ErrorCode ||
+          null;
+
+        if (!response.ok || v1Status === "ERROR" || responseError) {
+          status = "ERROR";
+          error = String(responseError || `HTTP_${response.status}`);
+        }
+
+        responseSummary = {
+          httpStatus: response.status,
+          responseType: responseBody?.responseType || null,
+          status:
+            responseBody?.status ||
+            responseBody?.data?.RequestStatus?.Status ||
+            null,
+          error: responseError ? String(responseError) : null,
+        };
+      } catch {
+        responseSummary = { httpStatus: response.status };
+        if (!response.ok) {
+          status = "ERROR";
+          error = `HTTP_${response.status}`;
+        }
+      }
+    }
+
+    await prisma.integrationEvent.create({
+      data: {
+        provider: VIATOR_PLATFORM,
+        externalEventId: `viator:${String(topic || "unknown")}:${crypto.randomUUID()}`,
+        topic: String(topic || "unknown"),
+        status,
+        payload,
+        result: responseSummary,
+        error,
+        processedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[VIATOR] authenticated traffic audit failed", error);
+  }
+}
+
 export async function readViatorJson(request, version = "v2") {
   try {
     const body = await request.json();
