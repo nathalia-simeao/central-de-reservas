@@ -39,7 +39,7 @@ export const headers = () => ({
 });
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, viatorIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsLoadError, setBookingsLoadError] = useState("");
@@ -386,6 +386,19 @@ function CentralDeReservasContent() {
   const [gygConfigPriceOverApi, setGygConfigPriceOverApi] = useState(false);
   const [gygConfigMessage, setGygConfigMessage] = useState("");
   const [gygConfigSaving, setGygConfigSaving] = useState(false);
+
+  // Implantação Viator Supplier API v1/v2 + Product Mapping API.
+  const [viatorConfigTourId, setViatorConfigTourId] = useState("");
+  const [viatorProductCode, setViatorProductCode] = useState("");
+  const [viatorTourGradeCode, setViatorTourGradeCode] = useState("");
+  const [viatorConfigSchedule, setViatorConfigSchedule] = useState("");
+  const [viatorConfigTimezone, setViatorConfigTimezone] = useState("Europe/Lisbon");
+  const [viatorConfigCutoff, setViatorConfigCutoff] = useState("");
+  const [viatorConfigMessage, setViatorConfigMessage] = useState("");
+  const [viatorConfigSaving, setViatorConfigSaving] = useState(false);
+  const [viatorMappingLoading, setViatorMappingLoading] = useState(false);
+  const [viatorMappingMessage, setViatorMappingMessage] = useState("");
+  const [viatorMappingCatalog, setViatorMappingCatalog] = useState(null);
 
   // J. MAPEAMENTO DE CAMPOS (NOVO)
   const [fieldMappings, setFieldMappings] = useState(() => {
@@ -1985,6 +1998,151 @@ function CentralDeReservasContent() {
     setGygConfigPriceOverApi(Boolean(tour?.gygPriceOverApi));
   };
 
+  const handleViatorTourSelection = (id) => {
+    setViatorConfigTourId(id);
+    setViatorConfigMessage("");
+    setViatorMappingMessage("");
+    setViatorMappingCatalog(null);
+    const tour = (tours || []).find((item) => item.id === id);
+    setViatorProductCode(tour?.viatorProductCode || "");
+    setViatorTourGradeCode(tour?.viatorTourGradeCode || "");
+    setViatorConfigSchedule((tour?.scheduleSlots || []).join(", "));
+    setViatorConfigTimezone(tour?.timezone || "Europe/Lisbon");
+    setViatorConfigCutoff(
+      Number.isInteger(tour?.bookingCutoffSeconds)
+        ? String(tour.bookingCutoffSeconds)
+        : "",
+    );
+  };
+
+  const handleSaveViatorTourConfig = async () => {
+    if (!viatorConfigTourId) {
+      setViatorConfigMessage("Selecione um tour.");
+      return false;
+    }
+
+    setViatorConfigSaving(true);
+    setViatorConfigMessage("");
+
+    try {
+      const fd = new FormData();
+      fd.append("_action", "saveViatorTourConfig");
+      fd.append("id", viatorConfigTourId);
+      fd.append("viatorProductCode", viatorProductCode);
+      fd.append("viatorTourGradeCode", viatorTourGradeCode);
+      fd.append("scheduleSlots", viatorConfigSchedule);
+      fd.append("timezone", viatorConfigTimezone);
+      fd.append("bookingCutoffSeconds", viatorConfigCutoff);
+
+      const res = await fetch(window.location.href, { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setViatorConfigMessage(
+          result.error || "Não foi possível salvar a configuração Viator.",
+        );
+        return false;
+      }
+
+      setViatorConfigMessage("Configuração Viator salva na Central.");
+      return true;
+    } catch (error) {
+      setViatorConfigMessage(
+        error?.message || "Erro ao salvar configuração Viator.",
+      );
+      return false;
+    } finally {
+      setViatorConfigSaving(false);
+    }
+  };
+
+  const callViatorMappingApi = async (action) => {
+    if (!viatorConfigTourId) {
+      throw new Error("Selecione um tour.");
+    }
+
+    const fd = new FormData();
+    fd.append("_action", action);
+    fd.append("productOptionId", viatorConfigTourId);
+    fd.append("productCode", viatorProductCode.trim());
+    fd.append("tourGradeCode", viatorTourGradeCode.trim());
+
+    const response = await fetch("/api/viator-mappings", {
+      method: "POST",
+      body: fd,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) {
+      const code = payload?.code ? ` (${payload.code})` : "";
+      throw new Error(
+        `${payload?.error || "Falha na Viator Product Mapping API."}${code}`,
+      );
+    }
+    return payload;
+  };
+
+  const handleLoadViatorCatalog = async () => {
+    setViatorMappingLoading(true);
+    setViatorMappingMessage("");
+    try {
+      const payload = await callViatorMappingApi("catalog");
+      setViatorMappingCatalog(payload.catalog || null);
+      const count = Array.isArray(payload.catalog?.products)
+        ? payload.catalog.products.length
+        : 0;
+      setViatorMappingMessage(
+        `Catálogo Viator consultado: ${count} produto(s) nesta resposta.`,
+      );
+    } catch (error) {
+      setViatorMappingMessage(error?.message || "Falha ao consultar catálogo Viator.");
+    } finally {
+      setViatorMappingLoading(false);
+    }
+  };
+
+  const handleConnectViatorMapping = async () => {
+    if (!viatorProductCode.trim() || !viatorTourGradeCode.trim()) {
+      setViatorMappingMessage("Informe productCode e tourGradeCode antes de conectar.");
+      return;
+    }
+
+    setViatorMappingLoading(true);
+    setViatorMappingMessage("");
+    try {
+      const saved = await handleSaveViatorTourConfig();
+      if (!saved) return;
+      await callViatorMappingApi("connect");
+      setViatorMappingMessage(
+        "Mapeamento enviado à Viator. Consulte o catálogo para confirmar o status Mapped.",
+      );
+      await handleLoadViatorCatalog();
+    } catch (error) {
+      setViatorMappingMessage(error?.message || "Falha ao conectar mapeamento Viator.");
+    } finally {
+      setViatorMappingLoading(false);
+    }
+  };
+
+  const handleDisconnectViatorMapping = async () => {
+    if (!viatorProductCode.trim() || !viatorTourGradeCode.trim()) {
+      setViatorMappingMessage("Informe productCode e tourGradeCode antes de desconectar.");
+      return;
+    }
+
+    setViatorMappingLoading(true);
+    setViatorMappingMessage("");
+    try {
+      await callViatorMappingApi("disconnect");
+      setViatorMappingMessage(
+        "Mapeamento removido na Viator. A configuração local foi preservada para auditoria.",
+      );
+      await handleLoadViatorCatalog();
+    } catch (error) {
+      setViatorMappingMessage(error?.message || "Falha ao desconectar mapeamento Viator.");
+    } finally {
+      setViatorMappingLoading(false);
+    }
+  };
+
   const handleSaveGygTourConfig = async () => {
     if (!gygConfigTourId) {
       setGygConfigMessage("Selecione um tour.");
@@ -2607,6 +2765,23 @@ function CentralDeReservasContent() {
         gygConfigTimezone,
         gygConfigTourId,
         gygIntegrationStatus,
+        viatorIntegrationStatus,
+        viatorConfigTourId,
+        viatorProductCode,
+        viatorTourGradeCode,
+        viatorConfigSchedule,
+        viatorConfigTimezone,
+        viatorConfigCutoff,
+        viatorConfigMessage,
+        viatorConfigSaving,
+        viatorMappingLoading,
+        viatorMappingMessage,
+        viatorMappingCatalog,
+        handleViatorTourSelection,
+        handleSaveViatorTourConfig,
+        handleLoadViatorCatalog,
+        handleConnectViatorMapping,
+        handleDisconnectViatorMapping,
         handleConfirmConnect,
         handleDeleteGuide,
         handleDisconnect,
@@ -2664,6 +2839,11 @@ function CentralDeReservasContent() {
         setGygConfigPriceOverApi,
         setGygConfigSchedule,
         setGygConfigTimezone,
+        setViatorProductCode,
+        setViatorTourGradeCode,
+        setViatorConfigSchedule,
+        setViatorConfigTimezone,
+        setViatorConfigCutoff,
         setIntegrationEnvironmentInput,
         setIsFormAllocating,
         setModalSelectedGuide,
