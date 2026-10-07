@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
-import { Icon } from "./PmyUI";
+import { Button, Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
 import CivitatisOnboardingPanel from "./CivitatisOnboardingPanel";
@@ -774,24 +774,26 @@ export default function CentralModalLayer(props) {
                 )}
 
                 <div className="pmy-ds-actions pmy-u-mt-3">
-                  <button
+                  <Button
                     type="button"
-                    className="pmy-btn-secondary"
+                    variant="secondary"
+                    icon="external"
                     onClick={() => window.open("https://www.tripadvisor.com/developers", "_blank")}
                   >
-                    {ui("Abrir Tripadvisor Developers ↗", "Open Tripadvisor Developers ↗")}
-                  </button>
+                    {ui("Tripadvisor Developers", "Tripadvisor Developers")}
+                  </Button>
                   {tripadvisorContent?.configured && (
-                    <button
+                    <Button
                       type="button"
-                      className="pmy-btn-secondary"
+                      variant="secondary"
+                      icon="refresh"
                       disabled={tripadvisorContentLoading}
                       onClick={loadTripadvisorContent}
                     >
                       {tripadvisorContentLoading
                         ? ui("Atualizando...", "Refreshing...")
                         : ui("Atualizar conteúdo", "Refresh content")}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

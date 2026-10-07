@@ -99,6 +99,7 @@ function translatedValue(items) {
 
 function ratingValue(location) {
   const candidates = [
+    location?.traveler_ratings?.overall?.rating,
     location?.rating,
     location?.rating?.value,
     location?.rating?.overall,
@@ -114,6 +115,7 @@ function ratingValue(location) {
 
 function reviewCount(location) {
   const candidates = [
+    location?.traveler_ratings?.overall?.count,
     location?.review_count,
     location?.reviewCount,
     location?.reviews?.total_count,
@@ -191,7 +193,13 @@ export async function loadTripadvisorContent({ apiKey, locationId }) {
       id: review?.id || null,
       title: localizedText(review?.title),
       text: localizedText(review?.text),
-      rating: Number(review?.rating?.overall ?? review?.rating ?? 0) || null,
+      rating:
+        Number(
+          review?.traveler_ratings?.overall?.rating ??
+          review?.rating?.overall ??
+          review?.rating ??
+          0,
+        ) || null,
       publishedAt:
         review?.published_date ||
         review?.publishedAt ||
