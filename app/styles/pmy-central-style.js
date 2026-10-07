@@ -1736,6 +1736,16 @@ export function buildCentralStyles(theme) {
         .pmy-media-thumb, .pmy-media-thumb-placeholder { height:110px; }
       }
   
+
+      .pmy-ds-connection-state.is-required { color:#b42318; }
+      .pmy-ds-connection-state.is-pending { color:#9a6700; }
+      .pmy-ds-connection-state.is-configured { color:#245b83; }
+      .pmy-int-connection-note.is-waiting {
+        border-color:color-mix(in srgb, #2f6f9f 24%, transparent);
+        background:color-mix(in srgb, #2f6f9f 8%, #fff);
+        color:#245b83;
+      }
+
       @media (max-width: 430px) {
         .pmy-dashboard-kpi-grid { grid-template-columns:1fr; }
         .pmy-dashboard-status-strip { grid-template-columns:1fr; }
@@ -1751,11 +1761,3 @@ export function buildCentralStyles(theme) {
     `;
 }
 
-      .pmy-ds-connection-state.is-required { color:#b42318; }
-      .pmy-ds-connection-state.is-pending { color:#9a6700; }
-      .pmy-ds-connection-state.is-configured { color:#245b83; }
-      .pmy-int-connection-note.is-waiting {
-        border-color:color-mix(in srgb, #2f6f9f 24%, transparent);
-        background:color-mix(in srgb, #2f6f9f 8%, #fff);
-        color:#245b83;
-      }
