@@ -3,6 +3,8 @@ import {
   requireViatorAuth,
   viatorReserve,
 } from "../utils/viator.server";
+import db from "../db.server";
+import { recordViatorEvidence } from "../utils/viator-onboarding.server";
 
 export const action = async ({ request }) => {
   const authError = await requireViatorAuth(request, "v2");
@@ -11,5 +13,18 @@ export const action = async ({ request }) => {
   const parsed = await readViatorJson(request, "v2");
   if (parsed.error) return parsed.error;
 
-  return viatorReserve(parsed.data);
+  const response = await viatorReserve(parsed.data);
+  if (response.ok) {
+    try {
+      const payload = await response.clone().json();
+      if (payload?.status === "RESERVED") {
+        void recordViatorEvidence(db, "RESERVE", {
+          receivedAt: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // Evidence is best-effort and never changes the Supplier API response.
+    }
+  }
+  return response;
 };

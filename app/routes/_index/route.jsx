@@ -375,6 +375,11 @@ function CentralDeReservasContent() {
   const [integrationEnvironmentInput, setIntegrationEnvironmentInput] = useState("test");
   const [integrationCredentialMessage, setIntegrationCredentialMessage] = useState("");
   const [integrationCredentialLoading, setIntegrationCredentialLoading] = useState(false);
+  const [viatorOnboardingStatus, setViatorOnboardingStatus] = useState(null);
+  const [viatorCatalog, setViatorCatalog] = useState(null);
+  const [viatorOnboardingLoading, setViatorOnboardingLoading] = useState(false);
+  const [viatorOnboardingError, setViatorOnboardingError] = useState("");
+  const [viatorMappingBusy, setViatorMappingBusy] = useState(null);
 
   // Configuração GetYourGuide Supplier API v1 (sem armazenar credenciais no browser)
   const [gygConfigTourId, setGygConfigTourId] = useState("");
@@ -2065,6 +2070,87 @@ function CentralDeReservasContent() {
     }));
   };
 
+  const loadViatorOnboarding = async ({ includeCatalog = false } = {}) => {
+    setViatorOnboardingLoading(true);
+    setViatorOnboardingError("");
+    try {
+      if (includeCatalog) {
+        const fd = new FormData();
+        fd.append("_action", "catalog");
+        const payload = await requestResourceJson("/api/viator-onboarding", fd);
+        setViatorOnboardingStatus(payload.status || null);
+        setViatorCatalog(payload.catalog || null);
+        return payload;
+      }
+
+      const payload = await requestResourceJson("/api/viator-onboarding");
+      setViatorOnboardingStatus(payload.status || null);
+      return payload;
+    } catch (error) {
+      setViatorOnboardingError(
+        error?.message || "Falha ao consultar o onboarding Viator.",
+      );
+      return null;
+    } finally {
+      setViatorOnboardingLoading(false);
+    }
+  };
+
+  const handleViatorConnectMapping = async ({
+    key,
+    productOptionId,
+    productCode,
+    tourGradeCode,
+  }) => {
+    if (!productOptionId) return;
+    setViatorMappingBusy(key);
+    setViatorOnboardingError("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "connect");
+      fd.append("productOptionId", productOptionId);
+      fd.append("productCode", productCode);
+      fd.append("tourGradeCode", tourGradeCode);
+      const payload = await requestResourceJson("/api/viator-onboarding", fd);
+      setViatorOnboardingStatus(payload.status || null);
+      setViatorCatalog(payload.catalog || null);
+      notify(ui("Mapeamento Viator conectado.", "Viator mapping connected."), "success");
+    } catch (error) {
+      setViatorOnboardingError(
+        error?.message || "Falha ao conectar o mapeamento Viator.",
+      );
+    } finally {
+      setViatorMappingBusy(null);
+    }
+  };
+
+  const handleViatorDisconnectMapping = async ({
+    key,
+    productOptionId,
+    productCode,
+    tourGradeCode,
+  }) => {
+    setViatorMappingBusy(key);
+    setViatorOnboardingError("");
+    try {
+      const fd = new FormData();
+      fd.append("_action", "disconnect");
+      fd.append("productOptionId", productOptionId);
+      fd.append("productCode", productCode);
+      fd.append("tourGradeCode", tourGradeCode);
+      const payload = await requestResourceJson("/api/viator-onboarding", fd);
+      setViatorOnboardingStatus(payload.status || null);
+      setViatorCatalog(payload.catalog || null);
+      notify(ui("Mapeamento Viator desconectado.", "Viator mapping disconnected."), "success");
+    } catch (error) {
+      setViatorOnboardingError(
+        error?.message || "Falha ao desconectar o mapeamento Viator.",
+      );
+    } finally {
+      setViatorMappingBusy(null);
+    }
+  };
+
   const handleOpenConnect = (key) => {
     setConnectingPlatform(key);
     setApiKeyInput("");
@@ -2075,6 +2161,10 @@ function CentralDeReservasContent() {
     );
     if (key === "getyourguide") {
       setGygConfigMessage("");
+    }
+    if (key === "viator") {
+      setViatorOnboardingError("");
+      void loadViatorOnboarding();
     }
   };
 
@@ -2121,6 +2211,9 @@ function CentralDeReservasContent() {
         payload.message ||
           "Credencial salva · teste local concluído no backend. Aguardando tráfego real do canal.",
       );
+      if (key === "viator") {
+        void loadViatorOnboarding();
+      }
     } catch (error) {
       if (error?.integrationStatus) {
         applyCredentialStatus(key, error.integrationStatus);
@@ -2607,6 +2700,11 @@ function CentralDeReservasContent() {
         gygConfigTimezone,
         gygConfigTourId,
         gygIntegrationStatus,
+        viatorCatalog,
+        viatorMappingBusy,
+        viatorOnboardingError,
+        viatorOnboardingLoading,
+        viatorOnboardingStatus,
         handleConfirmConnect,
         handleDeleteGuide,
         handleDisconnect,
@@ -2619,6 +2717,9 @@ function CentralDeReservasContent() {
         handleSaveGygTourConfig,
         handleSyncPlatformNow,
         handleTestIntegrationCredential,
+        handleViatorConnectMapping,
+        handleViatorDisconnectMapping,
+        loadViatorOnboarding,
         integrationCredentialLoading,
         integrationCredentialMessage,
         integrationCredentialStatus,

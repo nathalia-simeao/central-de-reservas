@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
+import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
 import {
   allPlatforms,
   ddiList,
@@ -54,6 +55,11 @@ export default function CentralModalLayer(props) {
     gygConfigTimezone,
     gygConfigTourId,
     gygIntegrationStatus,
+    viatorCatalog,
+    viatorMappingBusy,
+    viatorOnboardingError,
+    viatorOnboardingLoading,
+    viatorOnboardingStatus,
     handleConfirmConnect,
     handleDeleteGuide,
     handleDisconnect,
@@ -66,6 +72,9 @@ export default function CentralModalLayer(props) {
     handleSaveGygTourConfig,
     handleSyncPlatformNow,
     handleTestIntegrationCredential,
+    handleViatorConnectMapping,
+    handleViatorDisconnectMapping,
+    loadViatorOnboarding,
     integrationCredentialLoading,
     integrationCredentialMessage,
     integrationCredentialStatus,
@@ -223,6 +232,7 @@ export default function CentralModalLayer(props) {
     const guide   = platformTokenGuide[connectingPlatform];
     const isShopify = connectingPlatform === 'shopify';
     const isGyg = connectingPlatform === 'getyourguide';
+    const isViator = connectingPlatform === 'viator';
     const isTripadvisor = connectingPlatform === 'tripadvisor';
     const isManagedCredential = ['viator', 'civitatis'].includes(connectingPlatform);
     const isHeadout = connectingPlatform === 'headout';
@@ -862,6 +872,20 @@ export default function CentralModalLayer(props) {
               </div>
             )}
   
+            {isViator && (
+              <ViatorOnboardingPanel
+                catalog={viatorCatalog}
+                error={viatorOnboardingError}
+                lang={lang}
+                loading={viatorOnboardingLoading}
+                mappingBusy={viatorMappingBusy}
+                onConnectMapping={handleViatorConnectMapping}
+                onDisconnectMapping={handleViatorDisconnectMapping}
+                onRefresh={() => loadViatorOnboarding({ includeCatalog: true })}
+                status={viatorOnboardingStatus}
+              />
+            )}
+
             {/* ── HEADOUT: sem adapter verificável, sem campos falsos ── */}
             {isHeadout && (
               <div>
