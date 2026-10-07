@@ -1293,7 +1293,7 @@ function CentralDeReservasContent() {
     fd.append("id", id);
 
     try {
-      await requestResourceJson("/", fd);
+      await requestResourceJson("/api/central-actions", fd);
       setMediaList((current) => current.filter((item) => item.id !== id));
     } catch (error) {
       setMediaUploadError(error?.message || "Erro ao remover mídia.");
@@ -1327,7 +1327,7 @@ function CentralDeReservasContent() {
       }
     }
 
-    const payload = await requestResourceJson("/", fd);
+    const payload = await requestResourceJson("/api/central-actions", fd);
 
     setSettingsSaveMessage("Salvo no banco ✓");
     window.clearTimeout(settingsMessageTimerRef.current);

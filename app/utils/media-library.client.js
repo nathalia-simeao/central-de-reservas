@@ -21,7 +21,7 @@ export async function uploadFileToPmyMediaLibrary({
   prepare.append("size", String(file.size || 0));
   prepare.append("category", category);
 
-  const prepared = await requestResourceJson("/", prepare);
+  const prepared = await requestResourceJson("/api/central-actions", prepare);
   if (!prepared?.uploadUrl || !prepared?.resourceUrl) {
     throw new Error("A Biblioteca PMY não devolveu um destino de upload.");
   }
@@ -52,7 +52,7 @@ export async function uploadFileToPmyMediaLibrary({
     String(label || filename.replace(/\.[^/.]+$/, "") || filename).trim(),
   );
 
-  const finalized = await requestResourceJson("/", finalize);
+  const finalized = await requestResourceJson("/api/central-actions", finalize);
   if (!finalized?.media?.id || !finalized?.media?.url) {
     throw new Error("A Biblioteca PMY não devolveu a mídia persistida.");
   }
