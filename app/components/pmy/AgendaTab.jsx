@@ -687,12 +687,17 @@ export default function AgendaTab(props) {
                 {reservationPlatforms.map((platform) => {
                   const connection = platformConnections[platform.key];
                   const selected = blockPlatforms.includes(platform.key);
+                  const connected = Boolean(connection?.connected);
+                  // Permitir retirar seleção antiga de canais desconectados, mas nunca adicioná-los.
+                  const disabled = !connected && !selected;
 
                   return (
                     <button
                       key={platform.key}
                       type="button"
-                      className={`pmy-platform-pill${selected ? " selected-block" : ""}${!connection.connected ? " disconnected" : ""}`}
+                      disabled={disabled}
+                      aria-pressed={selected}
+                      className={`pmy-platform-pill${selected ? " selected-block" : ""}${!connected ? " disconnected" : ""}`}
                       onClick={() =>
                         handleTogglePlatformSelection(
                           platform.key,
@@ -701,8 +706,8 @@ export default function AgendaTab(props) {
                         )
                       }
                       title={
-                        !connection.connected
-                          ? `${platform.name} ${tr("não conectado", "not connected")}`
+                        !connected
+                          ? `${platform.name}: ${tr("não conectado", "not connected")}`
                           : ""
                       }
                     >
