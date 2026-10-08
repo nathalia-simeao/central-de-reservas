@@ -135,7 +135,9 @@ function productItemFromGygOption(tour, option) {
     id: option.id,
     name: option?.title ? `${tour.title} · ${option.title}` : tour.title,
     active: tour.shopifyStatus !== "INACTIVE" && option?.active !== false,
-    synced: true,
+    synced: Boolean(option?.gygOptionId),
+    gygMappingStatus: option?.gygOptionId ? "MAPPED" : "UNMAPPED",
+    gygRemoteStatus: "NOT_VERIFIED",
     sku: option?.gygOptionId || option.id,
     price:
       minPrice != null
