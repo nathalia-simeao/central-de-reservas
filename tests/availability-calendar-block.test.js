@@ -94,3 +94,28 @@ test("GYG-only block and removal preserve other channels and restore availabilit
   block.active = false;
   assert.equal(blockMatchesCalendarSlot(block, { ...slot, platform: "getyourguide" }), false);
 });
+
+test("GYG production scenario: 16 October ALL-platform rule closes Jeronimos 09:30 but 17 October stays open", async () => {
+  const { calculateAvailabilityForCalendarSlotFromLoaded } = await import("../app/utils/capacity.server.js");
+  const tour = { id: "jeronimos-master-tour", maxCapacity: 20, timezone: "Europe/Lisbon" };
+  const block = {
+    id: "jeronimos-16-oct-block",
+    active: true,
+    tourId: tour.id,
+    date: dateInputToUtcMidnight("2026-10-16"),
+    dayOfWeek: null,
+    timeSlot: "ALL",
+    platforms: [],
+  };
+  const input = { tour, bookings: [], blocks: [block], timeKey: "09:30", platform: "getyourguide" };
+  const blocked = calculateAvailabilityForCalendarSlotFromLoaded({ ...input, dateKey: "2026-10-16" });
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.remainingSeats, 0);
+  const nextDay = calculateAvailabilityForCalendarSlotFromLoaded({ ...input, dateKey: "2026-10-17" });
+  assert.equal(nextDay.blocked, false);
+  assert.equal(nextDay.remainingSeats, 20);
+  const incorrectMasterTour = calculateAvailabilityForCalendarSlotFromLoaded({
+    ...input, tour: { ...tour, id: "different-master-tour" }, dateKey: "2026-10-16",
+  });
+  assert.equal(incorrectMasterTour.remainingSeats, 20);
+});
