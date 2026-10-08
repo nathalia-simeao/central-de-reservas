@@ -229,8 +229,9 @@ export default function IntegrationProductsPanel({
                                     <th>{tr("Produto / Tour", "Product / Tour")}</th>
                                     <th>{tr("SKU / ID Externo", "SKU / External ID")}</th>
                                     <th>{tr("Preço", "Price")}</th>
-                                    <th>{tr("Sincronizado", "Synced")}</th>
-                                    <th>{tr("Status no canal", "Channel status")}</th>
+                                    <th>{activeProdPlatform === "getyourguide" ? tr("Vínculo GYG", "GYG mapping") : tr("Sincronizado", "Synced")}</th>
+                                    <th>{activeProdPlatform === "getyourguide" ? tr("Status interno", "Internal status") : tr("Status no canal", "Channel status")}</th>
+                                    {activeProdPlatform === "getyourguide" && <th>{tr("Status no portal GYG", "GYG portal status")}</th>}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -244,9 +245,13 @@ export default function IntegrationProductsPanel({
                                       </td>
                                       <td className="pmy-ds-migrated-h64zcu">{prod.price}</td>
                                       <td>
-                                        {prod.synced
-                                          ? <span className="pmy-ds-migrated-xjumd6">{tr("Sincronizado", "Synced")}</span>
-                                          : <span className="pmy-ds-migrated-8f66dt">{tr("— Pendente", "— Pending")}</span>
+                                        {activeProdPlatform === "getyourguide"
+                                          ? prod.gygOptionId
+                                            ? <span className="pmy-ds-migrated-xjumd6" title={tr("Opção com ID GYG configurado. Não comprova publicação no portal.", "GYG option ID configured. Does not prove portal publication.")}>{tr("ID vinculado", "ID linked")}</span>
+                                            : <span className="pmy-ds-migrated-8f66dt" title={tr("Sem ID GYG para publicar disponibilidade.", "Missing GYG ID for availability updates.")}>{tr("Sem vínculo", "Not mapped")}</span>
+                                          : prod.synced
+                                            ? <span className="pmy-ds-migrated-xjumd6">{tr("Sincronizado", "Synced")}</span>
+                                            : <span className="pmy-ds-migrated-8f66dt">{tr("— Pendente", "— Pending")}</span>
                                         }
                                       </td>
                                       <td>
@@ -255,6 +260,13 @@ export default function IntegrationProductsPanel({
                                           {prod.active ? tr('Ativo','Active') : tr('Inativo','Inactive')}
                                         </span>
                                       </td>
+                                      {activeProdPlatform === "getyourguide" && (
+                                        <td>
+                                          <span className="pmy-prod-status off" title={tr("A Supplier API não consulta diretamente se o produto está Bookable, Deactivated ou Rejected no portal GYG.", "The Supplier API does not query Bookable, Deactivated or Rejected status from the GYG portal.")}>
+                                            {tr("Não verificado", "Not verified")}
+                                          </span>
+                                        </td>
+                                      )}
                                     </tr>
                                   ))}
                                 </tbody>
@@ -265,8 +277,10 @@ export default function IntegrationProductsPanel({
                               <div className="pmy-ds-migrated-181vluz">
                                 <Icon name="info" size={14} />
                                 {tr(
-                                  "O status é somente leitura e reflete o último dado retornado pelo canal. Ative ou desative produtos diretamente na plataforma de origem.",
-                                  "Status is read-only and reflects the latest value returned by the channel. Activate or deactivate products in the source platform.",
+                                  activeProdPlatform === "getyourguide"
+                                    ? "GetYourGuide: a lista mostra opções internas da Central, não produtos publicados consultados no portal. ID vinculado não garante status Bookable. Confirme o status no portal GYG antes de testar bloqueios."
+                                    : "O status é somente leitura e reflete o último dado retornado pelo canal. Ative ou desative produtos diretamente na plataforma de origem.",
+                                  activeProdPlatform === "getyourguide" ? "GetYourGuide: these are internal Central options, not a live portal product list. A linked ID does not confirm Bookable status. Verify in the GYG portal before testing blocks." : "Status is read-only and reflects the latest value returned by the channel.",
                                 )}
                               </div>
                             </div>
