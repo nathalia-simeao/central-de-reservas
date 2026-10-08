@@ -410,3 +410,12 @@ model PlatformFieldMapping {
   @@index([shop])
   @@index([platform])
 }
+
+// Persistent worker heartbeat shared across application processes.
+model WorkerHeartbeat {
+  name       String   @id
+  lastSeenAt DateTime @default(now())
+  lastOkAt   DateTime?
+  lastError  String?
+  updatedAt  DateTime @updatedAt
+}
