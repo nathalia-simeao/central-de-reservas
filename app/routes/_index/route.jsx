@@ -163,7 +163,7 @@ function CentralDeReservasContent() {
   const [draftOrderLoading, setDraftOrderLoading] = useState(false);
   const [draftOrderError, setDraftOrderError] = useState("");
   const [draftOrderInfo, setDraftOrderInfo] = useState(null);
-  const [blockPlatforms, setBlockPlatforms] = useState(["shopify", "viator", "getyourguide", "headout", "civitatis"]); // apenas canais reais de reserva
+  const [blockPlatforms, setBlockPlatforms] = useState(["shopify"]); // Default seguro: canais desconectados nunca entram automaticamente no bloqueio
 
   // D. BLOQUEIOS MANUAIS
   const [blockTourId, setBlockTourId] = useState("");
