@@ -798,11 +798,32 @@ export function startSyncQueueWorker(
   const tick = async () => {
     if (running) return;
     running = true;
+    let failure = null;
     try {
       await processSyncQueue(prisma, { limit: batchSize });
     } catch (error) {
+      failure = error;
       console.error("[SYNC_QUEUE] worker tick failed:", error);
     } finally {
+      try {
+        const now = new Date();
+        await prisma.workerHeartbeat.upsert({
+          where: { name: "sync-queue" },
+          create: {
+            name: "sync-queue",
+            lastSeenAt: now,
+            lastOkAt: failure ? null : now,
+            lastError: failure ? String(failure?.message || failure).slice(0, 500) : null,
+          },
+          update: {
+            lastSeenAt: now,
+            ...(failure ? { lastError: String(failure?.message || failure).slice(0, 500) } :
+              { lastOkAt: now, lastError: null }),
+          },
+        });
+      } catch (heartbeatError) {
+        console.error("[SYNC_QUEUE] heartbeat write failed:", heartbeatError);
+      }
       running = false;
     }
   };
