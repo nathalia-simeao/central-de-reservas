@@ -792,9 +792,9 @@ export async function handleStorefrontHoldDirectAction({ request }) {
 
   const origin = request.headers.get("origin");
   const enforceProxy =
-    String(process.env.STOREFRONT_APP_PROXY_ENFORCED || "")
+    String(process.env.STOREFRONT_APP_PROXY_ENFORCED ?? "true")
       .trim()
-      .toLowerCase() === "true";
+      .toLowerCase() !== "false";
 
   if (enforceProxy) {
     const proxyUrl = new URL("/apps/pmy-central/hold", origin);
