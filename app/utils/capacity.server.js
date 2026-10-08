@@ -36,7 +36,7 @@ export function bookingSeatCount(booking, now = new Date()) {
 }
 
 
-function validateIdempotentBooking(existing, { tourId, startTime, seats, platform, now = new Date() }) {
+export function validateIdempotentBooking(existing, { tourId, startTime, seats, platform, now = new Date() }) {
   const expectedTime = new Date(startTime).getTime();
   const actualTime = new Date(existing.startTime).getTime();
   const sameParameters =
