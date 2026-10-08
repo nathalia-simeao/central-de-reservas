@@ -17,6 +17,76 @@ import {
   Toast,
 } from "./PmyUI";
 
+
+const TOUR_FIELD_LABELS = {
+  location: ["Localização", "Location"],
+  group_size: ["Tamanho do grupo", "Group size"],
+  duration_info: ["Duração", "Duration"],
+  what_to_bring: ["O que levar", "What to bring"],
+  activity_level: ["Nível de atividade", "Activity level"],
+  card_highlight: ["Destaques do passeio", "Tour highlights"],
+  languages_info: ["Idiomas disponíveis", "Available languages"],
+  what_is_included_info: ["O que está incluído", "What's included"],
+};
+
+function readableTourFieldLabel(key, english) {
+  const raw = String(key || "").split(".").pop();
+  const configured = TOUR_FIELD_LABELS[raw];
+  if (configured) return configured[english ? 1 : 0];
+  return raw.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function readableTourFieldValue(value) {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map(readableTourFieldValue).filter(Boolean).join(", ");
+  if (typeof value === "object") {
+    if ("value" in value) return readableTourFieldValue(value.value);
+    return JSON.stringify(value);
+  }
+  return String(value).trim();
+}
+
+function TourInformationCard({ metafields, lang }) {
+  const english = lang === "en";
+  const fields = Object.entries(metafields || {})
+    .map(([key, value]) => ({
+      key,
+      label: readableTourFieldLabel(key, english),
+      value: readableTourFieldValue(value),
+    }))
+    .filter(({ value }) => value !== "");
+
+  if (!fields.length) return null;
+
+  return (
+    <section className="pmy-tour-info" aria-label={english ? "Tour information" : "Informações do passeio"}>
+      <div className="pmy-tour-info__header">
+        <div>
+          <h3 className="pmy-tour-info__heading">
+            <Icon name="info" size={18} />
+            {english ? "Tour information" : "Informações do passeio"}
+          </h3>
+          <p className="pmy-tour-info__subtitle">
+            {english ? "Information synced from Shopify" : "Informações sincronizadas com a Shopify"}
+          </p>
+        </div>
+        <span className="pmy-tour-info__readonly">
+          {english ? "Read only" : "Somente leitura"}
+        </span>
+      </div>
+      <div className="pmy-tour-info__grid">
+        {fields.map(({ key, label, value }) => (
+          <div className="pmy-tour-info__field" key={key}>
+            <span className="pmy-tour-info__label">{label}</span>
+            <span className="pmy-tour-info__value">{value}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function AgendaTab(props) {
   const {
     activeTab,
@@ -601,22 +671,7 @@ export default function AgendaTab(props) {
                   </div>
                 </div>
 
-                {selectedBlockTour.metafields &&
-                Object.keys(selectedBlockTour.metafields).length > 0 ? (
-                  <div className="pmy-ds-meta-box">
-                    <div className="pmy-ds-meta-box__title">
-                      {tr("Metafields do Produto", "Product Metafields")}
-                    </div>
-                    <div className="pmy-ds-meta-list">
-                      {Object.entries(selectedBlockTour.metafields).map(([key, value]) => (
-                        <div key={key} className="pmy-ds-meta-row">
-                          <span className="pmy-ds-meta-key">{key}</span>
-                          <span className="pmy-ds-meta-value">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                <TourInformationCard metafields={selectedBlockTour.metafields} lang={lang} />
               </>
             ) : null}
 
