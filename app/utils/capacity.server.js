@@ -35,6 +35,65 @@ export function bookingSeatCount(booking, now = new Date()) {
   return fallback > 0 ? fallback : 1;
 }
 
+
+function validateIdempotentBooking(existing, { tourId, startTime, seats, platform, now = new Date() }) {
+  const expectedTime = new Date(startTime).getTime();
+  const actualTime = new Date(existing.startTime).getTime();
+  const sameParameters =
+    existing.tourId === tourId &&
+    String(existing.platform || "").toUpperCase() === platform &&
+    Number.isFinite(expectedTime) &&
+    Number.isFinite(actualTime) &&
+    Math.abs(expectedTime - actualTime) < 60000 &&
+    bookingSeatCountForIdentity(existing) === seats;
+
+  if (!sameParameters) {
+    return {
+      accepted: false,
+      idempotent: false,
+      reason: "IDEMPOTENCY_CONFLICT",
+      message: "The external booking ID already belongs to a different tour, time or participant count.",
+    };
+  }
+
+  if (existing.status === "CANCELED" || existing.status === "CANCELLED") {
+    return {
+      accepted: false,
+      idempotent: false,
+      reason: "BOOKING_CANCELED",
+      message: "A canceled booking cannot be reused with the same external booking ID.",
+    };
+  }
+
+  if (existing.status === "PENDING" && existing.holdExpiresAt &&
+      new Date(existing.holdExpiresAt).getTime() <= now.getTime()) {
+    return {
+      accepted: false,
+      idempotent: false,
+      reason: "HOLD_EXPIRED",
+      message: "The previous checkout hold has expired. Create a new hold with a new external booking ID.",
+    };
+  }
+
+  if (!ACTIVE_BOOKING_STATUSES.includes(existing.status)) {
+    return {
+      accepted: false,
+      idempotent: false,
+      reason: "BOOKING_NOT_ACTIVE",
+      message: "An inactive booking cannot be reused idempotently.",
+    };
+  }
+
+  return null;
+}
+
+function bookingSeatCountForIdentity(booking) {
+  if (Number(booking.totalParticipants) > 0) return Number(booking.totalParticipants);
+  const sum = ["adults", "children", "youths", "seniors"]
+    .reduce((count, key) => count + (Number(booking[key]) || 0), 0);
+  return sum > 0 ? sum : 1;
+}
+
 export function slotParts(startTime, timeZone = "Europe/Lisbon") {
   const parts = getDatePartsInTimeZone(startTime, timeZone);
   if (!parts) throw new Error("Invalid startTime");
@@ -270,6 +329,11 @@ export async function convertBookingHoldWithCapacityGuard(
         });
 
         if (existingOrderBooking) {
+          const invalidReuse = validateIdempotentBooking(existingOrderBooking, {
+            tourId, startTime, seats, platform: bookingPlatform,
+          });
+          if (invalidReuse) return { ...invalidReuse, booking: existingOrderBooking };
+
           return {
             accepted: true,
             idempotent: true,
@@ -472,6 +536,11 @@ export async function createBookingWithCapacityGuard(
         });
 
         if (existing) {
+          const invalidReuse = validateIdempotentBooking(existing, {
+            tourId, startTime, seats, platform: bookingPlatform,
+          });
+          if (invalidReuse) return { ...invalidReuse, booking: existing };
+
           const availability = await getCentralAvailability(tx, {
             tourId,
             startTime,
