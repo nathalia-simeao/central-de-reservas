@@ -28,11 +28,17 @@ export default function IntegrationProductsPanel({
       const url = new URL("/api/admin-gyg-availability-diagnostic", window.location.origin);
       url.searchParams.set("productId", "9db12544-8475-4681-83a0-d02465ef88a7");
       url.searchParams.set("date", "2026-10-16");
+      // Preserve embedded Shopify context, as done by other authenticated resource routes.
+      const currentUrl = new URL(window.location.href);
+      for (const key of ["shop", "host", "embedded"]) {
+        const value = currentUrl.searchParams.get(key);
+        if (value) url.searchParams.set(key, value);
+      }
       const response = await fetch(url.toString(), {
         credentials: "include",
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
       });
-      if (!response.headers.get("content-type")?.includes("application/json")) throw new Error(tr("O servidor retornou uma página de autenticação em vez do diagnóstico.", "Server returned authentication HTML instead of diagnostics."));
+      if (!response.headers.get("content-type")?.includes("application/json")) throw new Error(`${tr("O diagnóstico recebeu HTML em vez de JSON", "Diagnostic received HTML instead of JSON")} (HTTP ${response.status}). ${tr("Confirme que a Central está aberta dentro do admin Shopify.", "Open Central from Shopify admin.")}`);
       const payload = await response.json();
       if (!response.ok || payload.error) throw new Error(payload.error || `HTTP ${response.status}`);
       setDiagnostic(payload);
