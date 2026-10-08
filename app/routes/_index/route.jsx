@@ -298,6 +298,8 @@ function CentralDeReservasContent() {
 
         return {
           id: option.id,
+          masterTourTitle: tour.title,
+          optionTitle: option.title,
           name: option.title
             ? `${tour.title} · ${option.title}`
             : tour.title,
