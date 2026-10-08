@@ -16,7 +16,7 @@ export const loader = async ({ request }) => {
   const params = new URL(request.url).searchParams;
   const productId = params.get("productId");
   const date = params.get("date");
-  if (!productId || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date || "")) {
+  if (!productId || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date || "")) {
     return json({ error: "Provide productId and date=YYYY-MM-DD" }, 400);
   }
   const product = await resolveGygProduct(db, productId);
