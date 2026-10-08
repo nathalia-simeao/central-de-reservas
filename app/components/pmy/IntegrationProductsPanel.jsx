@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button, Icon } from "./PmyUI";
 
 export default function IntegrationProductsPanel({
@@ -14,6 +15,34 @@ export default function IntegrationProductsPanel({
   setActiveProdPlatform,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const [diagnostic, setDiagnostic] = useState(null);
+  const [diagnosticError, setDiagnosticError] = useState("");
+  const [diagnosticBusy, setDiagnosticBusy] = useState(false);
+  const runGygDiagnostic = async () => {
+    setDiagnosticBusy(true);
+    setDiagnosticError("");
+    setDiagnostic(null);
+    try {
+      const token = await window.shopify?.idToken?.();
+      if (!token) throw new Error(tr("Abra a Central dentro do admin Shopify para autenticar o diagnóstico.", "Open Central within Shopify admin to authenticate diagnostics."));
+      const url = new URL("/api/admin-gyg-availability-diagnostic", window.location.origin);
+      url.searchParams.set("productId", "9db12544-8475-4681-83a0-d02465ef88a7");
+      url.searchParams.set("date", "2026-10-16");
+      const response = await fetch(url.toString(), {
+        credentials: "include",
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      });
+      if (!response.headers.get("content-type")?.includes("application/json")) throw new Error(tr("O servidor retornou uma página de autenticação em vez do diagnóstico.", "Server returned authentication HTML instead of diagnostics."));
+      const payload = await response.json();
+      if (!response.ok || payload.error) throw new Error(payload.error || `HTTP ${response.status}`);
+      setDiagnostic(payload);
+    } catch (e) {
+      setDiagnosticError(e.message || String(e));
+    } finally {
+      setDiagnosticBusy(false);
+    }
+  };
+
   const gygItems = platformProducts.getyourguide || [];
   const gygGroups = Object.values(gygItems.reduce((map, product) => {
     const key = product.masterTourId || product.id;
@@ -238,6 +267,15 @@ export default function IntegrationProductsPanel({
                               </div>
                             </div>
     
+                            {activeProdPlatform === "getyourguide" && (
+                              <section style={{margin:"12px 0", padding:12, border:"1px solid #cbd5d0",borderRadius:10}}>
+                                <strong>{tr("Diagnóstico de bloqueio GYG · Jerónimos · 16/10/2026", "GYG availability diagnostic · Jeronimos · Oct 16, 2026")}</strong>
+                                <p style={{fontSize:12}}>{tr("Leitura administrativa: não cria, altera ou cancela reservas.", "Admin read-only: no reservations created, updated or cancelled.")}</p>
+                                <Button type="button" onClick={runGygDiagnostic} disabled={diagnosticBusy}>{diagnosticBusy ? tr("Consultando...", "Checking...") : tr("Verificar bloqueio e resposta da API", "Check block and API response")}</Button>
+                                {diagnosticError && <p role="alert" style={{color:"#b42318",overflowWrap:"anywhere"}}>{diagnosticError}</p>}
+                                {diagnostic && <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",fontSize:12,maxHeight:320,overflow:"auto"}}>{JSON.stringify(diagnostic,null,2)}</pre>}
+                              </section>
+                            )}
                             {activeProdPlatform === "getyourguide" && (
                               <section aria-label={tr("Cadastro interno de opções GYG", "Internal GYG option catalog")} style={{ margin: "16px 0" }}>
                                 <p style={{ fontSize: 13, lineHeight: 1.6, margin: "0 0 12px" }}>
