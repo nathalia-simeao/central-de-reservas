@@ -898,7 +898,7 @@ export const action = async ({ request }) => {
       }
 
       let shopifyMirror = null;
-      try {
+      if (platforms.includes("shopify")) try {
         shopifyMirror = await syncShopifyAvailabilityMetafields(
           prisma,
           admin,
@@ -977,7 +977,7 @@ export const action = async ({ request }) => {
         });
       }
 
-      if (existingBlock?.tourId) {
+      if (existingBlock?.tourId && (existingBlock.platforms || []).includes("shopify")) {
         try {
           await syncShopifyAvailabilityMetafields(
             prisma,
