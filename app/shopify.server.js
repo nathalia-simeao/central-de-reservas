@@ -11,22 +11,13 @@ import {
   assertSingleTenantShop,
   checkSingleTenantShop,
 } from "./utils/single-tenant.server";
-
-// Minimal Shopify scopes audited for the PMY Central.
-const configuredScopes = [
-  "read_products",
-  "read_orders",
-  "write_orders",
-  "write_draft_orders",
-  "write_files",
-  "write_app_proxy",
-];
+import { SHOPIFY_SCOPES } from "./config/shopify-scopes";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.April26,
-  scopes: configuredScopes,
+  scopes: SHOPIFY_SCOPES,
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),

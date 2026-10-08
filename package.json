@@ -19,8 +19,9 @@
     "vite": "vite",
     "typecheck": "react-router typegen && tsc --noEmit",
     "test": "node --experimental-loader ./tests/extension-loader.mjs --test tests/*.test.js",
-    "check": "npm run lint && npm run typecheck && npm test",
-    "predeploy:shopify": "node scripts/assert-production-readiness.mjs"
+    "check": "npm run check:shopify-scopes && npm run lint && npm run typecheck && npm test",
+    "predeploy:shopify": "npm run check:shopify-scopes && node scripts/assert-production-readiness.mjs",
+    "check:shopify-scopes": "node scripts/assert-shopify-scopes.mjs"
   },
   "type": "module",
   "engines": {

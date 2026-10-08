@@ -41,6 +41,9 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Verify Shopify scopes
+        run: npm run check:shopify-scopes
+
       - name: Lint
         run: npm run lint
 
