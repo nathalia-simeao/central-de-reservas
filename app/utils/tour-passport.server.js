@@ -1,3 +1,4 @@
+import { blockTargetsPlatform } from "./availability.server";
 import { syncGygProductOptionsForTour } from "./gyg-product-options.server";
 
 const PLATFORM_TOUR_FIELD = {
@@ -194,12 +195,38 @@ async function syncCatalogAvailabilityBlocks(prisma, tour, product) {
     })),
   ];
 
-  const existing = await prisma.blockedDate.findMany({
-    where: {
-      tourId: tour.id,
-      source: "SHOPIFY_CATALOG",
-    },
-  });
+  const [existing, centralOwned] = await Promise.all([
+    prisma.blockedDate.findMany({
+      where: {
+        tourId: tour.id,
+        source: "SHOPIFY_CATALOG",
+      },
+    }),
+    prisma.blockedDate.findMany({
+      where: {
+        tourId: tour.id,
+        active: true,
+        source: { not: "SHOPIFY_CATALOG" },
+      },
+    }),
+  ]);
+
+  const centralOwnedKeys = new Set(
+    centralOwned
+      .filter(
+        (block) =>
+          String(block.timeSlot || "ALL").toUpperCase() === "ALL" &&
+          blockTargetsPlatform(block, "shopify"),
+      )
+      .map((block) =>
+        block.dayOfWeek != null
+          ? `weekday:${block.dayOfWeek}`
+          : block.date
+            ? `date:${new Date(block.date).toISOString().slice(0, 10)}`
+            : null,
+      )
+      .filter(Boolean),
+  );
 
   const existingByKey = new Map(
     existing.map((block) => {
@@ -215,6 +242,13 @@ async function syncCatalogAvailabilityBlocks(prisma, tour, product) {
   const keepIds = [];
 
   for (const rule of desired) {
+    // If the same whole-day rule already exists as a Central-owned block,
+    // the product metafield is its mirror. Do not import it back as a second
+    // SHOPIFY_CATALOG block.
+    if (centralOwnedKeys.has(rule.key)) {
+      continue;
+    }
+
     const current = existingByKey.get(rule.key);
     if (current) {
       keepIds.push(current.id);

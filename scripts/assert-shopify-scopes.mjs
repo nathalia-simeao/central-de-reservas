@@ -31,7 +31,6 @@ if (missing.length || extra.length) {
 
 const forbiddenUnusedWrites = [
   "write_orders",
-  "write_products",
   "write_metaobjects",
   "write_metaobject_definitions",
 ];

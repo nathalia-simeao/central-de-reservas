@@ -20,6 +20,7 @@ import {
   SYNC_EVENT_TYPES,
 } from "../utils/sync-queue.server";
 import { localSlotToInstant } from "../utils/gyg-v1.server";
+import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability-metafields.server";
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 
@@ -896,9 +897,37 @@ export const action = async ({ request }) => {
         });
       }
 
+      let shopifyMirror = null;
+      try {
+        shopifyMirror = await syncShopifyAvailabilityMetafields(
+          prisma,
+          admin,
+          tour.id,
+        );
+      } catch (mirrorError) {
+        console.error("[PMY] Shopify availability metafield mirror failed:", mirrorError);
+        if (created.length) {
+          await prisma.blockedDate.updateMany({
+            where: { id: { in: created.map((block) => block.id) } },
+            data: { syncStatus: "SHOPIFY_MIRROR_ERROR" },
+          });
+        }
+        return json(
+          {
+            success: false,
+            code: "SHOPIFY_AVAILABILITY_MIRROR_FAILED",
+            protectedInCentral: true,
+            error:
+              "O bloqueio foi aplicado na Central, mas o campo do produto Shopify não pôde ser atualizado. A compra continua protegida pela disponibilidade da Central.",
+          },
+          { status: 502 },
+        );
+      }
+
       return json({
         success: true,
         created: created.length,
+        shopifyMirror,
         reused: reused.length,
         message: created.length
           ? `${created.length} regra(s) de disponibilidade criada(s).`
@@ -946,6 +975,28 @@ export const action = async ({ request }) => {
             timeSlot: existingBlock.timeSlot,
           },
         });
+      }
+
+      if (existingBlock?.tourId) {
+        try {
+          await syncShopifyAvailabilityMetafields(
+            prisma,
+            admin,
+            existingBlock.tourId,
+          );
+        } catch (mirrorError) {
+          console.error("[PMY] Shopify availability metafield release failed:", mirrorError);
+          return json(
+            {
+              success: false,
+              code: "SHOPIFY_AVAILABILITY_MIRROR_FAILED",
+              releasedInCentral: true,
+              error:
+                "O bloqueio foi liberado na Central, mas o campo do produto Shopify não pôde ser atualizado.",
+            },
+            { status: 502 },
+          );
+        }
       }
 
       return json({ success: true });

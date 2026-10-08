@@ -24,6 +24,7 @@ test("Shopify runtime uses the canonical scope list", async () => {
 test("Shopify scopes are minimal for the Central features currently in use", () => {
   assert.deepEqual([...SHOPIFY_SCOPES], [
     "read_products",
+    "write_products",
     "read_orders",
     "write_draft_orders",
     "write_files",
@@ -37,7 +38,6 @@ test("Shopify scopes are minimal for the Central features currently in use", () 
 
   for (const unusedWriteScope of [
     "write_orders",
-    "write_products",
     "write_metaobjects",
     "write_metaobject_definitions",
   ]) {

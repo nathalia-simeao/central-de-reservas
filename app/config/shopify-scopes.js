@@ -6,6 +6,7 @@
  */
 export const SHOPIFY_SCOPES = Object.freeze([
   "read_products",
+  "write_products",
   "read_orders",
   "write_draft_orders",
   "write_files",
@@ -16,6 +17,8 @@ export const SHOPIFY_SCOPES = Object.freeze([
 export const SHOPIFY_SCOPE_REASONS = Object.freeze({
   read_products:
     "Read tours, variants, product metafields and catalog data used by the Central.",
+  write_products:
+    "Mirror Central availability blocks into the product metafields consumed by the PMY storefront calendar.",
   read_orders:
     "Read and receive Shopify order data used to create/update Central bookings.",
   write_draft_orders:
