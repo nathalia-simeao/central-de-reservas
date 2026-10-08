@@ -140,3 +140,13 @@ test("catalog import avoids duplicating Central-owned mirrored blocks", async ()
   assert.equal(source.includes("centralOwnedKeys"), true);
   assert.equal(source.includes("blockTargetsPlatform(block, \"shopify\")"), true);
 });
+
+test("GYG-only availability block changes do not trigger Shopify metafield writes", async () => {
+  const source = await fs.readFile(
+    new URL("../app/services/central-route.server.js", import.meta.url), "utf8",
+  );
+  const create = source.split('if (_action === "createBlock")')[1].split('if (_action === "removeBlock")')[0];
+  const remove = source.split('if (_action === "removeBlock")')[1].split('if (_action === "saveCapacity")')[0];
+  assert.match(create, /if \(platforms\.includes\("shopify"\)\) try \{/);
+  assert.match(remove, /blockTargetsPlatform\(existingBlock, "shopify"\)/);
+});
