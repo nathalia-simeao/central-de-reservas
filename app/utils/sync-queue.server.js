@@ -82,14 +82,24 @@ function isRetryableHttpStatus(status) {
   );
 }
 
-async function mappedProvidersForTour(prisma, tourId) {
+export async function mappedProvidersForTour(prisma, tourId) {
   if (!tourId) return [];
 
   const tour = await prisma.tour.findUnique({
     where: { id: tourId },
     select: {
       shopifyProductId: true,
+      // gygActivityId is kept only as a legacy fallback. The current GYG
+      // integration is mapped by active GygProductOption supplier products.
       gygActivityId: true,
+      gygProductOptions: {
+        where: { active: true },
+        select: {
+          id: true,
+          gygOptionId: true,
+        },
+        take: 1,
+      },
       viatorProductCode: true,
       headoutId: true,
       civitatisId: true,
@@ -99,6 +109,13 @@ async function mappedProvidersForTour(prisma, tourId) {
   if (!tour) return [];
 
   return RESERVATION_PROVIDERS.filter((provider) => {
+    if (provider === "GETYOURGUIDE") {
+      return Boolean(
+        (tour.gygProductOptions || []).length > 0 ||
+        tour.gygActivityId,
+      );
+    }
+
     const field = MAPPING_FIELDS[provider];
     return field && Boolean(tour[field]);
   });
@@ -368,15 +385,28 @@ function classifyGygResult(result) {
   }
 
   const reason = String(result?.reason || "");
+  const skippableReasons = new Set([
+    "PUSH_NOT_REQUIRED",
+    "TOUR_NOT_MAPPED_TO_GYG",
+    "TOUR_SCHEDULE_NOT_CONFIGURED",
+    "NO_FUTURE_SLOTS",
+    "INVALID_SLOT",
+    "INVALID_START_TIME",
+    "NO_MAPPED_OPTION_FOR_SLOT",
+    "OPTION_SCHEDULE_NOT_CONFIGURED",
+    "GROUP_INVENTORY_NOT_ENABLED",
+  ]);
+
+  if (skippableReasons.has(reason)) {
+    return { status: "SKIPPED", result };
+  }
+
+  const deliveryResults = Array.isArray(result?.results) ? result.results : [];
   if (
-    [
-      "PUSH_NOT_REQUIRED",
-      "TOUR_NOT_MAPPED_TO_GYG",
-      "TOUR_SCHEDULE_NOT_CONFIGURED",
-      "NO_FUTURE_SLOTS",
-      "INVALID_SLOT",
-      "INVALID_START_TIME",
-    ].includes(reason)
+    deliveryResults.length > 0 &&
+    deliveryResults.every((item) =>
+      skippableReasons.has(String(item?.reason || "")),
+    )
   ) {
     return { status: "SKIPPED", result };
   }
