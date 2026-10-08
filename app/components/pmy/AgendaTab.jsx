@@ -1,4 +1,4 @@
-import "../../styles/pmy-design-system.css";
+import "../../styles/pmy-tour-info.css";
 import { useMemo, useState } from "react";
 
 import { variantMatchesTourLanguage } from "../../utils/tour-languages";
