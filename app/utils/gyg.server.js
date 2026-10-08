@@ -32,27 +32,30 @@ function safeEqual(left, right) {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function configuredCredentialPairs() {
+  const names = [
+    ["GYG_INCOMING_USER", "GYG_INCOMING_PASS"],
+    ["GYG_PRODUCTION_USER", "GYG_PRODUCTION_PASS"],
+  ];
+  return names.map(([userKey, passKey]) => ({
+    user: configuredSecret(userKey),
+    pass: configuredSecret(passKey),
+  })).filter(({user, pass}) => Boolean(user && pass));
+}
+
 export function isGygIncomingAuthConfigured() {
-  return Boolean(
-    configuredSecret("GYG_INCOMING_USER") &&
-    configuredSecret("GYG_INCOMING_PASS"),
-  );
+  return configuredCredentialPairs().length > 0;
 }
 
 export function checkGygBasicAuth(request) {
-  const expectedUser = configuredSecret("GYG_INCOMING_USER");
-  const expectedPass = configuredSecret("GYG_INCOMING_PASS");
-
-  // Fail closed. There are intentionally no fallback/default credentials.
-  // If either environment variable is absent or blank, every GYG request is denied.
-  if (!expectedUser || !expectedPass) return false;
-
   const credentials = decodeBasicAuth(request.headers.get("Authorization") || "");
   if (!credentials) return false;
-
-  return (
-    safeEqual(credentials.user, expectedUser) &&
-    safeEqual(credentials.pass, expectedPass)
+  const pairs = configuredCredentialPairs();
+  // Fail closed when no complete credential pair is configured.
+  if (!pairs.length) return false;
+  // Always compare both parts; never log credentials.
+  return pairs.some(({ user, pass }) =>
+    safeEqual(credentials.user, user) && safeEqual(credentials.pass, pass)
   );
 }
 
