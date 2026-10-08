@@ -40,7 +40,7 @@ test("production deploy runs the launch readiness guard first", () => {
   );
   assert.equal(
     packageJson.scripts["predeploy:shopify"],
-    "node scripts/assert-production-readiness.mjs",
+    "npm run check:shopify-scopes && node scripts/assert-production-readiness.mjs",
   );
 });
 

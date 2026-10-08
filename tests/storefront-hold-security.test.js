@@ -79,8 +79,8 @@ test("storefront hold mutations are routed through a signed Shopify app proxy", 
     new URL("../app/routes/app-proxy.pmy.hold.jsx", import.meta.url),
     "utf8",
   );
-  const shopify = await fs.readFile(
-    new URL("../app/shopify.server.js", import.meta.url),
+  const scopes = await fs.readFile(
+    new URL("../app/config/shopify-scopes.js", import.meta.url),
     "utf8",
   );
   const toml = await fs.readFile(
@@ -94,7 +94,7 @@ test("storefront hold mutations are routed through a signed Shopify app proxy", 
   assert.equal(direct.includes('/apps/pmy-central/hold'), true);
   assert.equal(direct.includes('legacyOriginAllowed: true'), true);
   assert.equal(direct.includes('method === "OPTIONS"'), true);
-  assert.equal(shopify.includes('"write_app_proxy"'), true);
+  assert.equal(scopes.includes('"write_app_proxy"'), true);
   assert.equal(toml.includes("[app_proxy]"), true);
   assert.equal(toml.includes('subpath = "pmy-central"'), true);
 });
