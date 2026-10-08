@@ -133,6 +133,8 @@ function productItemFromGygOption(tour, option) {
 
   return {
     id: option.id,
+    masterTourTitle: tour.title,
+    optionTitle: option?.title,
     name: option?.title ? `${tour.title} · ${option.title}` : tour.title,
     active: tour.shopifyStatus !== "INACTIVE" && option?.active !== false,
     synced: Boolean(option?.gygOptionId),
