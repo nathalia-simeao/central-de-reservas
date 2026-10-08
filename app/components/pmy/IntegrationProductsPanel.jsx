@@ -14,6 +14,23 @@ export default function IntegrationProductsPanel({
   setActiveProdPlatform,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const gygItems = platformProducts.getyourguide || [];
+  const gygGroups = Object.values(gygItems.reduce((map, product) => {
+    const key = product.masterTourId || product.id;
+    if (!map[key]) map[key] = { key, name: product.masterTourTitle || product.name?.split(" · ")[0] || product.name, options: [] };
+    map[key].options.push(product);
+    return map;
+  }, {})).sort((a,b)=>a.name.localeCompare(b.name));
+  const gygLinked = gygItems.filter(p=>Boolean(p.gygOptionId)).length;
+  const gygUnlinked = gygItems.length - gygLinked;
+  const money = (value, currency = "EUR") => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0 || value === null || value === undefined || value === "") return null;
+    try { return new Intl.NumberFormat(lang === "en" ? "en-GB" : "pt-PT", { style: "currency", currency: currency || "EUR" }).format(amount); }
+    catch { return String(value) + " " + currency; }
+  };
+  const variantLabel = (variant) => variant.passengerCategory || variant.title || variant.sku || tr("Categoria sem nome", "Unnamed category");
+
 
   return (
     <div>
@@ -40,7 +57,7 @@ export default function IntegrationProductsPanel({
                               <span className="pmy-ds-migrated-1hxgxx8"><Icon name={p.icon} size={18} /></span>
                               {p.name}
                               {conn.connected && (
-                                <span className={`pmy-ds-product-count ${activeProdPlatform===p.key ? "is-active" : ""}`}>{activeCount} {tr('ativos','active')}</span>
+                                <span className={`pmy-ds-product-count ${activeProdPlatform===p.key ? "is-active" : ""}`}>{activeCount} {activeProdPlatform === "getyourguide" ? tr("opções internas ativas", "active internal options") : tr("ativos","active")}</span>
                               )}
                               {!conn.connected && (
                                 <span className="pmy-ds-migrated-1cryxg8">{tr('desconectado','disconnected')}</span>
@@ -204,7 +221,7 @@ export default function IntegrationProductsPanel({
                                     <span className="pmy-ds-migrated-16x6z7l">•</span>
                                     <span className="pmy-ds-migrated-chpnty">{inactiveCount} {tr('inativos','inactive')}</span>
                                     <span className="pmy-ds-migrated-16x6z7l">•</span>
-                                    {prods.length} {tr('produtos no total','products total')}
+                                    {prods.length} {activeProdPlatform === "getyourguide" ? tr("opções internas no total", "internal options total") : tr("produtos no total", "products total")}
                                   </div>
                                 </div>
                               </div>
@@ -221,8 +238,52 @@ export default function IntegrationProductsPanel({
                               </div>
                             </div>
     
+                            {activeProdPlatform === "getyourguide" && (
+                              <section aria-label={tr("Cadastro interno de opções GYG", "Internal GYG option catalog")} style={{ margin: "16px 0" }}>
+                                <p style={{ fontSize: 13, lineHeight: 1.6, margin: "0 0 12px" }}>
+                                  <strong>{gygGroups.length} {tr("passeios mestre", "master tours")} · {gygItems.length} {tr("opções internas", "internal options")} · {gygLinked} {tr("com ID GYG", "with GYG ID")} · {gygUnlinked} {tr("sem vínculo", "without mapping")}.</strong>
+                                  {" "}{tr("Estes números NÃO são o catálogo publicado do portal. O estado Bookable, Deactivated ou Rejected precisa ser confirmado no GYG.", "These are NOT published portal product counts. Bookable, Deactivated or Rejected must be confirmed in GYG.")}
+                                </p>
+                                <div style={{ display: "grid", gap: 10 }}>
+                                  {gygGroups.map(group => (
+                                    <details key={group.key} style={{ border: "1px solid var(--border-color, #d6d9d8)", borderRadius: 12, padding: "12px 14px", background: "var(--card-bg, transparent)" }}>
+                                      <summary style={{ cursor: "pointer", fontWeight: 700, overflowWrap: "anywhere" }}>
+                                        {group.name} <span style={{ opacity: .7, fontWeight: 400 }}>· {group.options.length} {tr("opções", "options")}</span>
+                                      </summary>
+                                      <div style={{ display: "grid", gap: 9, marginTop: 12 }}>
+                                        {group.options.map(option => (
+                                          <div key={option.id} style={{ border: "1px solid var(--border-color, #ddd)", borderRadius: 10, padding: 12, minWidth: 0 }}>
+                                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                                              <strong style={{ overflowWrap: "anywhere" }}>{option.optionTitle || option.name}</strong>
+                                              <span>{option.active ? tr("Ativa na Central", "Active in Central") : tr("Inativa na Central", "Inactive in Central")}</span>
+                                            </div>
+                                            <p style={{ fontSize: 12, margin: "6px 0", overflowWrap: "anywhere" }}>
+                                              {tr("ID interno:", "Internal ID:")} <code>{option.id}</code> · {tr("ID de vínculo GYG:", "GYG mapping ID:")} <code>{option.gygOptionId || tr("ausente", "missing")}</code>
+                                            </p>
+                                            <p style={{ fontSize: 12, margin: "6px 0" }}>
+                                              {tr("Portal GYG: não verificado", "GYG portal: not verified")} · {tr("Horários internos:", "Internal times:")} {(option.scheduleSlots || []).join(", ") || tr("não configurados", "not configured")}
+                                            </p>
+                                            {(option.variants || []).length ? (
+                                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                                {option.variants.map((variant, index) => (
+                                                  <span key={variant.id || index} style={{ display: "inline-block", border: "1px solid var(--border-color, #ddd)", borderRadius: 8, padding: "5px 8px", fontSize: 12 }}>
+                                                    {variantLabel(variant)}: <strong>{money(variant.price, variant.currency) || tr("Preço não cadastrado", "Price not set")}</strong>
+                                                    {variant.startTimeSlot ? ` · ${variant.startTimeSlot}` : ""}
+                                                    {variant.active === false ? ` · ${tr("inativa", "inactive")}` : ""}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ) : <span style={{ fontSize: 12 }}>{tr("Sem variantes/preços vinculados à opção.", "No variants/prices mapped to this option.")}</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </details>
+                                  ))}
+                                </div>
+                              </section>
+                            )}
                             {/* Tabela */}
-                                                        <div className="pmy-ds-migrated-6tnpw1 pmy-ds-table-wrap" role="region" aria-label={tr("Produtos do canal", "Channel products")}>
+                                                        <div style={activeProdPlatform === "getyourguide" ? {display:"none"} : undefined} className="pmy-ds-migrated-6tnpw1 pmy-ds-table-wrap" role="region" aria-label={tr("Produtos do canal", "Channel products")}>
                               <table className="pmy-prod-table">
                                 <thead>
                                   <tr>
