@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { checkGygBasicAuth, isGygIncomingAuthConfigured } from "../app/utils/gyg.server.js";
 
 const keys = ["GYG_INCOMING_USER","GYG_INCOMING_PASS","GYG_PRODUCTION_USER","GYG_PRODUCTION_PASS"];
