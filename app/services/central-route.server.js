@@ -7,6 +7,7 @@ import {
 } from "../utils/tour-passport.server";
 import {
   dateInputToUtcMidnight,
+  blockTargetsPlatform,
   normalizePlatforms,
   parseRecurringDays,
 } from "../utils/availability.server";
@@ -977,7 +978,7 @@ export const action = async ({ request }) => {
         });
       }
 
-      if (existingBlock?.tourId && (existingBlock.platforms || []).includes("shopify")) {
+      if (existingBlock?.tourId && blockTargetsPlatform(existingBlock, "shopify")) {
         try {
           await syncShopifyAvailabilityMetafields(
             prisma,
