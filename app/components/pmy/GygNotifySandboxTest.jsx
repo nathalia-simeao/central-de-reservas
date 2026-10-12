@@ -32,13 +32,25 @@ export default function GygNotifySandboxTest({ lang = "pt" }) {
       } catch {
         // App Bridge may handle token injection itself.
       }
-      const response = await fetch("/api/sync-queue", {
+      const target = new URL("/api/sync-queue", window.location.origin);
+      const current = new URL(window.location.href);
+      for (const key of ["shop", "host", "embedded"]) {
+        const value = current.searchParams.get(key);
+        if (value) target.searchParams.set(key, value);
+      }
+      const response = await fetch(`${target.pathname}${target.search}`, {
         method:"POST", body, credentials:"include", headers,
       });
       const text = await response.text();
       let payload;
       try { payload = JSON.parse(text); } catch {
-        throw new Error(tr("Servidor retornou HTML ou resposta não JSON. Verifique a sessão Shopify.", "Server returned HTML or non-JSON response. Check Shopify session."));
+        setResult({success:false, httpStatus:response.status,
+          error:tr("Resposta não JSON. Confira autenticação/roteamento da Central.", "Non-JSON response. Check Central authentication/routing."),
+          responseType:response.headers.get("content-type") || "unknown",
+          redirected:response.redirected,
+          destination:response.url ? new URL(response.url).pathname : "unknown",
+        });
+        return;
       }
       setResult({httpStatus:response.status, ...payload,
         error:response.status === 401
@@ -69,6 +81,8 @@ export default function GygNotifySandboxTest({ lang = "pt" }) {
     {result && <div role="status" className="pmy-gyg-sandbox-test__result">
       <strong>{result.success && result.result?.status === 202 ? tr("Aceito pelo sandbox (HTTP 202)","Accepted by sandbox (HTTP 202)") : tr("Teste não aprovado / não executado","Test not approved / not executed")}</strong>
       <p>HTTP: {result.result?.status ?? result.httpStatus ?? tr("não informado","not available")}</p>
+      {result.responseType && <p>Content-Type: {result.responseType}</p>}
+      {result.destination && <p>Path: {result.destination} · Redirect: {String(result.redirected)}</p>}
       <p>{result.result?.reason || result.error || result.result?.payload?.data?.message || ""}</p>
     </div>}
   </section>;
