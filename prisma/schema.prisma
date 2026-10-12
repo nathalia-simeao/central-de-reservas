@@ -46,6 +46,7 @@ model Tour {
   shopifyStatus          String?
   shopifySnapshot        Json?
   maxCapacity            Int           @default(20)
+  platformCapacityLimits Json?
   capacitySource         String        @default("DEFAULT")
   scheduleSlots          String[]      @default([])
   scheduleSource         String        @default("UNCONFIGURED")
