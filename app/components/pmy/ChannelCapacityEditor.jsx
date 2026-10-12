@@ -18,13 +18,13 @@ export default function ChannelCapacityEditor({ tourId, physicalCapacity, limits
         const saved = limits[key];
         const value = drafts[key] ?? (Number.isInteger(saved) ? String(saved) : "");
         return <div key={key} className="pmy-channel-editor__channel">
-          <label htmlFor={`cap-${tourId}-${key}}>{name}</label>
+          <label htmlFor={`cap-${tourId}-${key}`}>{name}</label>
           <input id={`cap-${tourId}-${key}`} type="number" min="0" max="9999" step="1"
             placeholder={en?"No channel cap":"Sem limite por canal"}
             aria-label={`${name} capacity`} value={value}
             onChange={e=>setDrafts(prev=>({...prev,[key]:e.target.value}))}
             className="pmy-channel-editor__input"/>
-          <button type="button" disabled={saving!=="" || value==="" || !/^\\d+$/.test(value) || Number(value)>9999 || Number(value)===saved}
+          <button type="button" disabled={saving!=="" || value==="" || !/^[0-9]+$/.test(value) || Number(value)>9999 || Number(value)===saved}
             onClick={async()=>{setSaving(key);try{await onSave(tourId,key,Number(value));setDrafts(p=>({...p,[key]:undefined}));}finally{setSaving("");}}}
             className="pmy-channel-editor__save">
             {saving===key?"...":en?"Save":"Salvar"}
