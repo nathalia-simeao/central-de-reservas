@@ -1899,6 +1899,27 @@ function CentralDeReservasContent() {
     setTourAvailableHours([...hours].sort());
   };
 
+  const [channelCapacityLimits, setChannelCapacityLimits] = useState(() =>
+    Object.fromEntries((tours || []).map(tour => [
+      tour.shopifyProductId || tour.id, tour.platformCapacityLimits || {},
+    ])),
+  );
+  const handleChannelCapacityChange = async (tourId, platform, limit) => {
+    const fd = new FormData();
+    fd.append("_action", "saveChannelCapacity");
+    fd.append("tourId", tourId);
+    fd.append("platform", platform);
+    fd.append("limit", String(limit));
+    try {
+      const result = await requestResourceJson("/", fd);
+      if (!result?.success) throw new Error(result?.error || "Falha ao salvar.");
+      setChannelCapacityLimits(prev => ({ ...prev, [tourId]: result.limits }));
+      notify(ui("Limite do canal salvo.", "Channel limit saved."), "success");
+    } catch (error) {
+      notify(error?.message || ui("Falha ao salvar limite.", "Unable to save limit."), "danger");
+    }
+  };
+
   const handleCapacityChange = async (id, change) => {
     const cur = tourCapacities[id] !== undefined ? tourCapacities[id] : 20;
     const next = Math.min(999, Math.max(0, cur + change));
@@ -2633,7 +2654,7 @@ function CentralDeReservasContent() {
             bookingDate, bookingTime, calendarView, currentMonthLabel,
             currentYear, custEmail, custLang, custName, custPhone, draftOrderError,
             draftOrderInfo, draftOrderLoading, generatedLink, getBookingTimesForTour,
-            getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange,
+            getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange, handleChannelCapacityChange, channelCapacityLimits,
             handleCreateBlock, handleGeneratePaymentLink, handleNextMonth, handlePrevMonth,
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
             imageShape, platformConnections, renderCalendarDays, reservationPlatforms,
