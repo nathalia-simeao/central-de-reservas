@@ -8,28 +8,28 @@ export default function ChannelCapacityEditor({ tourId, physicalCapacity, limits
   const [drafts,setDrafts] = useState({});
   const [saving,setSaving] = useState("");
   const en = lang === "en";
-  return <details style={{width:"100%",marginTop:8,borderTop:"1px solid var(--border-color,#ddd)",paddingTop:8}}>
-    <summary style={{cursor:"pointer",fontWeight:600,fontSize:13}}>{en?"Limits by sales channel":"Limites por plataforma"}</summary>
-    <p style={{fontSize:12,opacity:.8,margin:"8px 0"}}>{en
+  return <details className="pmy-channel-editor">
+    <summary className="pmy-channel-editor__summary">{en?"Limits by sales channel":"Limites por plataforma"}</summary>
+    <p className="pmy-channel-editor__hint">{en
       ? `Shared physical capacity: ${physicalCapacity} seats per departure. Each channel cap restricts its own sales, never increases the shared total.`
       : `Capacidade física compartilhada: ${physicalCapacity} vagas por saída. O limite do canal restringe suas vendas, sem aumentar a capacidade total.`}</p>
-    <div style={{display:"grid",gap:8}}>
+    <div className="pmy-channel-editor__list">
       {CHANNELS.map(([key,name]) => {
         const saved = limits[key];
         const value = drafts[key] ?? (Number.isInteger(saved) ? String(saved) : "");
-        return <div key={key} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          <label htmlFor={`cap-${tourId}-${key}`} style={{minWidth:112,fontSize:13}}>{name}</label>
+        return <div key={key} className="pmy-channel-editor__channel">
+          <label htmlFor={`cap-${tourId}-${key}}>{name}</label>
           <input id={`cap-${tourId}-${key}`} type="number" min="0" max="9999" step="1"
             placeholder={en?"No channel cap":"Sem limite por canal"}
             aria-label={`${name} capacity`} value={value}
             onChange={e=>setDrafts(prev=>({...prev,[key]:e.target.value}))}
-            style={{width:150,padding:"8px",border:"1px solid var(--border-color,#ddd)",borderRadius:8}}/>
+            className="pmy-channel-editor__input"/>
           <button type="button" disabled={saving!=="" || value==="" || !/^\\d+$/.test(value) || Number(value)>9999 || Number(value)===saved}
             onClick={async()=>{setSaving(key);try{await onSave(tourId,key,Number(value));setDrafts(p=>({...p,[key]:undefined}));}finally{setSaving("");}}}
-            style={{padding:"7px 12px",borderRadius:8,border:"1px solid var(--border-color,#ccc)",cursor:"pointer"}}>
+            className="pmy-channel-editor__save">
             {saving===key?"...":en?"Save":"Salvar"}
           </button>
-          <span style={{fontSize:11,opacity:.7}}>{Number.isInteger(saved)?(en?"Saved":"Salvo"):(en?"Shared capacity":"Capacidade compartilhada")}</span>
+          <span className="pmy-channel-editor__status">{Number.isInteger(saved)?(en?"Saved":"Salvo"):(en?"Shared capacity":"Capacidade compartilhada")}</span>
         </div>;
       })}
     </div>
