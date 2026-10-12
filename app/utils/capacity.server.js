@@ -109,6 +109,26 @@ export function bookingMatchesSlot(booking, parts, timeZone = "Europe/Lisbon") {
   );
 }
 
+
+function getChannelCapacity(tour, bookings, matchesSlot, platform, now, physicalRemaining) {
+  const key = normalizePlatform(platform);
+  const configured = tour.platformCapacityLimits;
+  const limits = configured && typeof configured === "object" && !Array.isArray(configured) ? configured : {};
+  const limit = limits[key];
+  if (!Number.isInteger(limit) || limit < 0) {
+    return { remainingSeats: physicalRemaining, channelLimit: null, channelOccupiedSeats: null };
+  }
+  const channelOccupiedSeats = bookings.reduce((total, booking) =>
+    matchesSlot(booking) && normalizePlatform(booking.platform) === key
+      ? total + bookingSeatCount(booking, now)
+      : total, 0);
+  return {
+    remainingSeats: Math.min(physicalRemaining, Math.max(0, limit - channelOccupiedSeats)),
+    channelLimit: limit,
+    channelOccupiedSeats,
+  };
+}
+
 export function calculateAvailabilityFromLoaded({
   tour,
   bookings = [],
@@ -141,9 +161,12 @@ export function calculateAvailabilityFromLoaded({
     return total + bookingSeatCount(booking, now);
   }, 0);
 
-  const remainingSeats = blockingRule
-    ? 0
-    : Math.max(0, capacity - occupiedSeats);
+  const channel = getChannelCapacity(
+    tour, bookings,
+    booking => bookingMatchesSlot(booking, parts, timeZone),
+    normalizedPlatform, now, Math.max(0, capacity - occupiedSeats),
+  );
+  const remainingSeats = blockingRule ? 0 : channel.remainingSeats;
 
   const requested = Math.max(0, positiveInt(requestedSeats, 0));
 
@@ -154,6 +177,8 @@ export function calculateAvailabilityFromLoaded({
     time: parts.timeKey,
     capacity,
     occupiedSeats,
+    channelLimit: channel.channelLimit,
+    channelOccupiedSeats: channel.channelOccupiedSeats,
     remainingSeats,
     requestedSeats: requested,
     available: !blockingRule && remainingSeats > 0,
@@ -203,9 +228,15 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
     return total + bookingSeatCount(booking, now);
   }, 0);
 
-  const remainingSeats = blockingRule
-    ? 0
-    : Math.max(0, capacity - occupiedSeats);
+  const channel = getChannelCapacity(
+    tour, bookings,
+    booking => {
+      const value = getDatePartsInTimeZone(booking.startTime, tour.timezone || "Europe/Lisbon");
+      return value?.dateKey === dateKey && value?.timeKey === timeKey;
+    },
+    normalizedPlatform, now, Math.max(0, capacity - occupiedSeats),
+  );
+  const remainingSeats = blockingRule ? 0 : channel.remainingSeats;
 
   const requested = Math.max(0, positiveInt(requestedSeats, 0));
 
@@ -216,6 +247,8 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
     time: timeKey,
     capacity,
     occupiedSeats,
+    channelLimit: channel.channelLimit,
+    channelOccupiedSeats: channel.channelOccupiedSeats,
     remainingSeats,
     requestedSeats: requested,
     available: !blockingRule && remainingSeats > 0,
