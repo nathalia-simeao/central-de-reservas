@@ -1041,14 +1041,27 @@ export const action = async ({ request }) => {
       const limits = tour.platformCapacityLimits && typeof tour.platformCapacityLimits === "object" &&
         !Array.isArray(tour.platformCapacityLimits) ? tour.platformCapacityLimits : {};
       const next = { ...limits, [platform]: Number(rawLimit) };
-      await prisma.tour.update({where:{id:tour.id},data:{platformCapacityLimits:next}});
+      // Only explicitly configured channel allocations participate in the shared pool.
+      // The physical tour capacity becomes their sum when the allocation model is enabled.
+      const totalCapacity = allowed.reduce((sum, key) => {
+        const value = next[key];
+        return sum + (Number.isInteger(value) && value >= 0 ? value : 0);
+      }, 0);
+      const updated = await prisma.tour.update({
+        where:{id:tour.id},
+        data:{
+          platformCapacityLimits:next,
+          maxCapacity:totalCapacity,
+          capacitySource:"CHANNEL_SUM",
+        },
+      });
       await enqueueAvailabilitySync(prisma, {
         eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
         tourId: tour.id, scope:"TOUR", sourcePlatform:"CENTRAL",
         force:true, aggregateType:"TOUR", aggregateId:tour.id,
-        payload:{platform,channelLimit:Number(rawLimit)},
+        payload:{platform,channelLimit:Number(rawLimit),maxCapacity:totalCapacity},
       });
-      return json({success:true,platform,limit:Number(rawLimit),limits:next});
+      return json({success:true,platform,limit:Number(rawLimit),limits:next,maxCapacity:updated.maxCapacity});
     } catch(e) {
       console.error("[PMY] saveChannelCapacity error:",e);
       return json({success:false,error:"Não foi possível salvar o limite do canal."},{status:500});
