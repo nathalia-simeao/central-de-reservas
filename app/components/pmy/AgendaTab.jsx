@@ -897,13 +897,13 @@ export default function AgendaTab(props) {
                 : 20;
 
             return (
-              <div className="pmy-tour-item pmy-channel-capacity-row" key={tour.id}>
-                <div className="pmy-ds-tour-row-main">
+              <div className="pmy-tour-item pmy-channel-capacity-row" key={tour.id} style={{display:"block",width:"100%",maxWidth:"100%",minWidth:0,padding:"18px 0"}}>
+                <div className="pmy-ds-tour-row-main" style={{display:"flex",width:"100%",minWidth:0,alignItems:"flex-start",gap:14}}>
                   <div className={`pmy-ds-tour-placeholder ${imageShape}`}>
                     <Icon name="calendar" size={22} />
                   </div>
-                  <div>
-                    <strong className="pmy-ds-tour-row__title"><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
+                  <div style={{flex:1,minWidth:0,width:"100%"}}>
+                    <strong className="pmy-ds-tour-row__title" style={{display:"block",whiteSpace:"normal",wordBreak:"normal",overflowWrap:"normal",maxWidth:"100%"}}><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
                     <div className="pmy-ds-tour-row__meta">
                       {tr("Capacidade", "Capacity")}: {capacity}{" "}
                       {lang === "en"
@@ -918,7 +918,8 @@ export default function AgendaTab(props) {
                   </div>
                 </div>
 
-                <div className="pmy-capacity-controls">
+                <div style={{display:"flex",flexDirection:"column",width:"100%",gap:12,marginTop:12}}>
+                <div className="pmy-capacity-controls" style={{alignSelf:"flex-start",width:"max-content"}}>
                   <Button
                     type="button"
                     variant="secondary"
@@ -940,6 +941,7 @@ export default function AgendaTab(props) {
                   />
                 </div>
                 <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
+                </div>
               </div>
             );
           })}
