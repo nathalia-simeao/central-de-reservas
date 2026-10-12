@@ -1877,7 +1877,7 @@ function CentralDeReservasContent() {
     // Combine Shopify schedule metadata and real variant departure times.
     // A partial metafield must not conceal legitimate variant departures.
     const normalizeTime = (value) => {
-      const match = String(value || "").match(/(?:^|[^0-9])(\\d{1,2})[:hH](\\d{2})(?!\\d)/);
+      const match = String(value || "").match(/(?:^|[^0-9])(\d{1,2})[:hH](\d{2})(?!\d)/);
       if (!match) return null;
       const hour = Number(match[1]);
       const minute = Number(match[2]);
@@ -1890,7 +1890,7 @@ function CentralDeReservasContent() {
       if (normalized) hours.add(normalized);
     }
     for (const variant of tour?.variants || []) {
-      const matches = String(variant.title || "").matchAll(/(?:^|[^0-9])(\\d{1,2})[:hH](\\d{2})(?!\\d)/g);
+      const matches = String(variant.title || "").matchAll(/(?:^|[^0-9])(\d{1,2})[:hH](\d{2})(?!\d)/g);
       for (const match of matches) {
         const normalized = normalizeTime(match[0]);
         if (normalized) hours.add(normalized);
