@@ -80,6 +80,24 @@ export const action = async ({ request }) => {
   const formData = await request.formData();
   const actionName = String(formData.get("_action") || "").trim();
 
+  if (actionName === "testGygNotifySandbox") {
+    const productId = String(formData.get("productId") || "").trim();
+    const dateTime = String(formData.get("dateTime") || "").trim();
+    const vacanciesRaw = String(formData.get("vacancies") || "").trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(productId) ||
+        !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$/.test(dateTime) ||
+        !/^(0|[1-9][0-9]{0,4})$/.test(vacanciesRaw)) {
+      return json({success:false,error:"Invalid product UUID, ISO offset dateTime or vacancies."},{status:400});
+    }
+    const { notifyGygAvailabilityUpdate } = await import("../utils/gyg-v1.server");
+    const result = await notifyGygAvailabilityUpdate({
+      productId,
+      availabilities:[{dateTime,vacancies:Number(vacanciesRaw)}],
+      manualSandboxTest:true,
+    });
+    return json({success:Boolean(result.sent),result});
+  }
+
   if (actionName === "run") {
     const limit = Math.min(
       100,
