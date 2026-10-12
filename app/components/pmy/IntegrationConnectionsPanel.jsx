@@ -1,3 +1,4 @@
+import GygNotifySandboxTest from "./GygNotifySandboxTest";
 import { Button, Icon } from "./PmyUI";
 
 export default function IntegrationConnectionsPanel({
@@ -142,6 +143,7 @@ export default function IntegrationConnectionsPanel({
                                   </button>
                                 )}
                               </div>
+                              {platform.key === "getyourguide" && <GygNotifySandboxTest lang={lang} />}
                             </div>
                           );
                         })}
