@@ -13,9 +13,9 @@ export function classifyShopifyProduct(product) {
   // Names only provide geographic hints if metadata is silent.
   const italyTitle = /\b(naples|napoli|amalfi|positano|ravello|rome|roma|florence|firenze)\b/.test(title);
   const portugalTitle = /\b(lisbon|lisboa|porto|sintra|belem|jeronimos|fatima|evora|geres|braga)\b/.test(title);
-  const country = italy && !portugal ? "IT" : portugal && !italy ? "PT" :
-    !italy && !portugal && italyTitle && !portugalTitle ? "IT" :
-    !italy && !portugal && portugalTitle && !italyTitle ? "PT" : "UNKNOWN";
+  // PMY currently operates Portuguese experiences plus the Naples/Amalfi Italy product.
+  // Explicit Italy signals take precedence; all other PMY experiences default to Portugal.
+  const country = italyTitle || italy ? "IT" : "PT";
   const wellness = has(/\b(wellness|wellbeing|wellness & spa|spa|massage|massagem|therap(y|ies)|terapia|beauty)\b/);
   const vip = has(/\b(vip|premium service|vip service|private transfer|airport transfer|chauffeur|concierge|luxury transport)\b/);
   const tour = has(/\b(tour|tours|experience|experiences|walking|day trip|day trips|excursion|excursions|boat trip|boat tours)\b/);
