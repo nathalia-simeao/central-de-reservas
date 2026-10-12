@@ -1007,6 +1007,34 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "saveChannelCapacity") {
+    try {
+      const shopifyProductId = String(formData.get("tourId") || "");
+      const platform = String(formData.get("platform") || "").toLowerCase();
+      const rawLimit = String(formData.get("limit") || "");
+      const allowed = ["shopify", "getyourguide", "viator", "civitatis", "headout"];
+      if (!allowed.includes(platform) || !/^(0|[1-9][0-9]{0,3})$/.test(rawLimit)) {
+        return json({ success:false, error:"Canal ou limite inválido (0–9999)." }, { status:400 });
+      }
+      const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
+      if (!tour) return json({success:false,error:"Passeio mestre não encontrado."},{status:404});
+      const limits = tour.platformCapacityLimits && typeof tour.platformCapacityLimits === "object" &&
+        !Array.isArray(tour.platformCapacityLimits) ? tour.platformCapacityLimits : {};
+      const next = { ...limits, [platform]: Number(rawLimit) };
+      await prisma.tour.update({where:{id:tour.id},data:{platformCapacityLimits:next}});
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
+        tourId: tour.id, scope:"TOUR", sourcePlatform:"CENTRAL",
+        force:true, aggregateType:"TOUR", aggregateId:tour.id,
+        payload:{platform,channelLimit:Number(rawLimit)},
+      });
+      return json({success:true,platform,limit:Number(rawLimit),limits:next});
+    } catch(e) {
+      console.error("[PMY] saveChannelCapacity error:",e);
+      return json({success:false,error:"Não foi possível salvar o limite do canal."},{status:500});
+    }
+  }
+
   if (_action === "saveCapacity") {
     try {
       const shopifyProductId = formData.get("tourId");
