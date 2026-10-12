@@ -1,3 +1,4 @@
+import ChannelCapacityEditor from "./ChannelCapacityEditor";
 import TourCountryFlag from "./TourCountryFlag";
 import "../../styles/pmy-tour-info.css";
 import { useMemo, useState } from "react";
@@ -118,6 +119,8 @@ export default function AgendaTab(props) {
     getLisbonToday,
     handleBlockTourSelectionChange,
     handleCapacityChange,
+    handleChannelCapacityChange,
+    channelCapacityLimits = {},
     handleCreateBlock,
     handleGeneratePaymentLink,
     handleNextMonth,
@@ -936,6 +939,7 @@ export default function AgendaTab(props) {
                     onClick={() => handleCapacityChange(tour.id, 1)}
                   />
                 </div>
+                <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
               </div>
             );
           })}
