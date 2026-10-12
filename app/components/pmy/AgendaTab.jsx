@@ -119,7 +119,6 @@ export default function AgendaTab(props) {
     getBookingTimesForTour,
     getLisbonToday,
     handleBlockTourSelectionChange,
-    handleCapacityChange,
     handleChannelCapacityChange,
     channelCapacityLimits = {},
     handleCreateBlock,
