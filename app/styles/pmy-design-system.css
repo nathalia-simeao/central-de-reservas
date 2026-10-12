@@ -5772,3 +5772,13 @@
   .pmy-channel-editor__channel label { grid-column: 1 / -1; }
   .pmy-channel-editor__save { grid-column: 2; }
 }
+
+
+.pmy-gyg-sandbox-test{margin-top:14px;padding:14px;border:1px solid var(--pmy-border,#dce5dd);border-radius:12px;background:var(--pmy-surface,#fff);min-width:0}
+.pmy-gyg-sandbox-test__title{font-size:13px;font-weight:700;color:var(--pmy-text,inherit)}
+.pmy-gyg-sandbox-test p{font-size:12px;line-height:1.5;opacity:.8;margin:7px 0 12px}
+.pmy-gyg-sandbox-test__fields{display:grid;gap:10px;margin-bottom:12px}
+.pmy-gyg-sandbox-test__fields label{display:grid;gap:5px;min-width:0;font-size:12px;font-weight:600}
+.pmy-gyg-sandbox-test__fields input{height:38px;width:100%;min-width:0;border:1px solid var(--pmy-border,#dce5dd);border-radius:9px;padding:0 10px;background:var(--pmy-surface,#fff);color:inherit;font:inherit;font-size:12px}
+.pmy-gyg-sandbox-test__fields input:focus-visible{outline:2px solid #087b29;outline-offset:1px}
+.pmy-gyg-sandbox-test__result{margin-top:12px;border-top:1px solid var(--pmy-border,#dce5dd);padding-top:10px;overflow-wrap:anywhere}
