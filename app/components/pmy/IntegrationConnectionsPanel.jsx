@@ -143,10 +143,12 @@ export default function IntegrationConnectionsPanel({
                                   </button>
                                 )}
                               </div>
-                              {platform.key === "getyourguide" && <GygNotifySandboxTest lang={lang} />}
                             </div>
                           );
                         })}
+                        <div className="pmy-gyg-sandbox-standalone" style={{gridColumn:"1 / -1",width:"100%",minWidth:0,marginTop:16}}>
+                          <GygNotifySandboxTest lang={lang} />
+                        </div>
                         <div className="pmy-ds-migrated-1konp2u">
                           <div className="pmy-ds-migrated-166ghmy"><Icon name="star" size={15} /> {tr("Conteúdo & reputação", "Content & Reputation")}</div>
                           <div className="pmy-ds-migrated-htnqm2">{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>
