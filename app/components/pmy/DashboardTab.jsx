@@ -1,3 +1,4 @@
+import TourCountryFlag from "./TourCountryFlag";
 import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 
@@ -1049,7 +1050,7 @@ const UpcomingDeparturesPanel = ({
                     )}
 
                     <div className="pmy-ds-departure-copy">
-                      <div className="pmy-ds-departure-title">{departure.tourTitle}</div>
+                      <div className="pmy-ds-departure-title"><TourCountryFlag title={departure.tourTitle} lang={lang}/>{departure.tourTitle}</div>
                       <div className="pmy-ds-departure-meta">
                         {departure.bookings} {lang === "pt" ? "reserva(s)" : "booking(s)"}
                       </div>
@@ -1497,7 +1498,7 @@ const CriticalDeparturesPanel = ({ departures = [], lang }) => {
               <span className="pmy-ds-list-plain__title">
                 <Icon name="calendar" size={16} />
                 <span>
-                  <strong>{departure.tourTitle}</strong>
+                  <strong><TourCountryFlag title={departure.tourTitle} lang={lang}/>{departure.tourTitle}</strong>
                   <span className="pmy-ds-list-item__description">
                     {formatWhen(departure.startTime)} · {Number(departure.passengers || 0)} pax · {Number(departure.occupancyRate || 0).toFixed(0)}%
                   </span>
@@ -2057,7 +2058,7 @@ export default function DashboardTab(props) {
                                   </div>
                               }
                               <div className="pmy-tour-details">
-                                <div className="pmy-tour-name">{tour.title||"Tour sem título"}</div>
+                                <div className="pmy-tour-name"><TourCountryFlag tour={tour} lang={lang}/>{tour.title||"Tour sem título"}</div>
                                 {tour.price && <div className="pmy-ds-performance-price">{tour.price}</div>}
                                 <div className="pmy-tag-row">
                                   {visibleChannels.length > 0 ? visibleChannels.map((channel) => (
