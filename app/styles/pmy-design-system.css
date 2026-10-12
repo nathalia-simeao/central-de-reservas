@@ -5665,3 +5665,36 @@
     border-radius: var(--pmy-radius-md);
   }
 }
+
+/* PMY Agenda: capacity and sales channels kept on one responsive grid */
+.pmy-channel-capacity-row {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(340px, 1.35fr);
+  align-items: start;
+  column-gap: 24px;
+  row-gap: 12px;
+  padding: 18px 0;
+}
+.pmy-channel-capacity-row > .pmy-ds-tour-row-main { min-width: 0; align-self: center; }
+.pmy-channel-capacity-row > .pmy-capacity-controls { justify-self: center; align-self: center; white-space: nowrap; }
+.pmy-channel-editor { min-width: 0; width: 100%; border: 1px solid var(--pmy-border, #dfe6e1); border-radius: 12px; padding: 12px 14px; background: var(--pmy-surface, #fff); }
+.pmy-channel-editor__summary { cursor: pointer; font-weight: 650; font-size: 13px; color: var(--pmy-text, inherit); list-style-position: inside; }
+.pmy-channel-editor__hint { font-size: 12px; opacity: .75; line-height: 1.5; margin: 9px 0 12px; }
+.pmy-channel-editor__list { display: grid; gap: 8px; }
+.pmy-channel-editor__channel { display: grid; grid-template-columns: minmax(105px, 1fr) minmax(85px, 105px) 76px; gap: 9px; align-items: center; }
+.pmy-channel-editor__channel label { font-size: 12px; min-width: 0; overflow-wrap: anywhere; }
+.pmy-channel-editor__input { min-width: 0; width: 100%; height: 36px; border: 1px solid var(--pmy-border, #dfe6e1); border-radius: 9px; padding: 6px 9px; background: var(--pmy-surface, #fff); color: inherit; font: inherit; font-size: 12px; }
+.pmy-channel-editor__input:focus-visible { outline: 2px solid #087b29; outline-offset: 1px; }
+.pmy-channel-editor__save { min-height: 36px; padding: 7px 10px; border: 1px solid #0b7727; color: #0b7727; background: transparent; border-radius: 9px; font: inherit; font-size: 12px; cursor: pointer; }
+.pmy-channel-editor__save:disabled { opacity: .45; cursor: not-allowed; }
+.pmy-channel-editor__status { grid-column: 2 / -1; font-size: 11px; opacity: .7; margin-top: -6px; }
+@media (max-width: 1140px) {
+  .pmy-channel-capacity-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .pmy-channel-editor { grid-column: 1 / -1; }
+}
+@media (max-width: 650px) {
+  .pmy-channel-capacity-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .pmy-channel-capacity-row > .pmy-capacity-controls { justify-self: start; }
+  .pmy-channel-editor { grid-column: 1; }
+  .pmy-channel-editor__channel { grid-template-columns: minmax(85px,1fr) minmax(74px,100px) 66px; gap: 6px; }
+}
