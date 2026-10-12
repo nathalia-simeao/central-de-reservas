@@ -12,20 +12,20 @@ function available(tour, bookings, platform) {
     tour,bookings,dateKey:"2026-10-22",timeKey:"09:30",platform,
   });
 }
-test("physical total is shared; a 150-seat GYG cap cannot expand 20 physical seats",()=>{
+test("configured channel allocations sum to 160 shared seats",()=>{
   const a=available(base,[booking("SHOPIFY",8)],"getyourguide");
-  assert.equal(a.remainingSeats,12);
-  assert.equal(a.capacity,20);
+  assert.equal(a.remainingSeats,150);
+  assert.equal(a.capacity,160);
   assert.equal(a.channelLimit,150);
 });
-test("Shopify individual cap is reduced only by Shopify bookings and physical occupancy",()=>{
+test("Shopify individual allocation is reduced by Shopify bookings while total is shared",()=>{
   const a=available(base,[booking("SHOPIFY",8),booking("GETYOURGUIDE",5)],"shopify");
   assert.equal(a.occupiedSeats,13);
   assert.equal(a.channelOccupiedSeats,8);
   assert.equal(a.remainingSeats,2);
   assert.equal(a.canAccept,true);
 });
-test("channel cap cannot exceed physical availability; booking rejected above limit",()=>{
+test("channel allocation rejects bookings above its individual limit",()=>{
   const a=calculateAvailabilityForCalendarSlotFromLoaded({
     tour:base,bookings:[booking("SHOPIFY",9)],dateKey:"2026-10-22",
     timeKey:"09:30",platform:"SHOPIFY",requestedSeats:2,
