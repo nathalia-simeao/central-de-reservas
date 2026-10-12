@@ -1911,7 +1911,7 @@ function CentralDeReservasContent() {
     fd.append("platform", platform);
     fd.append("limit", String(limit));
     try {
-      const result = await requestResourceJson("/", fd);
+      const result = await requestResourceJson("/api/central-actions", fd);
       if (!result?.success) throw new Error(result?.error || "Falha ao salvar.");
       setChannelCapacityLimits(prev => ({ ...prev, [tourId]: result.limits }));
       notify(ui("Limite do canal salvo.", "Channel limit saved."), "success");
