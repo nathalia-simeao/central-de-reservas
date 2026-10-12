@@ -1,6 +1,6 @@
 import TourCountryFlag from "./TourCountryFlag";
 import { useState } from "react";
-import { Button, Icon } from "./PmyUI";
+import { Button, DropdownSelect, Icon } from "./PmyUI";
 import { classifyShopifyProduct } from "../../utils/shopify-product-classification";
 
 export default function IntegrationProductsPanel({
@@ -332,24 +332,37 @@ export default function IntegrationProductsPanel({
                             )}
                             {activeProdPlatform === "shopify" && (
                               <section aria-label={tr("Filtros do catálogo Shopify", "Shopify catalog filters")} style={{ margin: "14px 0", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end" }}>
-                                <label style={{display:"grid",gap:5,fontSize:12}}>
-                                  {tr("País", "Country")}
-                                  <select aria-label={tr("Filtrar país", "Filter country")} value={shopifyCountry} onChange={e=>setShopifyCountry(e.target.value)} style={{padding:"9px 12px",borderRadius:8}}>
-                                    <option value="ALL">{tr("Todos os países", "All countries")}</option>
-                                    <option value="PT">Portugal</option><option value="IT">{tr("Itália","Italy")}</option>
-                                    <option value="UNKNOWN">{tr("Não classificado", "Unclassified")}</option>
-                                  </select>
-                                </label>
-                                <label style={{display:"grid",gap:5,fontSize:12}}>
-                                  {tr("Categoria", "Category")}
-                                  <select aria-label={tr("Filtrar categoria", "Filter category")} value={shopifyCategory} onChange={e=>setShopifyCategory(e.target.value)} style={{padding:"9px 12px",borderRadius:8}}>
-                                    <option value="ALL">{tr("Todas as categorias", "All categories")}</option>
-                                    <option value="TOUR">Tours &amp; Experiences</option>
-                                    <option value="VIP">VIP Services</option>
-                                    <option value="WELLNESS">Wellness &amp; Spa</option>
-                                    <option value="UNKNOWN">{tr("Não classificado", "Unclassified")}</option>
-                                  </select>
-                                </label>
+                                <div style={{display:"grid",gap:6,minWidth:190,flex:"0 1 240px"}}>
+                                  <label style={{fontSize:12,fontWeight:600}}>{tr("País", "Country")}</label>
+                                  <DropdownSelect
+                                    className="pmy-shopify-country-filter"
+                                    ariaLabel={tr("Filtrar país", "Filter country")}
+                                    value={shopifyCountry}
+                                    onChange={setShopifyCountry}
+                                    options={[
+                                      {value:"ALL",label:tr("Todos os países","All countries")},
+                                      {value:"PT",label:"🇵🇹 Portugal"},
+                                      {value:"IT",label:tr("🇮🇹 Itália","🇮🇹 Italy")},
+                                      {value:"UNKNOWN",label:tr("Não classificado","Unclassified")}
+                                    ]}
+                                  />
+                                </div>
+                                <div style={{display:"grid",gap:6,minWidth:220,flex:"0 1 260px"}}>
+                                  <label style={{fontSize:12,fontWeight:600}}>{tr("Categoria", "Category")}</label>
+                                  <DropdownSelect
+                                    className="pmy-shopify-category-filter"
+                                    ariaLabel={tr("Filtrar categoria", "Filter category")}
+                                    value={shopifyCategory}
+                                    onChange={setShopifyCategory}
+                                    options={[
+                                      {value:"ALL",label:tr("Todas as categorias","All categories")},
+                                      {value:"TOUR",label:"Tours & Experiences"},
+                                      {value:"VIP",label:"VIP Services"},
+                                      {value:"WELLNESS",label:"Wellness & Spa"},
+                                      {value:"UNKNOWN",label:tr("Não classificado","Unclassified")}
+                                    ]}
+                                  />
+                                </div>
                                 <span style={{fontSize:12,opacity:.8}}>{tr("Classificação baseada no tipo, coleções e tags do Shopify. Não altera os produtos.", "Based on Shopify type, collections and tags. Does not modify products.")}</span>
                               </section>
                             )}
