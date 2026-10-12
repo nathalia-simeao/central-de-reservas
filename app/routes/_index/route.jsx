@@ -1874,38 +1874,29 @@ function CentralDeReservasContent() {
     setBlockSelectedHour("ALL");
     const tour = tourOptions.find(t => t.id === id);
 
-    // 1. Tenta metafield 'schedule' primeiro
-    if (tour?.scheduleSlots?.length > 0) {
-      setTourAvailableHours(tour.scheduleSlots);
-      return;
+    // Combine Shopify schedule metadata and real variant departure times.
+    // A partial metafield must not conceal legitimate variant departures.
+    const normalizeTime = (value) => {
+      const match = String(value || "").match(/(?:^|[^0-9])(\\d{1,2})[:hH](\\d{2})(?!\\d)/);
+      if (!match) return null;
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (hour > 23 || minute > 59) return null;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    };
+    const hours = new Set();
+    for (const slot of tour?.scheduleSlots || []) {
+      const normalized = normalizeTime(typeof slot === "string" ? slot : slot?.time || slot?.startTime);
+      if (normalized) hours.add(normalized);
     }
-
-    // 2. Extrai horários únicos dos títulos das variantes
-    // Padrão comum: "Adult / 09:30 - Description" ou "09:00 - Title"
-    const timeRegex = /\b(\d{1,2}[:h]\d{2})(?:\s*[hH])?\b/g;
-    const timesFromVariants = new Set();
-    for (const v of (tour?.variants || [])) {
-      const matches = (v.title || "").matchAll(timeRegex);
-      for (const m of matches) {
-        // Normaliza para HH:MM
-        const raw = m[1].replace('h', ':').replace('H', ':');
-        const parts = raw.split(':');
-        if (parts.length === 2) {
-          const hh = parts[0].padStart(2, '0');
-          const mm = parts[1].padStart(2, '0');
-          timesFromVariants.add(`${hh}:${mm}`);
-        }
+    for (const variant of tour?.variants || []) {
+      const matches = String(variant.title || "").matchAll(/(?:^|[^0-9])(\\d{1,2})[:hH](\\d{2})(?!\\d)/g);
+      for (const match of matches) {
+        const normalized = normalizeTime(match[0]);
+        if (normalized) hours.add(normalized);
       }
     }
-
-    if (timesFromVariants.size > 0) {
-      // Ordena cronologicamente
-      setTourAvailableHours([...timesFromVariants].sort());
-      return;
-    }
-
-    // 3. Fallback: sem horários definidos
-    setTourAvailableHours([]);
+    setTourAvailableHours([...hours].sort());
   };
 
   const handleCapacityChange = async (id, change) => {
