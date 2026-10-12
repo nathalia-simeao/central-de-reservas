@@ -163,6 +163,7 @@ export async function fetchShopifyCatalog(admin) {
             id
             title
             productType
+            tags
             status
             description
             featuredImage { url altText }
@@ -260,6 +261,7 @@ export async function fetchShopifyCatalog(admin) {
       id: node.id,
       name: node.title,
       productType: node.productType || null,
+      tags: node.tags || [],
       description: node.description || "",
       sku: variants[0]?.sku || "—",
       price: minPrice > 0 ? `€${minPrice.toFixed(0)}` : "—",
