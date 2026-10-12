@@ -1,3 +1,14 @@
+function effectiveTourCapacity(tour) {
+  const limits = tour?.platformCapacityLimits;
+  if (limits && typeof limits === "object" && !Array.isArray(limits)) {
+    const values = ["shopify", "getyourguide", "viator", "civitatis", "headout"]
+      .map(key => limits[key])
+      .filter(value => Number.isInteger(value) && value >= 0);
+    if (values.length) return values.reduce((total, value) => total + value, 0);
+  }
+  return Math.max(0, Number(tour?.maxCapacity ?? 20));
+}
+
 import {
   blockMatchesCalendarSlot,
   getActiveAvailabilityBlocks,
@@ -155,7 +166,7 @@ export function calculateAvailabilityFromLoaded({
       }),
     ) || null;
 
-  const capacity = Math.max(0, Number(tour.maxCapacity ?? 20));
+  const capacity = effectiveTourCapacity(tour);
   const occupiedSeats = bookings.reduce((total, booking) => {
     if (!bookingMatchesSlot(booking, parts, timeZone)) return total;
     return total + bookingSeatCount(booking, now);
@@ -216,7 +227,7 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
       }),
     ) || null;
 
-  const capacity = Math.max(0, Number(tour.maxCapacity ?? 20));
+  const capacity = effectiveTourCapacity(tour);
   const occupiedSeats = bookings.reduce((total, booking) => {
     const parts = getDatePartsInTimeZone(
       booking.startTime,
