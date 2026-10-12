@@ -919,7 +919,7 @@ export default function AgendaTab(props) {
                 </div>
 
                 <div style={{display:"flex",flexDirection:"column",width:"100%",gap:12,marginTop:12}}>
-                <SharedSeatsIndicator tourId={tour.id} capacity={capacity} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
+                <SharedSeatsIndicator tourId={tour.id} capacity={capacity} limits={channelCapacityLimits[tour.id] || {}} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
                 <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
                 </div>
               </div>
