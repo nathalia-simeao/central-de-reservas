@@ -1,3 +1,4 @@
+import TourCountryFlag from "./TourCountryFlag";
 import { useState } from "react";
 import { Button, Icon } from "./PmyUI";
 import { classifyShopifyProduct } from "../../utils/shopify-product-classification";
@@ -373,7 +374,7 @@ export default function IntegrationProductsPanel({
                                   }).map(prod => (
                                     <tr key={prod.id} className={`pmy-prod-row ${prod.active?'active-prod':''}`}>
                                       <td>
-                                        <div className="pmy-ds-migrated-mplo1d">{prod.name}</div>
+                                        <div className="pmy-ds-migrated-mplo1d"><TourCountryFlag tour={prod} lang={lang}/>{prod.name}</div>
                                         {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:5,fontSize:11}}><span>{c.country==="PT"?"🇵🇹 Portugal":c.country==="IT"?"🇮🇹 Itália":tr("País não classificado","Country unclassified")}</span><span>· {c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</span></div>; })()}
                                       </td>
                                       <td>
