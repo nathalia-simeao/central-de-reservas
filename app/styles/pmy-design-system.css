@@ -5698,3 +5698,77 @@
   .pmy-channel-editor { grid-column: 1; }
   .pmy-channel-editor__channel { grid-template-columns: minmax(85px,1fr) minmax(74px,100px) 66px; gap: 6px; }
 }
+
+/* Vertical capacity layout: tour title stays full-width and every editor opens below. */
+.pmy-channel-capacity-row {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  width: 100%;
+  padding: 20px 0;
+}
+.pmy-channel-capacity-row > .pmy-ds-tour-row-main {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.pmy-channel-capacity-row .pmy-ds-tour-row-main > div:last-child {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.pmy-channel-capacity-row .pmy-ds-tour-row__title {
+  display: block;
+  width: 100%;
+  max-width: none;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  line-height: 1.5;
+}
+.pmy-channel-capacity-row > .pmy-capacity-controls {
+  align-self: flex-start !important;
+  justify-self: start !important;
+  margin-left: 0;
+  white-space: nowrap;
+}
+.pmy-channel-capacity-row > .pmy-channel-editor {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  grid-column: auto !important;
+  margin: 0;
+}
+.pmy-channel-editor__list { grid-template-columns: minmax(0,1fr); }
+.pmy-channel-editor__channel {
+  grid-template-columns: minmax(110px, 180px) minmax(120px, 180px) 84px minmax(0,1fr);
+  gap: 10px;
+}
+.pmy-channel-editor__status {
+  grid-column: auto;
+  margin-top: 0;
+}
+@media (max-width: 650px) {
+  .pmy-channel-capacity-row { gap: 10px !important; }
+  .pmy-channel-editor__channel {
+    grid-template-columns: minmax(0,1fr) minmax(85px, 125px) 70px;
+  }
+  .pmy-channel-editor__status {
+    grid-column: 1 / -1;
+    margin-top: -4px;
+  }
+}
+@media (max-width: 390px) {
+  .pmy-channel-editor__channel { grid-template-columns: minmax(0,1fr) 75px; }
+  .pmy-channel-editor__channel label { grid-column: 1 / -1; }
+  .pmy-channel-editor__save { grid-column: 2; }
+}
