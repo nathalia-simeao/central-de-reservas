@@ -1,3 +1,4 @@
+import SharedSeatsIndicator from "./SharedSeatsIndicator";
 import ChannelCapacityEditor from "./ChannelCapacityEditor";
 import TourCountryFlag from "./TourCountryFlag";
 import "../../styles/pmy-tour-info.css";
@@ -919,27 +920,7 @@ export default function AgendaTab(props) {
                 </div>
 
                 <div style={{display:"flex",flexDirection:"column",width:"100%",gap:12,marginTop:12}}>
-                <div className="pmy-capacity-controls" style={{alignSelf:"flex-start",width:"max-content"}}>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    icon="minus"
-                    iconOnly
-                    aria-label={tr("Reduzir capacidade", "Reduce capacity")}
-                    onClick={() => handleCapacityChange(tour.id, -1)}
-                  />
-                  <span className="pmy-ds-capacity-number">{capacity}</span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    icon="plus"
-                    iconOnly
-                    aria-label={tr("Aumentar capacidade", "Increase capacity")}
-                    onClick={() => handleCapacityChange(tour.id, 1)}
-                  />
-                </div>
+                <SharedSeatsIndicator tourId={tour.id} capacity={capacity} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
                 <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
                 </div>
               </div>
