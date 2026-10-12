@@ -4,7 +4,7 @@ const CHANNELS = [
   ["shopify","Shopify"],["getyourguide","GetYourGuide"],
   ["viator","Viator"],["civitatis","Civitatis"],["headout","Headout"],
 ];
-export default function ChannelCapacityEditor({ tourId, physicalCapacity, limits = {}, onSave, lang = "pt", connected = {} }) {
+export default function ChannelCapacityEditor({ tourId, physicalCapacity, limits = {}, onSave, lang = "pt" }) {
   const [drafts,setDrafts] = useState({});
   const [saving,setSaving] = useState("");
   const en = lang === "en";
