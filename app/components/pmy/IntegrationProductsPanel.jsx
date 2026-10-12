@@ -388,7 +388,7 @@ export default function IntegrationProductsPanel({
                                     <tr key={prod.id} className={`pmy-prod-row ${prod.active?'active-prod':''}`}>
                                       <td>
                                         <div className="pmy-ds-migrated-mplo1d"><TourCountryFlag tour={prod} lang={lang}/>{prod.name}</div>
-                                        {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:5,fontSize:11}}><span>{c.country==="PT"?"🇵🇹 Portugal":c.country==="IT"?"🇮🇹 Itália":tr("País não classificado","Country unclassified")}</span><span>· {c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</span></div>; })()}
+                                        {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{marginTop:5,fontSize:11,opacity:.85}}>{c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</div>; })()}
                                       </td>
                                       <td>
                                         <code className="pmy-ds-migrated-baxb8w">{prod.sku}</code>
