@@ -1,3 +1,4 @@
+import TourCountryFlag from "./TourCountryFlag";
 import "../../styles/pmy-tour-info.css";
 import { useMemo, useState } from "react";
 
@@ -537,7 +538,7 @@ export default function AgendaTab(props) {
                             setBlockTourPickerOpen(false);
                           }}
                         >
-                          <span>{tour.title}</span>
+                          <span><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</span>
                           {blockTourId === tour.id ? (
                             <Badge tone="success">{tr("Selecionado", "Selected")}</Badge>
                           ) : null}
@@ -899,7 +900,7 @@ export default function AgendaTab(props) {
                     <Icon name="calendar" size={22} />
                   </div>
                   <div>
-                    <strong className="pmy-ds-tour-row__title">{tour.title}</strong>
+                    <strong className="pmy-ds-tour-row__title"><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
                     <div className="pmy-ds-tour-row__meta">
                       {tr("Capacidade", "Capacity")}: {capacity}{" "}
                       {lang === "en"
