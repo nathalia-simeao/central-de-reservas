@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Icon } from "./PmyUI";
+import { classifyShopifyProduct } from "../../utils/shopify-product-classification";
 
 export default function IntegrationProductsPanel({
   activeProdPlatform,
@@ -15,6 +16,8 @@ export default function IntegrationProductsPanel({
   setActiveProdPlatform,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const [shopifyCountry, setShopifyCountry] = useState("ALL");
+  const [shopifyCategory, setShopifyCategory] = useState("ALL");
   const [diagnostic, setDiagnostic] = useState(null);
   const [diagnosticError, setDiagnosticError] = useState("");
   const [diagnosticBusy, setDiagnosticBusy] = useState(false);
@@ -326,6 +329,29 @@ export default function IntegrationProductsPanel({
                                 </div>
                               </section>
                             )}
+                            {activeProdPlatform === "shopify" && (
+                              <section aria-label={tr("Filtros do catálogo Shopify", "Shopify catalog filters")} style={{ margin: "14px 0", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end" }}>
+                                <label style={{display:"grid",gap:5,fontSize:12}}>
+                                  {tr("País", "Country")}
+                                  <select aria-label={tr("Filtrar país", "Filter country")} value={shopifyCountry} onChange={e=>setShopifyCountry(e.target.value)} style={{padding:"9px 12px",borderRadius:8}}>
+                                    <option value="ALL">{tr("Todos os países", "All countries")}</option>
+                                    <option value="PT">Portugal</option><option value="IT">{tr("Itália","Italy")}</option>
+                                    <option value="UNKNOWN">{tr("Não classificado", "Unclassified")}</option>
+                                  </select>
+                                </label>
+                                <label style={{display:"grid",gap:5,fontSize:12}}>
+                                  {tr("Categoria", "Category")}
+                                  <select aria-label={tr("Filtrar categoria", "Filter category")} value={shopifyCategory} onChange={e=>setShopifyCategory(e.target.value)} style={{padding:"9px 12px",borderRadius:8}}>
+                                    <option value="ALL">{tr("Todas as categorias", "All categories")}</option>
+                                    <option value="TOUR">Tours &amp; Experiences</option>
+                                    <option value="VIP">VIP Services</option>
+                                    <option value="WELLNESS">Wellness &amp; Spa</option>
+                                    <option value="UNKNOWN">{tr("Não classificado", "Unclassified")}</option>
+                                  </select>
+                                </label>
+                                <span style={{fontSize:12,opacity:.8}}>{tr("Classificação baseada no tipo, coleções e tags do Shopify. Não altera os produtos.", "Based on Shopify type, collections and tags. Does not modify products.")}</span>
+                              </section>
+                            )}
                             {/* Tabela */}
                                                         <div style={activeProdPlatform === "getyourguide" ? {display:"none"} : undefined} className="pmy-ds-migrated-6tnpw1 pmy-ds-table-wrap" role="region" aria-label={tr("Produtos do canal", "Channel products")}>
                               <table className="pmy-prod-table">
@@ -340,10 +366,15 @@ export default function IntegrationProductsPanel({
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {prods.map(prod => (
+                                  {prods.filter(prod => {
+                                    if (activeProdPlatform !== "shopify") return true;
+                                    const classification = classifyShopifyProduct(prod);
+                                    return (shopifyCountry === "ALL" || classification.country === shopifyCountry) && (shopifyCategory === "ALL" || classification.category === shopifyCategory);
+                                  }).map(prod => (
                                     <tr key={prod.id} className={`pmy-prod-row ${prod.active?'active-prod':''}`}>
                                       <td>
                                         <div className="pmy-ds-migrated-mplo1d">{prod.name}</div>
+                                        {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:5,fontSize:11}}><span>{c.country==="PT"?"🇵🇹 Portugal":c.country==="IT"?"🇮🇹 Itália":tr("País não classificado","Country unclassified")}</span><span>· {c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</span></div>; })()}
                                       </td>
                                       <td>
                                         <code className="pmy-ds-migrated-baxb8w">{prod.sku}</code>
