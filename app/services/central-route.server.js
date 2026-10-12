@@ -11,7 +11,7 @@ import {
   normalizePlatforms,
   parseRecurringDays,
 } from "../utils/availability.server";
-import { createBookingWithCapacityGuard } from "../utils/capacity.server";
+import { createBookingWithCapacityGuard, getCentralAvailability } from "../utils/capacity.server";
 import {
   enqueueAvailabilitySync,
   enqueueBookingSync,
@@ -1004,6 +1004,26 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] removeBlock error:", e);
       return json({ success: false, error: e.message }, { status: 500 });
+    }
+  }
+
+  if (_action === "getSharedSeats") {
+    try {
+      const productId = String(formData.get("tourId") || "");
+      const date = String(formData.get("date") || "");
+      const time = String(formData.get("time") || "");
+      const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", productId);
+      if (!tour) return json({success:false,error:"Passeio não encontrado."},{status:404});
+      const startTime = localSlotToInstant(date, time, tour.timezone || "Europe/Lisbon");
+      if (!startTime) return json({success:false,error:"Data ou horário inválido."},{status:400});
+      const result = await getCentralAvailability(prisma, {
+        tourId:tour.id, startTime, platform:"central",
+      });
+      return json({success:true,capacity:result.capacity,occupiedSeats:result.occupiedSeats,
+        remainingSeats:Math.max(0,result.capacity-result.occupiedSeats),date,time});
+    } catch (error) {
+      console.error("[PMY] getSharedSeats failed:",error);
+      return json({success:false,error:"Falha ao consultar vagas."},{status:500});
     }
   }
 
