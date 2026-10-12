@@ -9,10 +9,8 @@ export function classifyShopifyProduct(product) {
   const source = [...collections, ...tags, type];
   const has = pattern => source.some(value => pattern.test(value));
   const italy = has(/\b(italy|italia|italian|naples|napoli|amalfi|positano|ravello|rome|roma|florence|firenze)\b/);
-  const portugal = has(/\b(portugal|portuguese|portugues|lisbon|lisboa|porto|sintra|belem|jeronimos|fatima|evora|geres|braga)\b/);
   // Names only provide geographic hints if metadata is silent.
   const italyTitle = /\b(naples|napoli|amalfi|positano|ravello|rome|roma|florence|firenze)\b/.test(title);
-  const portugalTitle = /\b(lisbon|lisboa|porto|sintra|belem|jeronimos|fatima|evora|geres|braga)\b/.test(title);
   // PMY currently operates Portuguese experiences plus the Naples/Amalfi Italy product.
   // Explicit Italy signals take precedence; all other PMY experiences default to Portugal.
   const country = italyTitle || italy ? "IT" : "PT";
