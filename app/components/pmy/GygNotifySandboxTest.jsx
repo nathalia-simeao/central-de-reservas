@@ -21,16 +21,30 @@ export default function GygNotifySandboxTest({ lang = "pt" }) {
         _action: "testGygNotifySandbox", productId:productId.trim(),
         dateTime:dateTime.trim(), vacancies:vacancies.trim(),
       })) body.append(key,value);
+      const headers = {
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      };
+      // Shopify embedded admin resource actions require a fresh App Bridge session token.
+      try {
+        const idToken = await window.shopify?.idToken?.();
+        if (idToken) headers.Authorization = `Bearer ${idToken}`;
+      } catch {
+        // App Bridge may handle token injection itself.
+      }
       const response = await fetch("/api/sync-queue", {
-        method:"POST", body, credentials:"same-origin",
-        headers:{Accept:"application/json"},
+        method:"POST", body, credentials:"include", headers,
       });
       const text = await response.text();
       let payload;
       try { payload = JSON.parse(text); } catch {
         throw new Error(tr("Servidor retornou HTML ou resposta não JSON. Verifique a sessão Shopify.", "Server returned HTML or non-JSON response. Check Shopify session."));
       }
-      setResult({httpStatus:response.status, ...payload});
+      setResult({httpStatus:response.status, ...payload,
+        error:response.status === 401
+          ? tr("Sessão Shopify não autorizada. Reabra a Central pelo admin e tente novamente.", "Shopify session not authorized. Reopen Central from the admin and retry.")
+          : payload.error,
+      });
     } catch(e) {
       setResult({success:false, error:e.message || String(e)});
     } finally { setWorking(false); }
