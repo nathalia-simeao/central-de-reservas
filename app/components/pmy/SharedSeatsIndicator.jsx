@@ -10,7 +10,7 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
   const [error,setError] = useState("");
   const configuredCaps = Object.entries(limits || {}).filter(([,v]) => Number.isInteger(v) && v >= 0);
   const offeredTotal = configuredCaps.reduce((sum,[,v]) => sum + v,0);
-  const hasUnset = ["shopify","getyourguide","viator","civitatis","headout"].some(key => !Number.isInteger(limits?.[key]));
+  const effectiveCapacity = configuredCaps.length ? offeredTotal : capacity;
   const normalizedHours = [...new Set((hours || []).map(value => String(value).match(/(?:^|[^0-9])([01]?\d|2[0-3]):([0-5]\d)/)?.slice(1,3).join(":")).filter(Boolean))].sort();
   const check = async () => {
     if(!date || !time) return;
@@ -27,10 +27,10 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
   };
   return <section className="pmy-shared-seats-indicator" style={{display:"grid",gap:9,maxWidth:"100%"}}>
     <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center",fontSize:13}}>
-      <strong>{en?"Physical capacity":"Capacidade física"}: {capacity}</strong>
-      <strong>{en?"Configured channel caps (sum)":"Soma dos limites dos canais"}: {offeredTotal}{hasUnset ? "+" : ""}</strong>
+      <strong>{en?"Total capacity":"Capacidade total"}: {effectiveCapacity}</strong>
+      <strong>{en?"Configured channel caps (sum)":"Soma dos limites dos canais"}: {offeredTotal}</strong>
     </div>
-    <small style={{opacity:.75}}>{en?"Channel caps are commercial ceilings, not additive physical seats. Unset channels are excluded.":"A soma representa limites comerciais, não vagas físicas adicionais. Canais sem limite definido não entram na soma."}</small>
+    <small style={{opacity:.75}}>{en?"Total capacity sums configured channel allocations. Channels without allocations are excluded.":"A capacidade total soma as cotas configuradas. Canais sem cota definida não entram na soma."}</small>
     <div style={{display:"flex",flexWrap:"wrap",alignItems:"end",gap:8}}>
       <div style={{display:"grid",gap:4,fontSize:12,minWidth:180}}>
         <span>{en?"Departure date":"Data da saída"}</span>
