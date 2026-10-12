@@ -1,3 +1,4 @@
+import TourCountryFlag from "./TourCountryFlag";
 import {
   Badge,
   Button,
@@ -276,7 +277,7 @@ export default function GuidesTab(props) {
                 <div key={assignment.id} className="pmy-ds-list-plain__row">
                   <span className="pmy-ds-list-plain__title">
                     <Icon name="calendar" size={17} />
-                    {assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
+                    <TourCountryFlag tour={assignment.tour} lang={lang}/>{assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
                   </span>
                   <Badge tone={lisbonDateKey(assignment.startTime) === todayLisbon ? "accent" : "neutral"}>
                     {formatAssignmentWhen(assignment)}
