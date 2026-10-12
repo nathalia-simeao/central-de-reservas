@@ -897,7 +897,7 @@ export default function AgendaTab(props) {
                 : 20;
 
             return (
-              <div className="pmy-tour-item" key={tour.id}>
+              <div className="pmy-tour-item pmy-channel-capacity-row" key={tour.id}>
                 <div className="pmy-ds-tour-row-main">
                   <div className={`pmy-ds-tour-placeholder ${imageShape}`}>
                     <Icon name="calendar" size={22} />
