@@ -1077,11 +1077,11 @@ export async function cancelGygBooking(data) {
   }
 }
 
-export async function notifyGygAvailabilityUpdate({ productId, availabilities }) {
+export async function notifyGygAvailabilityUpdate({ productId, availabilities, manualSandboxTest = false }) {
   // Explicit opt-in. Never use GYG_API_BASE here: it may point to production.
   const mode = String(process.env.GYG_NOTIFY_MODE || "disabled").trim().toLowerCase();
-  if (mode !== "sandbox") {
-    return { sent: false, reason: "GYG_NOTIFY_SANDBOX_NOT_ENABLED" };
+  if (mode !== "sandbox" || !manualSandboxTest) {
+    return { sent: false, reason: "GYG_NOTIFY_MANUAL_SANDBOX_ONLY" };
   }
 
   const user = process.env.GYG_OUTGOING_USER;
