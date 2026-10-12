@@ -1078,21 +1078,28 @@ export async function cancelGygBooking(data) {
 }
 
 export async function notifyGygAvailabilityUpdate({ productId, availabilities }) {
-  const baseUrl = String(process.env.GYG_API_BASE || "").replace(/\/+$/, "");
-  const user = process.env.GYG_OUTGOING_USER;
-  const pass = process.env.GYG_OUTGOING_PASS;
-
-  if (!baseUrl || !user || !pass) {
-    return {
-      sent: false,
-      reason: "OUTGOING_GYG_NOT_CONFIGURED",
-    };
+  // Explicit opt-in. Never use GYG_API_BASE here: it may point to production.
+  const mode = String(process.env.GYG_NOTIFY_MODE || "disabled").trim().toLowerCase();
+  if (mode !== "sandbox") {
+    return { sent: false, reason: "GYG_NOTIFY_SANDBOX_NOT_ENABLED" };
   }
 
-  const notifyUrl = /\/1$/i.test(baseUrl)
-    ? `${baseUrl}/notify-availability-update`
-    : `${baseUrl}/1/notify-availability-update`;
-
+  const user = process.env.GYG_OUTGOING_USER;
+  const pass = process.env.GYG_OUTGOING_PASS;
+  if (!user || !pass) {
+    return { sent: false, reason: "OUTGOING_GYG_NOT_CONFIGURED" };
+  }
+  if (!String(productId || "").trim() || !Array.isArray(availabilities) || !availabilities.length) {
+    return { sent: false, reason: "INVALID_NOTIFY_PAYLOAD" };
+  }
+  const updates = availabilities.filter(item =>
+    item && typeof item.dateTime === "string" &&
+    Number.isInteger(item.vacancies) && item.vacancies >= 0
+  );
+  if (updates.length !== availabilities.length) {
+    return { sent: false, reason: "INVALID_NOTIFY_PAYLOAD" };
+  }
+  const notifyUrl = "https://supplier-api.getyourguide.com/sandbox/1/notify-availability-update";
   const response = await fetch(notifyUrl, {
     method: "POST",
     headers: {
@@ -1102,18 +1109,12 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
     body: JSON.stringify({
       data: {
         productId: String(productId),
-        availabilities,
+        availabilities: updates,
       },
     }),
   });
-
   let payload = null;
-  try {
-    payload = await response.json();
-  } catch {
-    payload = null;
-  }
-
+  try { payload = await response.json(); } catch { payload = null; }
   try {
     await prisma.integrationEvent.create({
       data: {
@@ -1122,7 +1123,7 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
         topic: "notify-availability-update",
         status: response.status === 202 ? "PROCESSED" : "ERROR",
         payload: {
-          source: "CENTRAL_AVAILABILITY_PUSH",
+          source: "CENTRAL_AVAILABILITY_PUSH_SANDBOX",
           productId: String(productId),
           availabilityCount: Array.isArray(availabilities)
             ? availabilities.length
@@ -1145,6 +1146,7 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities })
   return {
     sent: response.status === 202,
     status: response.status,
+    mode: "sandbox",
     payload,
   };
 }
