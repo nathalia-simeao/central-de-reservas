@@ -120,3 +120,14 @@ test("Viator booking consumes valid holds atomically and never retries invalid h
   assert.ok(holdBranch.includes("if (!confirmed)"));
   assert.ok(holdBranch.includes("return viatorV1ErrorResponse("));
 });
+
+
+test("Viator cancellations are serialized and only publish sync for a first cancellation", async () => {
+  const source = await fs.readFile(new URL("../app/utils/viator.server.js", import.meta.url), "utf8");
+  const cancellation = source.slice(source.indexOf("export async function viatorBookingCancellation"));
+  assert.ok(cancellation.includes("await prisma.$transaction(async (tx) =>"));
+  assert.ok(cancellation.includes("await lockTour(tx, booking.tourId)"));
+  assert.ok(cancellation.includes('current.status === "CANCELED"'));
+  assert.ok(cancellation.includes("if (cancellation.changed)"));
+  assert.ok(cancellation.includes("eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED"));
+});
