@@ -70,3 +70,15 @@ test("Viator onboarding UI supports real catalog mapping actions", async () => {
   assert.equal(source.includes("onDisconnectMapping"), true);
   assert.equal(source.includes("DropdownSelect"), true);
 });
+
+
+test("Viator v2 ticket quantities reject malformed and fractional values", async () => {
+  const server = await fs.readFile(
+    new URL("../app/utils/viator.server.js", import.meta.url),
+    "utf8",
+  );
+  assert.equal(server.includes("Number.parseInt(ticket?.quantity, 10)"), false);
+  assert.equal(server.includes("Number.isSafeInteger(quantity)"), true);
+  assert.equal(server.includes("Number.isSafeInteger(explicit)"), true);
+  assert.equal(server.includes('String(ticket.quantity).trim() === ""'), true);
+});
