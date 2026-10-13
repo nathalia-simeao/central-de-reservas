@@ -97,3 +97,13 @@ test("Viator v2 prices use validated per-category retail values without inventin
   assert.equal(server.includes("price: reservedPrice"), true);
   assert.equal(server.includes('return unsupportedPrice();'), true);
 });
+
+
+test("Viator reserve stores the offered price and requires a real hold expiration", async () => {
+  const source = await fs.readFile(new URL("../app/utils/viator.server.js", import.meta.url), "utf8");
+  assert.ok(source.includes("heldPrice: reservedPrice"));
+  assert.ok(source.includes("heldCurrency: currencyForTour(tour)"));
+  assert.ok(source.includes("priceHeldAt: new Date().toISOString()"));
+  assert.ok(source.includes("hold.holdExpiresAt &&"));
+  assert.equal(source.includes("(!hold.holdExpiresAt || new Date(hold.holdExpiresAt) > new Date())"), false);
+});
