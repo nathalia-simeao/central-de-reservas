@@ -1060,24 +1060,24 @@ export async function viatorBooking(body) {
 
     const holdReference = clean(data?.AvailabilityHoldReference);
     if (holdReference) {
-      const hold = await prisma.booking.findFirst({
-        where: {
-          id: holdReference,
-          platform: VIATOR_PLATFORM,
-          status: "PENDING",
-        },
-      });
+      // A supplied hold must never silently fall back to a second, direct booking.
+      // Confirm under the same tour lock as the capacity guard to avoid double use.
+      const confirmed = await prisma.$transaction(async (tx) => {
+        await lockTour(tx, tour.id);
+        const current = await tx.booking.findUnique({ where: { id: holdReference } });
+        if (
+          !current ||
+          current.platform !== VIATOR_PLATFORM ||
+          current.status !== "PENDING" ||
+          current.tourId !== tour.id ||
+          new Date(current.startTime).getTime() !== instant.getTime() ||
+          current.totalParticipants !== counts.totalParticipants ||
+          !current.holdExpiresAt ||
+          new Date(current.holdExpiresAt) <= new Date()
+        ) return null;
 
-      if (
-        hold &&
-        hold.tourId === tour.id &&
-        new Date(hold.startTime).getTime() === instant.getTime() &&
-        hold.totalParticipants === counts.totalParticipants &&
-        hold.holdExpiresAt &&
-        new Date(hold.holdExpiresAt) > new Date()
-      ) {
-        const confirmed = await prisma.booking.update({
-          where: { id: hold.id },
+        return tx.booking.update({
+          where: { id: current.id },
           data: {
             status: "CONFIRMED",
             customerName: travellerName(data),
@@ -1093,8 +1093,7 @@ export async function viatorBooking(body) {
             seniors: counts.seniors,
             totalParticipants: counts.totalParticipants,
             totalPrice: Number.isFinite(Number(data?.Amount))
-              ? Number(data.Amount).toFixed(2)
-              : null,
+              ? Number(data.Amount).toFixed(2) : null,
             currency: clean(data?.CurrencyCode)?.toUpperCase().slice(0, 3),
             syncStatus: "SYNCED",
             lastSyncedAt: new Date(),
@@ -1103,20 +1102,30 @@ export async function viatorBooking(body) {
             rawPayload: {
               viatorOperation: "booking",
               request: safeRawPayload(data),
+              heldPrice: current.rawPayload?.heldPrice ?? null,
+              heldCurrency: current.rawPayload?.heldCurrency ?? null,
+              priceHeldAt: current.rawPayload?.priceHeldAt ?? null,
             },
           },
         });
+      });
 
-        await enqueueBookingSync(prisma, {
-          eventId: `viator-book:${confirmed.id}:${bookingReference}`,
-          eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
-          booking: confirmed,
-          sourcePlatform: VIATOR_PLATFORM,
-          payload: { origin: "VIATOR_BOOK_FROM_HOLD" },
-        });
-
-        return bookingSuccessResponse(data, confirmed);
+      if (!confirmed) {
+        return viatorV1ErrorResponse(
+          data, "BookingResponse", "TGDS0032",
+          "Hold reference is expired, already consumed or does not match this booking.",
+          422,
+        );
       }
+
+      await enqueueBookingSync(prisma, {
+        eventId: `viator-book:${confirmed.id}:${bookingReference}`,
+        eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
+        booking: confirmed,
+        sourcePlatform: VIATOR_PLATFORM,
+        payload: { origin: "VIATOR_BOOK_FROM_HOLD" },
+      });
+      return bookingSuccessResponse(data, confirmed);
     }
 
     const guarded = await createBookingWithCapacityGuard(prisma, {
