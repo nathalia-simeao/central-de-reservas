@@ -82,3 +82,18 @@ test("Viator v2 ticket quantities reject malformed and fractional values", async
   assert.equal(server.includes("Number.isSafeInteger(explicit)"), true);
   assert.equal(server.includes('String(ticket.quantity).trim() === ""'), true);
 });
+
+
+test("Viator v2 prices use validated per-category retail values without inventing net rates", async () => {
+  const server = await fs.readFile(
+    new URL("../app/utils/viator.server.js", import.meta.url),
+    "utf8",
+  );
+  assert.equal(server.includes('type: "PER_PERSON_PRICE", prices'), true);
+  assert.equal(server.includes("retailPrice: amounts[0]"), true);
+  assert.equal(server.includes("netPrice:"), false);
+  assert.equal(server.includes("amounts.some((amount) => !Number.isFinite(amount) || amount < 0)"), true);
+  assert.equal(server.includes("price: viatorPriceForTour(tour)"), true);
+  assert.equal(server.includes("price: reservedPrice"), true);
+  assert.equal(server.includes('return unsupportedPrice();'), true);
+});
