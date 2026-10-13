@@ -104,7 +104,8 @@ test("Viator reserve stores the offered price and requires a real hold expiratio
   assert.ok(source.includes("heldPrice: reservedPrice"));
   assert.ok(source.includes("heldCurrency: currencyForTour(tour)"));
   assert.ok(source.includes("priceHeldAt: new Date().toISOString()"));
-  assert.ok(source.includes("hold.holdExpiresAt &&"));
+  assert.ok(source.includes("!current.holdExpiresAt ||"));
+  assert.ok(source.includes("new Date(current.holdExpiresAt) <= new Date()"));
   assert.equal(source.includes("(!hold.holdExpiresAt || new Date(hold.holdExpiresAt) > new Date())"), false);
 });
 
