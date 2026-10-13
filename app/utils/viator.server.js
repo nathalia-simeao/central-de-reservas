@@ -275,21 +275,30 @@ function participantCountsFromTickets(tickets, totalTravelers = null) {
 
   for (const ticket of tickets) {
     const type = category(ticket?.type);
-    const quantity = Number.parseInt(ticket?.quantity, 10);
+    const quantity = Number(ticket?.quantity);
 
     if (!INDIVIDUAL_CATEGORIES.includes(type)) {
       return { error: `Unsupported ticket type: ${type || "empty"}.` };
     }
-    if (!Number.isInteger(quantity) || quantity < 0) {
+    if (
+      ticket?.quantity === null ||
+      ticket?.quantity === undefined ||
+      String(ticket.quantity).trim() === "" ||
+      !Number.isSafeInteger(quantity) ||
+      quantity < 0
+    ) {
       return { error: `Invalid quantity for ${type}.` };
     }
     counts[type] += quantity;
   }
 
   const summed = Object.values(counts).reduce((total, value) => total + value, 0);
-  const explicit = Number.parseInt(totalTravelers, 10);
+  const explicit = totalTravelers == null ? null : Number(totalTravelers);
 
-  if (Number.isInteger(explicit) && explicit !== summed) {
+  if (
+    explicit !== null &&
+    (!Number.isSafeInteger(explicit) || explicit < 0 || explicit !== summed)
+  ) {
     return { error: "totalTravelers does not match ticket quantities." };
   }
 
