@@ -1409,10 +1409,19 @@ export async function viatorBookingCancellation(body) {
       );
     }
 
-    let canceled = booking;
-    if (booking.status !== "CANCELED") {
-      canceled = await prisma.booking.update({
-        where: { id: booking.id },
+    // Only the first cancellation changes the booking and publishes a sync event.
+    // The tour lock serializes cancellation with new reservations on the same slot.
+    const cancellation = await prisma.$transaction(async (tx) => {
+      await lockTour(tx, booking.tourId);
+      const current = await tx.booking.findUnique({ where: { id: booking.id } });
+      if (!current || current.platform !== VIATOR_PLATFORM) {
+        return { changed: false, booking: null };
+      }
+      if (current.status === "CANCELED") {
+        return { changed: false, booking: current };
+      }
+      const canceled = await tx.booking.update({
+        where: { id: current.id },
         data: {
           status: "CANCELED",
           cancelReason:
@@ -1429,7 +1438,18 @@ export async function viatorBookingCancellation(body) {
           },
         },
       });
+      return { changed: true, booking: canceled };
+    });
 
+    if (!cancellation.booking) {
+      return viatorV1ErrorResponse(
+        data, "BookingCancellationResponse", "TGDS0028",
+        "Booking not found.", 422,
+      );
+    }
+
+    if (cancellation.changed) {
+      const canceled = cancellation.booking;
       await enqueueBookingSync(prisma, {
         eventId: `viator-cancel:${canceled.id}:${bookingReference}`,
         eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
