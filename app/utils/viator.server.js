@@ -261,6 +261,31 @@ function unsupportedPrice() {
   return { type: "UNSUPPORTED_PRICE" };
 }
 
+// Use the active Shopify-synchronised variant prices as retail prices only.
+// Never invent netPrice or infer a supplier rate from the storefront retail price.
+function viatorPriceForTour(tour, requestedTypes = null) {
+  const supported = categoriesForTour(tour);
+  const selected = requestedTypes == null ? supported : [...new Set(requestedTypes)];
+  if (!selected.length || !selected.every((type) => supported.includes(type))) {
+    return unsupportedPrice();
+  }
+  const variants = (tour?.variants || []).filter((variant) => variant.active !== false);
+  const prices = [];
+  for (const type of selected) {
+    const candidates = variants.filter((variant) => category(variant.passengerCategory) === type);
+    const currencies = new Set(candidates.map((v) => String(v.currency || "").toUpperCase()));
+    const amounts = candidates.map((v) => v.price == null ? NaN : Number(v.price));
+    if (
+      candidates.length === 0 || currencies.size !== 1 ||
+      !currencies.has(currencyForTour(tour)) ||
+      amounts.some((amount) => !Number.isFinite(amount) || amount < 0) ||
+      new Set(amounts.map((amount) => amount.toFixed(2))).size !== 1
+    ) return unsupportedPrice();
+    prices.push({ types: [type], retailPrice: amounts[0] });
+  }
+  return { type: "PER_PERSON_PRICE", prices };
+}
+
 function participantCountsFromTickets(tickets, totalTravelers = null) {
   if (!Array.isArray(tickets)) {
     return { error: "tickets must be an array." };
@@ -462,7 +487,7 @@ function eventForAvailability(tour, timeKey, startTime, availability) {
       original: Math.max(0, Number(tour.maxCapacity ?? 20)),
       remaining: availability.remainingSeats,
     },
-    price: unsupportedPrice(),
+    price: viatorPriceForTour(tour),
   };
 
   const cutoff = bookingCutoffIso(tour, startTime);
@@ -887,6 +912,11 @@ export async function viatorReserve(body) {
     );
   }
 
+  const ticketTypes = body.tickets
+    .filter((ticket) => Number(ticket.quantity) > 0)
+    .map((ticket) => category(ticket.type));
+  const reservedPrice = viatorPriceForTour(tour, ticketTypes);
+
   const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
 
   try {
@@ -922,7 +952,7 @@ export async function viatorReserve(body) {
         expiration: holdExpiresAt.toISOString(),
         reference: `NOT-RESERVED-${crypto.randomUUID()}`,
         currency: currencyForTour(tour),
-        price: unsupportedPrice(),
+        price: reservedPrice,
       });
     }
 
@@ -939,7 +969,7 @@ export async function viatorReserve(body) {
       expiration: (guarded.booking.holdExpiresAt || holdExpiresAt).toISOString(),
       reference: guarded.booking.id,
       currency: currencyForTour(tour),
-      price: unsupportedPrice(),
+      price: reservedPrice,
     });
   } catch (error) {
     console.error("[VIATOR] reserve failed", error);
