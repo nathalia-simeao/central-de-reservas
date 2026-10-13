@@ -942,6 +942,9 @@ export async function viatorReserve(body) {
         rawPayload: {
           viatorOperation: "reserve",
           request: safeRawPayload(body),
+          heldPrice: reservedPrice,
+          heldCurrency: currencyForTour(tour),
+          priceHeldAt: new Date().toISOString(),
         },
       },
     });
@@ -1070,7 +1073,8 @@ export async function viatorBooking(body) {
         hold.tourId === tour.id &&
         new Date(hold.startTime).getTime() === instant.getTime() &&
         hold.totalParticipants === counts.totalParticipants &&
-        (!hold.holdExpiresAt || new Date(hold.holdExpiresAt) > new Date())
+        hold.holdExpiresAt &&
+        new Date(hold.holdExpiresAt) > new Date()
       ) {
         const confirmed = await prisma.booking.update({
           where: { id: hold.id },
