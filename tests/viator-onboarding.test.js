@@ -107,3 +107,16 @@ test("Viator reserve stores the offered price and requires a real hold expiratio
   assert.ok(source.includes("hold.holdExpiresAt &&"));
   assert.equal(source.includes("(!hold.holdExpiresAt || new Date(hold.holdExpiresAt) > new Date())"), false);
 });
+
+
+test("Viator booking consumes valid holds atomically and never retries invalid hold as direct booking", async () => {
+  const source = await fs.readFile(new URL("../app/utils/viator.server.js", import.meta.url), "utf8");
+  const holdBranch = source.slice(source.indexOf("const holdReference = clean(data?.AvailabilityHoldReference);"), source.indexOf("const guarded = await createBookingWithCapacityGuard", source.indexOf("const holdReference = clean(data?.AvailabilityHoldReference);")));
+  assert.ok(holdBranch.includes("await prisma.$transaction(async (tx) =>"));
+  assert.ok(holdBranch.includes("await lockTour(tx, tour.id)"));
+  assert.ok(holdBranch.includes('current.status !== "PENDING"'));
+  assert.ok(holdBranch.includes("new Date(current.holdExpiresAt) <= new Date()"));
+  assert.ok(holdBranch.includes("heldPrice: current.rawPayload?.heldPrice ?? null"));
+  assert.ok(holdBranch.includes("if (!confirmed)"));
+  assert.ok(holdBranch.includes("return viatorV1ErrorResponse("));
+});
