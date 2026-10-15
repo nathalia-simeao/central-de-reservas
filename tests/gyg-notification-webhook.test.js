@@ -14,3 +14,9 @@ test("GYG optional notification webhook uses inbound Basic Auth and safe respons
   assert.equal(source.includes('prisma.tour.update'), false);
   assert.equal(source.includes('shopifyProductUpdate'), false);
 });
+
+
+test("GYG portal duplicate-prefix notify endpoint maps to canonical handler", async () => {
+  const alias = await fs.readFile(new URL("../app/routes/1.1.notify.jsx", import.meta.url), "utf8");
+  assert.ok(alias.includes('export { action } from "./1.notify"'));
+});
