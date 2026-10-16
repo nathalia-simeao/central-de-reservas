@@ -87,7 +87,7 @@ export default function GygDeactivationAlerts({ lang = "pt" }) {
         aria-label={tr(`Notificações GetYourGuide: ${unread} não lidas`, `GetYourGuide notifications: ${unread} unread`)}
         title={tr("Notificações", "Notifications")}
         onClick={() => setOpen(true)}
-        style={{ position: "relative", padding: "10px 12px" }}>
+        style={{ position: "relative", width: 42, height: 42, minWidth: 42, maxWidth: 42, flex: "0 0 42px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
         </svg>
