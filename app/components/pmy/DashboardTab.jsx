@@ -1,5 +1,4 @@
 import TourCountryFlag from "./TourCountryFlag";
-import GygDeactivationAlerts from "./GygDeactivationAlerts";
 import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 
@@ -1758,7 +1757,6 @@ export default function DashboardTab(props) {
 {/* ===== TAB: DASHBOARD ===== */}
           {activeTab==='dashboard' && (
             <div className="pmy-dashboard">
-              <GygDeactivationAlerts lang={lang} />
               {bookingsLoading ? (
                 <div className="pmy-ds-actions pmy-ds-mb-2">
                   <Badge tone="neutral">
