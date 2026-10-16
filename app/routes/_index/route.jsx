@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import DashboardTab from "../../components/pmy/DashboardTab";
+import GygDeactivationAlerts from "../../components/pmy/GygDeactivationAlerts";
 import AgendaTab from "../../components/pmy/AgendaTab";
 import IntegrationsTab from "../../components/pmy/IntegrationsTab";
 import GuidesTab from "../../components/pmy/GuidesTab";
@@ -2592,6 +2593,8 @@ function CentralDeReservasContent() {
               </div>
             </div>
             {activeTab==='dashboard' && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <GygDeactivationAlerts lang={lang} />
               <div className="pmy-date-wrapper">
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
@@ -2635,6 +2638,7 @@ function CentralDeReservasContent() {
                     </div>
                   </>
                 )}
+              </div>
               </div>
             )}
           </div>
