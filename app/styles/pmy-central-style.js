@@ -145,6 +145,29 @@ export function buildCentralStyles(theme) {
       .pmy-tag.site { background:#e6f2e6; color:var(--primary-green); }
       .pmy-tag-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
   
+      .pmy-header-notification-actions {
+        display:inline-flex;
+        align-items:center;
+        justify-content:flex-end;
+        gap:10px;
+        margin-left:auto;
+        flex:0 0 auto;
+        width:auto;
+        min-width:0;
+        white-space:nowrap;
+      }
+      .pmy-header-notification-actions > .pmy-date-btn {
+        width:42px !important;
+        min-width:42px;
+        max-width:42px;
+        height:42px !important;
+        padding:0 !important;
+        border-radius:50% !important;
+        flex:0 0 42px !important;
+        font-size:14px !important;
+        overflow:visible !important;
+      }
+      .pmy-header-notification-actions > .pmy-date-wrapper { flex:0 0 auto; width:auto; }
       .pmy-date-wrapper { position:relative; z-index:101; }
       .pmy-date-btn { display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid rgba(0,0,0,0.1); padding:10px 18px; border-radius:8px; font-weight:600; color:var(--text-dark); cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.02); transition:0.2s; }
       .pmy-date-btn:hover { border-color:var(--primary-green); }
