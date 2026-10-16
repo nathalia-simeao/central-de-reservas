@@ -2593,9 +2593,9 @@ function CentralDeReservasContent() {
               </div>
             </div>
             {activeTab==='dashboard' && (
-              <div className="pmy-header-notification-actions">
+              <div className="pmy-header-notification-actions" style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexWrap: "nowrap", gap: 10, width: "auto", flex: "0 0 auto", marginLeft: "auto" }}>
                 <GygDeactivationAlerts lang={lang} />
-                <div className="pmy-date-wrapper">
+                <div className="pmy-date-wrapper" style={{ display: "inline-flex", flex: "0 0 auto", width: "auto" }}>
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
                   <>
