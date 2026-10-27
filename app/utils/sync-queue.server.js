@@ -379,12 +379,28 @@ async function claimNextJob(prisma, workerId) {
   return null;
 }
 
-function classifyGygResult(result) {
+export function classifyGygResult(result) {
+  const reason = String(result?.reason || "");
+  const deliveryResults = Array.isArray(result?.results) ? result.results : [];
+  const blockedReasons = new Set([
+    "GYG_NOTIFY_MANUAL_SANDBOX_ONLY",
+    "GYG_NOTIFY_SANDBOX_NOT_ENABLED",
+    "OUTGOING_GYG_NOT_CONFIGURED",
+  ]);
+
+  // Until outbound notifications are explicitly enabled, keep jobs visible as
+  // BLOCKED instead of exhausting retry attempts or claiming delivery.
+  if (
+    blockedReasons.has(reason) ||
+    deliveryResults.some((item) => blockedReasons.has(String(item?.reason || "")))
+  ) {
+    return { status: "BLOCKED", result };
+  }
+
   if (result?.sent === true) {
     return { status: "COMPLETED", result };
   }
 
-  const reason = String(result?.reason || "");
   const skippableReasons = new Set([
     "PUSH_NOT_REQUIRED",
     "TOUR_NOT_MAPPED_TO_GYG",
@@ -401,7 +417,7 @@ function classifyGygResult(result) {
     return { status: "SKIPPED", result };
   }
 
-  const deliveryResults = Array.isArray(result?.results) ? result.results : [];
+
   if (
     deliveryResults.length > 0 &&
     deliveryResults.every((item) =>
@@ -409,10 +425,6 @@ function classifyGygResult(result) {
     )
   ) {
     return { status: "SKIPPED", result };
-  }
-
-  if (reason === "OUTGOING_GYG_NOT_CONFIGURED") {
-    return { status: "BLOCKED", result };
   }
 
   if (result?.status && !isRetryableHttpStatus(result.status)) {
