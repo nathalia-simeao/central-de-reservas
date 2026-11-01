@@ -447,7 +447,9 @@ async function reserveGroup({
     const error = new Error(
       result.reason === "BLOCKED_BY_AGENDA"
         ? "This departure is blocked and cannot be booked."
-        : `There are not enough seats for this departure. ${result.availability?.remainingSeats ?? 0} seat(s) remain.`,
+        : result.languageRejected
+          ? result.message
+          : `There are not enough seats for this departure. ${result.availability?.remainingSeats ?? 0} seat(s) remain.`,
     );
     error.status = 409;
     error.code =

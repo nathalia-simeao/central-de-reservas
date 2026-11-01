@@ -5782,3 +5782,16 @@
 .pmy-gyg-sandbox-test__fields input{height:38px;width:100%;min-width:0;border:1px solid var(--pmy-border,#dce5dd);border-radius:9px;padding:0 10px;background:var(--pmy-surface,#fff);color:inherit;font:inherit;font-size:12px}
 .pmy-gyg-sandbox-test__fields input:focus-visible{outline:2px solid #087b29;outline-offset:1px}
 .pmy-gyg-sandbox-test__result{margin-top:12px;border-top:1px solid var(--pmy-border,#dce5dd);padding-top:10px;overflow-wrap:anywhere}
+
+/* Vagas por idioma (LanguageQuotaEditor) */
+.pmy-language-quota__slot { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.pmy-language-quota__field { display: grid; gap: 4px; font-size: 12px; min-width: 156px; flex: 1 1 156px; }
+.pmy-language-quota__add { margin-top: 10px; max-width: 260px; }
+.pmy-language-quota__footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.pmy-language-quota__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pmy-language-quota__remove { border-color: #bd2020; color: #bd2020; }
+.pmy-language-quota__error { display: block; color: #bd2020; font-size: 12px; margin-top: 8px; }
+.pmy-language-quota__rules { display: grid; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--pmy-border, #dfe6e1); font-size: 12px; }
+.pmy-language-quota__rule { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; text-align: left; padding: 8px 10px; border: 1px solid var(--pmy-border, #dfe6e1); border-radius: 9px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.pmy-language-quota__rule:hover, .pmy-language-quota__rule:focus-visible { border-color: #0b7727; outline: none; }
+.pmy-shared-seats-languages { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }

@@ -24,6 +24,7 @@ import { localSlotToInstant } from "../utils/gyg-v1.server";
 import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability-metafields.server";
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
+import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -1019,8 +1020,12 @@ export const action = async ({ request }) => {
       const result = await getCentralAvailability(prisma, {
         tourId:tour.id, startTime, platform:"central",
       });
+      const quota = result.languageQuota;
       return json({success:true,capacity:result.capacity,occupiedSeats:result.occupiedSeats,
-        remainingSeats:Math.max(0,result.capacity-result.occupiedSeats),date,time});
+        remainingSeats:Math.max(0,result.capacity-result.occupiedSeats),date,time,
+        languages: quota ? quota.languages : null,
+        languageRule: quota ? { date: quota.ruleDate, unassignedSeats: quota.unassignedSeats,
+          poolRemaining: quota.poolRemaining } : null});
     } catch (error) {
       console.error("[PMY] getSharedSeats failed:",error);
       return json({success:false,error:"Falha ao consultar vagas."},{status:500});
@@ -1065,6 +1070,53 @@ export const action = async ({ request }) => {
     } catch(e) {
       console.error("[PMY] saveChannelCapacity error:",e);
       return json({success:false,error:"Não foi possível salvar o limite do canal."},{status:500});
+    }
+  }
+
+  if (_action === "saveLanguageQuotas") {
+    try {
+      const shopifyProductId = String(formData.get("tourId") || "");
+      const date = String(formData.get("date") || "").trim() || null;
+      const time = String(formData.get("time") || "");
+      let languages = [];
+      try {
+        languages = JSON.parse(String(formData.get("languages") || "[]"));
+      } catch {
+        return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+      }
+      if (!Array.isArray(languages) || languages.length > 30) {
+        return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+      }
+      const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
+      if (!tour) return json({success:false,error:"Passeio mestre não encontrado."},{status:404});
+
+      let next;
+      try {
+        next = upsertLanguageQuotaRule(tour.languageSlotQuotas, { date, time, languages });
+      } catch (validationError) {
+        return json({ success:false, error:validationError.message }, { status:400 });
+      }
+
+      await prisma.tour.update({
+        where:{ id:tour.id },
+        data:{ languageSlotQuotas: next },
+      });
+      await enqueueAvailabilitySync(prisma, {
+        eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
+        tourId: tour.id, scope:"TOUR", sourcePlatform:"CENTRAL",
+        force:true, aggregateType:"TOUR", aggregateId:tour.id,
+        payload:{ languageQuota:{ date, time, languages } },
+      });
+      return json({
+        success:true,
+        rules:next,
+        message: languages.length
+          ? "Vagas por idioma salvas."
+          : "Controle por idioma removido deste horário.",
+      });
+    } catch (e) {
+      console.error("[PMY] saveLanguageQuotas error:", e);
+      return json({success:false,error:"Não foi possível salvar as vagas por idioma."},{status:500});
     }
   }
 

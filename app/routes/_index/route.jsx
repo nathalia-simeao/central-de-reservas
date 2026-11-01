@@ -13,6 +13,7 @@ import CentralModalLayer from "../../components/pmy/CentralModalLayer";
 import { buildDashboardViewModel } from "../../utils/dashboard-view-model";
 import { createCalendarModel } from "../../utils/calendar-model";
 import { extractTourLanguages } from "../../utils/tour-languages";
+import { normalizeLanguageQuotaRules } from "../../utils/language-quotas";
 import { useBookingCheckout } from "../../hooks/useBookingCheckout";
 import { buildCentralStyles } from "../../styles/pmy-central-style";
 import { uploadFileToPmyMediaLibrary } from "../../utils/media-library.client";
@@ -1922,6 +1923,30 @@ function CentralDeReservasContent() {
     }
   };
 
+  const [languageQuotaRules, setLanguageQuotaRules] = useState(() =>
+    Object.fromEntries((tours || []).map(tour => [
+      tour.shopifyProductId || tour.id,
+      normalizeLanguageQuotaRules(tour.languageSlotQuotas),
+    ])),
+  );
+  const handleLanguageQuotaSave = async (tourId, { date, time, languages }) => {
+    const fd = new FormData();
+    fd.append("_action", "saveLanguageQuotas");
+    fd.append("tourId", tourId);
+    fd.append("date", date || "");
+    fd.append("time", time);
+    fd.append("languages", JSON.stringify(languages));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setLanguageQuotaRules(prev => ({ ...prev, [tourId]: normalizeLanguageQuotaRules(result.rules) }));
+    notify(
+      languages.length
+        ? ui("Vagas por idioma salvas.", "Language seats saved.")
+        : ui("Controle por idioma removido.", "Language control removed."),
+      "success",
+    );
+  };
+
   const handleCapacityChange = async (id, change) => {
     const cur = tourCapacities[id] !== undefined ? tourCapacities[id] : 20;
     const next = Math.min(999, Math.max(0, cur + change));
@@ -2660,6 +2685,7 @@ function CentralDeReservasContent() {
             currentYear, custEmail, custLang, custName, custPhone, draftOrderError,
             draftOrderInfo, draftOrderLoading, generatedLink, getBookingTimesForTour,
             getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange, handleChannelCapacityChange, channelCapacityLimits,
+            handleLanguageQuotaSave, languageQuotaRules,
             handleCreateBlock, handleGeneratePaymentLink, handleNextMonth, handlePrevMonth,
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
             imageShape, platformConnections, renderCalendarDays, reservationPlatforms,

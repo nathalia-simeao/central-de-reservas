@@ -338,7 +338,11 @@ export const action = async ({ request }) => {
       const error = new Error(
         holdResult.reason === "BLOCKED_BY_AGENDA"
           ? "Esta saída está bloqueada na Agenda Central e não pode gerar checkout."
-          : `Não há vagas suficientes para este checkout. Restam ${holdResult.availability?.remainingSeats ?? 0} vaga(s).`,
+          : holdResult.languageRejected
+            ? holdResult.availability?.languageAllowed === false
+              ? `Não há vagas liberadas em ${language} para esta saída.`
+              : `Não há vagas suficientes em ${language} para esta saída. Restam ${holdResult.availability?.remainingSeats ?? 0} vaga(s) nesse idioma.`
+            : `Não há vagas suficientes para este checkout. Restam ${holdResult.availability?.remainingSeats ?? 0} vaga(s).`,
       );
       error.status = 409;
       error.code =

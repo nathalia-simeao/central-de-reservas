@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DatePicker, DropdownSelect } from "./PmyUI";
+import { languageLabel } from "../../utils/tour-languages";
 
 export default function SharedSeatsIndicator({tourId, capacity, hours = [], limits = {}, lang = "pt"}) {
   const en = lang === "en";
@@ -34,7 +35,7 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
     <div style={{display:"flex",flexWrap:"wrap",alignItems:"end",gap:8}}>
       <div style={{display:"grid",gap:4,fontSize:12,minWidth:180}}>
         <span>{en?"Departure date":"Data da saída"}</span>
-        <DatePicker value={date} onChange={v=>{setDate(v);setResult(null);}} locale={en?"en-GB":"pt-PT"} placeholder={en?"dd/mm/yyyy":"dd/mm/aaaa"}/>
+        <DatePicker value={date} onChange={v=>{setDate(v?.target?.value ?? v ?? "");setResult(null);}} locale={en?"en-GB":"pt-PT"} placeholder={en?"dd/mm/yyyy":"dd/mm/aaaa"}/>
       </div>
       <div style={{display:"grid",gap:4,fontSize:12,minWidth:156}}>
         <span>{en?"Departure time":"Horário"}</span>
@@ -51,6 +52,11 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
       <span>{en?"Capacity":"Capacidade"}: <b>{result.capacity}</b></span>
       <span>{en?"Reserved (all channels)":"Reservadas (todos os canais)"}: <b>{result.occupiedSeats}</b></span>
       <span>{en?"Available seats":"Vagas disponíveis"}: <b>{result.remainingSeats}</b></span>
+    </div>}
+    {result?.languages&&<div aria-live="polite" className="pmy-shared-seats-languages">
+      <strong>{en?"By language":"Por idioma"}{result.languageRule?.date?"":en?" (every-day rule)":" (regra de todos os dias)"}:</strong>
+      {result.languages.map(item=><span key={item.key}>{languageLabel(item.key,lang)}: <b>{item.remainingSeats}</b>/{item.seats}</span>)}
+      {result.languageRule?.unassignedSeats>0&&<span>{en?"Bookings without language":"Reservas sem idioma"}: <b>{result.languageRule.unassignedSeats}</b></span>}
     </div>}
     <small style={{opacity:.7}}>{en?"Availability is per departure, using bookings from all channels.":"Vagas calculadas por data e horário, considerando reservas de todos os canais."}</small>
   </section>;

@@ -5,6 +5,7 @@
  * before offering a PMY tour slot.
  *
  * GET /api/availability?platform=shopify&product_id=<external-id>&date=YYYY-MM-DD&time=HH:MM&quantity=4
+ * Optional: &language=Italiano — returns the seats released for that language.
  */
 import db from "../db.server";
 import { getActiveAvailabilityBlocks, normalizePlatform } from "../utils/availability.server";
@@ -63,6 +64,7 @@ export const loader = async ({ request }) => {
       0,
       Number.parseInt(url.searchParams.get("quantity") || "0", 10) || 0,
     );
+    const language = String(url.searchParams.get("language") || "").trim().slice(0, 80) || null;
 
     let availability;
     if (startTime) {
@@ -71,6 +73,7 @@ export const loader = async ({ request }) => {
         startTime,
         platform,
         requestedSeats,
+        language,
       });
     } else {
       const dayStart = new Date(`${dateKey}T00:00:00.000Z`);
@@ -98,6 +101,7 @@ export const loader = async ({ request }) => {
         timeKey,
         platform,
         requestedSeats,
+        language,
       });
     }
 
@@ -116,6 +120,13 @@ export const loader = async ({ request }) => {
       occupiedSeats: availability.occupiedSeats,
       remainingSeats: availability.remainingSeats,
       requestedSeats: availability.requestedSeats,
+      languageLimited: availability.languageLimited,
+      languageAllowed: availability.languageAllowed,
+      languages: availability.languageQuota
+        ? availability.languageQuota.languages.map(({ key, label, seats, occupiedSeats, remainingSeats }) => ({
+            key, label, seats, occupiedSeats, remainingSeats,
+          }))
+        : null,
       block: blockingRule
         ? {
             id: blockingRule.id,

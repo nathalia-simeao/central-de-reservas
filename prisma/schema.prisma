@@ -47,6 +47,8 @@ model Tour {
   shopifySnapshot        Json?
   maxCapacity            Int           @default(20)
   platformCapacityLimits Json?
+  // Vagas liberadas por idioma em cada saída. Ver app/utils/language-quotas.js.
+  languageSlotQuotas     Json?
   capacitySource         String        @default("DEFAULT")
   scheduleSlots          String[]      @default([])
   scheduleSource         String        @default("UNCONFIGURED")

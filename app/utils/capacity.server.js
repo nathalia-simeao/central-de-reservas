@@ -16,6 +16,7 @@ import {
   normalizePlatform,
 } from "./availability.server";
 import { classifyCommercialSource } from "./commercial-source.server";
+import { evaluateLanguageQuota, languageQuotaRuleForSlot } from "./language-quotas.js";
 
 const ACTIVE_BOOKING_STATUSES = ["CONFIRMED", "PENDING"];
 
@@ -140,6 +141,21 @@ function getChannelCapacity(tour, bookings, matchesSlot, platform, now, physical
   };
 }
 
+function getLanguageCapacity(tour, bookings, matchesSlot, dateKey, timeKey, language, now, channelRemaining) {
+  const rule = languageQuotaRuleForSlot(tour.languageSlotQuotas, dateKey, timeKey);
+  if (!rule) return { remainingSeats: channelRemaining, languageQuota: null };
+  const languageQuota = evaluateLanguageQuota(
+    rule,
+    bookings,
+    booking => (matchesSlot(booking) ? bookingSeatCount(booking, now) : 0),
+    language,
+  );
+  return {
+    remainingSeats: Math.min(channelRemaining, languageQuota.remainingSeats),
+    languageQuota,
+  };
+}
+
 export function calculateAvailabilityFromLoaded({
   tour,
   bookings = [],
@@ -147,6 +163,7 @@ export function calculateAvailabilityFromLoaded({
   startTime,
   platform,
   requestedSeats = 0,
+  language = null,
   now = new Date(),
 }) {
   if (!tour) throw new Error("Tour not found");
@@ -177,7 +194,12 @@ export function calculateAvailabilityFromLoaded({
     booking => bookingMatchesSlot(booking, parts, timeZone),
     normalizedPlatform, now, Math.max(0, capacity - occupiedSeats),
   );
-  const remainingSeats = blockingRule ? 0 : channel.remainingSeats;
+  const languageCapacity = getLanguageCapacity(
+    tour, bookings,
+    booking => bookingMatchesSlot(booking, parts, timeZone),
+    parts.dateKey, parts.timeKey, language, now, channel.remainingSeats,
+  );
+  const remainingSeats = blockingRule ? 0 : languageCapacity.remainingSeats;
 
   const requested = Math.max(0, positiveInt(requestedSeats, 0));
 
@@ -190,6 +212,11 @@ export function calculateAvailabilityFromLoaded({
     occupiedSeats,
     channelLimit: channel.channelLimit,
     channelOccupiedSeats: channel.channelOccupiedSeats,
+    languageQuota: languageCapacity.languageQuota,
+    languageLimited: Boolean(languageCapacity.languageQuota),
+    languageAllowed: languageCapacity.languageQuota
+      ? languageCapacity.languageQuota.languageAllowed
+      : true,
     remainingSeats,
     requestedSeats: requested,
     available: !blockingRule && remainingSeats > 0,
@@ -209,6 +236,7 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
   timeKey,
   platform,
   requestedSeats = 0,
+  language = null,
   now = new Date(),
 }) {
   if (!tour) throw new Error("Tour not found");
@@ -247,7 +275,15 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
     },
     normalizedPlatform, now, Math.max(0, capacity - occupiedSeats),
   );
-  const remainingSeats = blockingRule ? 0 : channel.remainingSeats;
+  const languageCapacity = getLanguageCapacity(
+    tour, bookings,
+    booking => {
+      const value = getDatePartsInTimeZone(booking.startTime, tour.timezone || "Europe/Lisbon");
+      return value?.dateKey === dateKey && value?.timeKey === timeKey;
+    },
+    dateKey, timeKey, language, now, channel.remainingSeats,
+  );
+  const remainingSeats = blockingRule ? 0 : languageCapacity.remainingSeats;
 
   const requested = Math.max(0, positiveInt(requestedSeats, 0));
 
@@ -260,6 +296,11 @@ export function calculateAvailabilityForCalendarSlotFromLoaded({
     occupiedSeats,
     channelLimit: channel.channelLimit,
     channelOccupiedSeats: channel.channelOccupiedSeats,
+    languageQuota: languageCapacity.languageQuota,
+    languageLimited: Boolean(languageCapacity.languageQuota),
+    languageAllowed: languageCapacity.languageQuota
+      ? languageCapacity.languageQuota.languageAllowed
+      : true,
     remainingSeats,
     requestedSeats: requested,
     available: !blockingRule && remainingSeats > 0,
@@ -287,6 +328,7 @@ export async function getCentralAvailability(
     platform = "central",
     requestedSeats = 0,
     excludeBookingId = null,
+    language = null,
   },
 ) {
   const tour = await prisma.tour.findUnique({
@@ -313,7 +355,20 @@ export async function getCentralAvailability(
     startTime,
     platform,
     requestedSeats,
+    language,
   });
+}
+
+/** Human message for a rejected booking, mentioning the language when relevant. */
+export function capacityRejectionMessage(availability, language) {
+  const quota = availability?.languageQuota;
+  if (quota && language) {
+    if (!quota.languageAllowed) {
+      return `No seats have been released for ${language} on this departure.`;
+    }
+    return `Only ${availability.remainingSeats} seat(s) remain in ${language} for this departure.`;
+  }
+  return `Only ${availability?.remainingSeats ?? 0} seat(s) remain.`;
 }
 
 async function lockTourCapacity(tx, tourId) {
@@ -442,6 +497,7 @@ export async function convertBookingHoldWithCapacityGuard(
           platform: bookingPlatform,
           requestedSeats: seats,
           excludeBookingId: hold.id,
+          language: bookingData?.language || hold.language || null,
         });
 
         if (!availability.canAccept) {
@@ -554,10 +610,12 @@ export async function createBookingWithCapacityGuard(
     externalBookingId = null,
     requestedSeats,
     bookingData,
+    language = null,
   },
 ) {
   const seats = positiveInt(requestedSeats, 0);
   const bookingPlatform = String(platform || "CENTRAL").trim().toUpperCase();
+  const bookingLanguage = language || bookingData?.language || null;
 
   if (seats < 1) {
     return {
@@ -616,6 +674,7 @@ export async function createBookingWithCapacityGuard(
         startTime,
         platform: bookingPlatform,
         requestedSeats: seats,
+        language: bookingLanguage,
       });
 
       if (!availability.canAccept) {
@@ -624,9 +683,10 @@ export async function createBookingWithCapacityGuard(
           reason: availability.blocked
             ? "BLOCKED_BY_AGENDA"
             : "INSUFFICIENT_CAPACITY",
+          languageRejected: Boolean(availability.languageQuota && bookingLanguage),
           message: availability.blocked
             ? "Timeslot is blocked by the PMY Central Agenda."
-            : `Only ${availability.remainingSeats} seat(s) remain.`,
+            : capacityRejectionMessage(availability, bookingLanguage),
           availability,
         };
       }
