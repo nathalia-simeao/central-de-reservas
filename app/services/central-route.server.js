@@ -32,6 +32,74 @@ const json = (body, init) => data(body, init);
 
 export { loader } from "./central-loader.server";
 
+const ASSIGNMENT_INCLUDE = {
+  guide: true,
+  tour: {
+    select: {
+      id: true,
+      title: true,
+      shopifyProductId: true,
+      timezone: true,
+      durationMinutes: true,
+    },
+  },
+};
+
+// Escala um guia numa saída (passeio + horário). Uma saída tem no máximo um guia
+// e um guia não pode estar em dois passeios no mesmo horário.
+async function assignGuideToDeparture({ tour, guide, startTime }) {
+  const [guideConflict, departureAssignment] = await Promise.all([
+    prisma.guideAssignment.findFirst({
+      where: {
+        guideId: guide.id,
+        startTime,
+        status: "ASSIGNED",
+        tourId: { not: tour.id },
+      },
+      include: { tour: { select: { title: true } } },
+    }),
+    prisma.guideAssignment.findFirst({
+      where: {
+        tourId: tour.id,
+        startTime,
+        status: "ASSIGNED",
+      },
+    }),
+  ]);
+
+  if (guideConflict) {
+    return {
+      ok: false,
+      status: 409,
+      code: "GUIDE_ALREADY_ASSIGNED",
+      error: `${guide.name} já está escalado(a) para ${guideConflict.tour?.title || "outro tour"} neste mesmo horário.`,
+    };
+  }
+
+  const assignment = departureAssignment
+    ? await prisma.guideAssignment.update({
+        where: { id: departureAssignment.id },
+        data: {
+          guideId: guide.id,
+          status: "ASSIGNED",
+          source: "MANUAL",
+        },
+        include: ASSIGNMENT_INCLUDE,
+      })
+    : await prisma.guideAssignment.create({
+        data: {
+          guideId: guide.id,
+          tourId: tour.id,
+          startTime,
+          status: "ASSIGNED",
+          source: "MANUAL",
+        },
+        include: ASSIGNMENT_INCLUDE,
+      });
+
+  return { ok: true, assignment };
+}
+
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -650,78 +718,14 @@ export const action = async ({ request }) => {
         );
       }
 
-      const [guideConflict, departureAssignment] = await Promise.all([
-        prisma.guideAssignment.findFirst({
-          where: {
-            guideId,
-            startTime,
-            status: "ASSIGNED",
-            tourId: { not: tour.id },
-          },
-          include: { tour: { select: { title: true } } },
-        }),
-        prisma.guideAssignment.findFirst({
-          where: {
-            tourId: tour.id,
-            startTime,
-            status: "ASSIGNED",
-          },
-        }),
-      ]);
-
-      if (guideConflict) {
+      const assigned = await assignGuideToDeparture({ tour, guide, startTime });
+      if (!assigned.ok) {
         return json(
-          {
-            success: false,
-            code: "GUIDE_ALREADY_ASSIGNED",
-            error: `${guide.name} já está escalado(a) para ${guideConflict.tour?.title || "outro tour"} neste mesmo horário.`,
-          },
-          { status: 409 },
+          { success: false, code: assigned.code, error: assigned.error },
+          { status: assigned.status },
         );
       }
-
-      const assignment = departureAssignment
-        ? await prisma.guideAssignment.update({
-            where: { id: departureAssignment.id },
-            data: {
-              guideId,
-              status: "ASSIGNED",
-              source: "MANUAL",
-            },
-            include: {
-              guide: true,
-              tour: {
-                select: {
-                  id: true,
-                  title: true,
-                  shopifyProductId: true,
-                  timezone: true,
-                  durationMinutes: true,
-                },
-              },
-            },
-          })
-        : await prisma.guideAssignment.create({
-            data: {
-              guideId,
-              tourId: tour.id,
-              startTime,
-              status: "ASSIGNED",
-              source: "MANUAL",
-            },
-            include: {
-              guide: true,
-              tour: {
-                select: {
-                  id: true,
-                  title: true,
-                  shopifyProductId: true,
-                  timezone: true,
-                  durationMinutes: true,
-                },
-              },
-            },
-          });
+      const assignment = assigned.assignment;
 
       return json({
         success: true,
@@ -1077,45 +1081,134 @@ export const action = async ({ request }) => {
     try {
       const shopifyProductId = String(formData.get("tourId") || "");
       const date = String(formData.get("date") || "").trim() || null;
-      const time = String(formData.get("time") || "");
-      let languages = [];
+      let times = [];
       try {
-        languages = JSON.parse(String(formData.get("languages") || "[]"));
+        times = JSON.parse(String(formData.get("times") || "[]"));
       } catch {
-        return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+        times = [];
       }
-      if (!Array.isArray(languages) || languages.length > 30) {
-        return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+      if (!Array.isArray(times)) times = [];
+      const legacyTime = String(formData.get("time") || "").trim();
+      if (!times.length && legacyTime) times = [legacyTime];
+      times = [...new Set(times.map((value) => String(value || "").trim()).filter(Boolean))];
+      if (!times.length || times.length > 48) {
+        return json({ success:false, error:"Selecione pelo menos um horário." }, { status:400 });
       }
+
+      const skipQuotas = String(formData.get("skipQuotas") || "") === "1";
+      let languages = [];
+      if (!skipQuotas) {
+        try {
+          languages = JSON.parse(String(formData.get("languages") || "[]"));
+        } catch {
+          return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+        }
+        if (!Array.isArray(languages) || languages.length > 30) {
+          return json({ success:false, error:"Lista de idiomas inválida." }, { status:400 });
+        }
+      }
+
+      // guideId ausente = não mexer na escala; "" = retirar o guia; id = escalar.
+      const guideField = formData.has("guideId") ? String(formData.get("guideId") || "").trim() : null;
+      if (guideField !== null && !date) {
+        return json({ success:false, error:"Escolha uma data para escalar o guia." }, { status:400 });
+      }
+
       const tour = await resolveTourByPlatformId(prisma, "SHOPIFY", shopifyProductId);
       if (!tour) return json({success:false,error:"Passeio mestre não encontrado."},{status:404});
 
-      let next;
-      try {
-        next = upsertLanguageQuotaRule(tour.languageSlotQuotas, { date, time, languages });
-      } catch (validationError) {
-        return json({ success:false, error:validationError.message }, { status:400 });
+      const guide = guideField
+        ? await prisma.guide.findUnique({ where: { id: guideField } })
+        : null;
+      if (guideField && !guide) {
+        return json({ success:false, error:"Guia não encontrado." }, { status:404 });
       }
 
-      await prisma.tour.update({
-        where:{ id:tour.id },
-        data:{ languageSlotQuotas: next },
-      });
-      await enqueueAvailabilitySync(prisma, {
-        eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
-        tourId: tour.id, scope:"TOUR", sourcePlatform:"CENTRAL",
-        force:true, aggregateType:"TOUR", aggregateId:tour.id,
-        payload:{ languageQuota:{ date, time, languages } },
-      });
+      const timeZone = tour.timezone || "Europe/Lisbon";
+      const startTimes = new Map();
+      if (date) {
+        for (const time of times) {
+          const startTime = localSlotToInstant(date, time, timeZone);
+          if (!startTime) {
+            return json({ success:false, error:`Data ou horário inválido (${time}).` }, { status:400 });
+          }
+          startTimes.set(time, startTime);
+        }
+      }
+
+      let next = tour.languageSlotQuotas;
+      if (!skipQuotas) {
+        try {
+          for (const time of times) {
+            next = upsertLanguageQuotaRule(next, { date, time, languages });
+          }
+        } catch (validationError) {
+          return json({ success:false, error:validationError.message }, { status:400 });
+        }
+
+        await prisma.tour.update({
+          where:{ id:tour.id },
+          data:{ languageSlotQuotas: next },
+        });
+        await enqueueAvailabilitySync(prisma, {
+          eventType: SYNC_EVENT_TYPES.CAPACITY_CHANGED,
+          tourId: tour.id, scope:"TOUR", sourcePlatform:"CENTRAL",
+          force:true, aggregateType:"TOUR", aggregateId:tour.id,
+          payload:{ languageQuota:{ date, times, languages } },
+        });
+      }
+
+      const assignments = [];
+      const removedAssignmentIds = [];
+      const guideErrors = [];
+      if (guideField !== null) {
+        for (const time of times) {
+          const startTime = startTimes.get(time);
+          if (guide) {
+            const assigned = await assignGuideToDeparture({ tour, guide, startTime });
+            if (assigned.ok) assignments.push(assigned.assignment);
+            else guideErrors.push(`${time}: ${assigned.error}`);
+          } else {
+            const current = await prisma.guideAssignment.findMany({
+              where: { tourId: tour.id, startTime, status: "ASSIGNED" },
+              select: { id: true },
+            });
+            if (current.length) {
+              await prisma.guideAssignment.updateMany({
+                where: { id: { in: current.map((item) => item.id) } },
+                data: { status: "CANCELLED" },
+              });
+              removedAssignmentIds.push(...current.map((item) => item.id));
+            }
+          }
+        }
+      }
+
+      const parts = [];
+      if (!skipQuotas) {
+        parts.push(languages.length
+          ? `Vagas por idioma salvas em ${times.length} horário(s).`
+          : `Controle por idioma removido de ${times.length} horário(s).`);
+      }
+      if (guide && assignments.length) parts.push(`${guide.name} escalado(a) em ${assignments.length} horário(s).`);
+      if (guideField === "" && removedAssignmentIds.length) parts.push("Guia retirado da escala.");
+
       return json({
         success:true,
-        rules:next,
-        message: languages.length
-          ? "Vagas por idioma salvas."
-          : "Controle por idioma removido deste horário.",
+        rules: next,
+        assignments,
+        removedAssignmentIds,
+        guideErrors,
+        message: [...parts, ...guideErrors].join(" "),
       });
     } catch (e) {
       console.error("[PMY] saveLanguageQuotas error:", e);
+      if (e?.code === "P2002") {
+        return json({
+          success:false,
+          error:"A saída ou o guia acabou de receber outra escala neste horário. Atualize a Agenda e tente novamente.",
+        }, { status:409 });
+      }
       return json({success:false,error:"Não foi possível salvar as vagas por idioma."},{status:500});
     }
   }

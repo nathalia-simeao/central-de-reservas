@@ -124,6 +124,8 @@ export default function AgendaTab(props) {
     channelCapacityLimits = {},
     handleLanguageQuotaSave,
     languageQuotaRules = {},
+    guidesList = [],
+    guideAssignmentsList = [],
     handleCreateBlock,
     handleGeneratePaymentLink,
     handleNextMonth,
@@ -924,7 +926,7 @@ export default function AgendaTab(props) {
                 <div style={{display:"flex",flexDirection:"column",width:"100%",gap:12,marginTop:12}}>
                 <SharedSeatsIndicator tourId={tour.id} capacity={capacity} limits={channelCapacityLimits[tour.id] || {}} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
                 <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
-                <LanguageQuotaEditor tour={tour} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} rules={languageQuotaRules[tour.id] || []} onSave={handleLanguageQuotaSave} lang={lang}/>
+                <LanguageQuotaEditor tour={tour} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} rules={languageQuotaRules[tour.id] || []} guides={guidesList} assignments={guideAssignmentsList} onSave={handleLanguageQuotaSave} lang={lang}/>
                 </div>
               </div>
             );

@@ -1929,22 +1929,32 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
-  const handleLanguageQuotaSave = async (tourId, { date, time, languages }) => {
+  const handleLanguageQuotaSave = async (tourId, { date, times, languages, skipQuotas, guideId }) => {
     const fd = new FormData();
     fd.append("_action", "saveLanguageQuotas");
     fd.append("tourId", tourId);
     fd.append("date", date || "");
-    fd.append("time", time);
-    fd.append("languages", JSON.stringify(languages));
+    fd.append("times", JSON.stringify(times));
+    fd.append("languages", JSON.stringify(languages || []));
+    if (skipQuotas) fd.append("skipQuotas", "1");
+    if (guideId !== undefined) fd.append("guideId", guideId);
     const result = await requestResourceJson("/api/central-actions", fd);
     if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
     setLanguageQuotaRules(prev => ({ ...prev, [tourId]: normalizeLanguageQuotaRules(result.rules) }));
-    notify(
-      languages.length
-        ? ui("Vagas por idioma salvas.", "Language seats saved.")
-        : ui("Controle por idioma removido.", "Language control removed."),
-      "success",
-    );
+    const removed = new Set(result.removedAssignmentIds || []);
+    const saved = result.assignments || [];
+    if (removed.size || saved.length) {
+      const savedIds = new Set(saved.map(item => item.id));
+      setGuideAssignmentsList(current => [
+        ...current.filter(item => !removed.has(item.id) && !savedIds.has(item.id)),
+        ...saved,
+      ].sort((left, right) => new Date(left.startTime) - new Date(right.startTime)));
+    }
+    if (result.guideErrors?.length) {
+      notify(result.message, "warning", 8000);
+    } else {
+      notify(result.message || ui("Salvo.", "Saved."), "success");
+    }
   };
 
   const handleCapacityChange = async (id, change) => {
@@ -2685,7 +2695,7 @@ function CentralDeReservasContent() {
             currentYear, custEmail, custLang, custName, custPhone, draftOrderError,
             draftOrderInfo, draftOrderLoading, generatedLink, getBookingTimesForTour,
             getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange, handleChannelCapacityChange, channelCapacityLimits,
-            handleLanguageQuotaSave, languageQuotaRules,
+            handleLanguageQuotaSave, languageQuotaRules, guidesList, guideAssignmentsList,
             handleCreateBlock, handleGeneratePaymentLink, handleNextMonth, handlePrevMonth,
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
             imageShape, platformConnections, renderCalendarDays, reservationPlatforms,

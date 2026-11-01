@@ -5795,3 +5795,11 @@
 .pmy-language-quota__rule { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; text-align: left; padding: 8px 10px; border: 1px solid var(--pmy-border, #dfe6e1); border-radius: 9px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .pmy-language-quota__rule:hover, .pmy-language-quota__rule:focus-visible { border-color: #0b7727; outline: none; }
 .pmy-shared-seats-languages { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.pmy-language-quota__times { margin-bottom: 12px; }
+.pmy-language-quota__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pmy-language-quota__chip { min-height: 32px; padding: 5px 12px; border: 1px solid var(--pmy-border, #dfe6e1); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.pmy-language-quota__chip.is-selected { border-color: #0b7727; background: #0b7727; color: #fff; }
+.pmy-language-quota__chip--all { border-style: dashed; }
+.pmy-language-quota__chip:focus-visible { outline: 2px solid #087b29; outline-offset: 1px; }
+.pmy-language-quota__guide { margin-top: 12px; max-width: 320px; }
+.pmy-language-quota__note { display: block; font-size: 12px; opacity: .8; margin: 4px 0 8px; }
