@@ -1094,7 +1094,15 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
   }
   const updates = availabilities.filter(item =>
     item && typeof item.dateTime === "string" &&
-    Number.isInteger(item.vacancies) && item.vacancies >= 0
+    Number.isInteger(item.vacancies) && item.vacancies >= 0 &&
+    (item.pricesByCategory == null || (
+      /^[A-Z]{3}$/.test(String(item.currency || "")) &&
+      Array.isArray(item.pricesByCategory?.retailPrices) &&
+      item.pricesByCategory.retailPrices.length > 0 &&
+      item.pricesByCategory.retailPrices.every(price =>
+        typeof price?.category === "string" &&
+        Number.isInteger(price?.price) && price.price >= 0)
+    ))
   );
   if (updates.length !== availabilities.length) {
     return { sent: false, reason: "INVALID_NOTIFY_PAYLOAD" };
@@ -1124,6 +1132,7 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
         status: response.status === 202 ? "PROCESSED" : "ERROR",
         payload: {
           source: "CENTRAL_AVAILABILITY_PUSH_SANDBOX",
+          withPrice: updates.some(item => item.pricesByCategory),
           productId: String(productId),
           availabilityCount: Array.isArray(availabilities)
             ? availabilities.length
@@ -1151,6 +1160,90 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
   };
 }
 
+
+// Deals Over API — manual sandbox certification only (Integrator Portal
+// "Test GetYourGuide endpoints"). Never points at production.
+const GYG_SANDBOX_DEALS_URL = "https://supplier-api.getyourguide.com/sandbox/1/deals";
+const GYG_DEAL_TYPES = new Set(["standard", "early_bird", "last_minute"]);
+
+export async function gygSandboxDeals({ operation, productId, dealId, deal = {} }) {
+  const mode = String(process.env.GYG_NOTIFY_MODE || "disabled").trim().toLowerCase();
+  if (mode !== "sandbox") return { sent: false, reason: "GYG_NOTIFY_SANDBOX_NOT_ENABLED" };
+  const user = process.env.GYG_OUTGOING_USER;
+  const pass = process.env.GYG_OUTGOING_PASS;
+  if (!user || !pass) return { sent: false, reason: "OUTGOING_GYG_NOT_CONFIGURED" };
+
+  let url = GYG_SANDBOX_DEALS_URL;
+  let method = "GET";
+  let body;
+  const externalProductId = String(productId || "").trim();
+
+  if (operation === "list") {
+    if (!externalProductId) return { sent: false, reason: "INVALID_DEALS_PAYLOAD" };
+    url += `?externalProductId=${encodeURIComponent(externalProductId)}`;
+  } else if (operation === "create") {
+    const dealType = String(deal.dealType || "last_minute");
+    const discount = Number(deal.discountPercentage);
+    const start = String(deal.start || "");
+    const end = String(deal.end || "");
+    if (!externalProductId || !GYG_DEAL_TYPES.has(dealType) ||
+        !(discount > 0 && discount < 100) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) {
+      return { sent: false, reason: "INVALID_DEALS_PAYLOAD" };
+    }
+    method = "POST";
+    const data = {
+      externalProductId,
+      dealName: String(deal.dealName || "PMY sandbox deal").slice(0, 100),
+      dateRange: { start, end },
+      dealType,
+      discountPercentage: discount,
+    };
+    if (Number.isInteger(deal.maxVacancies) && deal.maxVacancies > 0) data.maxVacancies = deal.maxVacancies;
+    if (dealType !== "standard" && Number.isInteger(deal.noticePeriodDays) && deal.noticePeriodDays >= 0) {
+      data.noticePeriodDays = deal.noticePeriodDays;
+    }
+    body = JSON.stringify({ data });
+  } else if (operation === "delete") {
+    if (!/^\d{1,19}$/.test(String(dealId || ""))) return { sent: false, reason: "INVALID_DEALS_PAYLOAD" };
+    method = "DELETE";
+    url += `/${dealId}`;
+  } else {
+    return { sent: false, reason: "INVALID_DEALS_OPERATION" };
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body,
+  });
+  let payload = null;
+  try { payload = await response.json(); } catch { payload = null; }
+  const expected = { list: 200, create: 201, delete: 204 }[operation];
+  const ok = response.status === expected || (operation === "create" && response.status === 200);
+
+  try {
+    await prisma.integrationEvent.create({
+      data: {
+        provider: GYG_PLATFORM,
+        externalEventId: `gyg:deals-${operation}:${randomUUID()}`,
+        topic: `deals-${operation}`,
+        status: ok ? "PROCESSED" : "ERROR",
+        payload: { source: "CENTRAL_DEALS_SANDBOX", productId: externalProductId || null, dealId: dealId || null },
+        result: { httpStatus: response.status },
+        error: ok ? null : `GetYourGuide deals ${operation} returned HTTP ${response.status}.`,
+        processedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("[GYG v1] deals audit failed", error);
+  }
+
+  return { sent: ok, status: response.status, operation, mode: "sandbox", payload };
+}
 
 export async function notifyGygTourAvailabilityWindow({
   tourId,

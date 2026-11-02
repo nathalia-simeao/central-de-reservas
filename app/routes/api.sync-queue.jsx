@@ -84,6 +84,11 @@ export const action = async ({ request }) => {
     const productId = String(formData.get("productId") || "").trim();
     const dateTime = String(formData.get("dateTime") || "").trim();
     const vacanciesRaw = String(formData.get("vacancies") || "").trim();
+    const priceRaw = String(formData.get("adultPrice") || "").trim().replace(",", ".");
+    const currency = String(formData.get("currency") || "EUR").trim().toUpperCase();
+    if (priceRaw && (!/^\d{1,6}(\.\d{1,2})?$/.test(priceRaw) || !/^[A-Z]{3}$/.test(currency))) {
+      return json({success:false,error:"Invalid price or currency."},{status:400});
+    }
     if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(productId) ||
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(dateTime) ||
         !/^(0|[1-9][0-9]{0,4})$/.test(vacanciesRaw)) {
@@ -92,8 +97,39 @@ export const action = async ({ request }) => {
     const { notifyGygAvailabilityUpdate } = await import("../utils/gyg-v1.server");
     const result = await notifyGygAvailabilityUpdate({
       productId,
-      availabilities:[{dateTime,vacancies:Number(vacanciesRaw)}],
+      availabilities:[{
+        dateTime,
+        vacancies:Number(vacanciesRaw),
+        ...(priceRaw ? {
+          currency,
+          pricesByCategory:{retailPrices:[{category:"ADULT",price:Math.round(Number(priceRaw)*100)}]},
+        } : {}),
+      }],
       manualSandboxTest:true,
+    });
+    return json({success:Boolean(result.sent),result});
+  }
+
+  if (actionName === "testGygDealsSandbox") {
+    const operation = String(formData.get("operation") || "").trim();
+    const intOrNull = (key) => {
+      const raw = String(formData.get(key) || "").trim();
+      return /^\d{1,5}$/.test(raw) ? Number(raw) : null;
+    };
+    const { gygSandboxDeals } = await import("../utils/gyg-v1.server");
+    const result = await gygSandboxDeals({
+      operation,
+      productId: String(formData.get("productId") || "").trim(),
+      dealId: String(formData.get("dealId") || "").trim(),
+      deal: {
+        dealName: String(formData.get("dealName") || "").trim(),
+        dealType: String(formData.get("dealType") || "last_minute").trim(),
+        discountPercentage: Number(String(formData.get("discountPercentage") || "").replace(",", ".")),
+        start: String(formData.get("start") || "").trim(),
+        end: String(formData.get("end") || "").trim(),
+        maxVacancies: intOrNull("maxVacancies"),
+        noticePeriodDays: intOrNull("noticePeriodDays"),
+      },
     });
     return json({success:Boolean(result.sent),result});
   }
