@@ -235,6 +235,7 @@ export const loader = async ({ request }) => {
 
       return {
         id: tour.shopifyProductId,
+        masterTourId: tour.id,
         name: tour.title,
         productType: tour.productType || null,
         description: String(snapshot.description || ""),

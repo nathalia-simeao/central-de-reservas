@@ -299,7 +299,6 @@ export default function IntegrationProductsPanel({
                                   {gygGroups.map(group => (
                                     <details key={group.key} style={{ border: "1px solid var(--border-color, #d6d9d8)", borderRadius: 12, padding: "12px 14px", background: "var(--card-bg, transparent)" }}>
                                       <summary style={{ cursor: "pointer", fontWeight: 700, overflowWrap: "anywhere" }}>
-                                        <TourColorPicker tourId={group.key} agendaLabels={agendaLabels} onSave={handleSaveTourColor} lang={lang} />
                                         {group.name} <span style={{ opacity: .7, fontWeight: 400 }}>· {group.options.length} {tr("opções", "options")}</span>
                                       </summary>
                                       <div style={{ display: "grid", gap: 9, marginTop: 12 }}>
@@ -391,7 +390,7 @@ export default function IntegrationProductsPanel({
                                   }).map(prod => (
                                     <tr key={prod.id} className={`pmy-prod-row ${prod.active?'active-prod':''}`}>
                                       <td>
-                                        <div className="pmy-ds-migrated-mplo1d"><TourColorPicker tourId={prod.masterTourId} agendaLabels={agendaLabels} onSave={handleSaveTourColor} lang={lang} /><TourCountryFlag tour={prod} lang={lang}/>{prod.name}</div>
+                                        <div className="pmy-ds-migrated-mplo1d">{activeProdPlatform === "shopify" && <TourColorPicker tourId={prod.masterTourId} agendaLabels={agendaLabels} onSave={handleSaveTourColor} lang={lang} />}<TourCountryFlag tour={prod} lang={lang}/>{prod.name}</div>
                                         {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{marginTop:5,fontSize:11,opacity:.85}}>{c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</div>; })()}
                                       </td>
                                       <td>
