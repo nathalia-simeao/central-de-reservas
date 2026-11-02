@@ -2,6 +2,7 @@ import TourCountryFlag from "./TourCountryFlag";
 import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 import BookingListModal from "./BookingListModal";
+import ProfitPanel from "./ProfitPanel";
 
 const TrendChart = ({
   data,
@@ -1774,6 +1775,9 @@ export default function DashboardTab(props) {
     dashboardStatusBookings = {},
     tours = [],
     handleSetBookingAttendance,
+    profitSummary = null,
+    costSettings = null,
+    handleSaveCostSettings,
   } = props;
   const [statusList, setStatusList] = useState(null);
 
@@ -1957,6 +1961,16 @@ export default function DashboardTab(props) {
                 allowAttendance={Boolean(statusList && ["awaiting", "completed", "noShow"].includes(statusList.key))}
                 onSetAttendance={handleSetBookingAttendance}
                 onClose={() => setStatusList(null)}
+              />
+
+              <ProfitPanel
+                summary={profitSummary}
+                formatMoney={formatMoney}
+                periodLabel={getPeriodLabel()}
+                lang={lang}
+                tours={tours}
+                costSettings={costSettings}
+                onSaveCosts={handleSaveCostSettings}
               />
 
               <UpcomingDeparturesPanel

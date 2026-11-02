@@ -1,4 +1,5 @@
 import { getDashboardRangeForPeriod } from "../config/pmy-central-config";
+import { computeProfit } from "./profit.js";
 
 export function classifyBookingForDashboard(booking, now = new Date()) {
   const status = String(booking?.status || "").toUpperCase();
@@ -26,6 +27,7 @@ export function buildDashboardViewModel({
   lang,
   tours,
   shopifyProducts,
+  costSettings = null,
 }) {
   // Dashboard financeiro calculado somente com dados reais persistidos em Booking.
   const dashboardNow = new Date();
@@ -580,7 +582,16 @@ export function buildDashboardViewModel({
         { name: "Walking Tours", toursList: tourOptions.filter(t =>  t.title.toLowerCase().includes("walking")) },
       ];
 
+  // Faturamento × lucro por data do passeio (item 9).
+  const profitSummary = computeProfit({
+    bookings,
+    costSettings,
+    range: dashboardPeriodRange,
+    currency: dashboardCurrency,
+  });
+
   return {
+    profitSummary,
     realConfirmedBookings,
     realCanceledBookings,
     dashboardBookingStatusSummary,

@@ -1,5 +1,6 @@
 import { data } from "react-router";
 import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
+import { normalizeCostSettings } from "../utils/profit.js";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {
@@ -257,6 +258,27 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] setBookingAttendance error:", e);
       return json({ success: false, error: "Não foi possível salvar a realização." }, { status: 500 });
+    }
+  }
+
+  if (_action === "saveCostSettings") {
+    try {
+      const shop = session?.shop;
+      if (!shop) return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      let raw;
+      try { raw = JSON.parse(String(formData.get("costSettings") || "{}")); } catch {
+        return json({ success: false, error: "Formato inválido." }, { status: 400 });
+      }
+      const costSettings = normalizeCostSettings(raw);
+      await prisma.businessSetting.upsert({
+        where: { shop },
+        create: { shop, costSettings },
+        update: { costSettings },
+      });
+      return json({ success: true, costSettings });
+    } catch (e) {
+      console.error("[PMY] saveCostSettings error:", e);
+      return json({ success: false, error: "Não foi possível salvar os custos." }, { status: 500 });
     }
   }
 

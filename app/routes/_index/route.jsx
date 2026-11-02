@@ -44,6 +44,7 @@ export const headers = () => ({
 function CentralDeReservasContent() {
   const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
+  const [costSettings, setCostSettings] = useState(() => businessSettings?.costSettings || null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsLoadError, setBookingsLoadError] = useState("");
   const bookingsRequestIdRef = useRef(0);
@@ -503,6 +504,7 @@ function CentralDeReservasContent() {
     realCanceledBookings,
     dashboardBookingStatusSummary,
     dashboardStatusBookings,
+    profitSummary,
     moneyValue,
     bookingCurrency,
     revenueByCurrency,
@@ -535,6 +537,7 @@ function CentralDeReservasContent() {
     lang,
     tours,
     shopifyProducts,
+    costSettings,
   });
 
   // ---- HANDLERS / sincronização ----
@@ -1925,6 +1928,16 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
+  const handleSaveCostSettings = async (settings) => {
+    const fd = new FormData();
+    fd.append("_action", "saveCostSettings");
+    fd.append("costSettings", JSON.stringify(settings || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setCostSettings(result.costSettings);
+    notify(ui("Custos salvos.", "Costs saved."), "success");
+  };
+
   const handleSetBookingAttendance = async (bookingId, attendance) => {
     const fd = new FormData();
     fd.append("_action", "setBookingAttendance");
@@ -2723,7 +2736,8 @@ function CentralDeReservasContent() {
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape,
             operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
             syncQueueData, syncQueueLoading, syncQueueError,
-            dashboardStatusBookings, tours, handleSetBookingAttendance
+            dashboardStatusBookings, tours, handleSetBookingAttendance,
+            profitSummary, costSettings, handleSaveCostSettings
           }} />
 
           <AgendaTab {...{
