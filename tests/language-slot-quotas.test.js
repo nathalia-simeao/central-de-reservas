@@ -38,23 +38,35 @@ test("each language sells only its released seats", () => {
   assert.equal(check([booking("Italiano", 3)], "English", 10).canAccept, true);
 });
 
-test("a language without released seats is closed on that departure", () => {
-  const a = check([], "Español", 1);
+test("a language left blank (not listed) is unlimited, capped only by total capacity", () => {
+  const a = check([booking("it", 5), booking("en", 4)], "Español", 21);
+  assert.equal(a.languageAllowed, true);
+  assert.equal(a.remainingSeats, 21); // 30 - 9 occupied
+  assert.equal(a.canAccept, true);
+  assert.equal(check([booking("it", 5), booking("en", 4)], "Español", 22).canAccept, false);
+});
+
+test("a language with 0 seats is closed on that departure", () => {
+  const closed = upsertLanguageQuotaRule([], {
+    date: dateKey, time: timeKey, languages: [{ key: "es", seats: 0 }, { key: "en", seats: 10 }],
+  });
+  const a = check([], "Español", 1, { ...tour, languageSlotQuotas: closed });
   assert.equal(a.languageAllowed, false);
   assert.equal(a.remainingSeats, 0);
   assert.equal(a.canAccept, false);
 });
 
-test("without a language the departure offers the remaining released pool", () => {
+test("without a language the departure offers the whole remaining capacity", () => {
   const a = check([booking("it", 5), booking("en", 4)], null);
-  assert.equal(a.remainingSeats, 11); // 0 it + 5 de + 6 en
+  assert.equal(a.remainingSeats, 21);
   assert.equal(a.languageLimited, true);
 });
 
-test("bookings without a language consume the released pool", () => {
+test("bookings without a language count only against total capacity", () => {
   const a = check([booking(null, 18)], "de", 3);
-  assert.equal(a.remainingSeats, 2);
-  assert.equal(a.canAccept, false);
+  assert.equal(a.remainingSeats, 5);
+  assert.equal(a.canAccept, true);
+  assert.equal(check([booking(null, 26)], "de", 5).canAccept, false); // total 30
 });
 
 test("physical capacity still caps language quotas", () => {

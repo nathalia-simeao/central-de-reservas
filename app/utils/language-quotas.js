@@ -8,11 +8,12 @@
 // A rule with a specific date overrides the every-day rule for that departure.
 //
 // When a departure has a rule:
-//   - only the listed languages can be sold;
-//   - each language can sell at most its released seats;
+//   - a listed language with a number sells at most that many seats;
+//   - a listed language with 0 seats is closed on that departure;
+//   - any language left blank / not listed is UNLIMITED (only the
+//     physical/channel capacity applies) — requested by PMY on 02/11/2026;
 //   - the departure as a whole never exceeds the physical/channel capacity;
-//   - bookings without a recognised language (e.g. channels that do not send
-//     a language) still consume seats from the released language pool.
+//   - bookings without a recognised language only count against the total.
 // Departures without a rule keep the previous behaviour untouched.
 
 import { languageKey, languageLabel } from "./tour-languages.js";
@@ -111,6 +112,8 @@ export function upsertLanguageQuotaRule(rawRules, { date, time, languages }, now
  * Seats per language for one departure.
  *  - occupiedFor(booking) returns the seats a booking holds in this slot (0 if not in slot)
  *  - requestedLanguage: language of the booking being checked (optional)
+ * remainingSeats is Infinity when the requested language (or "any language")
+ * is not capped; callers combine it with the channel capacity via Math.min.
  */
 export function evaluateLanguageQuota(rule, bookings, occupiedFor, requestedLanguage) {
   if (!rule) return null;
@@ -127,13 +130,10 @@ export function evaluateLanguageQuota(rule, bookings, occupiedFor, requestedLang
   }
 
   let releasedSeats = 0;
-  let poolRemaining = 0;
   for (const item of languages) {
     item.remainingSeats = Math.max(0, item.seats - item.occupiedSeats);
     releasedSeats += item.seats;
-    poolRemaining += item.remainingSeats;
   }
-  poolRemaining = Math.max(0, poolRemaining - unassignedSeats);
 
   const requestedKey = languageKey(requestedLanguage);
   const requested = requestedKey ? byKey.get(requestedKey) || null : null;
@@ -144,14 +144,10 @@ export function evaluateLanguageQuota(rule, bookings, occupiedFor, requestedLang
     languages,
     releasedSeats,
     unassignedSeats,
-    poolRemaining,
+    // null = unlimited: languages without a number are not capped.
+    poolRemaining: null,
     requestedLanguage: requestedKey || null,
-    languageAllowed: requestedKey ? Boolean(requested) : true,
-    // Seats available for the requested language (or for any language when none given).
-    remainingSeats: requestedKey
-      ? requested
-        ? Math.min(requested.remainingSeats, poolRemaining)
-        : 0
-      : poolRemaining,
+    languageAllowed: requested ? requested.seats > 0 : true,
+    remainingSeats: requested ? requested.remainingSeats : Infinity,
   };
 }

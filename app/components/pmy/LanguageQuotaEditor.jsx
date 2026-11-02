@@ -142,8 +142,8 @@ export default function LanguageQuotaEditor({
       </summary>
       <p className="pmy-channel-editor__hint">
         {tr(
-          "Escolha um ou mais horários e libere vagas por idioma. Nesses horários só os idiomas liberados vendem, cada um até o seu limite, sem passar da capacidade total. Sem data, vale todos os dias; uma data específica tem prioridade. Com data escolhida, você também escala o guia da saída.",
-          "Pick one or more times and release seats per language. On those times only released languages sell, each up to its limit, never above total capacity. Without a date it applies every day; a specific date takes priority. With a date selected you can also schedule the guide.",
+          "Escolha um ou mais horários e limite vagas por idioma. Idioma em branco fica ilimitado (só respeita a capacidade total); 0 fecha o idioma nesse horário. Sem data, vale todos os dias; uma data específica tem prioridade. Com data escolhida, você também escala o guia da saída.",
+          "Pick one or more times and cap seats per language. A blank language is unlimited (only total capacity applies); 0 closes that language on those times. Without a date it applies every day; a specific date takes priority. With a date selected you can also schedule the guide.",
         )}
       </p>
 
@@ -216,7 +216,7 @@ export default function LanguageQuotaEditor({
                   id={`langq-${tour.id}-${key}`}
                   type="number" min="0" max="999" step="1"
                   className="pmy-channel-editor__input"
-                  placeholder={tr("Não liberado", "Not released")}
+                  placeholder={tr("Ilimitado", "Unlimited")}
                   value={valueFor(key)}
                   onChange={(event) => setDrafts((prev) => ({ ...prev, [key]: event.target.value }))}
                 />
@@ -272,7 +272,7 @@ export default function LanguageQuotaEditor({
 
           <div className="pmy-language-quota__footer">
             <span>
-              {tr("Total liberado por horário", "Released per time")}: <b>{total}</b>
+              {tr("Total limitado por horário", "Capped per time")}: <b>{total}</b>
               {" · "}
               {formatDate(date)} · {times.join(", ")}
             </span>

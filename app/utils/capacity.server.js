@@ -362,9 +362,10 @@ export async function getCentralAvailability(
 /** Human message for a rejected booking, mentioning the language when relevant. */
 export function capacityRejectionMessage(availability, language) {
   const quota = availability?.languageQuota;
-  if (quota && language) {
+  const capped = quota?.languages?.some((item) => item.key === quota.requestedLanguage);
+  if (quota && language && capped) {
     if (!quota.languageAllowed) {
-      return `No seats have been released for ${language} on this departure.`;
+      return `${language} is closed on this departure.`;
     }
     return `Only ${availability.remainingSeats} seat(s) remain in ${language} for this departure.`;
   }
@@ -683,7 +684,12 @@ export async function createBookingWithCapacityGuard(
           reason: availability.blocked
             ? "BLOCKED_BY_AGENDA"
             : "INSUFFICIENT_CAPACITY",
-          languageRejected: Boolean(availability.languageQuota && bookingLanguage),
+          // Only when the booking's own language is capped and that cap is the limit.
+          languageRejected: Boolean(
+            availability.languageQuota?.languages?.some(
+              (item) => item.key === availability.languageQuota.requestedLanguage,
+            ) && bookingLanguage,
+          ),
           message: availability.blocked
             ? "Timeslot is blocked by the PMY Central Agenda."
             : capacityRejectionMessage(availability, bookingLanguage),
