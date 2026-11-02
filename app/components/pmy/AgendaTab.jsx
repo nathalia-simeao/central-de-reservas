@@ -836,7 +836,10 @@ export default function AgendaTab(props) {
       </div>
 
       <Card>
-        <AgendaLabelsEditor tours={props.tours || tourOptions || []} labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
+        <AgendaLabelsEditor labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
+      </Card>
+
+      <Card>
         <div className="pmy-ds-calendar-toolbar">
           <div className="pmy-ds-calendar-month">
             <Button

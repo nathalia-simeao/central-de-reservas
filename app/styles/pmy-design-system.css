@@ -5897,3 +5897,29 @@
 .pmy-departure-tags__option span { flex: 1; }
 .pmy-cal-tour-chip .pmy-cal-tag-dots { display: inline-flex; gap: 2px; flex: none; }
 .pmy-cal-tour-chip .pmy-cal-tag-dots i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(255,255,255,.8); }
+
+/* Painel de etiquetas (Agenda) */
+.pmy-tags-panel { display: flex; flex-direction: column; gap: 10px; }
+.pmy-tags-panel__header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.pmy-tags-panel__header small { opacity: .65; font-size: 12px; }
+.pmy-tags-panel__list { display: flex; flex-wrap: wrap; gap: 6px; }
+.pmy-tags-panel__tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 4px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pmy-tags-panel__tag input[type="color"] { width: 18px; height: 18px; padding: 0; border: 2px solid rgba(255,255,255,.75); border-radius: 50%; background: none; cursor: pointer; }
+.pmy-tags-panel__tag input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.pmy-tags-panel__tag input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.pmy-tags-panel__name { border: 0; background: transparent; font: inherit; font-weight: 600; min-width: 3ch; max-width: 22ch; padding: 0; outline: none; }
+.pmy-tags-panel__tag button { border: 0; background: none; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+.pmy-tags-panel__empty { opacity: .6; }
+.pmy-tags-panel__new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pmy-tags-panel__new input[type="color"] { width: 34px; height: 32px; padding: 0; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; background: none; cursor: pointer; }
+.pmy-tags-panel__new-name { flex: 1 1 220px; min-width: 0; padding: 7px 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; font: inherit; font-size: 13px; }
+.pmy-tags-panel__msg { font-size: 12px; opacity: .75; }
+
+/* Cor do passeio em Produtos por Plataforma */
+.pmy-tour-color { position: relative; display: inline-flex; vertical-align: middle; margin-right: 8px; }
+.pmy-tour-color__swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); cursor: pointer; padding: 0; }
+.pmy-tour-color__menu { position: absolute; top: 24px; left: 0; z-index: 30; display: grid; grid-template-columns: repeat(7, 22px); gap: 6px; padding: 8px; background: var(--pmy-ds-surface, #fff); border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.pmy-tour-color__option, .pmy-tour-color__custom { width: 22px; height: 22px; border-radius: 6px; border: 0; padding: 0; cursor: pointer; }
+.pmy-tour-color__option.is-current { box-shadow: 0 0 0 2px var(--pmy-ds-surface, #fff), 0 0 0 4px currentColor; }
+.pmy-tour-color__custom { background: var(--pmy-ds-surface-muted, #f1f5f9); font-weight: 700; color: inherit; }
+.pmy-tour-color__native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; bottom: 0; right: 0; }

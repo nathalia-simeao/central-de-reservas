@@ -1981,6 +1981,15 @@ function CentralDeReservasContent() {
     notify(ui("Cores da Agenda salvas.", "Agenda colours saved."), "success");
   };
 
+  const handleSaveTourColor = async (tourId, color) => {
+    const current = normalizeAgendaLabels(agendaLabels);
+    const previous = current.tours[tourId] || { color: null, tagIds: [] };
+    await handleSaveAgendaLabels({
+      ...current,
+      tours: { ...current.tours, [tourId]: { ...previous, color } },
+    });
+  };
+
   const handleLanguageQuotaSave = async (tourId, { date, times, languages, skipQuotas, guideId }) => {
     const fd = new FormData();
     fd.append("_action", "saveLanguageQuotas");
@@ -2795,6 +2804,7 @@ function CentralDeReservasContent() {
             handleRequeueSyncJob, handleSyncPlatformNow, intSubTab,
             lang, loadSyncQueue, manualSyncError, manualSyncPlatform, manualSyncResult,
             platformConnections, platformProducts, reservationPlatforms, runSyncQueueNow,
+            agendaLabels, handleSaveTourColor,
             setActiveProdPlatform, setIntSubTab,
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
             syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,
