@@ -1544,15 +1544,9 @@ function CentralDeReservasContent() {
     fd.append("mappings", JSON.stringify(mappings || {}));
 
     try {
-      const response = await fetch(window.location.href, {
-        method: "POST",
-        body: fd,
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
-      const payload = await response.json().catch(() => null);
+      const payload = await requestResourceJson("/api/central-actions", fd);
 
-      if (!response.ok || !payload?.success) {
+      if (!payload?.success) {
         throw new Error(payload?.error || "Não foi possível salvar o mapeamento.");
       }
 
@@ -1969,9 +1963,8 @@ function CentralDeReservasContent() {
       fd.append("tourId", id);
       fd.append("maxCapacity", String(next));
 
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
-      if (!res.ok || !result.success) {
+      const result = await requestResourceJson("/api/central-actions", fd);
+      if (!result?.success) {
         setTourCapacities(prev => ({ ...prev, [id]: cur }));
         notify(result.error || ui("Não foi possível salvar a capacidade.", "Could not save capacity."), "danger");
       }
@@ -2043,11 +2036,10 @@ function CentralDeReservasContent() {
       fd.append("bookingCutoffSeconds", gygConfigCutoff);
       fd.append("gygPriceOverApi", gygConfigPriceOverApi ? "true" : "false");
 
-      const res = await fetch(window.location.href, { method: "POST", body: fd });
-      const result = await res.json();
+      const result = await requestResourceJson("/api/central-actions", fd);
 
-      if (!res.ok || !result.success) {
-        setGygConfigMessage(result.error || "Não foi possível salvar a configuração.");
+      if (!result?.success) {
+        setGygConfigMessage(result?.error || "Não foi possível salvar a configuração.");
         return;
       }
 
