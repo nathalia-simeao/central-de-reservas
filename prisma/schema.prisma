@@ -172,6 +172,13 @@ model Booking {
   cancelReason        String?
   rawPayload          Json?
 
+  // Realização do passeio, marcada pela equipe (e, na Fase 2, pelo guia).
+  // Separado de "status" para que atualizações das plataformas não apaguem.
+  // COMPLETED = realizado · NO_SHOW = cliente não compareceu · null = não marcado
+  attendanceStatus    String?
+  attendanceNote      String?   @db.Text
+  attendanceMarkedAt  DateTime?
+
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @default(now()) @updatedAt
 

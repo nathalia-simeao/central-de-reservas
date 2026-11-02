@@ -229,6 +229,37 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "setBookingAttendance") {
+    try {
+      const bookingId = String(formData.get("bookingId") || "").trim();
+      const attendance = String(formData.get("attendance") || "").trim().toUpperCase();
+      if (!bookingId) return json({ success: false, error: "Reserva não informada." }, { status: 400 });
+      if (attendance && !["COMPLETED", "NO_SHOW"].includes(attendance)) {
+        return json({ success: false, error: "Marcação inválida." }, { status: 400 });
+      }
+      const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+      if (!booking) return json({ success: false, error: "Reserva não encontrada." }, { status: 404 });
+      if (attendance && String(booking.status).toUpperCase() !== "CONFIRMED") {
+        return json({ success: false, error: "Só reservas confirmadas podem ser marcadas como realizadas ou no-show." }, { status: 409 });
+      }
+      if (attendance && new Date(booking.startTime) > new Date()) {
+        return json({ success: false, error: "O passeio ainda não aconteceu." }, { status: 409 });
+      }
+      const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          attendanceStatus: attendance || null,
+          attendanceMarkedAt: attendance ? new Date() : null,
+        },
+        select: { id: true, attendanceStatus: true, attendanceMarkedAt: true },
+      });
+      return json({ success: true, booking: updated });
+    } catch (e) {
+      console.error("[PMY] setBookingAttendance error:", e);
+      return json({ success: false, error: "Não foi possível salvar a realização." }, { status: 500 });
+    }
+  }
+
   if (_action === "saveAgendaLabels") {
     try {
       const shop = session?.shop;

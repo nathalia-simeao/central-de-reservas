@@ -502,6 +502,7 @@ function CentralDeReservasContent() {
     realConfirmedBookings,
     realCanceledBookings,
     dashboardBookingStatusSummary,
+    dashboardStatusBookings,
     moneyValue,
     bookingCurrency,
     revenueByCurrency,
@@ -1924,6 +1925,16 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
+  const handleSetBookingAttendance = async (bookingId, attendance) => {
+    const fd = new FormData();
+    fd.append("_action", "setBookingAttendance");
+    fd.append("bookingId", bookingId);
+    fd.append("attendance", attendance || "");
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setBookingsList(current => current.map(item => item.id === bookingId ? { ...item, ...result.booking } : item));
+  };
+
   const [agendaLabels, setAgendaLabels] = useState(() => normalizeAgendaLabels(businessSettings?.agendaLabels));
   const handleSaveAgendaLabels = async (labels) => {
     const fd = new FormData();
@@ -2711,7 +2722,8 @@ function CentralDeReservasContent() {
             salesByChannel, bookings, bookingsLoading, bookingsLoadError, categoriesData, toggleCategory, openCategories, realConfirmedBookings,
             dashboardBookingStatusSummary, dashboardTrendData, dashboardTrendGranularity, dashboardCurrency, imageShape,
             operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
-            syncQueueData, syncQueueLoading, syncQueueError
+            syncQueueData, syncQueueLoading, syncQueueError,
+            dashboardStatusBookings, tours, handleSetBookingAttendance
           }} />
 
           <AgendaTab {...{

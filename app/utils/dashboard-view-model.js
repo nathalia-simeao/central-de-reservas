@@ -1,5 +1,23 @@
 import { getDashboardRangeForPeriod } from "../config/pmy-central-config";
 
+export function classifyBookingForDashboard(booking, now = new Date()) {
+  const status = String(booking?.status || "").toUpperCase();
+  const attendance = String(booking?.attendanceStatus || "").toUpperCase();
+  const startTime = new Date(booking?.startTime || 0);
+  const hasValidStart = !Number.isNaN(startTime.getTime()) && startTime.getTime() > 0;
+
+  if (["CANCELED", "CANCELLED"].includes(status)) return "canceled";
+  if (status === "PENDING") return "pending";
+  if (["COMPLETED", "COMPLETE", "FINISHED"].includes(status)) return "completed";
+  if (status === "CONFIRMED") {
+    if (attendance === "COMPLETED") return "completed";
+    if (attendance === "NO_SHOW") return "noShow";
+    if (hasValidStart && startTime < now) return "awaiting";
+    return "confirmed";
+  }
+  return "unclassified";
+}
+
 export function buildDashboardViewModel({
   bookings,
   selectedPeriod,
@@ -37,36 +55,28 @@ export function buildDashboardViewModel({
     isInDashboardRange(bookingUpdatedAt(booking))
   );
   
-  const dashboardBookingStatusSummary = periodBookings.reduce(
-    (summary, booking) => {
-      const status = bookingStatus(booking);
-      const startTime = new Date(booking?.startTime || 0);
-      const hasValidStart = !Number.isNaN(startTime.getTime());
-  
-      if (["CANCELED", "CANCELLED"].includes(status)) {
-        summary.canceled += 1;
-      } else if (status === "PENDING") {
-        summary.pending += 1;
-      } else if (["COMPLETED", "COMPLETE", "FINISHED"].includes(status)) {
-        summary.completed += 1;
-      } else if (status === "CONFIRMED") {
-        if (hasValidStart && startTime < dashboardNow) summary.completed += 1;
-        else summary.confirmed += 1;
-      } else {
-        summary.unclassified += 1;
-      }
-  
-      return summary;
-    },
-    { confirmed: 0, pending: 0, canceled: 0, completed: 0, unclassified: 0 },
+  // Dashboard status buckets (client request 02/11/2026):
+  //   completed = the tour actually happened (attendance marked COMPLETED),
+  //   awaiting  = confirmed, date already passed, nobody marked it yet,
+  //   noShow    = confirmed but the customer did not show up.
+  const dashboardStatusBookings = {
+    confirmed: [], pending: [], canceled: [], completed: [], awaiting: [], noShow: [], unclassified: [],
+  };
+  for (const booking of periodBookings) {
+    dashboardStatusBookings[classifyBookingForDashboard(booking, dashboardNow)].push(booking);
+  }
+  const dashboardBookingStatusSummary = Object.fromEntries(
+    Object.entries(dashboardStatusBookings).map(([key, list]) => [key, list.length]),
   );
-  
+
   dashboardBookingStatusSummary.total =
     dashboardBookingStatusSummary.confirmed +
     dashboardBookingStatusSummary.pending +
     dashboardBookingStatusSummary.canceled +
-    dashboardBookingStatusSummary.completed;
-  
+    dashboardBookingStatusSummary.completed +
+    dashboardBookingStatusSummary.awaiting +
+    dashboardBookingStatusSummary.noShow;
+
   const moneyValue = (booking) => {
     if (booking?.totalPrice === null || booking?.totalPrice === undefined || booking?.totalPrice === "") return null;
     const parsed = Number(booking.totalPrice);
@@ -574,6 +584,7 @@ export function buildDashboardViewModel({
     realConfirmedBookings,
     realCanceledBookings,
     dashboardBookingStatusSummary,
+    dashboardStatusBookings,
     moneyValue,
     bookingCurrency,
     revenueByCurrency,

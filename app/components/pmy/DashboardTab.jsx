@@ -1,6 +1,7 @@
 import TourCountryFlag from "./TourCountryFlag";
 import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
+import BookingListModal from "./BookingListModal";
 
 const TrendChart = ({
   data,
@@ -841,7 +842,7 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
   );
 };
 
-const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
+const BookingStatusOverview = ({ summary = {}, lang, periodLabel, onOpen }) => {
   const total = Number(summary?.total || 0);
   const unclassified = Number(summary?.unclassified || 0);
 
@@ -868,11 +869,25 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
       icon: "canceled",
     },
     {
+      key: "awaiting",
+      label: lang === "pt" ? "A confirmar realização" : "Awaiting check",
+      description: lang === "pt" ? "data já passou, falta marcar se aconteceu" : "date passed, not marked yet",
+      value: Number(summary?.awaiting || 0),
+      icon: "clock",
+    },
+    {
       key: "completed",
       label: lang === "pt" ? "Concluídas" : "Completed",
-      description: lang === "pt" ? "passeios já realizados" : "tours already completed",
+      description: lang === "pt" ? "passeios marcados como realizados" : "tours marked as completed",
       value: Number(summary?.completed || 0),
       icon: "check",
+    },
+    {
+      key: "noShow",
+      label: "No-show",
+      description: lang === "pt" ? "cliente não compareceu" : "customer did not show up",
+      value: Number(summary?.noShow || 0),
+      icon: "canceled",
     },
   ];
 
@@ -920,7 +935,13 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
           const share = total > 0 ? (item.value / total) * 100 : 0;
 
           return (
-            <div key={item.key} className="pmy-ds-status-card">
+            <button
+              type="button"
+              key={item.key}
+              className="pmy-ds-status-card is-clickable"
+              onClick={() => onOpen?.(item.key, item.label)}
+              title={lang === "pt" ? "Ver a lista de clientes" : "See the customer list"}
+            >
               <div className="pmy-ds-status-card__top">
                 <span className={`pmy-ds-status-icon is-${item.key}`}>
                   <Icon name={item.icon} size={16} />
@@ -935,7 +956,7 @@ const BookingStatusOverview = ({ summary = {}, lang, periodLabel }) => {
                 {item.value}
               </strong>
               <div className="pmy-ds-status-description">{item.description}</div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -1749,8 +1770,12 @@ export default function DashboardTab(props) {
     platformLabel,
     syncQueueData,
     syncQueueLoading,
-    syncQueueError
+    syncQueueError,
+    dashboardStatusBookings = {},
+    tours = [],
+    handleSetBookingAttendance,
   } = props;
+  const [statusList, setStatusList] = useState(null);
 
   return (
     <>
@@ -1921,6 +1946,17 @@ export default function DashboardTab(props) {
                 summary={dashboardBookingStatusSummary}
                 lang={lang}
                 periodLabel={getPeriodLabel()}
+                onOpen={(key, label) => setStatusList({ key, label })}
+              />
+              <BookingListModal
+                open={Boolean(statusList)}
+                title={statusList ? `${statusList.label} · ${getPeriodLabel()}` : ""}
+                bookings={statusList ? dashboardStatusBookings[statusList.key] || [] : []}
+                tours={tours}
+                lang={lang}
+                allowAttendance={Boolean(statusList && ["awaiting", "completed", "noShow"].includes(statusList.key))}
+                onSetAttendance={handleSetBookingAttendance}
+                onClose={() => setStatusList(null)}
               />
 
               <UpcomingDeparturesPanel
