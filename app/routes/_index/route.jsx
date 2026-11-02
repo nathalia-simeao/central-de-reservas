@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
@@ -1923,6 +1924,17 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
+  const [agendaLabels, setAgendaLabels] = useState(() => normalizeAgendaLabels(businessSettings?.agendaLabels));
+  const handleSaveAgendaLabels = async (labels) => {
+    const fd = new FormData();
+    fd.append("_action", "saveAgendaLabels");
+    fd.append("agendaLabels", JSON.stringify(labels || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setAgendaLabels(normalizeAgendaLabels(result.agendaLabels));
+    notify(ui("Cores da Agenda salvas.", "Agenda colours saved."), "success");
+  };
+
   const handleLanguageQuotaSave = async (tourId, { date, times, languages, skipQuotas, guideId }) => {
     const fd = new FormData();
     fd.append("_action", "saveLanguageQuotas");
@@ -2410,6 +2422,28 @@ function CentralDeReservasContent() {
               ? `👥 Vagas: ${stats.remaining}/${stats.capacity} · ${stats.passengers} pax`
               : '👥 Nenhuma reserva'}
           </div>
+          {hasBookings && (() => {
+            const byTour = new Map();
+            for (const booking of getCalendarDayBookings(day)) {
+              const entry = byTour.get(booking.tourId) || { pax: 0, title: (tours || []).find(t => t.id === booking.tourId)?.title || "Tour" };
+              entry.pax += getBookingPassengers(booking);
+              byTour.set(booking.tourId, entry);
+            }
+            const items = [...byTour.entries()];
+            return (
+              <div className="pmy-cal-tour-chips">
+                {items.slice(0, 4).map(([tourId, entry]) => {
+                  const color = tourColor(agendaLabels, tourId);
+                  return (
+                    <div key={tourId} className="pmy-cal-tour-chip" style={{ background: color, color: contrastText(color) }} title={`${entry.title} · ${entry.pax} pax`}>
+                      <span>{entry.title}</span><b>{entry.pax}</b>
+                    </div>
+                  );
+                })}
+                {items.length > 4 && <div className="pmy-cal-info-line">+{items.length - 4}</div>}
+              </div>
+            );
+          })()}
           {hasAssignments && (
             <div className="pmy-cal-info-line">
               🧭 {stats.assignmentCount} {stats.assignmentCount === 1 ? ui("escala de guia", "guide assignment") : ui("escalas de guia", "guide assignments")}
@@ -2695,7 +2729,8 @@ function CentralDeReservasContent() {
             setBlockSelectedHour, setBookingDate, setBookingTime,
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
-            tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang
+            tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang,
+            agendaLabels, handleSaveAgendaLabels
           }} />
 
           <IntegrationsTab {...{
@@ -2769,6 +2804,7 @@ function CentralDeReservasContent() {
         getCalendarDayStats,
         getLisbonBookingParts,
         getPeriodLabel,
+        agendaLabels,
         guideAssignmentMessage,
         guideAssignmentSaving,
         guideAssignmentsList,

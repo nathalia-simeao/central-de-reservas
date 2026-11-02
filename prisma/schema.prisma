@@ -394,6 +394,10 @@ model BusinessSetting {
   theme              Json?
   imageShape     String   @default("rounded")
   fieldMappings  Json?
+  // Cores por passeio e etiquetas da Agenda. Ver app/utils/agenda-labels.js.
+  agendaLabels   Json?
+  // Custos para faturamento × lucro. Ver app/utils/profit.js.
+  costSettings   Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 

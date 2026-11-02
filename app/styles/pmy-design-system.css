@@ -5803,3 +5803,24 @@
 .pmy-language-quota__chip:focus-visible { outline: 2px solid #087b29; outline-offset: 1px; }
 .pmy-language-quota__guide { margin-top: 12px; max-width: 320px; }
 .pmy-language-quota__note { display: block; font-size: 12px; opacity: .8; margin: 4px 0 8px; }
+
+/* Cores e etiquetas da Agenda (item 12) */
+.pmy-agenda-labels__tags { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.pmy-agenda-labels__tag-list, .pmy-agenda-labels__tour-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pmy-agenda-labels__new-tag { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pmy-agenda-labels__new-tag input[type="text"], .pmy-agenda-labels__new-tag input:not([type]) { flex: 1 1 180px; min-width: 0; padding: 8px 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; font: inherit; }
+.pmy-agenda-labels input[type="color"] { width: 36px; height: 32px; padding: 0; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; background: none; cursor: pointer; flex: none; }
+.pmy-agenda-labels__tours { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow: auto; }
+.pmy-agenda-labels__tour { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); }
+.pmy-agenda-labels__tour-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.pmy-agenda-labels__tour-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.pmy-agenda-labels__tour-title i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.pmy-agenda-labels__tour-title small { font-weight: 400; opacity: .6; }
+.pmy-agenda-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 18px; border: 1px solid transparent; }
+.pmy-agenda-tag button { border: 0; background: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 0 2px; }
+.pmy-agenda-tag.is-toggle { background: transparent; cursor: pointer; }
+.pmy-cal-tour-chips { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; width: 100%; min-width: 0; }
+.pmy-cal-tour-chip { display: flex; align-items: center; gap: 5px; min-width: 0; padding: 1px 6px; border-radius: 6px; font-size: 11px; line-height: 16px; text-align: left; }
+.pmy-cal-tour-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.pmy-cal-tour-chip b { flex: none; font-weight: 700; }
+.pmy-ds-booking-row.has-tour-color { border-left: 4px solid var(--pmy-tour-color); padding-left: 10px; }

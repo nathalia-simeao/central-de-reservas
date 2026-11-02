@@ -1,6 +1,7 @@
 import SharedSeatsIndicator from "./SharedSeatsIndicator";
 import ChannelCapacityEditor from "./ChannelCapacityEditor";
 import LanguageQuotaEditor from "./LanguageQuotaEditor";
+import AgendaLabelsEditor from "./AgendaLabelsEditor";
 import TourCountryFlag from "./TourCountryFlag";
 import "../../styles/pmy-tour-info.css";
 import { useMemo, useState } from "react";
@@ -124,6 +125,8 @@ export default function AgendaTab(props) {
     channelCapacityLimits = {},
     handleLanguageQuotaSave,
     languageQuotaRules = {},
+    agendaLabels = null,
+    handleSaveAgendaLabels,
     guidesList = [],
     guideAssignmentsList = [],
     handleCreateBlock,
@@ -833,6 +836,7 @@ export default function AgendaTab(props) {
       </div>
 
       <Card>
+        <AgendaLabelsEditor tours={props.tours || tourOptions || []} labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
         <div className="pmy-ds-calendar-toolbar">
           <div className="pmy-ds-calendar-month">
             <Button

@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
+import { tourColor, tourTags, contrastText } from "../../utils/agenda-labels.js";
 import { Button, Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
@@ -98,6 +99,7 @@ export default function CentralModalLayer(props) {
     modalSelectedGuide,
     modalSelectedHour,
     modalSelectedTour,
+    agendaLabels = null,
     moneyValue,
     notify = () => {},
     openMediaLibraryPicker,
@@ -1112,10 +1114,13 @@ export default function CentralModalLayer(props) {
                     booking.platform || 'Central';
   
                   return (
-                    <div key={booking.id} className={`pmy-ds-booking-row ${i === dayBookings.length - 1 ? "is-last" : ""}`}>
+                    <div key={booking.id} className={`pmy-ds-booking-row has-tour-color ${i === dayBookings.length - 1 ? "is-last" : ""}`} style={{ "--pmy-tour-color": tourColor(agendaLabels, booking.tourId) }}>
                       <div>
                         <div className="pmy-ds-migrated-1i4hdds">
                           {tour?.title || 'Tour'}
+                          {tourTags(agendaLabels, booking.tourId).map(tag => (
+                            <span key={tag.id} className="pmy-agenda-tag" style={{ background: tag.color, color: contrastText(tag.color), marginLeft: 6 }}>{tag.name}</span>
+                          ))}
                         </div>
                         <div className="pmy-ds-migrated-1guweit">
                           🕒 {parts?.timeKey || '—'} · 👥 {pax} pax · 🛒 {platformLabel}

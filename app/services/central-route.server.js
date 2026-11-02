@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {
@@ -225,6 +226,27 @@ export const action = async ({ request }) => {
         },
         { status: 500 },
       );
+    }
+  }
+
+  if (_action === "saveAgendaLabels") {
+    try {
+      const shop = session?.shop;
+      if (!shop) return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      let raw;
+      try { raw = JSON.parse(String(formData.get("agendaLabels") || "{}")); } catch {
+        return json({ success: false, error: "Formato inválido." }, { status: 400 });
+      }
+      const agendaLabels = normalizeAgendaLabels(raw);
+      await prisma.businessSetting.upsert({
+        where: { shop },
+        create: { shop, agendaLabels },
+        update: { agendaLabels },
+      });
+      return json({ success: true, agendaLabels });
+    } catch (e) {
+      console.error("[PMY] saveAgendaLabels error:", e);
+      return json({ success: false, error: "Não foi possível salvar as cores." }, { status: 500 });
     }
   }
 
