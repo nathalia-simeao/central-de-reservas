@@ -261,6 +261,33 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "saveDepartureTags") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      let tagIds;
+      try { tagIds = JSON.parse(String(formData.get("tagIds") || "[]")); } catch { tagIds = null; }
+      if (!tourId || Number.isNaN(startTime.getTime()) || !Array.isArray(tagIds)) {
+        return json({ success: false, error: "Saída ou etiquetas inválidas." }, { status: 400 });
+      }
+      const settings = session?.shop
+        ? await prisma.businessSetting.findUnique({ where: { shop: session.shop }, select: { agendaLabels: true } })
+        : null;
+      const known = new Set(normalizeAgendaLabels(settings?.agendaLabels).tags.map((tag) => tag.id));
+      const cleanIds = [...new Set(tagIds.map(String))].filter((id) => known.has(id));
+      const departure = await prisma.tourDeparture.upsert({
+        where: { tourId_startTime: { tourId, startTime } },
+        create: { tourId, startTime, tagIds: cleanIds },
+        update: { tagIds: cleanIds },
+        select: { id: true, tourId: true, startTime: true, tagIds: true },
+      });
+      return json({ success: true, departure });
+    } catch (e) {
+      console.error("[PMY] saveDepartureTags error:", e);
+      return json({ success: false, error: "Não foi possível salvar as etiquetas da saída." }, { status: 500 });
+    }
+  }
+
   if (_action === "saveCostSettings") {
     try {
       const shop = session?.shop;

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { departureKey } from "../../components/pmy/DepartureTagsSection";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -42,7 +43,7 @@ export const headers = () => ({
 });
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [costSettings, setCostSettings] = useState(() => businessSettings?.costSettings || null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -1948,6 +1949,27 @@ function CentralDeReservasContent() {
     setBookingsList(current => current.map(item => item.id === bookingId ? { ...item, ...result.booking } : item));
   };
 
+  const [departureTags, setDepartureTags] = useState(() =>
+    Object.fromEntries((tourDepartures || []).map(item => [departureKey(item.tourId, item.startTime), item.tagIds || []])));
+  const handleSaveDepartureTags = async (tourId, startTime, tagIds) => {
+    const key = departureKey(tourId, startTime);
+    const previous = departureTags[key] || [];
+    setDepartureTags(current => ({ ...current, [key]: tagIds }));
+    const fd = new FormData();
+    fd.append("_action", "saveDepartureTags");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("tagIds", JSON.stringify(tagIds || []));
+    try {
+      const result = await requestResourceJson("/api/central-actions", fd);
+      if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+      setDepartureTags(current => ({ ...current, [key]: result.departure?.tagIds || [] }));
+    } catch (error) {
+      setDepartureTags(current => ({ ...current, [key]: previous }));
+      throw error;
+    }
+  };
+
   const [agendaLabels, setAgendaLabels] = useState(() => normalizeAgendaLabels(businessSettings?.agendaLabels));
   const handleSaveAgendaLabels = async (labels) => {
     const fd = new FormData();
@@ -2449,10 +2471,12 @@ function CentralDeReservasContent() {
           {hasBookings && (() => {
             const byTour = new Map();
             for (const booking of getCalendarDayBookings(day)) {
-              const entry = byTour.get(booking.tourId) || { pax: 0, title: (tours || []).find(t => t.id === booking.tourId)?.title || "Tour" };
+              const entry = byTour.get(booking.tourId) || { pax: 0, tagIds: new Set(), title: (tours || []).find(t => t.id === booking.tourId)?.title || "Tour" };
               entry.pax += getBookingPassengers(booking);
+              for (const tagId of departureTags[departureKey(booking.tourId, booking.startTime)] || []) entry.tagIds.add(tagId);
               byTour.set(booking.tourId, entry);
             }
+            const tagById = new Map((agendaLabels?.tags || []).map(tag => [tag.id, tag]));
             const items = [...byTour.entries()];
             return (
               <div className="pmy-cal-tour-chips">
@@ -2460,7 +2484,13 @@ function CentralDeReservasContent() {
                   const color = tourColor(agendaLabels, tourId);
                   return (
                     <div key={tourId} className="pmy-cal-tour-chip" style={{ background: color, color: contrastText(color) }} title={`${entry.title} · ${entry.pax} pax`}>
-                      <span>{entry.title}</span><b>{entry.pax}</b>
+                      <span>{entry.title}</span>
+                      {entry.tagIds.size > 0 && (
+                        <span className="pmy-cal-tag-dots" aria-label={[...entry.tagIds].map(id => tagById.get(id)?.name).filter(Boolean).join(", ")}>
+                          {[...entry.tagIds].filter(id => tagById.has(id)).slice(0, 4).map(id => <i key={id} style={{ background: tagById.get(id).color }} />)}
+                        </span>
+                      )}
+                      <b>{entry.pax}</b>
                     </div>
                   );
                 })}
@@ -2831,6 +2861,8 @@ function CentralDeReservasContent() {
         getLisbonBookingParts,
         getPeriodLabel,
         agendaLabels,
+        departureTags,
+        handleSaveDepartureTags,
         guideAssignmentMessage,
         guideAssignmentSaving,
         guideAssignmentsList,

@@ -38,6 +38,22 @@ model AppTenantLock {
   @@index([shop])
 }
 
+// Uma saída = um passeio num dia e horário (o "cartão" do Trello).
+// Guarda o que é da saída e não do passeio: etiquetas hoje; checklist,
+// check-ins do guia e anexos na Fase 2.
+model TourDeparture {
+  id        String   @id @default(uuid())
+  tourId    String
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  tagIds    String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([tourId, startTime])
+  @@index([startTime])
+}
+
 model Tour {
   // ID interno canônico da PMY. Este é o "passaporte" mestre do passeio.
   id                     String        @id @default(uuid())
@@ -72,6 +88,7 @@ model Tour {
   bookings               Booking[]
   blockedDates           BlockedDate[]
   guideAssignments       GuideAssignment[]
+  departures             TourDeparture[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @default(now()) @updatedAt
 

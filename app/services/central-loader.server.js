@@ -154,6 +154,18 @@ export const loader = async ({ request }) => {
 
   bookings = bookings.map(bookingForClient);
 
+  // Etiquetas por saída (passeio + dia + horário). Tolerante: se a migração
+  // ainda não rodou, a Central abre normalmente sem etiquetas de saída.
+  const tourDepartures = await prisma.tourDeparture
+    .findMany({
+      where: { startTime: { gte: assignmentStart, lte: assignmentEnd } },
+      select: { id: true, tourId: true, startTime: true, tagIds: true },
+    })
+    .catch((error) => {
+      console.error("[PMY] tourDeparture load failed:", error?.message || error);
+      return [];
+    });
+
   // Migração legada apenas em memória: o loader não escreve mais no banco.
   if (
     platformFieldMappings.length === 0 &&
@@ -396,5 +408,6 @@ export const loader = async ({ request }) => {
     integrationCredentialStatus,
     businessSettings,
     platformFieldMappings,
+    tourDepartures,
   });
 };

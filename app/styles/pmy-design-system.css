@@ -5879,3 +5879,21 @@
 .pmy-cost-editor__tiers small { opacity: .7; font-size: 12px; }
 .pmy-cost-editor__tier { display: grid; grid-template-columns: 70px 70px 100px 28px; gap: 6px; align-items: center; }
 .pmy-cost-editor__tier button { border: 0; background: none; font-size: 18px; cursor: pointer; }
+
+/* Etiquetas por saída (Grade do Dia) */
+.pmy-departure-tags { margin-bottom: 16px; }
+.pmy-departure-tags__hint { font-size: 12px; opacity: .7; margin: 0 0 8px; }
+.pmy-departure-tags__list { display: flex; flex-direction: column; gap: 8px; }
+.pmy-departure-tags__card { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-left: 5px solid var(--pmy-tour-color); border-radius: 10px; }
+.pmy-departure-tags__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 13px; min-width: 0; }
+.pmy-departure-tags__head strong { min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.pmy-departure-tags__time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pmy-departure-tags__pax { opacity: .7; white-space: nowrap; }
+.pmy-departure-tags__add { border-style: dashed !important; border-color: var(--pmy-ds-border, #cbd5e1) !important; color: inherit; opacity: .8; }
+.pmy-departure-tags__picker { display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; max-width: 320px; }
+.pmy-departure-tags__option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.pmy-departure-tags__option:hover { background: var(--pmy-ds-surface-muted, rgba(0,0,0,.05)); }
+.pmy-departure-tags__option i { width: 28px; height: 14px; border-radius: 4px; flex: none; }
+.pmy-departure-tags__option span { flex: 1; }
+.pmy-cal-tour-chip .pmy-cal-tag-dots { display: inline-flex; gap: 2px; flex: none; }
+.pmy-cal-tour-chip .pmy-cal-tag-dots i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(255,255,255,.8); }

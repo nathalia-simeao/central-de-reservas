@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
+import DepartureTagsSection, { departureKey } from "./DepartureTagsSection";
 import { tourColor, tourTags, contrastText } from "../../utils/agenda-labels.js";
 import { Button, Icon } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
@@ -100,6 +101,8 @@ export default function CentralModalLayer(props) {
     modalSelectedHour,
     modalSelectedTour,
     agendaLabels = null,
+    departureTags = {},
+    handleSaveDepartureTags,
     moneyValue,
     notify = () => {},
     openMediaLibraryPicker,
@@ -1082,8 +1085,32 @@ export default function CentralModalLayer(props) {
       const dayAssignments = getCalendarDayAssignments(selectedCalendarDay);
       const dayStats = getCalendarDayStats(selectedCalendarDay);
       const isGloballyBlocked = dayBlocks.some(block => !block.tourId);
+      const dayDepartures = (() => {
+        const map = new Map();
+        const add = (tourId, startTime, pax, title) => {
+          if (!tourId || !startTime) return;
+          const key = departureKey(tourId, startTime);
+          const entry = map.get(key) || {
+            tourId, startTime, pax: 0,
+            title: title || (tours || []).find(item => item.id === tourId)?.title || "Tour",
+            timeKey: getLisbonBookingParts(startTime)?.timeKey || "—",
+          };
+          entry.pax += pax;
+          map.set(key, entry);
+        };
+        for (const booking of dayBookings) add(booking.tourId, booking.startTime, getBookingPassengers(booking));
+        for (const assignment of dayAssignments) add(assignment.tourId || assignment.tour?.id, assignment.startTime, 0, assignment.tour?.title);
+        return [...map.values()].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+      })();
       content = (
         <div>
+          <DepartureTagsSection
+            departures={dayDepartures}
+            agendaLabels={agendaLabels}
+            departureTags={departureTags}
+            onSave={handleSaveDepartureTags}
+            lang={lang}
+          />
           <h4 className="pmy-ds-migrated-rg4op4">{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
           <div className="pmy-ds-migrated-1iaao15">
             {dayBookings.length > 0 ? (
@@ -1118,7 +1145,10 @@ export default function CentralModalLayer(props) {
                       <div>
                         <div className="pmy-ds-migrated-1i4hdds">
                           {tour?.title || 'Tour'}
-                          {tourTags(agendaLabels, booking.tourId).map(tag => (
+                          {[...tourTags(agendaLabels, booking.tourId),
+                            ...(agendaLabels?.tags || []).filter(tag => (departureTags[departureKey(booking.tourId, booking.startTime)] || []).includes(tag.id))]
+                            .filter((tag, index, list) => list.findIndex(item => item.id === tag.id) === index)
+                            .map(tag => (
                             <span key={tag.id} className="pmy-agenda-tag" style={{ background: tag.color, color: contrastText(tag.color), marginLeft: 6 }}>{tag.name}</span>
                           ))}
                         </div>

@@ -70,8 +70,8 @@ export default function AgendaLabelsEditor({ tours = [], labels, onSave, lang = 
       </summary>
       <p className="pmy-channel-editor__hint">
         {tr(
-          "Escolha a cor de cada passeio (ex.: azul Torre de Belém, rosa Regaleira, verde Jerónimos). As cores aparecem nos dias da Agenda e na lista de reservas do dia. Crie etiquetas para marcar características (Privado, Com barco…).",
-          "Pick a colour for each tour. Colours show on Agenda days and in the day's booking list. Create tags to mark features (Private, With boat…).",
+          "Crie aqui as etiquetas (ex.: Privado, Menos de 4 pessoas) e escolha a cor de cada passeio. Para marcar etiquetas numa saída específica, clique no dia da Agenda → \"Saídas do dia e etiquetas\" → \"+ Etiqueta\". Marcar uma etiqueta aqui embaixo, no passeio, faz ela aparecer em todas as saídas dele.",
+          "Create tags here (e.g. Private, Under 4 people) and pick each tour's colour. To tag a specific departure, click the Agenda day → \"Departures and tags\" → \"+ Tag\". Marking a tag on the tour below shows it on every departure of that tour.",
         )}
       </p>
 
