@@ -156,6 +156,13 @@ Endpoints operacionais:
 
 A atualização proativa de disponibilidade usa o endpoint remoto `notify-availability-update`. As credenciais reais do Integrator Portal ficam somente no ambiente de produção, por meio de `GYG_INCOMING_USER`, `GYG_INCOMING_PASS`, `GYG_OUTGOING_USER`, `GYG_OUTGOING_PASS` e `GYG_API_BASE`.
 
+`GYG_NOTIFY_MODE` controla esse envio:
+- `disabled` (padrão): nada é enviado ao GetYourGuide.
+- `sandbox`: só o botão de teste manual (Integrações → Teste Notify Availability · Sandbox), sempre para o sandbox do GYG.
+- `production`: os envios automáticos da fila vão para a produção do GYG (`/1/notify-availability-update`), **apenas para opções com "ID de vínculo GYG" preenchido**. O botão de teste manual continua indo para o sandbox. Credenciais: `GYG_OUTGOING_PROD_USER`/`GYG_OUTGOING_PROD_PASS` se existirem; senão `GYG_OUTGOING_USER`/`GYG_OUTGOING_PASS`. Cada envio fica registrado em IntegrationEvent com request, resposta e horário (para o e-mail de verificação do Live testing).
+
+`GYG_PRODUCTION_USER`/`GYG_PRODUCTION_PASS` são as credenciais que o GYG usa para **chamar a Central** em produção (entrada), não para o envio de disponibilidade.
+
 A Central não considera o canal conectado apenas porque essas variáveis existem. O status de conexão exige tráfego autenticado e o painel mantém uma matriz de evidências para Availability, Reserve, Cancel Reservation, Book, Cancel Booking e Notify Availability. A conclusão dessa matriz é evidência técnica interna; a certificação final continua dependendo da aprovação do GetYourGuide.
 
 O mapeamento operacional é feito no nível da opção vendável. Cada `GygProductOption` possui um UUID próprio, usado como `supplier productId`/External Product ID da PMY no Integrator Portal. Categorias de ingresso como ADULT, CHILD, YOUTH e SENIOR permanecem dentro da mesma opção e não ganham product IDs separados. A Central agrupa automaticamente as variantes Shopify por escolha operacional (horário + serviço/pacote), preserva o Tour mestre como entidade-pai e registra o `gygOptionId` remoto em cada opção. O antigo UUID do Tour continua aceito apenas como compatibilidade temporária para self-tests já configurados antes desta migração.

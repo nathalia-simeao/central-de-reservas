@@ -99,8 +99,62 @@ test("deals refuse to run outside sandbox mode or with invalid input", async () 
     operation: "create", productId: PRODUCT,
     deal: { dealType: "last_minute", discountPercentage: 150, start: "2026-11-20", end: "2026-11-30" },
   })).sent, false);
-  process.env.GYG_NOTIFY_MODE = "production";
+  process.env.GYG_NOTIFY_MODE = "disabled";
   assert.equal((await gygSandboxDeals({ operation: "list", productId: PRODUCT })).reason, "GYG_NOTIFY_SANDBOX_NOT_ENABLED");
   process.env.GYG_NOTIFY_MODE = "sandbox";
   assert.equal(calls.length, 0);
+});
+
+const SLOT = [{ dateTime: "2026-11-20T09:30:00+00:00", vacancies: 3 }];
+
+test("automatic pushes stay blocked in sandbox mode", async () => {
+  process.env.GYG_NOTIFY_MODE = "sandbox";
+  const calls = mockFetch(202, {});
+  const result = await notifyGygAvailabilityUpdate({ productId: PRODUCT, availabilities: SLOT });
+  assert.equal(result.reason, "GYG_NOTIFY_MANUAL_SANDBOX_ONLY");
+  assert.equal(calls.length, 0);
+});
+
+test("production mode sends automatic pushes to GYG production with prod credentials when set", async () => {
+  process.env.GYG_NOTIFY_MODE = "production";
+  process.env.GYG_OUTGOING_PROD_USER = "prod-user";
+  process.env.GYG_OUTGOING_PROD_PASS = "prod-pass";
+  try {
+    const calls = mockFetch(202, { data: { message: "ok" } });
+    const result = await notifyGygAvailabilityUpdate({ productId: PRODUCT, availabilities: SLOT });
+    assert.equal(result.sent, true);
+    assert.equal(result.mode, "production");
+    assert.equal(calls[0].url, "https://supplier-api.getyourguide.com/1/notify-availability-update");
+    assert.equal(
+      calls[0].init.headers.Authorization,
+      `Basic ${Buffer.from("prod-user:prod-pass").toString("base64")}`,
+    );
+
+    // The manual test button keeps targeting the sandbox even in production mode.
+    const manualCalls = mockFetch(202, {});
+    await notifyGygAvailabilityUpdate({ productId: PRODUCT, availabilities: SLOT, manualSandboxTest: true });
+    assert.equal(manualCalls[0].url, "https://supplier-api.getyourguide.com/sandbox/1/notify-availability-update");
+    assert.equal(
+      manualCalls[0].init.headers.Authorization,
+      `Basic ${Buffer.from("sandbox-user:sandbox-pass").toString("base64")}`,
+    );
+  } finally {
+    delete process.env.GYG_OUTGOING_PROD_USER;
+    delete process.env.GYG_OUTGOING_PROD_PASS;
+    process.env.GYG_NOTIFY_MODE = "sandbox";
+  }
+});
+
+test("production mode falls back to the outgoing credentials", async () => {
+  process.env.GYG_NOTIFY_MODE = "production";
+  try {
+    const calls = mockFetch(202, {});
+    await notifyGygAvailabilityUpdate({ productId: PRODUCT, availabilities: SLOT });
+    assert.equal(
+      calls[0].init.headers.Authorization,
+      `Basic ${Buffer.from("sandbox-user:sandbox-pass").toString("base64")}`,
+    );
+  } finally {
+    process.env.GYG_NOTIFY_MODE = "sandbox";
+  }
 });

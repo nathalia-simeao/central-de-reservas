@@ -1078,14 +1078,24 @@ export async function cancelGygBooking(data) {
 }
 
 export async function notifyGygAvailabilityUpdate({ productId, availabilities, manualSandboxTest = false }) {
-  // Explicit opt-in. Never use GYG_API_BASE here: it may point to production.
+  // Explicit opt-in via GYG_NOTIFY_MODE (never GYG_API_BASE):
+  //   disabled (default) → nothing is sent
+  //   sandbox            → only the manual test button, to the GYG sandbox
+  //   production         → automatic queue pushes go to GYG production (only for
+  //                        options with a GYG option ID); the manual test button
+  //                        still targets the sandbox.
   const mode = String(process.env.GYG_NOTIFY_MODE || "disabled").trim().toLowerCase();
-  if (mode !== "sandbox" || !manualSandboxTest) {
+  const toProduction = mode === "production" && !manualSandboxTest;
+  if (!toProduction && !(manualSandboxTest && ["sandbox", "production"].includes(mode))) {
     return { sent: false, reason: "GYG_NOTIFY_MANUAL_SANDBOX_ONLY" };
   }
 
-  const user = process.env.GYG_OUTGOING_USER;
-  const pass = process.env.GYG_OUTGOING_PASS;
+  const user = toProduction
+    ? process.env.GYG_OUTGOING_PROD_USER || process.env.GYG_OUTGOING_USER
+    : process.env.GYG_OUTGOING_USER;
+  const pass = toProduction
+    ? process.env.GYG_OUTGOING_PROD_PASS || process.env.GYG_OUTGOING_PASS
+    : process.env.GYG_OUTGOING_PASS;
   if (!user || !pass) {
     return { sent: false, reason: "OUTGOING_GYG_NOT_CONFIGURED" };
   }
@@ -1107,19 +1117,23 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
   if (updates.length !== availabilities.length) {
     return { sent: false, reason: "INVALID_NOTIFY_PAYLOAD" };
   }
-  const notifyUrl = "https://supplier-api.getyourguide.com/sandbox/1/notify-availability-update";
+  const notifyUrl = toProduction
+    ? "https://supplier-api.getyourguide.com/1/notify-availability-update"
+    : "https://supplier-api.getyourguide.com/sandbox/1/notify-availability-update";
+  const requestBody = {
+    data: {
+      productId: String(productId),
+      availabilities: updates,
+    },
+  };
+  const sentAt = new Date();
   const response = await fetch(notifyUrl, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      data: {
-        productId: String(productId),
-        availabilities: updates,
-      },
-    }),
+    body: JSON.stringify(requestBody),
   });
   let payload = null;
   try { payload = await response.json(); } catch { payload = null; }
@@ -1131,15 +1145,22 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
         topic: "notify-availability-update",
         status: response.status === 202 ? "PROCESSED" : "ERROR",
         payload: {
-          source: "CENTRAL_AVAILABILITY_PUSH_SANDBOX",
+          source: toProduction
+            ? "CENTRAL_AVAILABILITY_PUSH_PRODUCTION"
+            : "CENTRAL_AVAILABILITY_PUSH_SANDBOX",
           withPrice: updates.some(item => item.pricesByCategory),
           productId: String(productId),
           availabilityCount: Array.isArray(availabilities)
             ? availabilities.length
             : 0,
+          // Kept for GYG's live-test verification email (request + response + timestamps).
+          url: notifyUrl,
+          sentAt: sentAt.toISOString(),
+          request: requestBody,
         },
         result: {
           httpStatus: response.status,
+          response: payload,
         },
         error:
           response.status === 202
@@ -1153,9 +1174,9 @@ export async function notifyGygAvailabilityUpdate({ productId, availabilities, m
   }
 
   return {
-    sent: response.status === 202,
+    sent: response.status === 202 || (toProduction && response.status === 200),
     status: response.status,
-    mode: "sandbox",
+    mode: toProduction ? "production" : "sandbox",
     payload,
   };
 }
@@ -1168,7 +1189,7 @@ const GYG_DEAL_TYPES = new Set(["standard", "early_bird", "last_minute"]);
 
 export async function gygSandboxDeals({ operation, productId, dealId, deal = {} }) {
   const mode = String(process.env.GYG_NOTIFY_MODE || "disabled").trim().toLowerCase();
-  if (mode !== "sandbox") return { sent: false, reason: "GYG_NOTIFY_SANDBOX_NOT_ENABLED" };
+  if (!["sandbox", "production"].includes(mode)) return { sent: false, reason: "GYG_NOTIFY_SANDBOX_NOT_ENABLED" };
   const user = process.env.GYG_OUTGOING_USER;
   const pass = process.env.GYG_OUTGOING_PASS;
   if (!user || !pass) return { sent: false, reason: "OUTGOING_GYG_NOT_CONFIGURED" };
