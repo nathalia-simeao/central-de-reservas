@@ -5923,3 +5923,31 @@
 .pmy-tour-color__option.is-current { box-shadow: 0 0 0 2px var(--pmy-ds-surface, #fff), 0 0 0 4px currentColor; }
 .pmy-tour-color__custom { background: var(--pmy-ds-surface-muted, #f1f5f9); font-weight: 700; color: inherit; }
 .pmy-tour-color__native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; bottom: 0; right: 0; }
+
+/* Visão geral: saídas de hoje/amanhã + botões de áreas */
+.pmy-overview-near { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 14px; background: var(--pmy-ds-surface, #fff); }
+.pmy-overview-near h3 { margin: 0 0 8px; font-size: 14px; }
+.pmy-overview-near ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pmy-overview-near li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 7px 0; border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); font-size: 13px; }
+.pmy-overview-near li:last-child { border-bottom: 0; }
+.pmy-overview-near li strong { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.pmy-overview-near__day { font-weight: 700; white-space: nowrap; opacity: .75; }
+.pmy-overview-near__day.is-today { color: var(--pmy-primary, #166534); opacity: 1; }
+.pmy-overview-near__empty { margin: 0; font-size: 13px; opacity: .7; }
+.pmy-overview-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+.pmy-overview-section-btn { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 14px; background: var(--pmy-ds-surface, #fff); font: inherit; text-align: left; cursor: pointer; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.pmy-overview-section-btn:hover, .pmy-overview-section-btn:focus-visible { border-color: var(--pmy-primary, #166534); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pmy-primary, #166534) 18%, transparent); outline: none; }
+.pmy-overview-section-btn__text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.pmy-overview-section-btn__text strong { font-size: 15px; }
+.pmy-overview-section-btn__text small { font-size: 12px; opacity: .7; }
+.pmy-overview-back { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pmy-overview-back h2 { margin: 0; font-size: 20px; }
+
+/* Configurações → Equipe */
+.pmy-team { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.pmy-team__row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); }
+.pmy-team__who { display: flex; flex-direction: column; gap: 3px; flex: 1 1 260px; min-width: 0; }
+.pmy-team__who input { padding: 7px 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; font: inherit; font-size: 14px; max-width: 320px; }
+.pmy-team__who small { font-size: 12px; opacity: .65; overflow-wrap: anywhere; }
+.pmy-team__role { display: flex; gap: 6px; }
+.pmy-team__empty, .pmy-team__msg { font-size: 13px; opacity: .75; }

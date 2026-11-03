@@ -1,3 +1,4 @@
+import TeamAccessPanel from "./TeamAccessPanel";
 import {
   Badge,
   Button,
@@ -41,7 +42,10 @@ export default function SettingsTab(props) {
     setActiveMappingPlatform,
     settingsSaveMessage,
     theme,
-    lang
+    lang,
+    centralUsers = [],
+    centralUser = null,
+    handleSaveCentralUser,
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
@@ -211,6 +215,7 @@ export default function SettingsTab(props) {
 
   return (
     <div className="pmy-ds-settings-stack">
+      <TeamAccessPanel users={centralUsers} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
       <Card>
         <SectionHeader
           eyebrow={tr("Marca", "Brand")}

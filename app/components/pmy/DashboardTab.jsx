@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 import BookingListModal from "./BookingListModal";
 import ProfitPanel from "./ProfitPanel";
+import GygDeactivationAlerts from "./GygDeactivationAlerts";
 
 const TrendChart = ({
   data,
@@ -1778,8 +1779,23 @@ export default function DashboardTab(props) {
     profitSummary = null,
     costSettings = null,
     handleSaveCostSettings,
+    isCentralAdmin = true,
   } = props;
   const [statusList, setStatusList] = useState(null);
+  const [section, setSection] = useState("");
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const sections = [
+    { key: "reservas", icon: "bookings", label: tr("Reservas", "Bookings"), hint: tr("Status, lista de clientes, realizado/no-show", "Status, customer list, completed/no-show") },
+    { key: "saidas", icon: "calendar", label: tr("Saídas e ocupação", "Departures & occupancy"), hint: tr("Próximas saídas, ocupação de 30 dias, saídas críticas", "Upcoming, 30-day occupancy, critical departures") },
+    { key: "financeiro", icon: "revenue", label: tr("Financeiro", "Finance"), hint: tr("Faturamento × lucro, custos, vendas por canal", "Revenue × profit, costs, sales by channel"), admin: true },
+    { key: "desempenho", icon: "ticket", label: tr("Desempenho", "Performance"), hint: tr("Tendência, ranking e performance dos passeios", "Trend, ranking and tour performance"), admin: true },
+    { key: "integracoes", icon: "link", label: tr("Saúde das integrações", "Integration health"), hint: tr("Alertas do GYG, erros de sincronização, canais", "GYG alerts, sync errors, channels"), admin: true },
+  ].filter((item) => isCentralAdmin || !item.admin);
+  const activeSection = sections.find((item) => item.key === section) || null;
+  const lisbonDayKey = (value) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date(value));
+  const todayKey = lisbonDayKey(Date.now());
+  const tomorrowKey = lisbonDayKey(Date.now() + 24 * 60 * 60 * 1000);
+  const nearDepartures = (dashboardUpcomingDepartures || []).filter((item) => [todayKey, tomorrowKey].includes(lisbonDayKey(item.startTime)));
 
   return (
     <>
@@ -1867,10 +1883,13 @@ export default function DashboardTab(props) {
                   },
                 ];
 
+                const visibleKpis = isCentralAdmin ? kpis : kpis.filter((item) => !["revenue", "ticket"].includes(item.key));
+                if (activeSection) return null;
+
                 return (
                   <>
                     <section className="pmy-dashboard-kpi-grid" aria-label={lang === "pt" ? "Indicadores principais" : "Key metrics"}>
-                      {kpis.map((item) => (
+                      {visibleKpis.map((item) => (
                         <button
                           key={item.key}
                           type="button"
@@ -1915,6 +1934,7 @@ export default function DashboardTab(props) {
                         </div>
                         <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
                       </button>
+                      {isCentralAdmin && <>
                       <button
                         type="button"
                         className="pmy-dashboard-status-item"
@@ -1941,11 +1961,54 @@ export default function DashboardTab(props) {
                         </div>
                         <Icon name="chevronRight" size={15} className="pmy-dashboard-status-expand" />
                       </button>
+                      </>}
+                    </section>
+
+                    <section className="pmy-overview-near" aria-label={tr("Saídas de hoje e amanhã", "Today and tomorrow")}>
+                      <h3>{tr("Saídas de hoje e amanhã", "Today and tomorrow")}</h3>
+                      {nearDepartures.length === 0 ? (
+                        <p className="pmy-overview-near__empty">{tr("Nenhuma saída com reserva hoje ou amanhã.", "No departures with bookings today or tomorrow.")}</p>
+                      ) : (
+                        <ul>
+                          {nearDepartures.map((item) => {
+                            const isToday = lisbonDayKey(item.startTime) === todayKey;
+                            const time = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit" }).format(new Date(item.startTime));
+                            return (
+                              <li key={item.key}>
+                                <span className={`pmy-overview-near__day ${isToday ? "is-today" : ""}`}>{isToday ? tr("Hoje", "Today") : tr("Amanhã", "Tomorrow")} · {time}</span>
+                                <strong>{item.tourTitle}</strong>
+                                <span>{item.passengers} pax · {item.bookings} {tr("reservas", "bookings")}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </section>
+
+                    <section className="pmy-overview-sections" aria-label={tr("Áreas", "Areas")}>
+                      {sections.map((item) => (
+                        <button key={item.key} type="button" className="pmy-overview-section-btn" onClick={() => setSection(item.key)}>
+                          <span className="pmy-kpi-icon"><Icon name={item.icon} size={20} /></span>
+                          <span className="pmy-overview-section-btn__text">
+                            <strong>{item.label}{item.admin ? " 🔒" : ""}</strong>
+                            <small>{item.hint}</small>
+                          </span>
+                          <Icon name="chevronRight" size={16} />
+                        </button>
+                      ))}
                     </section>
                   </>
                 );
               })()}
 
+              {activeSection && (
+                <div className="pmy-overview-back">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setSection("")}>← {tr("Visão geral", "Overview")}</Button>
+                  <h2>{activeSection.label}</h2>
+                </div>
+              )}
+
+              {section === "reservas" && (<>
               <BookingStatusOverview
                 summary={dashboardBookingStatusSummary}
                 lang={lang}
@@ -1963,16 +2026,9 @@ export default function DashboardTab(props) {
                 onClose={() => setStatusList(null)}
               />
 
-              <ProfitPanel
-                summary={profitSummary}
-                formatMoney={formatMoney}
-                periodLabel={getPeriodLabel()}
-                lang={lang}
-                tours={tours}
-                costSettings={costSettings}
-                onSaveCosts={handleSaveCostSettings}
-              />
+              </>)}
 
+              {section === "saidas" && (<>
               <UpcomingDeparturesPanel
                 departures={dashboardUpcomingDepartures || []}
                 lang={lang}
@@ -1990,6 +2046,28 @@ export default function DashboardTab(props) {
                 />
               </div>
 
+              </>)}
+
+              {section === "financeiro" && isCentralAdmin && (<>
+              <ProfitPanel
+                summary={profitSummary}
+                formatMoney={formatMoney}
+                periodLabel={getPeriodLabel()}
+                lang={lang}
+                tours={tours}
+                costSettings={costSettings}
+                onSaveCosts={handleSaveCostSettings}
+              />
+
+              <ChannelBookingsChart
+                bookings={bookings}
+                lang={lang}
+              />
+
+              </>)}
+
+              {section === "integracoes" && isCentralAdmin && (<>
+                <GygDeactivationAlerts lang={lang} />
               <div className="pmy-grid pmy-ds-performance-grid">
                 <SyncBookingIssuesPanel
                   bookings={bookings}
@@ -2006,6 +2084,9 @@ export default function DashboardTab(props) {
                 />
               </div>
 
+              </>)}
+
+              {section === "desempenho" && isCentralAdmin && (<>
               <TrendChart
                 data={dashboardTrendData || []}
                 currency={dashboardCurrency || "EUR"}
@@ -2013,11 +2094,6 @@ export default function DashboardTab(props) {
                 granularity={dashboardTrendGranularity}
                 lang={lang}
                 periodLabel={getPeriodLabel()}
-              />
-
-              <ChannelBookingsChart
-                bookings={bookings}
-                lang={lang}
               />
 
               <TourPerformanceRanking
@@ -2130,6 +2206,7 @@ export default function DashboardTab(props) {
                   ))}
                 </div>
               </div>
+              </>)}
             </div>
           )}
     </>

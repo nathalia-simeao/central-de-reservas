@@ -1,5 +1,6 @@
 import { data } from "react-router";
 import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
+import { ADMIN_ONLY_ACTIONS, ROLES, isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
 import { normalizeCostSettings } from "../utils/profit.js";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -103,9 +104,42 @@ async function assignGuideToDeparture({ tour, guide, startTime }) {
 }
 
 export const action = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const auth = await authenticate.admin(request);
+  const { admin, session } = auth;
   const formData = await request.formData();
   const _action = formData.get("_action");
+  const centralUser = await resolveCentralUser(prisma, auth);
+
+  if (ADMIN_ONLY_ACTIONS.has(String(_action || "")) && !isAdmin(centralUser)) {
+    return json({ success: false, error: "Acesso restrito a administradores da Central." }, { status: 403 });
+  }
+
+  if (_action === "saveCentralUser") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      const role = String(formData.get("role") || "").trim().toUpperCase();
+      const name = formData.has("name") ? String(formData.get("name") || "").trim().slice(0, 80) : undefined;
+      if (!id || (role && !ROLES.includes(role))) {
+        return json({ success: false, error: "Dados inválidos." }, { status: 400 });
+      }
+      const target = await prisma.centralUser.findUnique({ where: { id } });
+      if (!target) return json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
+      if (role === "STAFF" && target.role === "ADMIN") {
+        const admins = await prisma.centralUser.count({ where: { role: "ADMIN" } });
+        if (admins <= 1) {
+          return json({ success: false, error: "A Central precisa de pelo menos um administrador." }, { status: 409 });
+        }
+      }
+      const user = await prisma.centralUser.update({
+        where: { id },
+        data: { ...(role ? { role } : {}), ...(name !== undefined ? { name: name || null } : {}) },
+      });
+      return json({ success: true, user });
+    } catch (e) {
+      console.error("[PMY] saveCentralUser error:", e);
+      return json({ success: false, error: "Não foi possível salvar o usuário." }, { status: 500 });
+    }
+  }
 
   const mediaAction = await handleCentralMediaAction({
     action: _action,

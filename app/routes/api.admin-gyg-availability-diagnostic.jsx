@@ -1,4 +1,5 @@
 import { authenticate } from "../shopify.server";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { resolveGygProduct, gygProductScheduleSlots } from "../utils/gyg-product-options.server";
 import { getActiveAvailabilityBlocks, blockMatchesCalendarSlot } from "../utils/availability.server";
@@ -12,7 +13,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), {
 
 // Admin-only, read-only diagnosis. No secrets, customer data or booking IDs returned.
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const params = new URL(request.url).searchParams;
   const productId = params.get("productId");
   const date = params.get("date");

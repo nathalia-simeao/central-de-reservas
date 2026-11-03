@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 import {
@@ -148,7 +149,7 @@ async function testStoredCredential(provider) {
 }
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
 
   const statuses = await listSafeIntegrationSecretStatuses(db);
   return json({
@@ -161,7 +162,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const formData = await request.formData();
   const action = clean(formData.get("_action")).toLowerCase();
   const provider = providerName(formData.get("provider"));

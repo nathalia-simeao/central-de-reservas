@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 import {
@@ -11,7 +12,7 @@ import {
 const json = (body, init) => data(body, init);
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
 
   const [stats, jobs] = await Promise.all([
     getSyncQueueStats(db),
@@ -76,7 +77,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const formData = await request.formData();
   const actionName = String(formData.get("_action") || "").trim();
 

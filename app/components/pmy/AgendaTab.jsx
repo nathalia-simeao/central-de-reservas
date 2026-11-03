@@ -127,6 +127,7 @@ export default function AgendaTab(props) {
     languageQuotaRules = {},
     agendaLabels = null,
     handleSaveAgendaLabels,
+    isCentralAdmin = true,
     guidesList = [],
     guideAssignmentsList = [],
     handleCreateBlock,
@@ -835,9 +836,11 @@ export default function AgendaTab(props) {
         </Card>
       </div>
 
-      <Card>
-        <AgendaLabelsEditor labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
-      </Card>
+      {isCentralAdmin && (
+        <Card>
+          <AgendaLabelsEditor labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
+        </Card>
+      )}
 
       <Card>
         <div className="pmy-ds-calendar-toolbar">

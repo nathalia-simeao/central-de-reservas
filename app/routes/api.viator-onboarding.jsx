@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 import {
@@ -28,13 +29,13 @@ function errorResponse(error) {
 }
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const status = await buildViatorOnboardingStatus(db, request.url);
   return json({ success: true, status });
 };
 
 export const action = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const formData = await request.formData();
   const action = clean(formData.get("_action")).toLowerCase();
 

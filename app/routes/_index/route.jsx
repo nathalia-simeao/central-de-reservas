@@ -43,7 +43,7 @@ export const headers = () => ({
 });
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [], centralUser = null, centralUsers = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [costSettings, setCostSettings] = useState(() => businessSettings?.costSettings || null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -467,14 +467,19 @@ function CentralDeReservasContent() {
   const guidePhotoRef = useRef(null);
   const t = translations[lang] || translations.pt;
   const ui = (pt, en) => lang === "en" ? en : pt;
+  // Perfis: ADMIN vê tudo; STAFF (equipe) não vê Integrações, Configurações
+  // nem as áreas restritas da Visão geral. O servidor também bloqueia.
+  const isCentralAdmin = !centralUser || String(centralUser.role || "").toUpperCase() === "ADMIN";
+  const ADMIN_TABS = ["integracoes", "configuracoes"];
   const navItems = [
-    { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Dashboard" : "Dashboard" },
+    { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Visão geral" : "Overview" },
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
     { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
-  ];
+  ].filter((item) => isCentralAdmin || !ADMIN_TABS.includes(item.key));
 
   const openNavigationTab = (key) => {
+    if (!isCentralAdmin && ADMIN_TABS.includes(key)) return;
     if (key === "agenda") handleOpenAgenda();
     else setActiveTab(key);
     setMobileNavOpen(false);
@@ -908,6 +913,7 @@ function CentralDeReservasContent() {
     const integrationLogsActive =
       activeTab === "integracoes" && intSubTab === "logs";
 
+    if (!isCentralAdmin) return undefined;
     if (!dashboardActive && !integrationLogsActive) return undefined;
 
     loadSyncQueue();
@@ -1929,6 +1935,17 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
+  const handleSaveCentralUser = async (id, patch) => {
+    const fd = new FormData();
+    fd.append("_action", "saveCentralUser");
+    fd.append("id", id);
+    if (patch.role) fd.append("role", patch.role);
+    if (patch.name !== undefined) fd.append("name", patch.name || "");
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    return result.user;
+  };
+
   const handleSaveCostSettings = async (settings) => {
     const fd = new FormData();
     fd.append("_action", "saveCostSettings");
@@ -2670,7 +2687,7 @@ function CentralDeReservasContent() {
           </nav>
 
           <div className="pmy-sidebar-footer">
-            <button
+            {isCentralAdmin && <button
               type="button"
               className={`pmy-menu-item ${activeTab === "configuracoes" ? "active" : ""}`}
               onClick={() => openNavigationTab("configuracoes")}
@@ -2678,7 +2695,7 @@ function CentralDeReservasContent() {
             >
               <span className="pmy-menu-icon"><Icon name="settings" size={19} /></span>
               <span className="pmy-menu-label">{lang === "pt" ? "Configurações" : "Settings"}</span>
-            </button>
+            </button>}
 
             <div className="pmy-lang-pill" role="group" aria-label={ui("Idioma da interface", "Interface language")}>
               <button type="button" className={lang==='pt'?'active':''} aria-pressed={lang==='pt'} aria-label="Português" onClick={() => setLang('pt')}>
@@ -2718,7 +2735,7 @@ function CentralDeReservasContent() {
             </div>
             {activeTab==='dashboard' && (
               <div className="pmy-header-notification-actions" style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexWrap: "nowrap", gap: 10, width: "auto", flex: "0 0 auto", marginLeft: "auto" }}>
-                <GygDeactivationAlerts lang={lang} />
+                {isCentralAdmin && <GygDeactivationAlerts lang={lang} />}
                 <div className="pmy-date-wrapper" style={{ display: "inline-flex", flex: "0 0 auto", width: "auto" }}>
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
                 {isDateMenuOpen && (
@@ -2776,7 +2793,7 @@ function CentralDeReservasContent() {
             operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
             syncQueueData, syncQueueLoading, syncQueueError,
             dashboardStatusBookings, tours, handleSetBookingAttendance,
-            profitSummary, costSettings, handleSaveCostSettings
+            profitSummary, costSettings, handleSaveCostSettings, isCentralAdmin
           }} />
 
           <AgendaTab {...{
@@ -2795,7 +2812,7 @@ function CentralDeReservasContent() {
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
             tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang,
-            agendaLabels, handleSaveAgendaLabels
+            agendaLabels, handleSaveAgendaLabels, isCentralAdmin
           }} />
 
           <IntegrationsTab {...{
@@ -2832,7 +2849,7 @@ function CentralDeReservasContent() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            t, theme, lang
+            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser
           }} />
 
 

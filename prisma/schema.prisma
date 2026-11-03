@@ -38,6 +38,20 @@ model AppTenantLock {
   @@index([shop])
 }
 
+// Pessoas da equipe que abrem a Central pelo admin do Shopify.
+// Identificadas pelo ID do usuário Shopify (sessionToken.sub).
+// ADMIN vê tudo; STAFF não vê Financeiro, Desempenho, Saúde das integrações,
+// Integrações e Configurações.
+model CentralUser {
+  id            String   @id @default(uuid())
+  shopifyUserId String   @unique
+  name          String?
+  role          String   @default("STAFF")
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
 // Uma saída = um passeio num dia e horário (o "cartão" do Trello).
 // Guarda o que é da saída e não do passeio: etiquetas hoje; checklist,
 // check-ins do guia e anexos na Fase 2.

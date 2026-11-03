@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
 import { authenticate, registerWebhooks } from "../shopify.server";
 import db from "../db.server";
 import {
@@ -34,7 +35,10 @@ function bookingForClient(booking) {
 }
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const auth = await authenticate.admin(request);
+  const { admin, session } = auth;
+  const centralUser = await resolveCentralUser(prisma, auth);
+  const userIsAdmin = isAdmin(centralUser);
   const now = new Date();
   const defaultStart = new Date(now);
   defaultStart.setDate(defaultStart.getDate() - 30);
@@ -407,8 +411,21 @@ export const loader = async ({ request }) => {
     shopifyWebhookStatus,
     gygIntegrationStatus,
     integrationCredentialStatus,
-    businessSettings,
-    platformFieldMappings,
+    businessSettings: userIsAdmin || !businessSettings
+      ? businessSettings
+      : { ...businessSettings, costSettings: null, fieldMappings: null },
+    platformFieldMappings: userIsAdmin ? platformFieldMappings : [],
     tourDepartures,
+    centralUser: {
+      id: centralUser.id,
+      name: centralUser.name || null,
+      role: centralUser.role,
+      legacy: Boolean(centralUser.legacy),
+    },
+    centralUsers: userIsAdmin
+      ? await prisma.centralUser
+          .findMany({ orderBy: [{ role: "asc" }, { createdAt: "asc" }] })
+          .catch(() => [])
+      : [],
   });
 };

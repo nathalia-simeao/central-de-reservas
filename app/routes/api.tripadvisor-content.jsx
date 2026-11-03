@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 import { getIntegrationCredentials } from "../utils/integration-secrets.server";
@@ -7,7 +8,7 @@ import { loadTripadvisorContent } from "../utils/tripadvisor.server";
 const json = (body, init) => data(body, init);
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
 
   const stored = await getIntegrationCredentials(db, "TRIPADVISOR").catch(() => null);
   if (!stored?.credentials?.apiKey) {

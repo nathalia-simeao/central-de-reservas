@@ -1,9 +1,10 @@
 import { data } from "react-router";
+import { requireCentralAdmin } from "../utils/central-access.server.js";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const events = await db.integrationEvent.findMany({
     where: { provider: "GETYOURGUIDE", topic: "notify-product-deactivation" },
     orderBy: { processedAt: "desc" },
@@ -40,7 +41,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  await authenticate.admin(request);
+  await requireCentralAdmin(db, authenticate, request);
   const form = await request.formData();
   const op = String(form.get("_action") || "");
   if (!["read", "dismiss"].includes(op)) return data({ success: false, error: "INVALID_ACTION" }, { status: 400 });

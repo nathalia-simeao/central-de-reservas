@@ -25,7 +25,7 @@ test("GYG deactivation dashboard alerts require Shopify admin auth and do not mu
   const route = await fs.readFile(new URL("../app/routes/api.gyg-notification-alerts.jsx", import.meta.url), "utf8");
   const panel = await fs.readFile(new URL("../app/components/pmy/GygDeactivationAlerts.jsx", import.meta.url), "utf8");
   const dashboard = await fs.readFile(new URL("../app/components/pmy/DashboardTab.jsx", import.meta.url), "utf8");
-  assert.ok(route.includes("authenticate.admin(request)"));
+  assert.ok(route.includes("authenticate.admin(request)") || route.includes("requireCentralAdmin(db, authenticate, request)"));
   assert.ok(route.includes('topic: "notify-product-deactivation"'));
   assert.ok(route.includes("take: 30"));
   assert.ok(route.includes("db.gygProductOption.findMany"));
