@@ -56,16 +56,50 @@ model CentralUser {
 // Guarda o que é da saída e não do passeio: etiquetas hoje; checklist,
 // check-ins do guia e anexos na Fase 2.
 model TourDeparture {
-  id        String   @id @default(uuid())
-  tourId    String
-  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  startTime DateTime
-  tagIds    String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id           String   @id @default(uuid())
+  tourId       String
+  tour         Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  startTime    DateTime
+  tagIds       String[] @default([])
+  // Checklist do guia: só a gestão pode desfazer.
+  checkStartAt DateTime?
+  checkMidAt   DateTime?
+  checkEndAt   DateTime?
+  checkedBy    String?
+  // Observações: lista só-adiciona [{ at, by, text }].
+  guideNotes   Json?
+  attachments  DepartureAttachment[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@unique([tourId, startTime])
   @@index([startTime])
+}
+
+// Ingressos e outros arquivos da saída, visíveis para o guia escalado.
+model DepartureAttachment {
+  id          String        @id @default(uuid())
+  departureId String
+  departure   TourDeparture @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  fileName    String
+  mimeType    String
+  size        Int
+  data        Bytes
+  uploadedBy  String?
+  createdAt   DateTime      @default(now())
+
+  @@index([departureId])
+}
+
+model GuideSession {
+  id        String   @id @default(uuid())
+  guideId   String
+  guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([guideId])
 }
 
 model Tour {
@@ -209,6 +243,7 @@ model Booking {
   attendanceStatus    String?
   attendanceNote      String?   @db.Text
   attendanceMarkedAt  DateTime?
+  attendanceMarkedBy  String?
 
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @default(now()) @updatedAt
@@ -245,6 +280,11 @@ model Guide {
   source              String            @default("CENTRAL")
   utmId               String?           // ID da campanha UTM (ex: 21d91c)
   referralLink        String?           // Link completo com parâmetros UTM
+  // Portal do guia (Fase 2): login com e-mail + senha criada pela gestão.
+  passwordHash        String?
+  portalEnabled       Boolean           @default(false)
+  lastLoginAt         DateTime?
+  sessions            GuideSession[]
   assignments         GuideAssignment[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @default(now()) @updatedAt

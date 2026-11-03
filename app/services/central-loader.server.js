@@ -158,12 +158,26 @@ export const loader = async ({ request }) => {
 
   bookings = bookings.map(bookingForClient);
 
+  // Portal do guia: a senha nunca sai do banco; só dizemos se existe uma.
+  const guidesWithPassword = new Set(
+    (
+      await prisma.guide
+        .findMany({ where: { passwordHash: { not: null } }, select: { id: true } })
+        .catch(() => [])
+    ).map((item) => item.id),
+  );
+  dbGuides = dbGuides.map((guide) => ({ ...guide, portalHasPassword: guidesWithPassword.has(guide.id) }));
+
   // Etiquetas por saída (passeio + dia + horário). Tolerante: se a migração
   // ainda não rodou, a Central abre normalmente sem etiquetas de saída.
   const tourDepartures = await prisma.tourDeparture
     .findMany({
       where: { startTime: { gte: assignmentStart, lte: assignmentEnd } },
-      select: { id: true, tourId: true, startTime: true, tagIds: true },
+      select: {
+        id: true, tourId: true, startTime: true, tagIds: true,
+        checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true,
+        attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+      },
     })
     .catch((error) => {
       console.error("[PMY] tourDeparture load failed:", error?.message || error);

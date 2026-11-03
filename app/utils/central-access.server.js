@@ -76,4 +76,5 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "syncQueueRequeue",
   "saveAgendaLabels",
   "saveCentralUser",
+  "setGuidePortalAccess",
 ]);

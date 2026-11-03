@@ -1,3 +1,4 @@
+import GuidePortalAccess from "./GuidePortalAccess";
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
 import DepartureTagsSection, { departureKey } from "./DepartureTagsSection";
@@ -103,6 +104,11 @@ export default function CentralModalLayer(props) {
     agendaLabels = null,
     departureTags = {},
     handleSaveDepartureTags,
+    departureInfo = {},
+    handleUploadDepartureAttachment,
+    handleRemoveDepartureAttachment,
+    handleSetGuidePortalAccess,
+    isCentralAdmin = true,
     moneyValue,
     notify = () => {},
     openMediaLibraryPicker,
@@ -1109,6 +1115,10 @@ export default function CentralModalLayer(props) {
             agendaLabels={agendaLabels}
             departureTags={departureTags}
             onSave={handleSaveDepartureTags}
+            departureInfo={departureInfo}
+            assignments={dayAssignments}
+            onUpload={handleUploadDepartureAttachment}
+            onRemoveAttachment={handleRemoveDepartureAttachment}
             lang={lang}
           />
           <h4 className="pmy-ds-migrated-rg4op4">{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
@@ -1311,6 +1321,10 @@ export default function CentralModalLayer(props) {
             </div>
           </div>
   
+          {isCentralAdmin && (
+            <GuidePortalAccess guide={selectedGuideInfo} onSave={handleSetGuidePortalAccess} lang={lang} />
+          )}
+
           {selectedGuideInfo.description && (
             <div className="pmy-ds-panel-soft pmy-u-mt-3">
               <h4 className="pmy-u-mb-2">{ui("Perfil do guia", "Guide profile")}</h4>

@@ -1,6 +1,16 @@
 import { data } from "react-router";
 import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
 import { ADMIN_ONLY_ACTIONS, ROLES, isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
+import {
+  ALLOWED_ATTACHMENT_TYPES,
+  MAX_ATTACHMENT_BYTES,
+  ensureDeparture,
+  generatePassword,
+  hashPassword,
+  normalizeEmail,
+  passwordProblem,
+  safeFileName,
+} from "../utils/guide-portal.server.js";
 import { normalizeCostSettings } from "../utils/profit.js";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -292,6 +302,102 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] setBookingAttendance error:", e);
       return json({ success: false, error: "Não foi possível salvar a realização." }, { status: 500 });
+    }
+  }
+
+  if (_action === "setGuidePortalAccess") {
+    try {
+      const guideId = String(formData.get("guideId") || "").trim();
+      const enabled = String(formData.get("enabled") || "") === "1";
+      const generate = String(formData.get("generate") || "") === "1";
+      const typed = String(formData.get("password") || "");
+      const guide = await prisma.guide.findUnique({ where: { id: guideId } });
+      if (!guide) return json({ success: false, error: "Guia não encontrado." }, { status: 404 });
+      if (enabled && !normalizeEmail(guide.email)) {
+        return json({ success: false, error: "Cadastre o e-mail do guia antes de liberar o acesso." }, { status: 400 });
+      }
+      if (enabled) {
+        const duplicate = await prisma.guide.findFirst({
+          where: { id: { not: guide.id }, portalEnabled: true, email: { equals: normalizeEmail(guide.email), mode: "insensitive" } },
+          select: { name: true },
+        });
+        if (duplicate) {
+          return json({ success: false, error: `O e-mail já é usado pelo acesso de ${duplicate.name}.` }, { status: 409 });
+        }
+      }
+      let newPassword = null;
+      if (generate) newPassword = generatePassword();
+      else if (typed) {
+        const problem = passwordProblem(typed);
+        if (problem) return json({ success: false, error: problem }, { status: 400 });
+        newPassword = typed;
+      }
+      const hasPassword = Boolean(newPassword) ||
+        (await prisma.guide.count({ where: { id: guideId, passwordHash: { not: null } } })) > 0;
+      if (enabled && !hasPassword) {
+        return json({ success: false, error: "Defina uma senha para liberar o acesso." }, { status: 400 });
+      }
+      await prisma.guide.update({
+        where: { id: guideId },
+        data: { portalEnabled: enabled, ...(newPassword ? { passwordHash: hashPassword(newPassword) } : {}) },
+      });
+      // Nova senha ou acesso desligado: derruba as sessões abertas.
+      if (newPassword || !enabled) await prisma.guideSession.deleteMany({ where: { guideId } });
+      return json({
+        success: true,
+        guide: { id: guideId, portalEnabled: enabled, portalHasPassword: hasPassword },
+        password: newPassword,
+      });
+    } catch (e) {
+      console.error("[PMY] setGuidePortalAccess error:", e);
+      return json({ success: false, error: "Não foi possível salvar o acesso do guia." }, { status: 500 });
+    }
+  }
+
+  if (_action === "uploadDepartureAttachment") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      const file = formData.get("file");
+      if (!tourId || Number.isNaN(startTime.getTime()) || !file || typeof file.arrayBuffer !== "function") {
+        return json({ success: false, error: "Arquivo ou saída inválidos." }, { status: 400 });
+      }
+      const mimeType = String(file.type || "").toLowerCase();
+      if (!ALLOWED_ATTACHMENT_TYPES.has(mimeType)) {
+        return json({ success: false, error: "Envie PDF ou imagem (JPG, PNG, WEBP, HEIC)." }, { status: 400 });
+      }
+      if (!file.size || file.size > MAX_ATTACHMENT_BYTES) {
+        return json({ success: false, error: "Arquivo vazio ou maior que 8 MB." }, { status: 400 });
+      }
+      const departure = await ensureDeparture(prisma, tourId, startTime);
+      const count = await prisma.departureAttachment.count({ where: { departureId: departure.id } });
+      if (count >= 20) return json({ success: false, error: "Limite de 20 arquivos por saída." }, { status: 400 });
+      const attachment = await prisma.departureAttachment.create({
+        data: {
+          departureId: departure.id,
+          fileName: safeFileName(file.name),
+          mimeType,
+          size: file.size,
+          data: Buffer.from(await file.arrayBuffer()),
+          uploadedBy: centralUser?.name || centralUser?.shopifyUserId || "central",
+        },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+      });
+      return json({ success: true, attachment, departureId: departure.id });
+    } catch (e) {
+      console.error("[PMY] uploadDepartureAttachment error:", e);
+      return json({ success: false, error: "Não foi possível enviar o arquivo." }, { status: 500 });
+    }
+  }
+
+  if (_action === "removeDepartureAttachment") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      await prisma.departureAttachment.delete({ where: { id } });
+      return json({ success: true, id });
+    } catch (e) {
+      console.error("[PMY] removeDepartureAttachment error:", e);
+      return json({ success: false, error: "Não foi possível remover o arquivo." }, { status: 500 });
     }
   }
 

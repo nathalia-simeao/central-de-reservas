@@ -235,6 +235,8 @@ function CentralDeReservasContent() {
           source: g.source || "CENTRAL",
           utmId: g.utmId || "",
           referralLink: g.referralLink || "",
+          portalEnabled: Boolean(g.portalEnabled),
+          portalHasPassword: Boolean(g.portalHasPassword),
         }))
       : []
   );
@@ -1935,6 +1937,49 @@ function CentralDeReservasContent() {
       normalizeLanguageQuotaRules(tour.languageSlotQuotas),
     ])),
   );
+  const handleSetGuidePortalAccess = async (guideId, patch) => {
+    const fd = new FormData();
+    fd.append("_action", "setGuidePortalAccess");
+    fd.append("guideId", guideId);
+    fd.append("enabled", patch.enabled ? "1" : "0");
+    if (patch.generate) fd.append("generate", "1");
+    if (patch.password) fd.append("password", patch.password);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    const update = { portalEnabled: result.guide.portalEnabled, portalHasPassword: result.guide.portalHasPassword };
+    setGuidesList(current => current.map(item => item.id === guideId ? { ...item, ...update } : item));
+    setSelectedGuideInfo(current => current && current.id === guideId ? { ...current, ...update } : current);
+    return result;
+  };
+
+  const handleUploadDepartureAttachment = async (tourId, startTime, file) => {
+    const fd = new FormData();
+    fd.append("_action", "uploadDepartureAttachment");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("file", file);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao enviar.", "Upload failed."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo(current => ({
+      ...current,
+      [key]: { ...(current[key] || {}), attachments: [...(current[key]?.attachments || []), result.attachment] },
+    }));
+  };
+
+  const handleRemoveDepartureAttachment = async (tourId, startTime, attachmentId) => {
+    const fd = new FormData();
+    fd.append("_action", "removeDepartureAttachment");
+    fd.append("id", attachmentId);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao remover.", "Remove failed."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo(current => ({
+      ...current,
+      [key]: { ...(current[key] || {}), attachments: (current[key]?.attachments || []).filter(item => item.id !== attachmentId) },
+    }));
+  };
+
   const handleSaveCentralUser = async (id, patch) => {
     const fd = new FormData();
     fd.append("_action", "saveCentralUser");
@@ -1966,6 +2011,15 @@ function CentralDeReservasContent() {
     setBookingsList(current => current.map(item => item.id === bookingId ? { ...item, ...result.booking } : item));
   };
 
+  // Checklist do guia, observações e anexos por saída (Fase 2).
+  const [departureInfo, setDepartureInfo] = useState(() =>
+    Object.fromEntries((tourDepartures || []).map(item => [departureKey(item.tourId, item.startTime), {
+      checkStartAt: item.checkStartAt || null,
+      checkMidAt: item.checkMidAt || null,
+      checkEndAt: item.checkEndAt || null,
+      guideNotes: Array.isArray(item.guideNotes) ? item.guideNotes : [],
+      attachments: item.attachments || [],
+    }])));
   const [departureTags, setDepartureTags] = useState(() =>
     Object.fromEntries((tourDepartures || []).map(item => [departureKey(item.tourId, item.startTime), item.tagIds || []])));
   const handleSaveDepartureTags = async (tourId, startTime, tagIds) => {
@@ -2890,6 +2944,11 @@ function CentralDeReservasContent() {
         agendaLabels,
         departureTags,
         handleSaveDepartureTags,
+        departureInfo,
+        handleUploadDepartureAttachment,
+        handleRemoveDepartureAttachment,
+        handleSetGuidePortalAccess,
+        isCentralAdmin,
         guideAssignmentMessage,
         guideAssignmentSaving,
         guideAssignmentsList,

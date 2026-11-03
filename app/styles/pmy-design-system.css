@@ -5951,3 +5951,26 @@
 .pmy-team__who small { font-size: 12px; opacity: .65; overflow-wrap: anywhere; }
 .pmy-team__role { display: flex; gap: 6px; }
 .pmy-team__empty, .pmy-team__msg { font-size: 13px; opacity: .75; }
+
+/* Saídas do dia: guia, checklist, observações, anexos (Fase 2) */
+.pmy-departure-tags__ops { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.pmy-departure-tags__line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
+.pmy-departure-tags__steps { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.pmy-departure-step { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--pmy-ds-border, #e5e7eb); opacity: .7; white-space: nowrap; }
+.pmy-departure-step.is-done { opacity: 1; border-color: var(--pmy-success, #15803d); color: var(--pmy-success, #15803d); font-weight: 600; }
+.pmy-departure-tags__notes p { margin: 2px 0; overflow-wrap: anywhere; }
+.pmy-departure-tags__notes small { opacity: .65; }
+.pmy-departure-tags__files { display: flex; flex-wrap: wrap; gap: 6px; }
+.pmy-departure-file { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--pmy-ds-border, #e5e7eb); max-width: 100%; overflow-wrap: anywhere; }
+.pmy-departure-file button { border: 0; background: none; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; color: inherit; }
+.pmy-departure-file.is-upload { border-style: dashed; cursor: pointer; position: relative; }
+.pmy-departure-file.is-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pmy-departure-file.is-busy { opacity: .6; }
+
+/* Perfil do guia: acesso ao portal */
+.pmy-guide-portal__status { font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
+.pmy-guide-portal__status small { opacity: .7; }
+.pmy-guide-portal__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.pmy-guide-portal__actions input { flex: 1 1 180px; min-width: 0; padding: 7px 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 8px; font: inherit; font-size: 13px; }
+.pmy-guide-portal__password { padding: 10px 12px; border-radius: 10px; background: var(--pmy-success-soft, #dcfce7); margin-bottom: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.pmy-guide-portal__password code { font-size: 18px; letter-spacing: .04em; font-weight: 700; }
