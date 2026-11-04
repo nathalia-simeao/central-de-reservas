@@ -74,6 +74,8 @@ export default function GuideHome() {
         </Form>
       </div>
 
+      <Link to="/guia/vender" className="g-btn primary g-sell">💳 Vender · gerar link de pagamento</Link>
+
       {!groups.length && (
         <div className="g-card">
           <p className="g-empty">Nenhuma saída escalada para você. Quando a gestão te escalar na Agenda, ela aparece aqui.</p>

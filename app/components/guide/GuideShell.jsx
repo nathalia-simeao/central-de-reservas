@@ -40,7 +40,12 @@ a { color: inherit; }
 .g-guest__head strong { overflow-wrap:anywhere; }
 .g-guest__meta { color:var(--g-muted); font-size:14px; margin:4px 0 10px; overflow-wrap:anywhere; }
 .g-field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:14px; font-weight:600; }
-.g-field input, .g-field textarea { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); width:100%; }
+.g-field input, .g-field textarea, .g-select { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); width:100%; }
+.g-ticket { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--g-line); }
+.g-ticket span { flex:1; min-width:0; font-size:14px; overflow-wrap:anywhere; }
+.g-ticket small { display:block; color:var(--g-muted); }
+.g-ticket input { width:72px; font:inherit; font-size:16px; padding:10px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); text-align:center; }
+.g-sell { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-bottom:12px; }
 .g-error { background:var(--g-red-soft); color:var(--g-red); padding:10px 12px; border-radius:12px; font-size:14px; margin-bottom:12px; }
 .g-ok { background:var(--g-green-soft); color:var(--g-green); padding:10px 12px; border-radius:12px; font-size:14px; margin-bottom:12px; }
 .g-note { border-left:3px solid var(--g-line); padding:4px 0 4px 10px; margin:8px 0; font-size:14px; }

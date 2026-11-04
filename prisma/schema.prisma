@@ -244,6 +244,8 @@ model Booking {
   attendanceNote      String?   @db.Text
   attendanceMarkedAt  DateTime?
   attendanceMarkedBy  String?
+  // Guia que gerou o link de pagamento pelo portal (item 7: vendas do guia).
+  sellerGuideId       String?
 
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @default(now()) @updatedAt

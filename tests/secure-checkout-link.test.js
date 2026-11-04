@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 test("draft order persists invoiceUrl before returning the protected checkout link", async () => {
+  // The checkout logic lives in a shared service (also used by the guide portal).
   const draftRoute = await fs.readFile(
-    new URL("../app/routes/api.draft-order.jsx", import.meta.url),
+    new URL("../app/services/draft-checkout.server.js", import.meta.url),
     "utf8",
   );
   const secureRoute = await fs.readFile(
