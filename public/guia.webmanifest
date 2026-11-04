@@ -1,0 +1,17 @@
+{
+  "name": "PMY Guias",
+  "short_name": "PMY Guias",
+  "description": "Portal do guia da Portugal, Me & You: saídas, clientes, check-in e vendas.",
+  "lang": "pt",
+  "start_url": "/guia",
+  "scope": "/guia",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f4f1",
+  "theme_color": "#166534",
+  "icons": [
+    { "src": "/guia-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/guia-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/guia-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

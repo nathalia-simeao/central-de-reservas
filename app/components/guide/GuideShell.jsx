@@ -5,7 +5,7 @@ export const guideStyles = `
 * { box-sizing: border-box; }
 body { margin:0; background:var(--g-bg); color:var(--g-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size:16px; -webkit-text-size-adjust:100%; }
 a { color: inherit; }
-.g-wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+.g-wrap { max-width: 640px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(48px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .g-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .g-top h1 { font-size:20px; margin:0; }
 .g-top small { color:var(--g-muted); display:block; font-size:13px; }
@@ -67,6 +67,13 @@ export function GuideShell({ children, title = "Portal do guia" }) {
     <>
       <title>{`${title} · Portugal, Me & You`}</title>
       <meta name="robots" content="noindex" />
+      <link rel="manifest" href="/guia.webmanifest" />
+      <meta name="theme-color" content="#166534" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-title" content="PMY Guias" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      <link rel="apple-touch-icon" href="/guia-apple-touch-icon.png" />
       <style>{guideStyles}</style>
       <div className="g-wrap">{children}</div>
     </>
