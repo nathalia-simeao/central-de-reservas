@@ -1,7 +1,7 @@
 import { Form, Link, useLoaderData } from "react-router";
 import db from "../db.server";
 import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
-import { bookingPax, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
@@ -32,7 +32,10 @@ export const loader = async ({ request }) => {
 
   const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60 * 1000;
   const items = assignments.map((a) => {
-    const list = bookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime));
+    const list = bookingsForGuideLanguages(
+      bookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime)),
+      a.languages,
+    );
     const dep = departures.find((d) => d.tourId === a.tourId && near(d.startTime, a.startTime));
     return {
       id: a.id,

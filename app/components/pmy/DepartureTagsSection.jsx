@@ -1,3 +1,4 @@
+import { languageLabel } from "../../utils/tour-languages.js";
 import { useState } from "react";
 import { contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
 
@@ -119,7 +120,9 @@ export default function DepartureTagsSection({
                 const info = departureInfo[key] || {};
                 const guides = assignments
                   .filter((a) => (a.tourId || a.tour?.id) === departure.tourId && near(a.startTime, departure.startTime))
-                  .map((a) => a.guide?.name)
+                  .map((a) => a.guide?.name
+                    ? `${a.guide.name}${(a.languages || []).length ? ` (${a.languages.map((key) => languageLabel(key, lang)).join(", ")})` : ""}`
+                    : null)
                   .filter(Boolean);
                 const steps = [
                   [tr("Início", "Start"), info.checkStartAt],

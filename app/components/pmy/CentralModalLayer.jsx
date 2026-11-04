@@ -1,3 +1,4 @@
+import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../../utils/tour-languages.js";
 import GuidePortalAccess from "./GuidePortalAccess";
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
@@ -99,6 +100,8 @@ export default function CentralModalLayer(props) {
     missingFinancialBookings,
     modalAvailableHours,
     modalSelectedGuide,
+    modalSelectedLanguages = [],
+    setModalSelectedLanguages,
     modalSelectedHour,
     modalSelectedTour,
     agendaLabels = null,
@@ -1198,7 +1201,9 @@ export default function CentralModalLayer(props) {
                   <div>
                     <strong>{assignment.tour?.title || ui("Tour", "Tour")}</strong>
                     <div className="pmy-ds-migrated-1imkwof">
-                      🕒 {parts?.timeKey || "—"} · 🧑‍🏫 {assignment.guide?.name || ui("Guia", "Guide")}
+                      🕒 {parts?.timeKey || "—"} · 🧑‍🏫 {assignment.guide?.name || ui("Guia", "Guide")} · 🌐 {(assignment.languages || []).length
+                        ? assignment.languages.map((key) => languageLabel(key, lang)).join(", ")
+                        : ui("todos os idiomas", "all languages")}
                     </div>
                   </div>
                   <button
@@ -1254,6 +1259,37 @@ export default function CentralModalLayer(props) {
                       </select>
                     </div>
                   )}
+                  {modalSelectedTour && (() => {
+                    const tourLanguages = [...new Set(((tourOptions.find((t) => t.id === modalSelectedTour)?.languages) || [])
+                      .map((value) => languageKey(value))
+                      .filter((key) => QUOTA_LANGUAGE_KEYS.includes(key)))];
+                    const options = tourLanguages.length ? tourLanguages : ["en", "pt", "es", "fr", "it", "de"];
+                    const toggleLanguage = (key) => setModalSelectedLanguages?.((current) =>
+                      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+                    return (
+                      <div className="pmy-form-box-item pmy-ds-migrated-ismtyz">
+                        <span className="pmy-ds-migrated-67de2v">{ui("Idioma do grupo:", "Group language:")}</span>
+                        <div className="pmy-assign-languages" role="group" aria-label={ui("Idioma do grupo", "Group language")}>
+                          {options.map((key) => (
+                            <button
+                              key={key}
+                              type="button"
+                              aria-pressed={modalSelectedLanguages.includes(key)}
+                              className={`pmy-assign-language ${modalSelectedLanguages.includes(key) ? "is-on" : ""}`}
+                              onClick={() => toggleLanguage(key)}
+                            >
+                              {languageLabel(key, lang)}
+                            </button>
+                          ))}
+                        </div>
+                        <small className="pmy-assign-languages__hint">
+                          {modalSelectedLanguages.length
+                            ? ui("O guia atende só estes idiomas; outro guia pode pegar os demais no mesmo horário.", "This guide covers only these languages; another guide can take the rest at the same time.")
+                            : ui("Sem idioma marcado = o guia atende todos os idiomas desta saída.", "No language = this guide covers every language of this departure.")}
+                        </small>
+                      </div>
+                    );
+                  })()}
                   <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                     <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Guia:", "Select Guide:")}</label>
                     <select

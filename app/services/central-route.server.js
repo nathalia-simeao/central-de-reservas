@@ -1,3 +1,4 @@
+import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../utils/tour-languages.js";
 import { data } from "react-router";
 import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
 import { ADMIN_ONLY_ACTIONS, ROLES, isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
@@ -58,10 +59,20 @@ const ASSIGNMENT_INCLUDE = {
   },
 };
 
-// Escala um guia numa saída (passeio + horário). Uma saída tem no máximo um guia
-// e um guia não pode estar em dois passeios no mesmo horário.
-async function assignGuideToDeparture({ tour, guide, startTime }) {
-  const [guideConflict, departureAssignment] = await Promise.all([
+// Escala um guia numa saída (passeio + horário).
+// - Um guia não pode estar em dois passeios no mesmo horário.
+// - Uma saída pode ter vários guias, um por grupo de idioma (languages).
+//   Sem idioma = o guia atende todos os idiomas da saída, então não divide com ninguém.
+// - replaceDeparture: comportamento antigo (um guia por saída), usado pelo editor
+//   de vagas por idioma, que tem um único campo "Guia da saída".
+function cleanLanguageList(values) {
+  const list = Array.isArray(values) ? values : [];
+  return [...new Set(list.map((value) => languageKey(value)).filter((key) => QUOTA_LANGUAGE_KEYS.includes(key)))];
+}
+
+async function assignGuideToDeparture({ tour, guide, startTime, languages = [], replaceDeparture = false }) {
+  const wanted = cleanLanguageList(languages);
+  const [guideConflict, departureAssignments] = await Promise.all([
     prisma.guideAssignment.findFirst({
       where: {
         guideId: guide.id,
@@ -71,12 +82,9 @@ async function assignGuideToDeparture({ tour, guide, startTime }) {
       },
       include: { tour: { select: { title: true } } },
     }),
-    prisma.guideAssignment.findFirst({
-      where: {
-        tourId: tour.id,
-        startTime,
-        status: "ASSIGNED",
-      },
+    prisma.guideAssignment.findMany({
+      where: { tourId: tour.id, startTime, status: "ASSIGNED" },
+      include: { guide: { select: { name: true } } },
     }),
   ]);
 
@@ -89,14 +97,49 @@ async function assignGuideToDeparture({ tour, guide, startTime }) {
     };
   }
 
-  const assignment = departureAssignment
+  const mine = departureAssignments.find((item) => item.guideId === guide.id) || null;
+  const others = departureAssignments.filter((item) => item.guideId !== guide.id);
+
+  if (replaceDeparture && others.length) {
+    await prisma.guideAssignment.updateMany({
+      where: { id: { in: others.map((item) => item.id) } },
+      data: { status: "CANCELLED" },
+    });
+  } else if (others.length) {
+    const label = (keys) => keys.map((key) => languageLabel(key)).join(", ");
+    const allLanguages = others.find((item) => !(item.languages || []).length);
+    if (allLanguages) {
+      return {
+        ok: false,
+        status: 409,
+        code: "DEPARTURE_HAS_GUIDE",
+        error: `${allLanguages.guide?.name || "Outro guia"} já está nesta saída atendendo todos os idiomas. Para dividir em grupos, defina o idioma de cada guia.`,
+      };
+    }
+    if (!wanted.length) {
+      return {
+        ok: false,
+        status: 409,
+        code: "LANGUAGE_REQUIRED",
+        error: `Esta saída já tem guia (${others.map((item) => `${item.guide?.name} · ${label(item.languages)}`).join("; ")}). Escolha o idioma do grupo deste guia.`,
+      };
+    }
+    const clash = others.find((item) => (item.languages || []).some((key) => wanted.includes(key)));
+    if (clash) {
+      const shared = (clash.languages || []).filter((key) => wanted.includes(key));
+      return {
+        ok: false,
+        status: 409,
+        code: "LANGUAGE_TAKEN",
+        error: `${label(shared)} já tem guia nesta saída: ${clash.guide?.name || "outro guia"}.`,
+      };
+    }
+  }
+
+  const assignment = mine
     ? await prisma.guideAssignment.update({
-        where: { id: departureAssignment.id },
-        data: {
-          guideId: guide.id,
-          status: "ASSIGNED",
-          source: "MANUAL",
-        },
+        where: { id: mine.id },
+        data: { languages: wanted, source: "MANUAL" },
         include: ASSIGNMENT_INCLUDE,
       })
     : await prisma.guideAssignment.create({
@@ -104,6 +147,7 @@ async function assignGuideToDeparture({ tour, guide, startTime }) {
           guideId: guide.id,
           tourId: tour.id,
           startTime,
+          languages: wanted,
           status: "ASSIGNED",
           source: "MANUAL",
         },
@@ -960,7 +1004,9 @@ export const action = async ({ request }) => {
         );
       }
 
-      const assigned = await assignGuideToDeparture({ tour, guide, startTime });
+      let languages = [];
+      try { languages = JSON.parse(String(formData.get("languages") || "[]")); } catch { languages = []; }
+      const assigned = await assignGuideToDeparture({ tour, guide, startTime, languages });
       if (!assigned.ok) {
         return json(
           { success: false, code: assigned.code, error: assigned.error },
@@ -972,7 +1018,9 @@ export const action = async ({ request }) => {
       return json({
         success: true,
         assignment,
-        message: `${guide.name} escalado(a) para ${tour.title} em ${dateKey} às ${timeKey}.`,
+        message: `${guide.name} escalado(a) para ${tour.title} em ${dateKey} às ${timeKey}${
+          assignment.languages?.length ? ` (${assignment.languages.map((key) => languageLabel(key)).join(", ")})` : ""
+        }.`,
       });
     } catch (error) {
       console.error("[PMY] saveGuideAssignment failed:", error);
@@ -1407,7 +1455,7 @@ export const action = async ({ request }) => {
         for (const time of times) {
           const startTime = startTimes.get(time);
           if (guide) {
-            const assigned = await assignGuideToDeparture({ tour, guide, startTime });
+            const assigned = await assignGuideToDeparture({ tour, guide, startTime, replaceDeparture: true });
             if (assigned.ok) assignments.push(assigned.assignment);
             else guideErrors.push(`${time}: ${assigned.error}`);
           } else {

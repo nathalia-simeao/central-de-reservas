@@ -302,6 +302,9 @@ model GuideAssignment {
   tourId    String
   tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
   startTime DateTime
+  // Idiomas do grupo deste guia (chaves canônicas: en, pt, es…). Vazio = todos.
+  // Uma saída pode ter vários guias, um por grupo de idioma.
+  languages String[] @default([])
   status    String   @default("ASSIGNED")
   source    String   @default("MANUAL")
   notes     String?

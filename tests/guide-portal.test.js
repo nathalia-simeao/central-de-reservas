@@ -78,3 +78,16 @@ test("contact links and file names are safe", () => {
   assert.equal(safeFileName("../../etc/passwd"), "passwd");
   assert.equal(safeFileName("Ingressos Jerónimos.pdf"), "Ingressos Jerónimos.pdf");
 });
+
+import { bookingsForGuideLanguages } from "../app/utils/guide-portal.server.js";
+
+test("a language-group guide sees only their languages plus bookings without language", () => {
+  const bookings = [
+    { id: "a", language: "English" },
+    { id: "b", language: "Português" },
+    { id: "c", language: "Español" },
+    { id: "d", language: "" },
+  ];
+  assert.deepEqual(bookingsForGuideLanguages(bookings, ["pt", "es"]).map((b) => b.id), ["b", "c", "d"]);
+  assert.deepEqual(bookingsForGuideLanguages(bookings, []).map((b) => b.id), ["a", "b", "c", "d"]);
+});

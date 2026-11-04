@@ -184,6 +184,7 @@ function CentralDeReservasContent() {
   const [modalAvailableHours, setModalAvailableHours] = useState(["09:00", "14:00"]);
   const [modalSelectedHour, setModalSelectedHour] = useState("09:00");
   const [modalSelectedGuide, setModalSelectedGuide] = useState("");
+  const [modalSelectedLanguages, setModalSelectedLanguages] = useState([]);
   const [guideAssignmentSaving, setGuideAssignmentSaving] = useState(false);
   const [guideAssignmentMessage, setGuideAssignmentMessage] = useState("");
   const [guideAssignmentsList, setGuideAssignmentsList] = useState(guideAssignments || []);
@@ -1699,6 +1700,7 @@ function CentralDeReservasContent() {
 
   const handleModalTourChange = (id) => {
     setModalSelectedTour(id);
+    setModalSelectedLanguages([]);
     setGuideAssignmentMessage("");
     const tour = tourOptions.find(t => t.id === id);
 
@@ -1768,6 +1770,7 @@ function CentralDeReservasContent() {
       fd.append("guideId", modalSelectedGuide);
       fd.append("date", guideAssignmentDateKey());
       fd.append("time", modalSelectedHour);
+      fd.append("languages", JSON.stringify(modalSelectedLanguages));
 
       const result = await requestResourceJson("/api/guides", fd);
 
@@ -1779,6 +1782,7 @@ function CentralDeReservasContent() {
       setIsFormAllocating(false);
       setModalSelectedTour("");
       setModalSelectedGuide("");
+      setModalSelectedLanguages([]);
     } catch (error) {
       setGuideAssignmentMessage(error?.message || "Erro ao publicar a escala.");
     } finally {
@@ -3004,6 +3008,8 @@ function CentralDeReservasContent() {
         missingFinancialBookings,
         modalAvailableHours,
         modalSelectedGuide,
+        modalSelectedLanguages,
+        setModalSelectedLanguages,
         modalSelectedHour,
         modalSelectedTour,
         moneyValue,

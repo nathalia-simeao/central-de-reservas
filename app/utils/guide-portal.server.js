@@ -8,6 +8,7 @@
 //   presença pode ser corrigida até ele marcar "Fim".
 
 import crypto from "node:crypto";
+import { languageKey } from "./tour-languages.js";
 
 export const SESSION_COOKIE = "pmy_guide";
 const SESSION_DAYS = 30;
@@ -216,4 +217,18 @@ export function whatsappLink(phone) {
 export function safeFileName(name) {
   const base = String(name || "arquivo").split(/[\\/]/).pop().replace(/[^\w.\- ()À-ÿ]/g, "_").trim();
   return (base || "arquivo").slice(0, 120);
+}
+
+/**
+ * Bookings of a language group. A guide with languages sees the bookings in
+ * those languages plus any booking whose language is missing (so nobody is
+ * forgotten); a guide without languages sees the whole departure.
+ */
+export function bookingsForGuideLanguages(bookings, languages) {
+  const keys = Array.isArray(languages) ? languages.filter(Boolean) : [];
+  if (!keys.length) return bookings;
+  return bookings.filter((booking) => {
+    const key = languageKey(booking.language);
+    return !key || keys.includes(key);
+  });
 }

@@ -5,6 +5,7 @@ import {
   CHECK_FIELDS,
   appendNote,
   bookingPax,
+  bookingsForGuideLanguages,
   departureBookingWhere,
   ensureDeparture,
   getGuideFromRequest,
@@ -40,9 +41,11 @@ export const loader = async ({ request, params }) => {
     }),
   ]);
 
+  const groupBookings = bookingsForGuideLanguages(bookings, assignment.languages);
   return {
     guide: { name: guide.name },
     departure: {
+      languages: assignment.languages || [],
       id: assignment.id,
       title: assignment.tour?.title || "Passeio",
       startTime: assignment.startTime.toISOString(),
@@ -53,7 +56,7 @@ export const loader = async ({ request, params }) => {
       attachments: departure?.attachments || [],
     },
     permissions: guidePermissions(departure, assignment.startTime),
-    bookings: bookings.map((b) => ({
+    bookings: groupBookings.map((b) => ({
       ...b,
       pax: bookingPax(b),
       tel: phoneDigits(b.customerPhone),
@@ -89,9 +92,11 @@ export const action = async ({ request, params }) => {
     if (!["COMPLETED", "NO_SHOW"].includes(value)) return { error: "Marcação inválida." };
     const booking = await db.booking.findFirst({
       where: { id: bookingId, ...departureBookingWhere(assignment.tourId, assignment.startTime), status: "CONFIRMED" },
-      select: { id: true },
+      select: { id: true, language: true },
     });
-    if (!booking) return { error: "Reserva não encontrada nesta saída." };
+    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages).length) {
+      return { error: "Reserva não encontrada no seu grupo desta saída." };
+    }
     await db.booking.update({
       where: { id: booking.id },
       data: { attendanceStatus: value, attendanceMarkedAt: new Date(), attendanceMarkedBy: by },
@@ -113,6 +118,8 @@ export const action = async ({ request, params }) => {
 
   return { error: "Ação desconhecida." };
 };
+
+const LANGUAGE_NAMES = { en: "Inglês", pt: "Português", es: "Espanhol", fr: "Francês", it: "Italiano", de: "Alemão", nl: "Holandês", zh: "Chinês", ja: "Japonês", ru: "Russo", ar: "Árabe", he: "Hebraico", ko: "Coreano", pl: "Polonês" };
 
 function fmtTime(value) {
   return value ? lisbonParts(value).time : "";
@@ -152,6 +159,7 @@ export default function GuideDeparture() {
         <div className="g-summary">
           <span><b>{parts.time}</b> · {parts.day}</span>
           <span><b>{totalPax}</b> pax · {bookings.length} reserva(s)</span>
+          {departure.languages.length > 0 && <span>Seu grupo: <b>{departure.languages.map((k) => LANGUAGE_NAMES[k] || k).join(", ")}</b></span>}
           <span>Presentes <b>{present}</b> · No-show <b>{noShow}</b></span>
         </div>
       </div>
