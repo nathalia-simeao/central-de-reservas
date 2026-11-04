@@ -32,7 +32,7 @@ export const loader = async ({ request, params }) => {
       orderBy: { customerName: "asc" },
       select: {
         id: true, customerName: true, customerPhone: true, language: true, platform: true, bookingRef: true,
-        adults: true, children: true, youths: true, seniors: true, totalParticipants: true, attendanceStatus: true, status: true,
+        adults: true, children: true, youths: true, seniors: true, totalParticipants: true, attendanceStatus: true, status: true, groupGuideId: true,
       },
     }),
     db.tourDeparture.findUnique({
@@ -41,7 +41,7 @@ export const loader = async ({ request, params }) => {
     }),
   ]);
 
-  const groupBookings = bookingsForGuideLanguages(bookings, assignment.languages);
+  const groupBookings = bookingsForGuideLanguages(bookings, assignment.languages, assignment.guideId);
   return {
     guide: { name: guide.name },
     departure: {
@@ -92,9 +92,9 @@ export const action = async ({ request, params }) => {
     if (!["COMPLETED", "NO_SHOW"].includes(value)) return { error: "Marcação inválida." };
     const booking = await db.booking.findFirst({
       where: { id: bookingId, ...departureBookingWhere(assignment.tourId, assignment.startTime), status: "CONFIRMED" },
-      select: { id: true, language: true },
+      select: { id: true, language: true, groupGuideId: true },
     });
-    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages).length) {
+    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length) {
       return { error: "Reserva não encontrada no seu grupo desta saída." };
     }
     await db.booking.update({

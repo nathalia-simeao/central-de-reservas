@@ -111,6 +111,8 @@ export default function CentralModalLayer(props) {
     handleUploadDepartureAttachment,
     handleRemoveDepartureAttachment,
     handleSetGuidePortalAccess,
+    handleSetBookingGroup,
+    handleResetDepartureCheck,
     isCentralAdmin = true,
     moneyValue,
     notify = () => {},
@@ -1122,6 +1124,7 @@ export default function CentralModalLayer(props) {
             assignments={dayAssignments}
             onUpload={handleUploadDepartureAttachment}
             onRemoveAttachment={handleRemoveDepartureAttachment}
+            onResetCheck={isCentralAdmin ? handleResetDepartureCheck : null}
             lang={lang}
           />
           <h4 className="pmy-ds-migrated-rg4op4">{ui("Reservas confirmadas e pré-reservas ativas:", "Confirmed bookings and active pre-bookings:")}</h4>
@@ -1174,7 +1177,27 @@ export default function CentralModalLayer(props) {
                           {booking.children > 0 ? `Child ${booking.children}  ` : ''}
                           {booking.youths > 0 ? `Youth ${booking.youths}  ` : ''}
                           {booking.seniors > 0 ? `Senior ${booking.seniors}` : ''}
+                          {booking.language ? ` · 🌐 ${booking.language}` : ''}
                         </div>
+                        {(() => {
+                          const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60000;
+                          const groupGuides = dayAssignments.filter((a) => (a.tourId || a.tour?.id) === booking.tourId && near(a.startTime, booking.startTime) && a.guide);
+                          if (groupGuides.length < 2 || !handleSetBookingGroup) return null;
+                          return (
+                            <label className="pmy-booking-group">
+                              {ui("Grupo:", "Group:")}
+                              <select
+                                value={booking.groupGuideId || ""}
+                                onChange={(e) => handleSetBookingGroup(booking.id, e.target.value).catch((error) => notify?.(error.message, "error"))}
+                              >
+                                <option value="">{ui("Automático (pelo idioma)", "Automatic (by language)")}</option>
+                                {groupGuides.map((a) => (
+                                  <option key={a.guideId || a.guide.id} value={a.guideId || a.guide.id}>{a.guide.name}</option>
+                                ))}
+                              </select>
+                            </label>
+                          );
+                        })()}
                       </div>
                       <span className={`pmy-ds-booking-status ${booking.status === 'CONFIRMED' ? "is-confirmed" : "is-pending"}`}>
                         {booking.status==='CONFIRMED'?ui('CONFIRMADA','CONFIRMED'):ui('PENDENTE','PENDING')}

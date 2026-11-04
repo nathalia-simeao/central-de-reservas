@@ -1957,6 +1957,28 @@ function CentralDeReservasContent() {
     return result;
   };
 
+  const handleSetBookingGroup = async (bookingId, guideId) => {
+    const fd = new FormData();
+    fd.append("_action", "setBookingGroup");
+    fd.append("bookingId", bookingId);
+    fd.append("guideId", guideId || "");
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setBookingsList(current => current.map(item => item.id === bookingId ? { ...item, groupGuideId: result.booking.groupGuideId } : item));
+  };
+
+  const handleResetDepartureCheck = async (tourId, startTime, step) => {
+    const fd = new FormData();
+    fd.append("_action", "resetDepartureCheck");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("step", step);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao desfazer.", "Undo failed."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo(current => ({ ...current, [key]: { ...(current[key] || {}), ...result.checks } }));
+  };
+
   const handleUploadDepartureAttachment = async (tourId, startTime, file) => {
     const fd = new FormData();
     fd.append("_action", "uploadDepartureAttachment");
@@ -2953,6 +2975,8 @@ function CentralDeReservasContent() {
         handleUploadDepartureAttachment,
         handleRemoveDepartureAttachment,
         handleSetGuidePortalAccess,
+        handleSetBookingGroup,
+        handleResetDepartureCheck,
         isCentralAdmin,
         guideAssignmentMessage,
         guideAssignmentSaving,

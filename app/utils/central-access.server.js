@@ -77,4 +77,5 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "saveAgendaLabels",
   "saveCentralUser",
   "setGuidePortalAccess",
+  "resetDepartureCheck",
 ]);

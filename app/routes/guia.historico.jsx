@@ -42,7 +42,7 @@ export const loader = async ({ request }) => {
   const pastBookings = tourIds.length
     ? await db.booking.findMany({
         where: { tourId: { in: tourIds }, status: "CONFIRMED", startTime: { gte: since, lt: new Date() } },
-        select: { tourId: true, startTime: true, language: true, attendanceStatus: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
+        select: { tourId: true, startTime: true, language: true, groupGuideId: true, attendanceStatus: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
       })
     : [];
   const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60 * 1000;
@@ -74,6 +74,7 @@ export const loader = async ({ request }) => {
       const group = bookingsForGuideLanguages(
         pastBookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime)),
         a.languages,
+        a.guideId,
       );
       return {
         id: a.id,

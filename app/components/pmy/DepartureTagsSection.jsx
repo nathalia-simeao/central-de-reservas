@@ -19,6 +19,7 @@ export default function DepartureTagsSection({
   assignments = [],
   onUpload,
   onRemoveAttachment,
+  onResetCheck,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -136,9 +137,22 @@ export default function DepartureTagsSection({
                     <div className="pmy-departure-tags__line">
                       <span>🧭 {guides.length ? guides.join(", ") : tr("sem guia escalado", "no guide assigned")}</span>
                       <span className="pmy-departure-tags__steps">
-                        {steps.map(([label, at]) => (
+                        {steps.map(([label, at], index) => (
                           <span key={label} className={`pmy-departure-step ${at ? "is-done" : ""}`}>
                             {at ? "✓" : "○"} {label}{at ? ` ${timeOf(at)}` : ""}
+                            {at && onResetCheck && (
+                              <button
+                                type="button"
+                                className="pmy-departure-step__undo"
+                                title={tr("Desfazer este check (e os seguintes)", "Undo this check (and the next ones)")}
+                                aria-label={tr(`Desfazer ${label}`, `Undo ${label}`)}
+                                onClick={async () => {
+                                  setError("");
+                                  try { await onResetCheck(departure.tourId, departure.startTime, ["start", "mid", "end"][index]); }
+                                  catch (e) { setError(e?.message || tr("Não foi possível desfazer.", "Could not undo.")); }
+                                }}
+                              >↺</button>
+                            )}
                           </span>
                         ))}
                       </span>

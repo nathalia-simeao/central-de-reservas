@@ -21,7 +21,7 @@ export const loader = async ({ request }) => {
     ? await Promise.all([
         db.booking.findMany({
           where: { tourId: { in: tourIds }, status: { in: ["CONFIRMED", "PENDING"] }, startTime: { gte: from, lte: to } },
-          select: { tourId: true, startTime: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true, language: true },
+          select: { tourId: true, startTime: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true, language: true, groupGuideId: true },
         }),
         db.tourDeparture.findMany({
           where: { tourId: { in: tourIds }, startTime: { gte: from, lte: to } },
@@ -35,6 +35,7 @@ export const loader = async ({ request }) => {
     const list = bookingsForGuideLanguages(
       bookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime)),
       a.languages,
+      a.guideId,
     );
     const dep = departures.find((d) => d.tourId === a.tourId && near(d.startTime, a.startTime));
     return {

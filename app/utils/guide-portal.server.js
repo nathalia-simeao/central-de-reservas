@@ -220,14 +220,16 @@ export function safeFileName(name) {
 }
 
 /**
- * Bookings of a language group. A guide with languages sees the bookings in
- * those languages plus any booking whose language is missing (so nobody is
- * forgotten); a guide without languages sees the whole departure.
+ * Bookings of one guide's group in a departure.
+ * - If the management put a booking in a guide's group (groupGuideId), that wins.
+ * - Otherwise a guide with languages sees those languages plus bookings without a
+ *   language (so nobody is forgotten); a guide without languages sees the rest.
  */
-export function bookingsForGuideLanguages(bookings, languages) {
+export function bookingsForGuideLanguages(bookings, languages, guideId = null) {
   const keys = Array.isArray(languages) ? languages.filter(Boolean) : [];
-  if (!keys.length) return bookings;
   return bookings.filter((booking) => {
+    if (booking.groupGuideId) return guideId ? booking.groupGuideId === guideId : true;
+    if (!keys.length) return true;
     const key = languageKey(booking.language);
     return !key || keys.includes(key);
   });

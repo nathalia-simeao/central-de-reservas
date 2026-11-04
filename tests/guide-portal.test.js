@@ -91,3 +91,12 @@ test("a language-group guide sees only their languages plus bookings without lan
   assert.deepEqual(bookingsForGuideLanguages(bookings, ["pt", "es"]).map((b) => b.id), ["b", "c", "d"]);
   assert.deepEqual(bookingsForGuideLanguages(bookings, []).map((b) => b.id), ["a", "b", "c", "d"]);
 });
+
+test("a booking placed in a guide's group by the management goes only to that guide", () => {
+  const bookings = [
+    { id: "a", language: "English", groupGuideId: "luis" },
+    { id: "b", language: "English" },
+  ];
+  assert.deepEqual(bookingsForGuideLanguages(bookings, ["en"], "dee").map((b) => b.id), ["b"]);
+  assert.deepEqual(bookingsForGuideLanguages(bookings, ["pt", "es"], "luis").map((b) => b.id), ["a"]);
+});

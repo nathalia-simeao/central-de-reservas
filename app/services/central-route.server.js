@@ -398,6 +398,60 @@ export const action = async ({ request }) => {
     }
   }
 
+  if (_action === "setBookingGroup") {
+    try {
+      const bookingId = String(formData.get("bookingId") || "").trim();
+      const guideId = String(formData.get("guideId") || "").trim() || null;
+      const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { id: true, tourId: true, startTime: true } });
+      if (!booking) return json({ success: false, error: "Reserva não encontrada." }, { status: 404 });
+      if (guideId) {
+        const start = new Date(booking.startTime);
+        const assigned = await prisma.guideAssignment.findFirst({
+          where: {
+            guideId, tourId: booking.tourId, status: "ASSIGNED",
+            startTime: { gte: new Date(start.getTime() - 60000), lte: new Date(start.getTime() + 60000) },
+          },
+          select: { id: true },
+        });
+        if (!assigned) return json({ success: false, error: "Esse guia não está escalado nesta saída." }, { status: 409 });
+      }
+      const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: { groupGuideId: guideId },
+        select: { id: true, groupGuideId: true },
+      });
+      return json({ success: true, booking: updated });
+    } catch (e) {
+      console.error("[PMY] setBookingGroup error:", e);
+      return json({ success: false, error: "Não foi possível mudar o grupo." }, { status: 500 });
+    }
+  }
+
+  if (_action === "resetDepartureCheck") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      const step = String(formData.get("step") || "");
+      const order = ["start", "mid", "end"];
+      const index = order.indexOf(step);
+      if (!tourId || Number.isNaN(startTime.getTime()) || index < 0) {
+        return json({ success: false, error: "Saída ou etapa inválida." }, { status: 400 });
+      }
+      // Desfazer uma etapa desfaz também as seguintes (Início → Meio → Fim).
+      const fields = { start: "checkStartAt", mid: "checkMidAt", end: "checkEndAt" };
+      const data = Object.fromEntries(order.slice(index).map((key) => [fields[key], null]));
+      const departure = await prisma.tourDeparture.update({
+        where: { tourId_startTime: { tourId, startTime } },
+        data,
+        select: { checkStartAt: true, checkMidAt: true, checkEndAt: true },
+      });
+      return json({ success: true, checks: departure });
+    } catch (e) {
+      console.error("[PMY] resetDepartureCheck error:", e);
+      return json({ success: false, error: "Não foi possível desfazer o check." }, { status: 500 });
+    }
+  }
+
   if (_action === "uploadDepartureAttachment") {
     try {
       const tourId = String(formData.get("tourId") || "").trim();

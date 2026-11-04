@@ -246,6 +246,8 @@ model Booking {
   attendanceMarkedBy  String?
   // Guia que gerou o link de pagamento pelo portal (item 7: vendas do guia).
   sellerGuideId       String?
+  // Grupo da saída escolhido pela gestão (guia). Vazio = automático pelo idioma.
+  groupGuideId        String?
 
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @default(now()) @updatedAt
