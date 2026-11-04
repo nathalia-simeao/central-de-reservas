@@ -1,0 +1,663 @@
+{% comment %}Global PMY checkout drawer. Uses each product's real Shopify variants, matching the live PMY ticket selector behavior.{% endcomment %}
+{% assign c_checkout = "Book" %}
+{% assign c_subtitle = "Complete your booking" %}
+{% assign c_close = "Close" %}
+{% assign c_experience = "Selected experience" %}
+{% assign c_name = "Name" %}
+{% assign c_email = "E-mail" %}
+{% assign c_phone = "Phone / WhatsApp" %}
+{% assign c_date = "Select Date" %}
+{% assign c_language = "Select Language" %}
+{% assign c_language_placeholder = "Select a language" %}
+{% assign c_time = "Preferred time" %}
+{% assign c_time_any = "No preference" %}
+{% assign c_time_morning = "Morning" %}
+{% assign c_time_afternoon = "Afternoon" %}
+{% assign c_time_evening = "Evening" %}
+{% assign c_travelers = "Select Tickets" %}
+{% assign c_total = "Total" %}
+{% assign c_book = "Book now" %}
+{% assign c_processing = "Processing..." %}
+{% assign c_required = "Please complete your name, e-mail, phone and date." %}
+{% assign c_language_error = "Please select a language." %}
+{% assign c_travelers_error = "Select at least one ticket." %}
+{% assign c_date_error = "This date is not available for the selected experience." %}
+{% assign c_generic_error = "We could not start checkout. Please try again." %}
+{% assign c_decrease = "Decrease" %}
+{% assign c_increase = "Increase" %}
+{% assign c_quantity = "Quantity" %}
+
+{% case request.locale.iso_code %}
+  {% when "pt-BR" %}
+    {% assign c_checkout = "Reservar" %}
+    {% assign c_subtitle = "Complete sua reserva" %}
+    {% assign c_close = "Fechar" %}
+    {% assign c_experience = "Experiência selecionada" %}
+    {% assign c_name = "Nome" %}
+    {% assign c_email = "E-mail" %}
+    {% assign c_phone = "Telefone / WhatsApp" %}
+    {% assign c_date = "Selecione a data" %}
+    {% assign c_language = "Selecione o idioma" %}
+    {% assign c_language_placeholder = "Selecione um idioma" %}
+    {% assign c_time = "Horário preferencial" %}
+    {% assign c_time_any = "Sem preferência" %}
+    {% assign c_time_morning = "Manhã" %}
+    {% assign c_time_afternoon = "Tarde" %}
+    {% assign c_time_evening = "Noite" %}
+    {% assign c_travelers = "Selecione os ingressos" %}
+    {% assign c_total = "Total" %}
+    {% assign c_book = "Reservar agora" %}
+    {% assign c_processing = "Processando..." %}
+    {% assign c_required = "Preencha nome, e-mail, telefone e data." %}
+    {% assign c_language_error = "Selecione um idioma." %}
+    {% assign c_travelers_error = "Selecione pelo menos um ingresso." %}
+    {% assign c_date_error = "Esta data não está disponível para a experiência selecionada." %}
+    {% assign c_generic_error = "Não foi possível iniciar o checkout. Tente novamente." %}
+    {% assign c_decrease = "Diminuir" %}
+    {% assign c_increase = "Aumentar" %}
+    {% assign c_quantity = "Quantidade" %}
+
+  {% when "pt-PT" %}
+    {% assign c_checkout = "Reservar" %}
+    {% assign c_subtitle = "Complete a sua reserva" %}
+    {% assign c_close = "Fechar" %}
+    {% assign c_experience = "Experiência selecionada" %}
+    {% assign c_name = "Nome" %}
+    {% assign c_email = "E-mail" %}
+    {% assign c_phone = "Telefone / WhatsApp" %}
+    {% assign c_date = "Selecione a data" %}
+    {% assign c_language = "Selecione o idioma" %}
+    {% assign c_language_placeholder = "Selecione um idioma" %}
+    {% assign c_time = "Horário preferencial" %}
+    {% assign c_time_any = "Sem preferência" %}
+    {% assign c_time_morning = "Manhã" %}
+    {% assign c_time_afternoon = "Tarde" %}
+    {% assign c_time_evening = "Noite" %}
+    {% assign c_travelers = "Selecione os bilhetes" %}
+    {% assign c_total = "Total" %}
+    {% assign c_book = "Reservar agora" %}
+    {% assign c_processing = "A processar..." %}
+    {% assign c_required = "Preencha o nome, e-mail, telefone e data." %}
+    {% assign c_language_error = "Selecione um idioma." %}
+    {% assign c_travelers_error = "Selecione pelo menos um bilhete." %}
+    {% assign c_date_error = "Esta data não está disponível para a experiência selecionada." %}
+    {% assign c_generic_error = "Não foi possível iniciar a reserva. Tente novamente." %}
+    {% assign c_decrease = "Diminuir" %}
+    {% assign c_increase = "Aumentar" %}
+    {% assign c_quantity = "Quantidade" %}
+
+  {% when "de" %}
+    {% assign c_checkout = "Buchung" %}
+    {% assign c_subtitle = "Schließen Sie Ihre Buchung ab" %}
+    {% assign c_close = "Schließen" %}
+    {% assign c_experience = "Ausgewähltes Erlebnis" %}
+    {% assign c_name = "Name" %}
+    {% assign c_email = "E-Mail" %}
+    {% assign c_phone = "Telefon / WhatsApp" %}
+    {% assign c_date = "Datum auswählen" %}
+    {% assign c_language = "Sprache auswählen" %}
+    {% assign c_language_placeholder = "Sprache auswählen" %}
+    {% assign c_time = "Bevorzugte Uhrzeit" %}
+    {% assign c_time_any = "Keine Präferenz" %}
+    {% assign c_time_morning = "Vormittag" %}
+    {% assign c_time_afternoon = "Nachmittag" %}
+    {% assign c_time_evening = "Abend" %}
+    {% assign c_travelers = "Tickets auswählen" %}
+    {% assign c_total = "Gesamt" %}
+    {% assign c_book = "Jetzt buchen" %}
+    {% assign c_processing = "Wird verarbeitet..." %}
+    {% assign c_required = "Bitte geben Sie Name, E-Mail, Telefonnummer und Datum ein." %}
+    {% assign c_language_error = "Bitte wählen Sie eine Sprache aus." %}
+    {% assign c_travelers_error = "Bitte wählen Sie mindestens ein Ticket aus." %}
+    {% assign c_date_error = "Dieses Datum ist für das ausgewählte Erlebnis nicht verfügbar." %}
+    {% assign c_generic_error = "Die Buchung konnte nicht gestartet werden. Bitte versuchen Sie es erneut." %}
+    {% assign c_decrease = "Verringern" %}
+    {% assign c_increase = "Erhöhen" %}
+    {% assign c_quantity = "Anzahl" %}
+
+  {% when "es" %}
+    {% assign c_checkout = "Reserva" %}
+    {% assign c_subtitle = "Completa tu reserva" %}
+    {% assign c_close = "Cerrar" %}
+    {% assign c_experience = "Experiencia seleccionada" %}
+    {% assign c_name = "Nombre" %}
+    {% assign c_email = "Correo electrónico" %}
+    {% assign c_phone = "Teléfono / WhatsApp" %}
+    {% assign c_date = "Selecciona la fecha" %}
+    {% assign c_language = "Selecciona el idioma" %}
+    {% assign c_language_placeholder = "Selecciona un idioma" %}
+    {% assign c_time = "Hora preferida" %}
+    {% assign c_time_any = "Sin preferencia" %}
+    {% assign c_time_morning = "Mañana" %}
+    {% assign c_time_afternoon = "Tarde" %}
+    {% assign c_time_evening = "Noche" %}
+    {% assign c_travelers = "Selecciona las entradas" %}
+    {% assign c_total = "Total" %}
+    {% assign c_book = "Reservar ahora" %}
+    {% assign c_processing = "Procesando..." %}
+    {% assign c_required = "Completa el nombre, correo electrónico, teléfono y fecha." %}
+    {% assign c_language_error = "Selecciona un idioma." %}
+    {% assign c_travelers_error = "Selecciona al menos una entrada." %}
+    {% assign c_date_error = "Esta fecha no está disponible para la experiencia seleccionada." %}
+    {% assign c_generic_error = "No se pudo iniciar la reserva. Inténtalo de nuevo." %}
+    {% assign c_decrease = "Disminuir" %}
+    {% assign c_increase = "Aumentar" %}
+    {% assign c_quantity = "Cantidad" %}
+
+  {% when "fr" %}
+    {% assign c_checkout = "Réservation" %}
+    {% assign c_subtitle = "Finalisez votre réservation" %}
+    {% assign c_close = "Fermer" %}
+    {% assign c_experience = "Expérience sélectionnée" %}
+    {% assign c_name = "Nom" %}
+    {% assign c_email = "E-mail" %}
+    {% assign c_phone = "Téléphone / WhatsApp" %}
+    {% assign c_date = "Sélectionnez la date" %}
+    {% assign c_language = "Sélectionnez la langue" %}
+    {% assign c_language_placeholder = "Sélectionnez une langue" %}
+    {% assign c_time = "Heure préférée" %}
+    {% assign c_time_any = "Sans préférence" %}
+    {% assign c_time_morning = "Matin" %}
+    {% assign c_time_afternoon = "Après-midi" %}
+    {% assign c_time_evening = "Soir" %}
+    {% assign c_travelers = "Sélectionnez les billets" %}
+    {% assign c_total = "Total" %}
+    {% assign c_book = "Réserver maintenant" %}
+    {% assign c_processing = "Traitement en cours..." %}
+    {% assign c_required = "Veuillez renseigner le nom, e-mail, téléphone et la date." %}
+    {% assign c_language_error = "Veuillez sélectionner une langue." %}
+    {% assign c_travelers_error = "Sélectionnez au moins un billet." %}
+    {% assign c_date_error = "Cette date est indisponible pour l’expérience sélectionnée." %}
+    {% assign c_generic_error = "Impossible de démarrer la réservation. Veuillez réessayer." %}
+    {% assign c_decrease = "Diminuer" %}
+    {% assign c_increase = "Augmenter" %}
+    {% assign c_quantity = "Quantité" %}
+
+  {% when "it" %}
+    {% assign c_checkout = "Prenotazione" %}
+    {% assign c_subtitle = "Completa la tua prenotazione" %}
+    {% assign c_close = "Chiudi" %}
+    {% assign c_experience = "Esperienza selezionata" %}
+    {% assign c_name = "Nome" %}
+    {% assign c_email = "E-mail" %}
+    {% assign c_phone = "Telefono / WhatsApp" %}
+    {% assign c_date = "Seleziona la data" %}
+    {% assign c_language = "Seleziona la lingua" %}
+    {% assign c_language_placeholder = "Seleziona una lingua" %}
+    {% assign c_time = "Orario preferito" %}
+    {% assign c_time_any = "Nessuna preferenza" %}
+    {% assign c_time_morning = "Mattina" %}
+    {% assign c_time_afternoon = "Pomeriggio" %}
+    {% assign c_time_evening = "Sera" %}
+    {% assign c_travelers = "Seleziona i biglietti" %}
+    {% assign c_total = "Totale" %}
+    {% assign c_book = "Prenota ora" %}
+    {% assign c_processing = "Elaborazione..." %}
+    {% assign c_required = "Inserisci nome, e-mail, telefono e data." %}
+    {% assign c_language_error = "Seleziona una lingua." %}
+    {% assign c_travelers_error = "Seleziona almeno un biglietto." %}
+    {% assign c_date_error = "Questa data non è disponibile per l’esperienza selezionata." %}
+    {% assign c_generic_error = "Non è stato possibile avviare la prenotazione. Riprova." %}
+    {% assign c_decrease = "Diminuisci" %}
+    {% assign c_increase = "Aumenta" %}
+    {% assign c_quantity = "Quantità" %}
+
+  {% when "nl" %}
+    {% assign c_checkout = "Boeking" %}
+    {% assign c_subtitle = "Voltooi je boeking" %}
+    {% assign c_close = "Sluiten" %}
+    {% assign c_experience = "Geselecteerde ervaring" %}
+    {% assign c_name = "Naam" %}
+    {% assign c_email = "E-mail" %}
+    {% assign c_phone = "Telefoon / WhatsApp" %}
+    {% assign c_date = "Kies een datum" %}
+    {% assign c_language = "Kies een taal" %}
+    {% assign c_language_placeholder = "Kies een taal" %}
+    {% assign c_time = "Voorkeurstijd" %}
+    {% assign c_time_any = "Geen voorkeur" %}
+    {% assign c_time_morning = "Ochtend" %}
+    {% assign c_time_afternoon = "Middag" %}
+    {% assign c_time_evening = "Avond" %}
+    {% assign c_travelers = "Selecteer tickets" %}
+    {% assign c_total = "Totaal" %}
+    {% assign c_book = "Nu boeken" %}
+    {% assign c_processing = "Bezig met verwerken..." %}
+    {% assign c_required = "Vul je naam, e-mail, telefoonnummer en datum in." %}
+    {% assign c_language_error = "Kies een taal." %}
+    {% assign c_travelers_error = "Selecteer minimaal één ticket." %}
+    {% assign c_date_error = "Deze datum is niet beschikbaar voor de geselecteerde ervaring." %}
+    {% assign c_generic_error = "De boeking kon niet worden gestart. Probeer het opnieuw." %}
+    {% assign c_decrease = "Verminderen" %}
+    {% assign c_increase = "Verhogen" %}
+    {% assign c_quantity = "Aantal" %}
+
+  {% when "he" %}
+    {% assign c_checkout = "השלמת הזמנה" %}
+    {% assign c_subtitle = "השלימו את ההזמנה" %}
+    {% assign c_close = "סגירה" %}
+    {% assign c_experience = "החוויה שנבחרה" %}
+    {% assign c_name = "שם" %}
+    {% assign c_email = "אימייל" %}
+    {% assign c_phone = "טלפון / WhatsApp" %}
+    {% assign c_date = "בחרו תאריך" %}
+    {% assign c_language = "בחרו שפה" %}
+    {% assign c_language_placeholder = "בחרו שפה" %}
+    {% assign c_time = "שעה מועדפת" %}
+    {% assign c_time_any = "ללא העדפה" %}
+    {% assign c_time_morning = "בוקר" %}
+    {% assign c_time_afternoon = "אחר הצהריים" %}
+    {% assign c_time_evening = "ערב" %}
+    {% assign c_travelers = "בחרו כרטיסים" %}
+    {% assign c_total = "סה״כ" %}
+    {% assign c_book = "הזמינו עכשיו" %}
+    {% assign c_processing = "מעבד..." %}
+    {% assign c_required = "נא למלא שם, אימייל, טלפון ותאריך." %}
+    {% assign c_language_error = "נא לבחור שפה." %}
+    {% assign c_travelers_error = "נא לבחור לפחות כרטיס אחד." %}
+    {% assign c_date_error = "התאריך הזה אינו זמין עבור החוויה שנבחרה." %}
+    {% assign c_generic_error = "לא ניתן להתחיל את ההזמנה. נסו שוב." %}
+    {% assign c_decrease = "הפחתה" %}
+    {% assign c_increase = "הוספה" %}
+    {% assign c_quantity = "כמות" %}
+
+  {% when "ar" %}
+    {% assign c_checkout = "إتمام الحجز" %}
+    {% assign c_subtitle = "أكمل حجزك" %}
+    {% assign c_close = "إغلاق" %}
+    {% assign c_experience = "التجربة المختارة" %}
+    {% assign c_name = "الاسم" %}
+    {% assign c_email = "البريد الإلكتروني" %}
+    {% assign c_phone = "الهاتف / واتساب" %}
+    {% assign c_date = "اختر التاريخ" %}
+    {% assign c_language = "اختر اللغة" %}
+    {% assign c_language_placeholder = "اختر لغة" %}
+    {% assign c_time = "الوقت المفضل" %}
+    {% assign c_time_any = "لا تفضيل" %}
+    {% assign c_time_morning = "صباحًا" %}
+    {% assign c_time_afternoon = "بعد الظهر" %}
+    {% assign c_time_evening = "مساءً" %}
+    {% assign c_travelers = "اختر التذاكر" %}
+    {% assign c_total = "الإجمالي" %}
+    {% assign c_book = "احجز الآن" %}
+    {% assign c_processing = "جارٍ المعالجة..." %}
+    {% assign c_required = "يرجى إدخال الاسم والبريد الإلكتروني ورقم الهاتف والتاريخ." %}
+    {% assign c_language_error = "يرجى اختيار لغة." %}
+    {% assign c_travelers_error = "اختر تذكرة واحدة على الأقل." %}
+    {% assign c_date_error = "هذا التاريخ غير متاح للتجربة المختارة." %}
+    {% assign c_generic_error = "تعذر بدء الحجز. يرجى المحاولة مرة أخرى." %}
+    {% assign c_decrease = "تقليل" %}
+    {% assign c_increase = "زيادة" %}
+    {% assign c_quantity = "الكمية" %}
+{% endcase %}
+{{ 'pmy-checkout-drawer.css' | asset_url | stylesheet_tag }}
+{{ 'pmy-checkout-final-controls.css' | asset_url | stylesheet_tag }}
+{% if request.page_type == 'product' %}
+<script src="{{ 'pmy-checkout-drawer.js' | asset_url }}" defer></script>
+<script>
+(function(){
+  'use strict';
+  if(window.__PMY_PDP_CHECKOUT_ENHANCE__)return;
+  window.__PMY_PDP_CHECKOUT_ENHANCE__=true;
+
+  var loading=null;
+
+  function loadScript(src,id){
+    return new Promise(function(resolve,reject){
+      var existing=document.getElementById(id);
+      if(existing){
+        if(existing.dataset.loaded==='1')return resolve();
+        existing.addEventListener('load',resolve,{once:true});
+        existing.addEventListener('error',reject,{once:true});
+        return;
+      }
+      var script=document.createElement('script');
+      script.id=id;
+      script.src=src;
+      script.async=false;
+      script.addEventListener('load',function(){
+        script.dataset.loaded='1';
+        resolve();
+      },{once:true});
+      script.addEventListener('error',reject,{once:true});
+      document.head.appendChild(script);
+    });
+  }
+
+  function enhance(){
+    if(loading)return loading;
+    loading=loadScript({{ 'countries-data.js' | asset_url | json }},'pmy-pdp-countries')
+      .then(function(){
+        return loadScript({{ 'pmy-phone-ddi-fix.js' | asset_url | json }},'pmy-pdp-phone-fix');
+      })
+      .then(function(){
+        var lang=String(document.documentElement.lang||'').toLowerCase();
+        var cc=lang==='pt-br'?'BR':lang.indexOf('pt')===0?'PT':lang.indexOf('it')===0?'IT':lang.indexOf('es')===0?'ES':lang.indexOf('fr')===0?'FR':lang.indexOf('de')===0?'DE':lang.indexOf('he')===0?'IL':'PT';
+        if(window.PMYPhoneCountry&&typeof window.PMYPhoneCountry.set==='function'){
+          try{window.PMYPhoneCountry.set(cc)}catch(e){}
+        }
+        return loadScript({{ 'pmy-checkout-final-controls.js' | asset_url | json }},'pmy-pdp-final-controls');
+      })
+      .catch(function(error){
+        console.error('[PMY PDP checkout enhancement]',error);
+        return null;
+      });
+    return loading;
+  }
+
+  document.addEventListener('click',function(event){
+    var trigger=event.target&&event.target.closest&&event.target.closest('[data-pmy-checkout-trigger]');
+    if(!trigger)return;
+    window.setTimeout(enhance,0);
+  },false);
+})();
+</script>
+{% elsif template == 'index' %}
+<script>
+(function(){
+  function resetCheckoutLayer(){
+    var drawer=document.getElementById('pmy-checkout-drawer');
+    var backdrop=document.querySelector('[data-pmy-checkout-backdrop]');
+    var trigger=document.querySelector('[data-pmy-checkout-trigger]');
+    if(drawer && drawer.getAttribute('aria-hidden')!=='false'){
+      drawer.classList.remove('is-open');
+    }
+    if(backdrop && !(drawer && drawer.classList.contains('is-open'))){
+      backdrop.classList.remove('is-open');
+      backdrop.setAttribute('aria-hidden','true');
+    }
+    if(trigger && !(drawer && drawer.classList.contains('is-open'))){
+      trigger.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded','false');
+    }
+    if(!(drawer && drawer.classList.contains('is-open'))){
+      document.body.classList.remove('pmy-checkout-lock');
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',resetCheckoutLayer,{once:true});
+  }else{
+    resetCheckoutLayer();
+  }
+  document.addEventListener('shopify:section:load',function(){
+    window.setTimeout(resetCheckoutLayer,0);
+  });
+})();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="{{ 'pmy-checkout-drawer.js' | asset_url }}" defer></script>
+{% if request.design_mode %}
+<script>
+(function(){
+  'use strict';
+  if(window.__PMY_EDITOR_CHECKOUT_LAZY__)return;
+  window.__PMY_EDITOR_CHECKOUT_LAZY__=true;
+  var loading=null;
+
+  function loadScript(src,id){
+    return new Promise(function(resolve,reject){
+      var existing=document.getElementById(id);
+      if(existing){
+        if(existing.dataset.loaded==='1'||existing.readyState==='complete')return resolve();
+        existing.addEventListener('load',resolve,{once:true});
+        existing.addEventListener('error',reject,{once:true});
+        window.setTimeout(resolve,1200);
+        return;
+      }
+      var s=document.createElement('script');
+      s.id=id;
+      s.src=src;
+      s.async=false;
+      s.addEventListener('load',function(){s.dataset.loaded='1';resolve()},{once:true});
+      s.addEventListener('error',reject,{once:true});
+      document.head.appendChild(s);
+    });
+  }
+
+  function enhance(){
+    if(loading)return loading;
+    loading=Promise.resolve()
+      .then(function(){return loadScript('https://cdn.jsdelivr.net/npm/flatpickr','pmy-editor-flatpickr')})
+      .then(function(){return loadScript({{ 'countries-data.js' | asset_url | json }},'pmy-editor-countries')})
+      .then(function(){return loadScript({{ 'pmy-ddi-menu-guard-start.js' | asset_url | json }},'pmy-editor-ddi-start')})
+      .then(function(){return loadScript({{ 'pmy-phone-ddi-fix.js' | asset_url | json }},'pmy-editor-phone-fix')})
+      .then(function(){return loadScript({{ 'pmy-ddi-menu-guard-end.js' | asset_url | json }},'pmy-editor-ddi-end')})
+      .then(function(){return loadScript({{ 'pmy-phone-locale-default.js' | asset_url | json }},'pmy-editor-phone-locale')})
+      .then(function(){return loadScript({{ 'pmy-checkout-final-controls.js' | asset_url | json }},'pmy-editor-final-controls')})
+      .catch(function(error){
+        console.error('[PMY editor checkout lazy-load]',error);
+        return null;
+      });
+    return loading;
+  }
+
+  document.addEventListener('click',function(event){
+    var trigger=event.target&&event.target.closest&&event.target.closest('[data-pmy-checkout-trigger]');
+    if(!trigger)return;
+    window.setTimeout(enhance,0);
+  },true);
+})();
+</script>
+{% else %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+<script src="{{ 'countries-data.js' | asset_url }}" defer></script>
+<script src="{{ 'pmy-ddi-menu-guard-start.js' | asset_url }}" defer></script>
+<script src="{{ 'pmy-phone-ddi-fix.js' | asset_url }}" defer></script>
+<script src="{{ 'pmy-ddi-menu-guard-end.js' | asset_url }}" defer></script>
+<script src="{{ 'pmy-phone-locale-default.js' | asset_url }}" defer></script>
+<script src="{{ 'pmy-checkout-final-controls.js' | asset_url }}" defer></script>
+{% endif %}
+{% else %}
+<script src="{{ 'pmy-checkout-drawer.js' | asset_url }}" defer></script>
+{% endif %}
+
+<button class="pmy-checkout-trigger" type="button" data-pmy-checkout-trigger aria-controls="pmy-checkout-drawer" aria-expanded="false" aria-label="{{ c_checkout | escape }}">
+  <span class="pmy-checkout-trigger__icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 7h12l-1 13H7L6 7Z"/>
+      <path d="M9 9V6a3 3 0 0 1 6 0v3"/>
+    </svg>
+  </span>
+  <span class="pmy-checkout-trigger__label" data-pmy-checkout-trigger-label>{{ c_checkout }}</span>
+</button>
+<div class="pmy-checkout-backdrop" data-pmy-checkout-backdrop aria-hidden="true"></div>
+
+<aside id="pmy-checkout-drawer" class="pmy-checkout-drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pmy-checkout-title"
+  data-label-checkout="{{ c_checkout | escape }}"
+  data-label-close="{{ c_close | escape }}"
+  data-label-travelers="{{ c_travelers | escape }}"
+  data-label-decrease="{{ c_decrease | escape }}"
+  data-label-increase="{{ c_increase | escape }}"
+  data-label-quantity="{{ c_quantity | escape }}"
+  data-label-processing="{{ c_processing | escape }}"
+  data-error-required="{{ c_required | escape }}"
+  data-error-language="{{ c_language_error | escape }}"
+  data-error-travelers="{{ c_travelers_error | escape }}"
+  data-error-date="{{ c_date_error | escape }}"
+  data-error-generic="{{ c_generic_error | escape }}">
+  <div class="pmy-checkout-drawer__head">
+    <div>
+      <span class="pmy-checkout-drawer__eyebrow">Portugal, Me &amp; You</span>
+      <h2 id="pmy-checkout-title">{{ c_checkout }}</h2>
+      <p>{{ c_subtitle }}</p>
+    </div>
+    <button class="pmy-checkout-drawer__close" type="button" data-pmy-checkout-close aria-label="{{ c_close | escape }}">×</button>
+  </div>
+
+  <div class="pmy-checkout-drawer__body">
+    <div id="sticky-checkout-form" class="pmy-checkout-card">
+      <div class="checkout-product-header pmy-checkout-product">
+        <div class="pmy-checkout-product__media">
+          <img id="checkout-product-image" src="" alt="" width="76" height="76">
+        </div>
+        <div class="pmy-checkout-product__copy">
+          <span class="pmy-checkout-field-label">{{ c_experience }}</span>
+          <h3 id="checkout-product-title"></h3>
+          <select id="tour-dropdown" aria-label="{{ c_experience | escape }}">
+            {% assign checkout_handles = 'walking-tours|day-trips|boat-tours|multi-day-tours|wellness-spa-experiences|vip-services|day-trips-italy' | split: '|' %}
+            {% assign seen_checkout_ids = '|' %}
+            {% assign first_checkout_data = '' %}
+
+            {% if request.page_type == 'product' and product != blank %}
+              {% assign checkout_data_id = 'pmy-checkout-data-' | append: product.id %}
+              {% assign first_checkout_data = checkout_data_id %}
+              <option value="{{ checkout_data_id }}" data-product-id="{{ product.id }}" selected>{{ product.title | escape }}</option>
+            {% else %}
+              {% for checkout_handle in checkout_handles %}
+                {% assign checkout_collection = collections[checkout_handle] %}
+                {% if checkout_collection != blank and checkout_collection.products_count > 0 %}
+                  {% capture group_options %}{% endcapture %}
+                  {% for checkout_product in checkout_collection.products %}
+                    {% capture checkout_token %}|{{ checkout_product.id }}|{% endcapture %}
+                    {% unless seen_checkout_ids contains checkout_token %}
+                      {% assign checkout_data_id = 'pmy-checkout-data-' | append: checkout_product.id %}
+                      {% if first_checkout_data == blank %}{% assign first_checkout_data = checkout_data_id %}{% endif %}
+                      {% capture group_options %}{{ group_options }}<option value="{{ checkout_data_id }}" data-product-id="{{ checkout_product.id }}">{{ checkout_product.title | escape }}</option>{% endcapture %}
+                      {% capture seen_checkout_ids %}{{ seen_checkout_ids }}{{ checkout_product.id }}|{% endcapture %}
+                    {% endunless %}
+                  {% endfor %}
+                  {% if group_options != blank %}
+                    <optgroup label="{{ checkout_collection.title | escape }}" data-pmy-checkout-country="{% if checkout_handle == 'day-trips-italy' %}italy{% else %}portugal{% endif %}">{{ group_options }}</optgroup>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+      </div>
+
+      <div class="pmy-checkout-form-grid">
+        <label class="pmy-checkout-field">
+          <span>{{ c_name }}</span>
+          <input id="chk-name" type="text" autocomplete="name" required>
+        </label>
+        <label class="pmy-checkout-field">
+          <span>{{ c_email }}</span>
+          <input id="chk-email" type="email" autocomplete="email" required>
+        </label>
+
+        <div class="pmy-checkout-field pmy-checkout-field--full">
+          <span>{{ c_phone }}</span>
+          <div class="pmy-checkout-phone">
+            <button id="phone-prefix-trigger" class="phone-prefix-trigger" type="button" aria-label="{{ c_phone | escape }}">
+              <span id="prefix-flag"></span>
+              <span id="prefix-code">+55</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+            <input id="chk-phone-number" type="tel" autocomplete="tel" inputmode="tel" required>
+            <input id="chk-phone-full" type="hidden">
+          </div>
+        </div>
+
+        <label class="pmy-checkout-field">
+          <span>{{ c_date }}</span>
+          <input id="chk-date" type="date" required>
+        </label>
+
+        <label id="checkout-lang-row" class="pmy-checkout-field">
+          <span>{{ c_language }}</span>
+          <select id="checkout-lang-select">
+            <option value="">{{ c_language_placeholder }}</option>
+          </select>
+        </label>
+
+        <label id="checkout-time-row" class="pmy-checkout-field pmy-checkout-field--full" hidden>
+          <span>{{ c_time }}</span>
+          <select id="checkout-time-select">
+            <option value="">{{ c_time_any }}</option>
+            <option value="Morning">{{ c_time_morning }}</option>
+            <option value="Afternoon">{{ c_time_afternoon }}</option>
+            <option value="Evening">{{ c_time_evening }}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="pmy-checkout-travelers">
+        <div class="pmy-checkout-section-title">{{ c_travelers }}</div>
+        <div id="dynamic-travelers-container"></div>
+      </div>
+
+      <div class="pmy-checkout-mobile-footer">
+        <div class="pmy-checkout-summary">
+          <span>{{ c_total }}</span>
+          <strong id="checkout-total-display">0,00</strong>
+        </div>
+        <div id="pmy-checkout-status" class="pmy-checkout-status" role="status" aria-live="polite" hidden></div>
+        <button id="chk-book-btn" class="pmy-checkout-book" type="button">{{ c_book }}</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+{% if request.page_type == 'product' and product != blank %}
+  {% assign checkout_data_id = 'pmy-checkout-data-' | append: product.id %}
+  {% assign product_collection_handles = product.collections | map: 'handle' | join: '|' %}
+  <script type="application/json" id="{{ checkout_data_id }}">
+    {
+      "title": {{ product.title | json }},
+      "product_id": {{ product.id | json }},
+      "handle": {{ product.handle | json }},
+      "url": {{ product.url | json }},
+      "image": {% if product.featured_image %}{{ product.featured_image | image_url: width: 180 | json }}{% else %}""{% endif %},
+      "currency_symbol": {{ cart.currency.symbol | json }},
+      "is_massage": {% if product_collection_handles contains 'wellness-spa-experiences' %}true{% else %}false{% endif %},
+      "languages": {{ product.metafields.custom.languages_info | json }},
+      "blocked_days": {{ product.metafields.custom.blocked_days | default: product.metafields.custom.blocked_weekdays | default: "" | json }},
+      "blocked_dates": {{ product.metafields.custom.blocked_specific_dates | default: product.metafields.custom.blocked_dates | default: "" | json }},
+      "variants": [
+        {% for checkout_variant in product.variants %}
+          {
+            "id": {{ checkout_variant.id }},
+            "price": {{ checkout_variant.price }},
+            "option1": {{ checkout_variant.option1 | json }},
+            "option2": {{ checkout_variant.option2 | json }},
+            "options": {{ checkout_variant.options | json }},
+            "title": {{ checkout_variant.title | json }}
+          }{% unless forloop.last %},{% endunless %}
+        {% endfor %}
+      ]
+    }
+  </script>
+{% else %}
+  {% assign data_seen_ids = '|' %}
+  {% for checkout_handle in checkout_handles %}
+    {% assign checkout_collection = collections[checkout_handle] %}
+    {% if checkout_collection != blank and checkout_collection.products_count > 0 %}
+      {% for checkout_product in checkout_collection.products %}
+        {% capture data_token %}|{{ checkout_product.id }}|{% endcapture %}
+        {% unless data_seen_ids contains data_token %}
+          {% assign checkout_data_id = 'pmy-checkout-data-' | append: checkout_product.id %}
+          <script type="application/json" id="{{ checkout_data_id }}">
+            {
+              "title": {{ checkout_product.title | json }},
+              "product_id": {{ checkout_product.id | json }},
+              "handle": {{ checkout_product.handle | json }},
+              "url": {{ checkout_product.url | json }},
+              "image": {% if checkout_product.featured_image %}{{ checkout_product.featured_image | image_url: width: 180 | json }}{% else %}""{% endif %},
+              "currency_symbol": {{ cart.currency.symbol | json }},
+              "is_massage": {% if checkout_handle == 'wellness-spa-experiences' %}true{% else %}false{% endif %},
+              "languages": {{ checkout_product.metafields.custom.languages_info | json }},
+              "blocked_days": {{ checkout_product.metafields.custom.blocked_days | default: checkout_product.metafields.custom.blocked_weekdays | default: "" | json }},
+              "blocked_dates": {{ checkout_product.metafields.custom.blocked_specific_dates | default: checkout_product.metafields.custom.blocked_dates | default: "" | json }},
+              "variants": [
+                {% for checkout_variant in checkout_product.variants %}
+                  {
+                    "id": {{ checkout_variant.id }},
+                    "price": {{ checkout_variant.price }},
+                    "option1": {{ checkout_variant.option1 | json }},
+                    "option2": {{ checkout_variant.option2 | json }},
+                    "options": {{ checkout_variant.options | json }},
+                    "title": {{ checkout_variant.title | json }}
+                  }{% unless forloop.last %},{% endunless %}
+                {% endfor %}
+              ]
+            }
+          </script>
+          {% capture data_seen_ids %}{{ data_seen_ids }}{{ checkout_product.id }}|{% endcapture %}
+        {% endunless %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% if first_checkout_data == blank %}
+  <script>document.documentElement.classList.add('pmy-checkout-empty');</script>
+{% endif %}
