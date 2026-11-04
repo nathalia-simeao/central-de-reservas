@@ -78,4 +78,5 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "saveCentralUser",
   "setGuidePortalAccess",
   "resetDepartureCheck",
+  "savePlatformPrices",
 ]);

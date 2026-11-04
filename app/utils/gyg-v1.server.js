@@ -1,3 +1,4 @@
+import { gygRetailPricesFor } from "./platform-prices.js";
 import { randomUUID } from "node:crypto";
 import db from "../db.server";
 import {
@@ -460,6 +461,13 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
     }
 
     const tour = product.tour;
+    // Preço do GYG definido em "Preços por plataforma" tem prioridade sobre o do Shopify.
+    const gygPriceOverride = tour?.gygPriceOverApi
+      ? gygRetailPricesFor(
+          (await prisma.businessSetting.findFirst({ select: { platformPrices: true } }).catch(() => null))?.platformPrices,
+          tour.id,
+        )
+      : null;
     const timeZone = tour.timezone || "Europe/Lisbon";
     const scheduleSlots = gygProductScheduleSlots(product);
 
@@ -511,7 +519,7 @@ export async function getGygAvailabilities({ productId, fromDateTime, toDateTime
         });
 
         const price = tour.gygPriceOverApi
-          ? pricingForSlot({ variants: product.variants }, timeKey)
+          ? (gygPriceOverride || pricingForSlot({ variants: product.variants }, timeKey))
           : { currency: null, retailPrices: null, ambiguous: false };
         const entry = {
           dateTime: slotIso(dateKey, timeKey, timeZone),

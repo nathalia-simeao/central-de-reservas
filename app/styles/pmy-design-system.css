@@ -6012,3 +6012,12 @@
 .pmy-overview-attention__pill.is-full { color: var(--pmy-danger, #b91c1c); }
 .pmy-overview-attention__pill.is-low { color: var(--pmy-warning, #b45309); }
 .pmy-overview-attention__pill.is-few { color: var(--pmy-primary, #1d4ed8); }
+
+/* Preço por plataforma */
+.pmy-prices__tour { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; font-size: 13px; font-weight: 600; max-width: 520px; }
+.pmy-prices__tour select, .pmy-prices__grid input { font: inherit; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--pmy-ds-border, #e5e7eb); background: var(--pmy-ds-surface, #fff); color: inherit; min-width: 0; }
+.pmy-prices__grid { display: flex; flex-direction: column; gap: 6px; overflow-x: auto; }
+.pmy-prices__row { display: grid; grid-template-columns: minmax(110px, 1.2fr) repeat(4, minmax(70px, 1fr)) minmax(120px, auto); gap: 8px; align-items: center; min-width: 620px; font-size: 13px; }
+.pmy-prices__row.is-head span { font-size: 12px; opacity: .65; font-weight: 600; }
+.pmy-prices__percent { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; }
+.pmy-prices__percent input { width: 80px; }

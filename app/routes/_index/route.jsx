@@ -2025,6 +2025,17 @@ function CentralDeReservasContent() {
     return result.user;
   };
 
+  const [platformPrices, setPlatformPrices] = useState(() => businessSettings?.platformPrices || null);
+  const handleSavePlatformPrices = async (prices) => {
+    const fd = new FormData();
+    fd.append("_action", "savePlatformPrices");
+    fd.append("platformPrices", JSON.stringify(prices || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setPlatformPrices(result.platformPrices);
+    notify(ui("Preços por plataforma salvos.", "Platform prices saved."), "success");
+  };
+
   const handleSaveCostSettings = async (settings) => {
     const fd = new FormData();
     fd.append("_action", "saveCostSettings");
@@ -2910,7 +2921,7 @@ function CentralDeReservasContent() {
             handleRequeueSyncJob, handleSyncPlatformNow, intSubTab,
             lang, loadSyncQueue, manualSyncError, manualSyncPlatform, manualSyncResult,
             platformConnections, platformProducts, reservationPlatforms, runSyncQueueNow,
-            agendaLabels, handleSaveTourColor,
+            agendaLabels, handleSaveTourColor, platformPrices, handleSavePlatformPrices,
             setActiveProdPlatform, setIntSubTab,
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
             syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,

@@ -485,6 +485,8 @@ model BusinessSetting {
   agendaLabels   Json?
   // Custos para faturamento × lucro. Ver app/utils/profit.js.
   costSettings   Json?
+  // Preço por plataforma. Ver app/utils/platform-prices.js.
+  platformPrices Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 

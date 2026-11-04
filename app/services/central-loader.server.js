@@ -449,7 +449,7 @@ export const loader = async ({ request }) => {
     integrationCredentialStatus,
     businessSettings: userIsAdmin || !businessSettings
       ? businessSettings
-      : { ...businessSettings, costSettings: null, fieldMappings: null },
+      : { ...businessSettings, costSettings: null, fieldMappings: null, platformPrices: null },
     platformFieldMappings: userIsAdmin ? platformFieldMappings : [],
     tourDepartures,
     centralUser: {

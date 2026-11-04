@@ -1,3 +1,4 @@
+import { normalizePlatformPrices } from "../utils/platform-prices.js";
 import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../utils/tour-languages.js";
 import { data } from "react-router";
 import { normalizeAgendaLabels } from "../utils/agenda-labels.js";
@@ -523,6 +524,27 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] saveDepartureTags error:", e);
       return json({ success: false, error: "Não foi possível salvar as etiquetas da saída." }, { status: 500 });
+    }
+  }
+
+  if (_action === "savePlatformPrices") {
+    try {
+      const shop = session?.shop;
+      if (!shop) return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      let raw;
+      try { raw = JSON.parse(String(formData.get("platformPrices") || "{}")); } catch {
+        return json({ success: false, error: "Formato inválido." }, { status: 400 });
+      }
+      const platformPrices = normalizePlatformPrices(raw);
+      await prisma.businessSetting.upsert({
+        where: { shop },
+        create: { shop, platformPrices },
+        update: { platformPrices },
+      });
+      return json({ success: true, platformPrices });
+    } catch (e) {
+      console.error("[PMY] savePlatformPrices error:", e);
+      return json({ success: false, error: "Não foi possível salvar os preços." }, { status: 500 });
     }
   }
 
