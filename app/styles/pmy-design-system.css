@@ -6042,3 +6042,41 @@
 .pmy-tags-panel__tag input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
 .pmy-tags-panel__new-name { font-size: 15px; padding: 10px 14px; }
 .pmy-tags-panel__new .pmy-btn, .pmy-tags-panel__new button { font-size: 14px; }
+
+/* Agenda → capacidade por tour: cada passeio num card, cada configuração num bloco com hover. */
+.pmy-capacity-card {
+  display: flex; flex-direction: column; gap: 14px; width: 100%; min-width: 0;
+  margin: 0 0 16px; padding: 18px;
+  border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 16px;
+  background: var(--pmy-ds-surface, #fff);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pmy-capacity-card:hover { border-color: color-mix(in srgb, var(--pmy-ds-accent, #0a7525) 45%, transparent); box-shadow: 0 6px 20px rgba(15, 23, 42, .07); }
+.pmy-capacity-card .pmy-ds-tour-row-main { display: flex; width: 100%; min-width: 0; align-items: center; gap: 16px; }
+.pmy-capacity-card__thumb { width: 76px; height: 76px; flex: 0 0 76px; overflow: hidden; padding: 0; }
+.pmy-capacity-card__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pmy-capacity-card__title { display: block; font-size: 18px; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
+.pmy-capacity-card .pmy-ds-tour-row__meta { font-size: 14.5px; margin-top: 6px; }
+.pmy-capacity-card__sections { display: grid; gap: 12px; width: 100%; min-width: 0; }
+.pmy-capacity-card__section {
+  display: grid; gap: 10px; min-width: 0; padding: 14px 16px;
+  border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 12px;
+  background: var(--pmy-ds-soft, #f6f8f7);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.pmy-capacity-card__section:hover,
+.pmy-capacity-card__section:focus-within {
+  border-color: var(--pmy-ds-accent, #0a7525);
+  background: var(--pmy-ds-surface, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pmy-ds-accent, #0a7525) 14%, transparent);
+}
+.pmy-capacity-card__label { font-size: 12.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--pmy-ds-accent, #0a7525); }
+.pmy-capacity-card__section .pmy-channel-editor { border: 0; padding: 0; background: transparent; }
+.pmy-capacity-card__section .pmy-channel-editor__summary { font-size: 15px; }
+.pmy-capacity-card__section .pmy-language-quota,
+.pmy-capacity-card__section .pmy-language-quota summary { font-size: 15px; }
+@media (max-width: 650px) {
+  .pmy-capacity-card { padding: 14px; }
+  .pmy-capacity-card__thumb { width: 60px; height: 60px; flex-basis: 60px; }
+  .pmy-capacity-card__title { font-size: 16px; }
+}

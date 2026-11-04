@@ -912,13 +912,17 @@ export default function AgendaTab(props) {
                 : 20;
 
             return (
-              <div className="pmy-capacity-vertical-item" key={tour.id} style={{display:"flex",flexDirection:"column",alignItems:"stretch",gap:10,width:"100%",minWidth:0,padding:"18px 0",borderBottom:"1px solid var(--pmy-ds-border, #e5e7eb)"}}>
+              <div className="pmy-capacity-vertical-item pmy-capacity-card" key={tour.id}>
                 <div className="pmy-ds-tour-row-main" style={{display:"flex",width:"100%",minWidth:0,alignItems:"flex-start",gap:14}}>
-                  <div className={`pmy-ds-tour-placeholder ${imageShape}`}>
-                    <Icon name="calendar" size={22} />
+                  <div className={`pmy-ds-tour-placeholder pmy-capacity-card__thumb ${imageShape}`}>
+                    {tour.image ? (
+                      <img src={tour.image} alt={tour.imageAlt || tour.title} loading="lazy" />
+                    ) : (
+                      <Icon name="calendar" size={22} />
+                    )}
                   </div>
                   <div style={{flex:1,minWidth:0,width:"100%"}}>
-                    <strong className="pmy-ds-tour-row__title" style={{display:"block",whiteSpace:"normal",wordBreak:"normal",overflowWrap:"normal",maxWidth:"100%"}}><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
+                    <strong className="pmy-ds-tour-row__title pmy-capacity-card__title" style={{display:"block",whiteSpace:"normal",wordBreak:"normal",overflowWrap:"normal",maxWidth:"100%"}}><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
                     <div className="pmy-ds-tour-row__meta">
                       {tr("Capacidade", "Capacity")}: {capacity}{" "}
                       {lang === "en"
@@ -933,10 +937,17 @@ export default function AgendaTab(props) {
                   </div>
                 </div>
 
-                <div style={{display:"flex",flexDirection:"column",width:"100%",gap:12,marginTop:12}}>
+                <div className="pmy-capacity-card__sections">
+                <div className="pmy-capacity-card__section">
+                <span className="pmy-capacity-card__label">{tr("Vagas e consulta por data", "Seats and date lookup")}</span>
                 <SharedSeatsIndicator tourId={tour.id} capacity={capacity} limits={channelCapacityLimits[tour.id] || {}} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
+                </div>
+                <div className="pmy-capacity-card__section">
                 <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
+                </div>
+                <div className="pmy-capacity-card__section">
                 <LanguageQuotaEditor tour={tour} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} rules={languageQuotaRules[tour.id] || []} guides={guidesList} assignments={guideAssignmentsList} onSave={handleLanguageQuotaSave} lang={lang}/>
+                </div>
                 </div>
               </div>
             );

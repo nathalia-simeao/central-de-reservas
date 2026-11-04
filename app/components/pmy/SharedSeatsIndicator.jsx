@@ -27,17 +27,17 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
     finally {setLoading(false);}
   };
   return <section className="pmy-shared-seats-indicator" style={{display:"grid",gap:9,maxWidth:"100%"}}>
-    <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center",fontSize:13}}>
+    <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center",fontSize:15}}>
       <strong>{en?"Total capacity":"Capacidade total"}: {effectiveCapacity}</strong>
       <strong>{en?"Configured channel caps (sum)":"Soma dos limites dos canais"}: {offeredTotal}</strong>
     </div>
-    <small style={{opacity:.75}}>{en?"Total capacity sums configured channel allocations. Channels without allocations are excluded.":"A capacidade total soma as cotas configuradas. Canais sem cota definida não entram na soma."}</small>
+    <small style={{opacity:.75,fontSize:13.5}}>{en?"Total capacity sums configured channel allocations. Channels without allocations are excluded.":"A capacidade total soma as cotas configuradas. Canais sem cota definida não entram na soma."}</small>
     <div style={{display:"flex",flexWrap:"wrap",alignItems:"end",gap:8}}>
-      <div style={{display:"grid",gap:4,fontSize:12,minWidth:180}}>
+      <div style={{display:"grid",gap:4,fontSize:14,minWidth:180}}>
         <span>{en?"Departure date":"Data da saída"}</span>
         <DatePicker value={date} onChange={v=>{setDate(v?.target?.value ?? v ?? "");setResult(null);}} locale={en?"en-GB":"pt-PT"} placeholder={en?"dd/mm/yyyy":"dd/mm/aaaa"}/>
       </div>
-      <div style={{display:"grid",gap:4,fontSize:12,minWidth:156}}>
+      <div style={{display:"grid",gap:4,fontSize:14,minWidth:156}}>
         <span>{en?"Departure time":"Horário"}</span>
         <DropdownSelect value={time} onChange={v=>{setTime(v);setResult(null);}}
           ariaLabel={en?"Departure time":"Horário da saída"}
@@ -48,7 +48,7 @@ export default function SharedSeatsIndicator({tourId, capacity, hours = [], limi
     </div>
     {normalizedHours.length===0&&<small>{en?"No departure schedule registered; verify Shopify variants.":"Sem horários cadastrados: confira as variantes Shopify."}</small>}
     {error&&<span role="alert" style={{color:"#bd2020",fontSize:12}}>{error}</span>}
-    {result&&<div aria-live="polite" style={{display:"flex",flexWrap:"wrap",gap:14,fontSize:13}}>
+    {result&&<div aria-live="polite" style={{display:"flex",flexWrap:"wrap",gap:14,fontSize:15}}>
       <span>{en?"Capacity":"Capacidade"}: <b>{result.capacity}</b></span>
       <span>{en?"Reserved (all channels)":"Reservadas (todos os canais)"}: <b>{result.occupiedSeats}</b></span>
       <span>{en?"Available seats":"Vagas disponíveis"}: <b>{result.remainingSeats}</b></span>
