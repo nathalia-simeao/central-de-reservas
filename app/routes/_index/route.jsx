@@ -238,6 +238,7 @@ function CentralDeReservasContent() {
           referralLink: g.referralLink || "",
           portalEnabled: Boolean(g.portalEnabled),
           portalHasPassword: Boolean(g.portalHasPassword),
+          sales90d: g.sales90d || null,
         }))
       : []
   );

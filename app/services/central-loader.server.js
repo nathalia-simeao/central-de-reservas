@@ -166,7 +166,29 @@ export const loader = async ({ request }) => {
         .catch(() => [])
     ).map((item) => item.id),
   );
-  dbGuides = dbGuides.map((guide) => ({ ...guide, portalHasPassword: guidesWithPassword.has(guide.id) }));
+  // Vendas por guia (links do portal), últimos 90 dias — só para administradores.
+  const guideSales = new Map();
+  if (userIsAdmin) {
+    const sold = await prisma.booking
+      .findMany({
+        where: { sellerGuideId: { not: null }, createdAt: { gte: new Date(Date.now() - 90 * 24 * 3600 * 1000) } },
+        select: { sellerGuideId: true, status: true, totalPrice: true },
+      })
+      .catch(() => []);
+    for (const row of sold) {
+      const entry = guideSales.get(row.sellerGuideId) || { confirmed: 0, pending: 0, revenue: 0 };
+      if (row.status === "CONFIRMED") {
+        entry.confirmed += 1;
+        entry.revenue += Number(row.totalPrice) || 0;
+      } else if (row.status === "PENDING") entry.pending += 1;
+      guideSales.set(row.sellerGuideId, entry);
+    }
+  }
+  dbGuides = dbGuides.map((guide) => ({
+    ...guide,
+    portalHasPassword: guidesWithPassword.has(guide.id),
+    ...(userIsAdmin ? { sales90d: guideSales.get(guide.id) || { confirmed: 0, pending: 0, revenue: 0 } } : {}),
+  }));
 
   // Etiquetas por saída (passeio + dia + horário). Tolerante: se a migração
   // ainda não rodou, a Central abre normalmente sem etiquetas de saída.

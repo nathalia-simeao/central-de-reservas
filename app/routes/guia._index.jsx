@@ -74,7 +74,10 @@ export default function GuideHome() {
         </Form>
       </div>
 
-      <Link to="/guia/vender" className="g-btn primary g-sell">💳 Vender · gerar link de pagamento</Link>
+      <div className="g-row" style={{ marginBottom: 12 }}>
+        <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}>💳 Vender · gerar link</Link>
+        <Link to="/guia/historico" className="g-btn" style={{ flex: "1 1 140px" }}>📈 Minhas vendas</Link>
+      </div>
 
       {!groups.length && (
         <div className="g-card">

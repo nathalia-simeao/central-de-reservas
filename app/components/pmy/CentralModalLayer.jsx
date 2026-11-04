@@ -1357,6 +1357,17 @@ export default function CentralModalLayer(props) {
             </div>
           </div>
   
+          {isCentralAdmin && selectedGuideInfo.sales90d && (
+            <div className="pmy-ds-panel-soft pmy-u-mt-3">
+              <h4 className="pmy-u-mb-2">{ui("Vendas pelo portal (90 dias)", "Portal sales (90 days)")}</h4>
+              <p className="pmy-guide-portal__status">
+                {ui("Confirmadas", "Confirmed")}: <strong>{selectedGuideInfo.sales90d.confirmed}</strong>
+                {" · "}{ui("Valor", "Value")}: <strong>{new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(selectedGuideInfo.sales90d.revenue || 0)}</strong>
+                {" · "}{ui("Aguardando pagamento", "Awaiting payment")}: <strong>{selectedGuideInfo.sales90d.pending}</strong>
+              </p>
+            </div>
+          )}
+
           {isCentralAdmin && (
             <GuidePortalAccess guide={selectedGuideInfo} onSave={handleSetGuidePortalAccess} lang={lang} />
           )}
