@@ -514,6 +514,7 @@ function CentralDeReservasContent() {
     realCanceledBookings,
     dashboardBookingStatusSummary,
     dashboardStatusBookings,
+    attentionDepartures,
     profitSummary,
     moneyValue,
     bookingCurrency,
@@ -2880,7 +2881,8 @@ function CentralDeReservasContent() {
             operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
             syncQueueData, syncQueueLoading, syncQueueError,
             dashboardStatusBookings, tours, handleSetBookingAttendance,
-            profitSummary, costSettings, handleSaveCostSettings, isCentralAdmin, loadGuidePayouts
+            profitSummary, costSettings, handleSaveCostSettings, isCentralAdmin, loadGuidePayouts,
+            attentionDepartures
           }} />
 
           <AgendaTab {...{

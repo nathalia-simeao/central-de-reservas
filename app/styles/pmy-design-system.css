@@ -6001,3 +6001,14 @@
 .pmy-payouts__row strong { font-variant-numeric: tabular-nums; text-align: right; min-width: 70px; }
 .pmy-payouts__tour { overflow-wrap: anywhere; }
 @media (max-width: 640px) { .pmy-payouts__row { grid-template-columns: 1fr auto; } .pmy-payouts__row > span:nth-child(3) { grid-column: 1; opacity: .7; } }
+
+/* Visão geral: alertas de saídas */
+.pmy-overview-attention { margin: 16px 0; padding: 14px 16px; border: 1px solid var(--pmy-warning, #b45309); border-radius: 14px; background: var(--pmy-warning-soft, #fef3c7); }
+.pmy-overview-attention h3 { margin: 0 0 8px; font-size: 14px; }
+.pmy-overview-attention ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pmy-overview-attention button { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; padding: 6px 0; border: 0; background: none; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
+.pmy-overview-attention button strong { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.pmy-overview-attention__pill { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; background: var(--pmy-ds-surface, #fff); }
+.pmy-overview-attention__pill.is-full { color: var(--pmy-danger, #b91c1c); }
+.pmy-overview-attention__pill.is-low { color: var(--pmy-warning, #b45309); }
+.pmy-overview-attention__pill.is-few { color: var(--pmy-primary, #1d4ed8); }

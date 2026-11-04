@@ -1782,6 +1782,7 @@ export default function DashboardTab(props) {
     handleSaveCostSettings,
     isCentralAdmin = true,
     loadGuidePayouts,
+    attentionDepartures = [],
   } = props;
   const [statusList, setStatusList] = useState(null);
   const [section, setSection] = useState("");
@@ -1986,6 +1987,31 @@ export default function DashboardTab(props) {
                         </ul>
                       )}
                     </section>
+
+                    {attentionDepartures.length > 0 && (
+                      <section className="pmy-overview-attention" aria-label={tr("Atenção", "Attention")}>
+                        <h3>{tr("Atenção", "Attention")}</h3>
+                        <ul>
+                          {attentionDepartures.map((item) => {
+                            const kind = {
+                              FULL: [tr("Esgotada", "Full"), "is-full"],
+                              LOW_CAPACITY: [tr(`Lotando · ${item.availableSeats} vaga(s)`, `Filling up · ${item.availableSeats} seat(s)`), "is-low"],
+                              LOW_TURNOUT: [tr(`Pouca gente · ${item.passengers} pax`, `Few people · ${item.passengers} pax`), "is-few"],
+                            }[item.criticality] || ["", ""];
+                            const time = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(item.startTime));
+                            return (
+                              <li key={`${item.key}-${item.criticality}`}>
+                                <button type="button" onClick={() => setSection("saidas")}>
+                                  <span className={`pmy-overview-attention__pill ${kind[1]}`}>{kind[0]}</span>
+                                  <strong>{item.tourTitle}</strong>
+                                  <span>{time} · {item.passengers}/{item.capacity || "—"} pax</span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
+                    )}
 
                     <section className="pmy-overview-sections" aria-label={tr("Áreas", "Areas")}>
                       {sections.map((item) => (

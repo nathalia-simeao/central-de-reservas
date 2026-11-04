@@ -556,6 +556,25 @@ export function buildDashboardViewModel({
       return new Date(left.startTime) - new Date(right.startTime);
     });
 
+  // Alertas da Visão geral: saídas lotando (das críticas) e saídas com pouca
+  // gente nas próximas 48 h (para decidir juntar grupos ou reforçar vendas).
+  const attentionNow = Date.now();
+  const lowTurnoutDepartures = dashboardUpcomingDepartures
+    .filter((departure) => {
+      const start = new Date(departure?.startTime).getTime();
+      const passengers = Number(departure?.passengers || 0);
+      const capacity = Number(departure?.capacity || 0);
+      return start > attentionNow && start - attentionNow <= 48 * 3600 * 1000 &&
+        passengers > 0 && passengers <= 3 && capacity >= 8;
+    })
+    .map((departure) => ({ ...departure, criticality: "LOW_TURNOUT" }));
+  const attentionDepartures = [
+    ...criticalDepartures.filter((departure) => new Date(departure.startTime).getTime() > attentionNow),
+    ...lowTurnoutDepartures,
+  ]
+    .sort((left, right) => new Date(left.startTime) - new Date(right.startTime))
+    .slice(0, 6);
+
   // Categorias: agrupa pelas coleções do Shopify (dinâmico)
   const allCollections = [...new Set(
     tourOptions.flatMap(t => (t.collections || []).map(c => c.title))
@@ -619,6 +638,7 @@ export function buildDashboardViewModel({
     dashboardUpcomingDepartures,
     operationalCapacity,
     criticalDepartures,
+    attentionDepartures,
     categoriesData,
   };
 }
