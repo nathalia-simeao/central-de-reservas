@@ -100,3 +100,10 @@ test("a booking placed in a guide's group by the management goes only to that gu
   assert.deepEqual(bookingsForGuideLanguages(bookings, ["en"], "dee").map((b) => b.id), ["b"]);
   assert.deepEqual(bookingsForGuideLanguages(bookings, ["pt", "es"], "luis").map((b) => b.id), ["a"]);
 });
+
+import { cleanParticipants } from "../app/utils/guide-portal.server.js";
+
+test("participants are capped at the booking's pax and trimmed", () => {
+  const rows = [{ name: " Ana ", country: "Brasil" }, { name: "", country: "" }, { name: "John", country: "UK" }, { name: "Extra", country: "X" }];
+  assert.deepEqual(cleanParticipants(rows, 3), [{ name: "Ana", country: "Brasil" }, { name: "John", country: "UK" }]);
+});

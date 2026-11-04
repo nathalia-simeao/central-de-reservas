@@ -6,6 +6,7 @@ import {
   appendNote,
   bookingPax,
   bookingsForGuideLanguages,
+  cleanParticipants,
   departureBookingWhere,
   ensureDeparture,
   getGuideFromRequest,
@@ -32,7 +33,7 @@ export const loader = async ({ request, params }) => {
       orderBy: { customerName: "asc" },
       select: {
         id: true, customerName: true, customerPhone: true, language: true, platform: true, bookingRef: true,
-        adults: true, children: true, youths: true, seniors: true, totalParticipants: true, attendanceStatus: true, status: true, groupGuideId: true,
+        adults: true, children: true, youths: true, seniors: true, totalParticipants: true, attendanceStatus: true, status: true, groupGuideId: true, participants: true,
       },
     }),
     db.tourDeparture.findUnique({
@@ -59,6 +60,7 @@ export const loader = async ({ request, params }) => {
     bookings: groupBookings.map((b) => ({
       ...b,
       pax: bookingPax(b),
+      participants: Array.isArray(b.participants) ? b.participants : [],
       tel: phoneDigits(b.customerPhone),
       wa: whatsappLink(b.customerPhone),
     })),
@@ -102,6 +104,28 @@ export const action = async ({ request, params }) => {
       data: { attendanceStatus: value, attendanceMarkedAt: new Date(), attendanceMarkedBy: by },
     });
     return null;
+  }
+
+  if (intent === "participants") {
+    if (!perms.canMarkAttendance) return { error: "Os participantes só podem ser registrados no dia do passeio, até o check de Fim." };
+    const bookingId = String(form.get("bookingId") || "");
+    const booking = await db.booking.findFirst({
+      where: { id: bookingId, ...departureBookingWhere(assignment.tourId, assignment.startTime) },
+      select: { id: true, language: true, groupGuideId: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
+    });
+    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length) {
+      return { error: "Reserva não encontrada no seu grupo desta saída." };
+    }
+    const rows = [];
+    for (let i = 0; i < 30; i += 1) {
+      if (!form.has(`name_${i}`) && !form.has(`country_${i}`)) continue;
+      rows.push({ name: form.get(`name_${i}`), country: form.get(`country_${i}`) });
+    }
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { participants: cleanParticipants(rows, bookingPax(booking)) },
+    });
+    return { ok: "Participantes salvos." };
   }
 
   if (intent === "note") {
@@ -201,6 +225,22 @@ export default function GuideDeparture() {
               {b.pax} pax{paxDetail(b) ? ` (${paxDetail(b)})` : ""} · {b.language || "idioma não informado"} · {PLATFORM_NAMES[b.platform] || b.platform}
               {b.bookingRef ? ` · ${b.bookingRef}` : ""}
             </div>
+            {b.pax > 0 && (
+              <details className="g-participants">
+                <summary>Participantes ({b.participants.length}/{b.pax}) · opcional</summary>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="participants" />
+                  <input type="hidden" name="bookingId" value={b.id} />
+                  {Array.from({ length: Math.min(b.pax, 30) }).map((_, i) => (
+                    <div key={i} className="g-participant">
+                      <input name={`name_${i}`} defaultValue={b.participants[i]?.name || ""} placeholder={`Nome ${i + 1}`} aria-label={`Nome do participante ${i + 1}`} disabled={!permissions.canMarkAttendance} autoComplete="off" />
+                      <input name={`country_${i}`} defaultValue={b.participants[i]?.country || ""} placeholder="País" aria-label={`País do participante ${i + 1}`} disabled={!permissions.canMarkAttendance} autoComplete="off" />
+                    </div>
+                  ))}
+                  {permissions.canMarkAttendance && <button type="submit" className="g-btn" disabled={busy}>Salvar participantes</button>}
+                </Form>
+              </details>
+            )}
             <div className="g-row">
               {b.wa && <a className="g-btn" href={b.wa} target="_blank" rel="noreferrer">💬 WhatsApp</a>}
               {b.tel && <a className="g-btn" href={`tel:${b.tel}`}>📞 Ligar</a>}

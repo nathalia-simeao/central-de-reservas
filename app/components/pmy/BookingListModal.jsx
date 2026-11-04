@@ -51,7 +51,7 @@ function paxLabel(booking, tr) {
 }
 
 export function bookingsToCsv(bookings, tourTitle) {
-  const header = ["Nome", "Telefone", "E-mail", "Plataforma", "Participantes", "Adultos", "Crianças", "Jovens", "Seniores", "Passeio", "Data/hora (Lisboa)", "Idioma", "Referência", "Status", "Realização"];
+  const header = ["Nome", "Telefone", "E-mail", "Plataforma", "Participantes", "Adultos", "Crianças", "Jovens", "Seniores", "Passeio", "Data/hora (Lisboa)", "Idioma", "Referência", "Status", "Realização", "Nomes dos participantes"];
   const escape = (value) => {
     const text = String(value ?? "");
     return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -60,6 +60,7 @@ export function bookingsToCsv(bookings, tourTitle) {
     b.customerName, b.customerPhone, b.customerEmail, PLATFORM_LABELS[b.platform] || b.platform,
     b.totalParticipants, b.adults, b.children, b.youths, b.seniors, tourTitle(b.tourId),
     lisbonDateTime(b.startTime, "pt"), b.language, b.bookingRef || b.externalBookingId, b.status, b.attendanceStatus || "",
+    (Array.isArray(b.participants) ? b.participants : []).map((p) => [p.name, p.country].filter(Boolean).join(" – ")).join("; "),
   ]);
   return [header, ...rows].map((row) => row.map(escape).join(",")).join("\n");
 }

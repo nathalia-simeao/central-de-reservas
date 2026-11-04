@@ -1178,6 +1178,9 @@ export default function CentralModalLayer(props) {
                           {booking.youths > 0 ? `Youth ${booking.youths}  ` : ''}
                           {booking.seniors > 0 ? `Senior ${booking.seniors}` : ''}
                           {booking.language ? ` · 🌐 ${booking.language}` : ''}
+                          {Array.isArray(booking.participants) && booking.participants.length > 0
+                            ? ` · 🪪 ${booking.participants.map((item) => [item.name, item.country].filter(Boolean).join(" – ")).join("; ")}`
+                            : ''}
                         </div>
                         {(() => {
                           const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60000;

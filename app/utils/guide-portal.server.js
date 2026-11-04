@@ -234,3 +234,15 @@ export function bookingsForGuideLanguages(bookings, languages, guideId = null) {
     return !key || keys.includes(key);
   });
 }
+
+/** Participants typed by the guide: at most one row per person in the booking. */
+export function cleanParticipants(rows, maxRows) {
+  const limit = Math.max(0, Math.min(30, Number(maxRows) || 0));
+  return (Array.isArray(rows) ? rows : [])
+    .slice(0, limit)
+    .map((row) => ({
+      name: String(row?.name || "").trim().slice(0, 80),
+      country: String(row?.country || "").trim().slice(0, 40),
+    }))
+    .filter((row) => row.name || row.country);
+}

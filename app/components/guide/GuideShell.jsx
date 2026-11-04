@@ -46,6 +46,10 @@ a { color: inherit; }
 .g-ticket small { display:block; color:var(--g-muted); }
 .g-ticket input { width:72px; font:inherit; font-size:16px; padding:10px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); text-align:center; }
 .g-sell { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-bottom:12px; }
+.g-participants { margin:0 0 10px; }
+.g-participants summary { cursor:pointer; font-size:14px; color:var(--g-muted); padding:4px 0; }
+.g-participant { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:8px; margin:8px 0; }
+.g-participant input { font:inherit; font-size:16px; padding:10px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); width:100%; min-width:0; }
 .g-error { background:var(--g-red-soft); color:var(--g-red); padding:10px 12px; border-radius:12px; font-size:14px; margin-bottom:12px; }
 .g-ok { background:var(--g-green-soft); color:var(--g-green); padding:10px 12px; border-radius:12px; font-size:14px; margin-bottom:12px; }
 .g-note { border-left:3px solid var(--g-line); padding:4px 0 4px 10px; margin:8px 0; font-size:14px; }

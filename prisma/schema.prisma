@@ -248,6 +248,8 @@ model Booking {
   sellerGuideId       String?
   // Grupo da saída escolhido pela gestão (guia). Vazio = automático pelo idioma.
   groupGuideId        String?
+  // Item 6 (opcional): participantes registrados pelo guia [{ name, country }].
+  participants        Json?
 
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @default(now()) @updatedAt
