@@ -23,3 +23,8 @@ test("cancelled and pending keep their buckets", () => {
   assert.equal(classifyBookingForDashboard({ status: "CANCELED", startTime: past, attendanceStatus: "COMPLETED" }, now), "canceled");
   assert.equal(classifyBookingForDashboard({ status: "PENDING", startTime: past }, now), "pending");
 });
+
+test("an abandoned checkout (released hold) is not a cancellation", () => {
+  assert.equal(classifyBookingForDashboard({ status: "CANCELED", syncStatus: "HOLD_RELEASED", startTime: future }, now), "unclassified");
+  assert.equal(classifyBookingForDashboard({ status: "CANCELED", syncStatus: "SYNCED", startTime: future }, now), "canceled");
+});

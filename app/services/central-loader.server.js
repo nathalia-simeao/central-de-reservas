@@ -55,13 +55,20 @@ export const loader = async ({ request }) => {
     registerWebhooks,
   });
 
+  // Carrinhos abandonados (vaga segurada no checkout que venceu) não interessam
+  // à tela e ocupavam o limite de linhas, empurrando reservas futuras para fora.
   const bookingWindowWhere = {
-    OR: [
-      { createdAt: { gte: defaultStart, lte: defaultEnd } },
-      { externalCreatedAt: { gte: defaultStart, lte: defaultEnd } },
-      { updatedAt: { gte: defaultStart, lte: defaultEnd } },
-      { externalUpdatedAt: { gte: defaultStart, lte: defaultEnd } },
-      { startTime: { gte: defaultStart, lte: defaultEnd } },
+    AND: [
+      {
+        OR: [
+          { createdAt: { gte: defaultStart, lte: defaultEnd } },
+          { externalCreatedAt: { gte: defaultStart, lte: defaultEnd } },
+          { updatedAt: { gte: defaultStart, lte: defaultEnd } },
+          { externalUpdatedAt: { gte: defaultStart, lte: defaultEnd } },
+          { startTime: { gte: defaultStart, lte: defaultEnd } },
+        ],
+      },
+      { syncStatus: { not: "HOLD_RELEASED" } },
     ],
   };
 
@@ -98,7 +105,7 @@ export const loader = async ({ request }) => {
     prisma.booking.findMany({
       where: bookingWindowWhere,
       orderBy: [{ startTime: "asc" }, { createdAt: "desc" }],
-      take: 250,
+      take: 800,
     }),
     prisma.booking.count({ where: bookingWindowWhere }),
     prisma.blockedDate.findMany({

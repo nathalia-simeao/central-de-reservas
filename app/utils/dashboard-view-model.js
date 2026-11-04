@@ -1,8 +1,13 @@
 import { getDashboardRangeForPeriod } from "../config/pmy-central-config";
 import { computeProfit } from "./profit.js";
 
+export function isAbandonedCheckout(booking) {
+  return String(booking?.syncStatus || "").toUpperCase() === "HOLD_RELEASED";
+}
+
 export function classifyBookingForDashboard(booking, now = new Date()) {
   const status = String(booking?.status || "").toUpperCase();
+  if (isAbandonedCheckout(booking)) return "unclassified";
   const attendance = String(booking?.attendanceStatus || "").toUpperCase();
   const startTime = new Date(booking?.startTime || 0);
   const hasValidStart = !Number.isNaN(startTime.getTime()) && startTime.getTime() > 0;
@@ -52,8 +57,11 @@ export function buildDashboardViewModel({
   const realConfirmedBookings = periodBookings.filter(
     (booking) => bookingStatus(booking) === "CONFIRMED"
   );
+  // Vaga segurada no checkout que venceu sem pagamento (carrinho abandonado) não é
+  // cancelamento de cliente: fica fora dos cancelamentos e da taxa.
   const realCanceledBookings = (bookings || []).filter((booking) =>
     ["CANCELED", "CANCELLED"].includes(bookingStatus(booking)) &&
+    !isAbandonedCheckout(booking) &&
     isInDashboardRange(bookingUpdatedAt(booking))
   );
   
