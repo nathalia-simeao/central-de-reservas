@@ -52,6 +52,17 @@ model CentralUser {
   updatedAt     DateTime @default(now()) @updatedAt
 }
 
+// Cotações do Banco Central Europeu (via Frankfurter), 1 unidade da moeda = rateToEur euros.
+model FxRate {
+  id        String   @id @default(uuid())
+  date      String   @db.VarChar(10)
+  currency  String   @db.VarChar(3)
+  rateToEur Decimal  @db.Decimal(14, 8)
+  createdAt DateTime @default(now())
+
+  @@unique([date, currency])
+}
+
 // Uma saída = um passeio num dia e horário (o "cartão" do Trello).
 // Guarda o que é da saída e não do passeio: etiquetas hoje; checklist,
 // check-ins do guia e anexos na Fase 2.
@@ -225,6 +236,11 @@ model Booking {
   // Dados financeiros e voucher
   totalPrice          Decimal?  @db.Decimal(12, 2)
   currency            String?   @db.VarChar(3)
+  // Valor em euro (cotação BCE do dia da reserva, guardada em fxRateToEur).
+  // Toda a Central mostra/soma este campo. Ver app/utils/fx.server.js.
+  totalPriceEur       Decimal?  @db.Decimal(12, 2)
+  fxRateToEur         Decimal?  @db.Decimal(14, 8)
+  fxRateDate          String?   @db.VarChar(10)
   voucherCode         String?
   voucherFormat       String?
 

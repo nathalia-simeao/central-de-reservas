@@ -115,11 +115,13 @@ export function computeProfit({ bookings = [], costSettings, range, currency = "
 
   for (const booking of base) {
     const platform = String(booking.platform || "OTHER").toUpperCase();
-    const amount = booking.totalPrice === null || booking.totalPrice === undefined || booking.totalPrice === ""
-      ? null
-      : Number(booking.totalPrice);
-    const sameCurrency = !booking.currency || String(booking.currency).toUpperCase() === currency;
-    const revenue = amount !== null && Number.isFinite(amount) && sameCurrency ? amount : 0;
+    // Tudo em euro: valor convertido (totalPriceEur) ou o próprio valor se já for EUR.
+    const pick = (value) => (value === null || value === undefined || value === "" ? null : Number(value));
+    const converted = pick(booking.totalPriceEur);
+    const raw = pick(booking.totalPrice);
+    const isEur = !booking.currency || String(booking.currency).toUpperCase() === "EUR";
+    const amount = Number.isFinite(converted) ? converted : isEur ? raw : null;
+    const revenue = amount !== null && Number.isFinite(amount) ? amount : 0;
     if (!revenue) missingPrice.push(booking);
 
     const commission = revenue * (settings.platformCommissionPercent[platform] || 0) / 100;

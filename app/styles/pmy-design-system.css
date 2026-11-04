@@ -6021,3 +6021,24 @@
 .pmy-prices__row.is-head span { font-size: 12px; opacity: .65; font-weight: 600; }
 .pmy-prices__percent { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; }
 .pmy-prices__percent input { width: 80px; }
+
+/* Painel de etiquetas: letra maior e cor em bolinha (pedido 04/11) */
+.pmy-tags-panel { gap: 14px; }
+.pmy-tags-panel__header strong { font-size: 17px; }
+.pmy-tags-panel__header small { font-size: 14px; }
+.pmy-tags-panel__empty, .pmy-tags-panel__msg { font-size: 14px; }
+.pmy-tags-panel__tag { font-size: 14px; padding: 5px 10px 5px 6px; gap: 6px; }
+.pmy-tags-panel__tag input[type="color"] { width: 22px; height: 22px; }
+.pmy-tags-panel__name { font-size: 14px; }
+.pmy-tags-panel__tag button { font-size: 16px; }
+.pmy-tags-panel__new input[type="color"] {
+  width: 40px; height: 40px; padding: 0; border-radius: 50%;
+  border: 2px solid var(--pmy-ds-border, #e5e7eb); overflow: hidden; cursor: pointer;
+  -webkit-appearance: none; appearance: none; background: none;
+}
+.pmy-tags-panel__new input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.pmy-tags-panel__new input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.pmy-tags-panel__new input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+.pmy-tags-panel__tag input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+.pmy-tags-panel__new-name { font-size: 15px; padding: 10px 14px; }
+.pmy-tags-panel__new .pmy-btn, .pmy-tags-panel__new button { font-size: 14px; }

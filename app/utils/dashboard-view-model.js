@@ -1,6 +1,18 @@
 import { getDashboardRangeForPeriod } from "../config/pmy-central-config";
 import { computeProfit } from "./profit.js";
 
+export function eurValueOf(booking) {
+  const pick = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const converted = pick(booking?.totalPriceEur);
+  if (converted !== null) return converted;
+  const currency = String(booking?.currency || "").trim().toUpperCase();
+  return !currency || currency === "EUR" ? pick(booking?.totalPrice) : null;
+}
+
 export function isAbandonedCheckout(booking) {
   return String(booking?.syncStatus || "").toUpperCase() === "HOLD_RELEASED";
 }
@@ -87,12 +99,11 @@ export function buildDashboardViewModel({
     dashboardBookingStatusSummary.awaiting +
     dashboardBookingStatusSummary.noShow;
 
-  const moneyValue = (booking) => {
-    if (booking?.totalPrice === null || booking?.totalPrice === undefined || booking?.totalPrice === "") return null;
-    const parsed = Number(booking.totalPrice);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-  const bookingCurrency = (booking) => String(booking?.currency || "").trim().toUpperCase();
+  // Tudo em euro (pedido 04/11/2026): usa o valor convertido pela cotação do BCE
+  // do dia da reserva. Reserva em outra moeda ainda não convertida fica sem valor
+  // (aparece em "cobertura financeira") até a conversão rodar.
+  const moneyValue = (booking) => eurValueOf(booking);
+  const bookingCurrency = (booking) => (eurValueOf(booking) === null ? "" : "EUR");
   
   const revenueByCurrency = realConfirmedBookings.reduce((totals, booking) => {
     const amount = moneyValue(booking);

@@ -806,6 +806,7 @@ export function startSyncQueueWorker(
   }
 
   let running = false;
+  let lastFxRunAt = 0;
 
   const tick = async () => {
     if (running) return;
@@ -813,6 +814,12 @@ export function startSyncQueueWorker(
     let failure = null;
     try {
       await processSyncQueue(prisma, { limit: batchSize });
+      // Tudo em euro: converte reservas em outra moeda a cada ~5 minutos.
+      if (Date.now() - lastFxRunAt > 5 * 60 * 1000) {
+        lastFxRunAt = Date.now();
+        const { convertBookingsToEur } = await import("./fx.server.js");
+        await convertBookingsToEur(prisma).catch((error) => console.error("[FX] worker step failed:", error?.message || error));
+      }
     } catch (error) {
       failure = error;
       console.error("[SYNC_QUEUE] worker tick failed:", error);

@@ -13,6 +13,13 @@ const STATUS = {
   EXPIRED: ["Link vencido", "no"],
 };
 
+// Tudo em euro: valor convertido, ou o próprio valor se a reserva já for em EUR.
+function eurOf(booking) {
+  if (booking.totalPriceEur !== null && booking.totalPriceEur !== undefined) return booking.totalPriceEur;
+  const isEur = !booking.currency || String(booking.currency).toUpperCase() === "EUR";
+  return isEur && booking.totalPrice !== null && booking.totalPrice !== undefined ? booking.totalPrice : null;
+}
+
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
@@ -25,7 +32,7 @@ export const loader = async ({ request }) => {
       take: 200,
       select: {
         id: true, status: true, syncStatus: true, startTime: true, createdAt: true, bookingRef: true,
-        totalPrice: true, currency: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true,
+        totalPrice: true, totalPriceEur: true, currency: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true,
         tour: { select: { title: true } },
       },
     }),
@@ -56,7 +63,7 @@ export const loader = async ({ request }) => {
     totals: {
       sales: confirmed.length,
       pax: confirmed.reduce((sum, s) => sum + bookingPax(s), 0),
-      revenue: confirmed.reduce((sum, s) => sum + (Number(s.totalPrice) || 0), 0),
+      revenue: confirmed.reduce((sum, s) => sum + (Number(eurOf(s)) || 0), 0),
       tours: past.length,
     },
     sales: realSales.map((s) => ({
@@ -66,8 +73,8 @@ export const loader = async ({ request }) => {
       createdAt: s.createdAt.toISOString(),
       ref: s.bookingRef,
       pax: bookingPax(s),
-      price: s.totalPrice === null || s.totalPrice === undefined ? null : Number(s.totalPrice),
-      currency: s.currency || "EUR",
+      price: eurOf(s) === null ? null : Number(eurOf(s)),
+      currency: "EUR",
       status: s.syncStatus === "HOLD_RELEASED" ? "EXPIRED" : s.status,
     })),
     past: past.map((a) => {

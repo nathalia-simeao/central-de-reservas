@@ -31,6 +31,14 @@ function bookingForClient(booking) {
       booking?.totalPrice === null || booking?.totalPrice === undefined
         ? null
         : String(booking.totalPrice),
+    totalPriceEur:
+      booking?.totalPriceEur === null || booking?.totalPriceEur === undefined
+        ? null
+        : String(booking.totalPriceEur),
+    fxRateToEur:
+      booking?.fxRateToEur === null || booking?.fxRateToEur === undefined
+        ? null
+        : String(booking.fxRateToEur),
   };
 }
 
@@ -179,14 +187,15 @@ export const loader = async ({ request }) => {
     const sold = await prisma.booking
       .findMany({
         where: { sellerGuideId: { not: null }, createdAt: { gte: new Date(Date.now() - 90 * 24 * 3600 * 1000) } },
-        select: { sellerGuideId: true, status: true, totalPrice: true },
+        select: { sellerGuideId: true, status: true, totalPrice: true, totalPriceEur: true, currency: true },
       })
       .catch(() => []);
     for (const row of sold) {
       const entry = guideSales.get(row.sellerGuideId) || { confirmed: 0, pending: 0, revenue: 0 };
       if (row.status === "CONFIRMED") {
         entry.confirmed += 1;
-        entry.revenue += Number(row.totalPrice) || 0;
+        const eur = row.totalPriceEur ?? (!row.currency || String(row.currency).toUpperCase() === "EUR" ? row.totalPrice : null);
+        entry.revenue += Number(eur) || 0;
       } else if (row.status === "PENDING") entry.pending += 1;
       guideSales.set(row.sellerGuideId, entry);
     }
