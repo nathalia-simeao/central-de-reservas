@@ -5985,3 +5985,19 @@
 .pmy-booking-group { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; }
 .pmy-booking-group select { font: inherit; font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--pmy-ds-border, #e5e7eb); background: var(--pmy-ds-surface, #fff); color: inherit; }
 .pmy-departure-step__undo { border: 0; background: none; color: inherit; cursor: pointer; padding: 0 0 0 4px; font-size: 13px; line-height: 1; }
+
+/* Fechamento dos guias */
+.pmy-payouts__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 12px 0; font-size: 13px; }
+.pmy-payouts__month { text-transform: capitalize; min-width: 130px; text-align: center; }
+.pmy-payouts__spacer { flex: 1; }
+.pmy-payouts__muted { font-size: 13px; opacity: .7; }
+.pmy-payouts { list-style: none; margin: 0; padding: 0; }
+.pmy-payouts__guide { border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); }
+.pmy-payouts__head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline; width: 100%; padding: 10px 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pmy-payouts__head small { opacity: .65; white-space: nowrap; }
+.pmy-payouts__head strong { font-variant-numeric: tabular-nums; }
+.pmy-payouts__table { padding: 0 0 10px; font-size: 13px; }
+.pmy-payouts__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto auto; gap: 10px; padding: 5px 0; border-top: 1px dashed var(--pmy-ds-border, #e5e7eb); }
+.pmy-payouts__row strong { font-variant-numeric: tabular-nums; text-align: right; min-width: 70px; }
+.pmy-payouts__tour { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .pmy-payouts__row { grid-template-columns: 1fr auto; } .pmy-payouts__row > span:nth-child(3) { grid-column: 1; opacity: .7; } }

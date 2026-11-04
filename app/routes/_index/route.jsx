@@ -1957,6 +1957,12 @@ function CentralDeReservasContent() {
     return result;
   };
 
+  const loadGuidePayouts = useCallback(async (month) => {
+    const result = await requestResourceJson(`/api/guide-payouts?month=${encodeURIComponent(month)}`);
+    if (!result?.success) throw new Error(result?.error || "Não foi possível carregar o fechamento.");
+    return result;
+  }, [requestResourceJson]);
+
   const handleSetBookingGroup = async (bookingId, guideId) => {
     const fd = new FormData();
     fd.append("_action", "setBookingGroup");
@@ -2874,7 +2880,7 @@ function CentralDeReservasContent() {
             operationalCapacity, criticalDepartures, platformConnections, reservationPlatforms, platformLabel,
             syncQueueData, syncQueueLoading, syncQueueError,
             dashboardStatusBookings, tours, handleSetBookingAttendance,
-            profitSummary, costSettings, handleSaveCostSettings, isCentralAdmin
+            profitSummary, costSettings, handleSaveCostSettings, isCentralAdmin, loadGuidePayouts
           }} />
 
           <AgendaTab {...{

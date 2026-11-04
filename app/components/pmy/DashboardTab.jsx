@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader } from "./PmyUI";
 import BookingListModal from "./BookingListModal";
 import ProfitPanel from "./ProfitPanel";
+import GuidePayoutsPanel from "./GuidePayoutsPanel";
 import GygDeactivationAlerts from "./GygDeactivationAlerts";
 
 const TrendChart = ({
@@ -1780,6 +1781,7 @@ export default function DashboardTab(props) {
     costSettings = null,
     handleSaveCostSettings,
     isCentralAdmin = true,
+    loadGuidePayouts,
   } = props;
   const [statusList, setStatusList] = useState(null);
   const [section, setSection] = useState("");
@@ -1787,7 +1789,7 @@ export default function DashboardTab(props) {
   const sections = [
     { key: "reservas", icon: "bookings", label: tr("Reservas", "Bookings"), hint: tr("Status, lista de clientes, realizado/no-show", "Status, customer list, completed/no-show") },
     { key: "saidas", icon: "calendar", label: tr("Saídas e ocupação", "Departures & occupancy"), hint: tr("Próximas saídas, ocupação de 30 dias, saídas críticas", "Upcoming, 30-day occupancy, critical departures") },
-    { key: "financeiro", icon: "revenue", label: tr("Financeiro", "Finance"), hint: tr("Faturamento × lucro, custos, vendas por canal", "Revenue × profit, costs, sales by channel"), admin: true },
+    { key: "financeiro", icon: "revenue", label: tr("Financeiro", "Finance"), hint: tr("Faturamento × lucro, fechamento dos guias, custos, vendas por canal", "Revenue × profit, guide payouts, costs, sales by channel"), admin: true },
     { key: "desempenho", icon: "ticket", label: tr("Desempenho", "Performance"), hint: tr("Tendência, ranking e performance dos passeios", "Trend, ranking and tour performance"), admin: true },
     { key: "integracoes", icon: "link", label: tr("Saúde das integrações", "Integration health"), hint: tr("Alertas do GYG, erros de sincronização, canais", "GYG alerts, sync errors, channels"), admin: true },
   ].filter((item) => isCentralAdmin || !item.admin);
@@ -2049,6 +2051,7 @@ export default function DashboardTab(props) {
               </>)}
 
               {section === "financeiro" && isCentralAdmin && (<>
+                <GuidePayoutsPanel loadPayouts={loadGuidePayouts} formatMoney={formatMoney} tours={tours} lang={lang} />
               <ProfitPanel
                 summary={profitSummary}
                 formatMoney={formatMoney}
