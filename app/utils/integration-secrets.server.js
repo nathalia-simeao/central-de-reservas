@@ -11,28 +11,35 @@ function normalizeProvider(provider) {
   return value;
 }
 
-function encryptionKey() {
-  const raw = String(process.env.INTEGRATION_ENCRYPTION_KEY || "").trim();
-  if (!raw) {
-    throw new Error(
-      "INTEGRATION_ENCRYPTION_KEY is not configured on the server.",
-    );
-  }
-
+function keyFromEnv(name) {
+  const raw = String(process.env[name] || "").trim();
+  if (!raw) return null;
   let key;
   try {
     key = Buffer.from(raw, "base64");
   } catch {
     key = null;
   }
-
   if (!key || key.length !== KEY_BYTES) {
+    throw new Error(`${name} must be a base64-encoded 32-byte key.`);
+  }
+  return key;
+}
+
+function encryptionKey() {
+  const key = keyFromEnv("INTEGRATION_ENCRYPTION_KEY");
+  if (!key) {
     throw new Error(
-      "INTEGRATION_ENCRYPTION_KEY must be a base64-encoded 32-byte key.",
+      "INTEGRATION_ENCRYPTION_KEY is not configured on the server.",
     );
   }
-
   return key;
+}
+
+// Troca da chave: a chave anterior fica em INTEGRATION_ENCRYPTION_KEY_PREVIOUS
+// até tudo ser recriptografado com a nova (Configurações → Chave de criptografia).
+function previousEncryptionKey() {
+  return keyFromEnv("INTEGRATION_ENCRYPTION_KEY_PREVIOUS");
 }
 
 function canonicalJson(value) {
@@ -76,29 +83,39 @@ function encryptCredentials(credentials) {
   };
 }
 
-function decryptCredentials(record) {
-  if (!record) return null;
-  if (record.credentialKeyVersion !== KEY_VERSION) {
-    throw new Error(
-      `Unsupported integration credential key version: ${record.credentialKeyVersion}`,
-    );
-  }
-
-  const key = encryptionKey();
+function decryptWithKey(record, key) {
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
     key,
     Buffer.from(record.credentialIv, "base64"),
   );
-
   decipher.setAuthTag(Buffer.from(record.credentialTag, "base64"));
-
   const plaintext = Buffer.concat([
     decipher.update(Buffer.from(record.credentialCiphertext, "base64")),
     decipher.final(),
   ]).toString("utf8");
-
   return JSON.parse(plaintext);
+}
+
+// Retorna { credentials, keyUsed: "current" | "previous" }.
+function decryptCredentialsDetailed(record) {
+  if (record.credentialKeyVersion !== KEY_VERSION) {
+    throw new Error(
+      `Unsupported integration credential key version: ${record.credentialKeyVersion}`,
+    );
+  }
+  try {
+    return { credentials: decryptWithKey(record, encryptionKey()), keyUsed: "current" };
+  } catch (error) {
+    const previous = previousEncryptionKey();
+    if (!previous) throw error;
+    return { credentials: decryptWithKey(record, previous), keyUsed: "previous" };
+  }
+}
+
+function decryptCredentials(record) {
+  if (!record) return null;
+  return decryptCredentialsDetailed(record).credentials;
 }
 
 function safeSecretRecord(record) {
@@ -268,4 +285,64 @@ export async function removeIntegrationCredentials(prisma, provider) {
   });
 
   return { removed: true };
+}
+
+// ---- Troca da chave de criptografia ----
+
+export function integrationKeyRotationEnv() {
+  let previousConfigured = false;
+  let previousValid = true;
+  try {
+    previousConfigured = Boolean(previousEncryptionKey());
+  } catch {
+    previousConfigured = true;
+    previousValid = false;
+  }
+  let sameAsCurrent = false;
+  try {
+    const current = encryptionKey();
+    const previous = previousValid ? previousEncryptionKey() : null;
+    sameAsCurrent = Boolean(previous && current.equals(previous));
+  } catch {
+    // chave atual ausente ou inválida: integrationEncryptionReady() informa
+  }
+  return {
+    currentReady: integrationEncryptionReady(),
+    previousConfigured,
+    previousValid,
+    sameAsCurrent,
+  };
+}
+
+export async function integrationKeyStatus(prisma) {
+  const records = await prisma.integrationSecret.findMany({ orderBy: { provider: "asc" } });
+  return records.map((record) => {
+    try {
+      return { provider: record.provider, key: decryptCredentialsDetailed(record).keyUsed };
+    } catch {
+      return { provider: record.provider, key: "unreadable" };
+    }
+  });
+}
+
+export async function reencryptIntegrationSecrets(prisma) {
+  const records = await prisma.integrationSecret.findMany({ orderBy: { provider: "asc" } });
+  const results = [];
+  for (const record of records) {
+    try {
+      const { credentials, keyUsed } = decryptCredentialsDetailed(record);
+      if (keyUsed === "current") {
+        results.push({ provider: record.provider, result: "already-current" });
+        continue;
+      }
+      await prisma.integrationSecret.update({
+        where: { id: record.id },
+        data: encryptCredentials(credentials),
+      });
+      results.push({ provider: record.provider, result: "reencrypted" });
+    } catch {
+      results.push({ provider: record.provider, result: "unreadable" });
+    }
+  }
+  return results;
 }
