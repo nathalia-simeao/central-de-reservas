@@ -2067,7 +2067,20 @@ function CentralDeReservasContent() {
       checkEndAt: item.checkEndAt || null,
       guideNotes: Array.isArray(item.guideNotes) ? item.guideNotes : [],
       attachments: item.attachments || [],
+      checklists: item.checklists || null,
     }])));
+  // Quadro: checklists do cartão (operação aplicada no servidor).
+  const handleChecklistOp = async (tourId, startTime, op) => {
+    const fd = new FormData();
+    fd.append("_action", "updateDepartureChecklist");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("op", JSON.stringify(op));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo((current) => ({ ...current, [key]: { ...(current[key] || {}), checklists: result.departure.checklists } }));
+  };
   const [departureTags, setDepartureTags] = useState(() =>
     Object.fromEntries((tourDepartures || []).map(item => [departureKey(item.tourId, item.startTime), item.tagIds || []])));
   const handleSaveDepartureTags = async (tourId, startTime, tagIds) => {
@@ -2954,6 +2967,7 @@ function CentralDeReservasContent() {
               onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
+              onChecklistOp: handleChecklistOp,
             },
           }} />
 

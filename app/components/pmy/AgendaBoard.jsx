@@ -4,6 +4,7 @@ import { addDays, buildBoardColumns, cardLabelIds, initials } from "../../utils/
 import { languageLabel } from "../../utils/tour-languages.js";
 import DepartureTagsSection from "./DepartureTagsSection";
 import { DatePicker } from "./PmyUI";
+import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
@@ -301,6 +302,115 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onTag, onClose, lang })
   );
 }
 
+/* ---------- Checklists (igual ao Trello) ---------- */
+function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, busy, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState("");
+  const total = list.items.length;
+  const done = list.items.filter(isDone).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const items = hidden ? list.items.filter((item) => !isDone(item)) : list.items;
+  const submit = async () => { if (!text.trim()) return; await onAddItem(text); setText(""); };
+  return (
+    <div className="pmy-checklist">
+      <div className="pmy-checklist__head">
+        <span className="pmy-checklist__icon" aria-hidden="true">☑</span>
+        <strong>{list.title}</strong>
+        {list.auto && <small className="pmy-checklist__auto" title={tr("Criado sozinho a partir das reservas confirmadas", "Built from confirmed bookings")}>{tr("automático", "automatic")}</small>}
+        <span className="pmy-checklist__actions">
+          {done > 0 && <button type="button" className="pmy-board-btn" onClick={onToggleHide}>{hidden ? tr(`Mostrar itens marcados (${done})`, `Show checked items (${done})`) : tr("Ocultar itens marcados", "Hide checked items")}</button>}
+          {onDelete && <button type="button" className="pmy-board-btn" disabled={busy} onClick={onDelete}>{tr("Excluir", "Delete")}</button>}
+        </span>
+      </div>
+      <div className="pmy-checklist__progress">
+        <small>{pct}%</small>
+        <span><i style={{ width: `${pct}%` }} className={pct === 100 ? "is-done" : ""} /></span>
+      </div>
+      {items.map((item) => {
+        const on = isDone(item);
+        return (
+          <label key={item.key || item.id} className={`pmy-checklist__item ${on ? "is-done" : ""}`} title={item.by ? `${item.by}` : undefined}>
+            <input type="checkbox" checked={on} disabled={busy} onChange={() => onToggle(item)} />
+            <span>{item.text}</span>
+            {onDeleteItem && (
+              <button type="button" className="pmy-checklist__del" aria-label={tr("Apagar item", "Delete item")} disabled={busy} onClick={(e) => { e.preventDefault(); onDeleteItem(item); }}>×</button>
+            )}
+          </label>
+        );
+      })}
+      {hidden && done > 0 && !items.length && <p className="pmy-board-pop__empty">{tr("Tudo marcado ✓", "All checked ✓")}</p>}
+      {onAddItem && (adding ? (
+        <div className="pmy-checklist__add">
+          <input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item", "Add an item")}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } if (e.key === "Escape") setAdding(false); }} />
+          <div className="pmy-board-pop__actions">
+            <button type="button" className="pmy-board-btn is-primary" disabled={busy || !text.trim()} onClick={submit}>{tr("Adicionar", "Add")}</button>
+            <button type="button" className="pmy-board-btn" onClick={() => { setAdding(false); setText(""); }}>{tr("Cancelar", "Cancel")}</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="pmy-board-btn pmy-checklist__add-btn" onClick={() => setAdding(true)}>{tr("Adicionar um item", "Add an item")}</button>
+      ))}
+    </div>
+  );
+}
+
+function ChecklistSection({ card, raw, onOp, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const state = normalizeChecklists(raw);
+  const autos = autoChecklists(card);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState("");
+  const run = async (op) => {
+    setBusy(true);
+    setError("");
+    try { await onOp(op); } catch (e) { setError(e?.message || tr("Não foi possível salvar.", "Could not save.")); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="pmy-board-modal__section">
+      <div className="pmy-checklist__section-head">
+        <span className="pmy-board-pop__sub">{tr("Checklists", "Checklists")}</span>
+        <button type="button" className="pmy-board-btn" onClick={() => setCreating(!creating)}>{tr("+ Checklist", "+ Checklist")}</button>
+      </div>
+      {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
+      {creating && (
+        <div className="pmy-checklist__add">
+          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr("Título (ex.: Ingressos, 10h ESP (3p) 3A Dee)", "Title")}
+            onKeyDown={async (e) => { if (e.key === "Enter" && title.trim()) { e.preventDefault(); await run({ type: "addList", title }); setTitle(""); setCreating(false); } }} />
+          <div className="pmy-board-pop__actions">
+            <button type="button" className="pmy-board-btn is-primary" disabled={busy || !title.trim()} onClick={async () => { await run({ type: "addList", title }); setTitle(""); setCreating(false); }}>{tr("Adicionar", "Add")}</button>
+            <button type="button" className="pmy-board-btn" onClick={() => setCreating(false)}>{tr("Cancelar", "Cancel")}</button>
+          </div>
+        </div>
+      )}
+      {!autos.length && !state.lists.length && !creating && (
+        <p className="pmy-board-pop__empty">{tr("Quando entrar reserva confirmada, o checklist do grupo aparece aqui sozinho (Pronto · clientes · Fim de tour). Também dá para criar um manual.", "A checklist per group appears here automatically once a booking is confirmed.")}</p>
+      )}
+      {autos.map((list) => (
+        <ChecklistBlock key={list.id} list={list} busy={busy} lang={lang}
+          hidden={Boolean(state.hideDone[list.id])}
+          isDone={(item) => Boolean(state.auto[item.key]?.done)}
+          onToggle={(item) => run({ type: "toggleAuto", key: item.key })}
+          onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })} />
+      ))}
+      {state.lists.map((list) => (
+        <ChecklistBlock key={list.id} list={list} busy={busy} lang={lang}
+          hidden={Boolean(state.hideDone[list.id])}
+          isDone={(item) => item.done}
+          onToggle={(item) => run({ type: "toggleItem", listId: list.id, itemId: item.id })}
+          onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })}
+          onDelete={() => { if (typeof window === "undefined" || window.confirm(tr("Excluir este checklist?", "Delete this checklist?"))) run({ type: "deleteList", listId: list.id }); }}
+          onAddItem={(text) => run({ type: "addItem", listId: list.id, text })}
+          onDeleteItem={(item) => run({ type: "deleteItem", listId: list.id, itemId: item.id })} />
+      ))}
+    </div>
+  );
+}
+
 /* ---------- Quadro ---------- */
 export default function AgendaBoard({
   bookings = [],
@@ -317,6 +427,7 @@ export default function AgendaBoard({
   onUpload,
   onRemoveAttachment,
   onResetCheck,
+  onChecklistOp,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -392,7 +503,7 @@ export default function AgendaBoard({
               {col.cards.map((card) => {
                 const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
                 const color = tourColor(agendaLabels, card.tourId);
-                const complete = card.pax > 0 && card.present >= card.pax;
+                const progress = checklistProgress(card, departureInfo[card.key]?.checklists);
                 return (
                   <button key={card.key} type="button" className="pmy-board-card" style={{ "--tour-color": color }} onClick={() => { setOpenKey(card.key); setLabelsOpen(false); }}>
                     <span className="pmy-board-card__labels">
@@ -408,11 +519,12 @@ export default function AgendaBoard({
                       <span className="pmy-board-card__badges">
                         {card.notes > 0 && <span title={tr("Observações", "Notes")}>💬 {card.notes}</span>}
                         {card.attachments > 0 && <span title={tr("Anexos", "Attachments")}>📎 {card.attachments}</span>}
-                        {(card.pax > 0 || card.pending > 0) && (
-                          <span className={`pmy-board-badge ${complete ? "is-done" : ""}`} title={tr("Presentes / pessoas confirmadas", "Present / confirmed people")}>
-                            ☑ {card.present}/{card.pax}{card.pending ? ` +${card.pending}` : ""}
+                        {progress.total > 0 && (
+                          <span className={`pmy-board-badge ${progress.done === progress.total ? "is-done" : ""}`} title={tr("Itens marcados nos checklists", "Checked checklist items")}>
+                            ☑ {progress.done}/{progress.total}
                           </span>
                         )}
+                        {card.pax > 0 && <span title={tr("Pessoas confirmadas", "Confirmed people")}>👥 {card.pax}{card.pending ? ` +${card.pending}` : ""}</span>}
                         {card.checks > 0 && <span title={tr("Checks do guia (Início/Meio/Fim)", "Guide checks")}>✓ {card.checks}/3</span>}
                       </span>
                       <span className="pmy-board-card__avatars">
@@ -476,6 +588,11 @@ export default function AgendaBoard({
                   ))}
                 </ul>
               </div>
+            )}
+
+            {onChecklistOp && (
+              <ChecklistSection card={openCard} raw={departureInfo[openCard.key]?.checklists}
+                onOp={(op) => onChecklistOp(openCard.tourId, openCard.startTime, op)} lang={lang} />
             )}
 
             <DepartureTagsSection

@@ -6214,3 +6214,25 @@
 .pmy-board__date { position: relative; z-index: 20; }
 .pmy-board__date > div { min-width: 170px; }
 .pmy-board__date { white-space: nowrap; }
+/* Quadro: checklists do cartão (estilo Trello) */
+.pmy-checklist__section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pmy-checklist { display: grid; gap: 6px; padding: 10px 0 6px; border-top: 1px solid #f1f2f4; }
+.pmy-checklist__head { display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.pmy-checklist__head strong { font-size: 15px; overflow-wrap: anywhere; }
+.pmy-checklist__icon { font-size: 18px; color: #44546f; }
+.pmy-checklist__auto { grid-column: 2; font-size: 11px; color: #626f86; margin-top: -4px; }
+.pmy-checklist__actions { grid-row: 1; grid-column: 3; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pmy-checklist__progress { display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 8px; }
+.pmy-checklist__progress small { font-size: 11px; color: #626f86; }
+.pmy-checklist__progress span { height: 8px; border-radius: 4px; background: #e9ebee; overflow: hidden; }
+.pmy-checklist__progress i { display: block; height: 100%; background: #579dff; border-radius: 4px; transition: width .2s ease; }
+.pmy-checklist__progress i.is-done { background: #1f845a; }
+.pmy-checklist__item { display: grid; grid-template-columns: 24px minmax(0,1fr) 24px; align-items: start; gap: 8px; padding: 6px 4px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.pmy-checklist__item:hover { background: #f1f2f4; }
+.pmy-checklist__item input { width: 16px; height: 16px; margin-top: 2px; accent-color: #0c66e4; }
+.pmy-checklist__item.is-done span { text-decoration: line-through; color: #626f86; }
+.pmy-checklist__del { border: 0; background: transparent; color: #626f86; font-size: 16px; cursor: pointer; opacity: 0; }
+.pmy-checklist__item:hover .pmy-checklist__del { opacity: 1; }
+.pmy-checklist__add { display: grid; gap: 6px; padding-left: 32px; }
+.pmy-checklist__add input { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px; border: 2px solid #388bff; width: 100%; }
+.pmy-checklist__add-btn { justify-self: start; margin-left: 32px; }

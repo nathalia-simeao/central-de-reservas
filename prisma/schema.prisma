@@ -79,6 +79,8 @@ model TourDeparture {
   checkedBy    String?
   // Observações: lista só-adiciona [{ at, by, text }].
   guideNotes   Json?
+  // Checklists do cartão no Quadro: { lists: [{ id, title, items: [{ id, text, done, at, by }] }], auto: { [itemKey]: { done, at, by } }, hideDone: { [listId]: true } }
+  checklists   Json?
   attachments  DepartureAttachment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt

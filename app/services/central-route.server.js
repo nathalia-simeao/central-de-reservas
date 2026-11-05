@@ -1,3 +1,4 @@
+import { applyChecklistOp } from "../utils/departure-checklists.js";
 import { normalizePlatformPrices } from "../utils/platform-prices.js";
 import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../utils/tour-languages.js";
 import { data } from "react-router";
@@ -497,6 +498,34 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] removeDepartureAttachment error:", e);
       return json({ success: false, error: "Não foi possível remover o arquivo." }, { status: 500 });
+    }
+  }
+
+  if (_action === "updateDepartureChecklist") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      let op;
+      try { op = JSON.parse(String(formData.get("op") || "{}")); } catch { op = null; }
+      if (!tourId || Number.isNaN(startTime.getTime()) || !op?.type) {
+        return json({ success: false, error: "Saída ou checklist inválido." }, { status: 400 });
+      }
+      const by = centralUser?.name || centralUser?.email || "Equipe";
+      const existing = await prisma.tourDeparture.findUnique({
+        where: { tourId_startTime: { tourId, startTime } },
+        select: { checklists: true },
+      });
+      const checklists = applyChecklistOp(existing?.checklists, op, by);
+      const departure = await prisma.tourDeparture.upsert({
+        where: { tourId_startTime: { tourId, startTime } },
+        create: { tourId, startTime, checklists },
+        update: { checklists },
+        select: { tourId: true, startTime: true, checklists: true },
+      });
+      return json({ success: true, departure });
+    } catch (e) {
+      console.error("[PMY] updateDepartureChecklist error:", e);
+      return json({ success: false, error: e?.message?.startsWith("Limite") || e?.message?.startsWith("Operação") ? e.message : "Não foi possível salvar o checklist." }, { status: 500 });
     }
   }
 

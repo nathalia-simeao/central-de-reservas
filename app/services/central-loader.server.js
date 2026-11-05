@@ -213,7 +213,7 @@ export const loader = async ({ request }) => {
       where: { startTime: { gte: assignmentStart, lte: assignmentEnd } },
       select: {
         id: true, tourId: true, startTime: true, tagIds: true,
-        checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true,
+        checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true, checklists: true,
         attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       },
     })
