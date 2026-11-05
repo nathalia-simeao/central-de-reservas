@@ -46,7 +46,7 @@ export default function AgendaLabelsEditor({ labels, onSave, lang = "pt" }) {
     <section className="pmy-tags-panel" aria-label={tr("Etiquetas", "Tags")}>
       <div className="pmy-tags-panel__header">
         <strong>{tr("Etiquetas", "Tags")}</strong>
-        <small>{tr("Marque nas saídas clicando no dia → \"+ Etiqueta\"", "Mark them on departures: click a day → \"+ Tag\"")}</small>
+        <small>{tr("Use nos cartões do Quadro: abra o cartão → Etiquetas", "Use them on Board cards: open a card → Labels")}</small>
       </div>
 
       <div className="pmy-tags-panel__list">

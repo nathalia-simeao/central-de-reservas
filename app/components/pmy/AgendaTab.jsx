@@ -170,6 +170,7 @@ export default function AgendaTab(props) {
   const tr = (pt, en) => lang === "en" ? en : pt;
 
   const [blockTourSearch, setBlockTourSearch] = useState("");
+  const [boardLabelsOpen, setBoardLabelsOpen] = useState(false);
   const [blockTourPickerOpen, setBlockTourPickerOpen] = useState(false);
 
   const normalizedBlockTourSearch = blockTourSearch
@@ -248,7 +249,15 @@ export default function AgendaTab(props) {
               title={tr("Quadro", "Board")}
               subtitle={tr("Uma coluna por dia, um cartão por saída. Clique no cartão para etiquetas, guias, clientes e anexos.", "One column per day, one card per departure.")}
             />
+            <Button type="button" variant={boardLabelsOpen ? "primary" : "secondary"} size="sm" onClick={() => setBoardLabelsOpen(!boardLabelsOpen)} aria-expanded={boardLabelsOpen}>
+              {boardLabelsOpen ? tr("Fechar etiquetas", "Close labels") : tr("Etiquetas", "Labels")}
+            </Button>
           </div>
+          {boardLabelsOpen && (
+            <div className="pmy-board__labels-panel">
+              <AgendaLabelsEditor labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
+            </div>
+          )}
           <AgendaBoard {...boardProps} lang={lang} />
         </Card>
       </div>
@@ -855,12 +864,6 @@ export default function AgendaTab(props) {
           </div>
         </Card>
       </div>
-
-      {isCentralAdmin && (
-        <Card>
-          <AgendaLabelsEditor labels={agendaLabels} onSave={handleSaveAgendaLabels} lang={lang} />
-        </Card>
-      )}
 
       <Card>
         <div className="pmy-ds-calendar-toolbar">

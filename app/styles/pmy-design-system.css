@@ -6209,3 +6209,5 @@
 .pmy-board-member__langs .pmy-board-btn { justify-self: start; }
 .pmy-board-pick { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid #dcdfe4; background: #fff; font: inherit; font-size: 14px; color: #172b4d; cursor: pointer; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pmy-board, .pmy-board *, .pmy-board-modal, .pmy-board-modal * { box-sizing: border-box; }
+.pmy-board__labels-panel { margin-bottom: 12px; padding: 4px 0 8px; border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); }
+.pmy-board__top .pmy-ds-button, .pmy-board__top button { align-self: center; }
