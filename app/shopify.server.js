@@ -13,7 +13,7 @@ import {
 } from "./utils/single-tenant.server";
 import { SHOPIFY_SCOPES } from "./config/shopify-scopes";
 
-const shopify = shopifyApp({
+const shopifyConfig = {
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.April26,
@@ -79,14 +79,38 @@ const shopify = shopifyApp({
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
-});
+};
+
+const shopify = shopifyApp(shopifyConfig);
+
+// Troca (rotação) da chave secreta: enquanto as duas chaves estão ativas na
+// Shopify, aceitamos ID tokens, webhooks e app proxy assinados com qualquer uma.
+const alternateSecret = String(process.env.SHOPIFY_API_SECRET_NEXT || "").trim();
+const shopifyAlternate =
+  alternateSecret && alternateSecret !== shopifyConfig.apiSecretKey
+    ? shopifyApp({ ...shopifyConfig, apiSecretKey: alternateSecret })
+    : null;
+
+async function withSecretFallback(run, request) {
+  if (!shopifyAlternate) return run(shopify, request);
+  const retry = request.clone();
+  try {
+    return await run(shopify, request);
+  } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 400)) {
+      console.warn("[SHOPIFY] Assinatura validada com a chave alternativa (rotação em andamento).");
+      return run(shopifyAlternate, retry);
+    }
+    throw error;
+  }
+}
 
 export default shopify;
 export const apiVersion = ApiVersion.April26;
 export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
 export const authenticate = {
   admin: async (request) => {
-    const result = await shopify.authenticate.admin(request);
+    const result = await withSecretFallback((app, req) => app.authenticate.admin(req), request);
 
     try {
       await assertSingleTenantShop(prisma, result?.session?.shop, {
@@ -110,7 +134,7 @@ export const authenticate = {
 
   public: {
     appProxy: async (request) => {
-      const result = await shopify.authenticate.public.appProxy(request);
+      const result = await withSecretFallback((app, req) => app.authenticate.public.appProxy(req), request);
       const proxyShop =
         result?.session?.shop ||
         new URL(request.url).searchParams.get("shop") ||
@@ -126,7 +150,7 @@ export const authenticate = {
   },
 
   webhook: async (request) => {
-    const result = await shopify.authenticate.webhook(request);
+    const result = await withSecretFallback((app, req) => app.authenticate.webhook(req), request);
 
     try {
       const tenant = await checkSingleTenantShop(
