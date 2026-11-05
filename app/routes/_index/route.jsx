@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { buildTourColorAliases } from "../../utils/tour-matching.js";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
@@ -2087,6 +2088,11 @@ function CentralDeReservasContent() {
   };
 
   const [agendaLabels, setAgendaLabels] = useState(() => normalizeAgendaLabels(businessSettings?.agendaLabels));
+  // Mesma cor do passeio em todos os canais: herda do produto equivalente na Shopify.
+  const colorLabels = useMemo(
+    () => ({ ...agendaLabels, ...buildTourColorAliases(tours || [], platformProducts?.shopify || []) }),
+    [agendaLabels, tours, platformProducts],
+  );
   const handleSaveAgendaLabels = async (labels) => {
     const fd = new FormData();
     fd.append("_action", "saveAgendaLabels");
@@ -2606,7 +2612,7 @@ function CentralDeReservasContent() {
             return (
               <div className="pmy-cal-tour-chips">
                 {items.slice(0, 4).map(([tourId, entry]) => {
-                  const color = tourColor(agendaLabels, tourId);
+                  const color = tourColor(colorLabels, tourId);
                   return (
                     <div key={tourId} className="pmy-cal-tour-chip" style={{ background: color, color: contrastText(color) }} title={`${entry.title} · ${entry.pax} pax`}>
                       <span>{entry.title}</span>
@@ -2921,7 +2927,7 @@ function CentralDeReservasContent() {
             handleRequeueSyncJob, handleSyncPlatformNow, intSubTab,
             lang, loadSyncQueue, manualSyncError, manualSyncPlatform, manualSyncResult,
             platformConnections, platformProducts, reservationPlatforms, runSyncQueueNow,
-            agendaLabels, handleSaveTourColor, platformPrices, handleSavePlatformPrices,
+            agendaLabels: colorLabels, handleSaveTourColor, platformPrices, handleSavePlatformPrices,
             setActiveProdPlatform, setIntSubTab,
             syncEventLabel, syncProviderMeta, syncQueueActionId, syncQueueData, syncQueueError,
             syncQueueLastLoaded, syncQueueLoading, syncStatusMeta,
@@ -2987,7 +2993,7 @@ function CentralDeReservasContent() {
         getCalendarDayStats,
         getLisbonBookingParts,
         getPeriodLabel,
-        agendaLabels,
+        agendaLabels: colorLabels,
         departureTags,
         handleSaveDepartureTags,
         departureInfo,

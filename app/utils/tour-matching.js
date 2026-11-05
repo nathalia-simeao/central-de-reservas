@@ -48,3 +48,23 @@ export function matchShopifyProduct(group, shopifyProducts = [], minScore = 0.6)
   if (best && bestScore >= minScore) return { colorKey: best.masterTourId, product: best, matchedBy: "name", score: bestScore };
   return { colorKey: group.key, product: null, matchedBy: null };
 }
+
+/**
+ * Para todos os passeios mestre: qual chave de cor usar (a do produto da Shopify
+ * equivalente) e quais estão inativos na Shopify.
+ * @param tours [{ id, title }]
+ * @param shopifyProducts [{ masterTourId, name, active }]
+ */
+export function buildTourColorAliases(tours = [], shopifyProducts = []) {
+  const colorAliases = {};
+  const inactiveTours = {};
+  for (const product of shopifyProducts) {
+    if (product?.masterTourId && product.active === false) inactiveTours[product.masterTourId] = true;
+  }
+  for (const tour of tours) {
+    if (!tour?.id) continue;
+    const match = matchShopifyProduct({ key: tour.id, name: tour.title || tour.name }, shopifyProducts);
+    if (match.colorKey !== tour.id) colorAliases[tour.id] = match.colorKey;
+  }
+  return { colorAliases, inactiveTours };
+}

@@ -85,10 +85,14 @@ export function normalizeAgendaLabels(raw) {
   return { tags, tours };
 }
 
+// labels.colorAliases / labels.inactiveTours vêm de buildTourColorAliases (tour-matching.js):
+// o mesmo passeio em qualquer canal herda a cor do produto da Shopify.
 export function tourColor(labels, tourId, { inactive = false } = {}) {
-  const chosen = normalizeAgendaLabels(labels).tours[tourId]?.color;
+  const key = labels?.colorAliases?.[tourId] || tourId;
+  const chosen = normalizeAgendaLabels(labels).tours[key]?.color;
   if (chosen) return chosen;
-  return inactive ? INACTIVE_TOUR_COLOR : automaticTourColor(tourId);
+  const isInactive = inactive || Boolean(labels?.inactiveTours?.[key]);
+  return isInactive ? INACTIVE_TOUR_COLOR : automaticTourColor(key);
 }
 
 /** Cores já escolhidas por outros passeios (o cinza de inativo pode repetir). */

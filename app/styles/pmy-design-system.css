@@ -6105,3 +6105,5 @@
 .pmy-gyg-tour-card:hover, .pmy-gyg-tour-card[open] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tour-color, #d6d9d8) 18%, transparent); }
 .pmy-gyg-tour-card__origin { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; opacity: .7; }
 .pmy-gyg-tour-card__origin:empty { display: none; }
+/* Linhas de produto de todos os canais: faixa na cor do passeio (herdada da Shopify) */
+.pmy-prod-row.has-tour-color > td:first-child { box-shadow: inset 5px 0 0 var(--tour-color, transparent); padding-left: 16px; }

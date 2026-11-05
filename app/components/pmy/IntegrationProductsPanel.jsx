@@ -404,7 +404,9 @@ export default function IntegrationProductsPanel({
                                     const classification = classifyShopifyProduct(prod);
                                     return (shopifyCountry === "ALL" || classification.country === shopifyCountry) && (shopifyCategory === "ALL" || classification.category === shopifyCategory);
                                   }).map(prod => (
-                                    <tr key={prod.id} className={`pmy-prod-row ${prod.active?'active-prod':''}`}>
+                                    <tr key={prod.id} className={`pmy-prod-row has-tour-color ${prod.active?'active-prod':''}`} style={{ "--tour-color": activeProdPlatform === "shopify"
+                                      ? tourColor(agendaLabels, prod.masterTourId, { inactive: !prod.active })
+                                      : tourColor(agendaLabels, matchShopifyProduct({ key: prod.masterTourId || prod.id, name: prod.masterTourTitle || prod.name }, shopifyProducts).colorKey, { inactive: !prod.active }) }}>
                                       <td>
                                         <div className="pmy-ds-migrated-mplo1d">{activeProdPlatform === "shopify" && <TourColorPicker tourId={prod.masterTourId} agendaLabels={agendaLabels} onSave={handleSaveTourColor} inactive={!prod.active} lang={lang} />}<TourCountryFlag tour={prod} lang={lang}/>{prod.name}</div>
                                         {activeProdPlatform === "shopify" && (() => { const c=classifyShopifyProduct(prod); return <div style={{marginTop:5,fontSize:11,opacity:.85}}>{c.category==="TOUR"?"Tours & Experiences":c.category==="VIP"?"VIP Services":c.category==="WELLNESS"?"Wellness & Spa":tr("Categoria não classificada","Category unclassified")}</div>; })()}

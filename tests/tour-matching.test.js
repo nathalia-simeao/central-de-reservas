@@ -33,3 +33,20 @@ test("sem equivalente fica com a própria chave", () => {
 test("similaridade ignora acentos", () => {
   assert.equal(titleSimilarity("Óbidos Nazaré", "Obidos Nazare"), 1);
 });
+
+import { buildTourColorAliases } from "../app/utils/tour-matching.js";
+import { tourColor, INACTIVE_TOUR_COLOR } from "../app/utils/agenda-labels.js";
+
+test("qualquer canal herda a cor do produto da Shopify", () => {
+  const tours = [
+    { id: "t1", title: "Jerónimos Monastery Guided Tour with Entrance Ticket Included" },
+    { id: "g9", title: "Jeronimos Monastery Skip-the-Line (GYG)" },
+    { id: "t3", title: "Fátima, Nazaré & Óbidos Day Trip" },
+    { id: "v5", title: "Fatima Nazare Obidos full day (Viator)" },
+  ];
+  const aliases = buildTourColorAliases(tours, shopify);
+  const labels = { tags: [], tours: { t1: { color: "#2d7fd2", tagIds: [] } }, ...aliases };
+  assert.equal(tourColor(labels, "g9"), "#2d7fd2");
+  assert.equal(tourColor(labels, "v5"), INACTIVE_TOUR_COLOR);
+  assert.equal(tourColor(labels, "t3"), INACTIVE_TOUR_COLOR);
+});
