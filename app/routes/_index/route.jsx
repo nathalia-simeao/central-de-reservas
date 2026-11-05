@@ -2949,7 +2949,7 @@ function CentralDeReservasContent() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser
+            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson
           }} />
 
 

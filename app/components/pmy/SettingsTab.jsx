@@ -1,4 +1,5 @@
 import TeamAccessPanel from "./TeamAccessPanel";
+import ShopifySecretRotationPanel from "./ShopifySecretRotationPanel";
 import {
   Badge,
   Button,
@@ -46,6 +47,7 @@ export default function SettingsTab(props) {
     centralUsers = [],
     centralUser = null,
     handleSaveCentralUser,
+    requestResourceJson,
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
@@ -216,6 +218,9 @@ export default function SettingsTab(props) {
   return (
     <div className="pmy-ds-settings-stack">
       <TeamAccessPanel users={centralUsers} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
+      {requestResourceJson && (!centralUser || String(centralUser.role || "").toUpperCase() === "ADMIN") && (
+        <ShopifySecretRotationPanel requestJson={requestResourceJson} lang={lang} />
+      )}
       <Card>
         <SectionHeader
           eyebrow={tr("Marca", "Brand")}

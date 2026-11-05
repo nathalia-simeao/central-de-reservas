@@ -6080,3 +6080,9 @@
   .pmy-capacity-card__thumb { width: 60px; height: 60px; flex-basis: 60px; }
   .pmy-capacity-card__title { font-size: 16px; }
 }
+
+/* Configurações → troca da chave secreta da Shopify */
+.pmy-rotation__status { margin: 12px 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.pmy-rotation__error { color: #b91c1c; font-size: 14px; margin: 10px 0; }
+.pmy-rotation__field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; margin: 8px 0 12px; }
+.pmy-rotation__field input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); }
