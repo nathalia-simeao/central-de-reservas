@@ -20,6 +20,7 @@ export default function DepartureTagsSection({
   onUpload,
   onRemoveAttachment,
   onResetCheck,
+  hideTags = false,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -77,8 +78,8 @@ export default function DepartureTagsSection({
 
   return (
     <section className="pmy-departure-tags" aria-label={tr("Saídas do dia", "Departures of the day")}>
-      <h4 className="pmy-ds-migrated-rg4op4">{tr("Saídas do dia", "Departures of the day")}</h4>
-      {!tags.length && (
+      {!hideTags && <h4 className="pmy-ds-migrated-rg4op4">{tr("Saídas do dia", "Departures of the day")}</h4>}
+      {!hideTags && !tags.length && (
         <p className="pmy-departure-tags__hint">
           {tr(
             "Crie as etiquetas em Agenda → \"Cores e etiquetas dos passeios\" (ex.: Privado, Menos de 4 pessoas) para marcá-las aqui.",
@@ -93,13 +94,13 @@ export default function DepartureTagsSection({
           const selected = departureTags[key] || [];
           const color = tourColor(agendaLabels, departure.tourId);
           return (
-            <div key={key} className="pmy-departure-tags__card" style={{ "--pmy-tour-color": color }}>
+            <div key={key} className={`pmy-departure-tags__card ${hideTags ? "is-embedded" : ""}`} style={{ "--pmy-tour-color": color }}>
               <div className="pmy-departure-tags__head">
                 <span className="pmy-departure-tags__time">{departure.timeKey}</span>
                 <strong>{departure.title}</strong>
                 <span className="pmy-departure-tags__pax">{departure.pax} pax</span>
               </div>
-              <div className="pmy-agenda-labels__tour-tags">
+              {!hideTags && <div className="pmy-agenda-labels__tour-tags">
                 {tags.filter((tag) => selected.includes(tag.id)).map((tag) => (
                   <span key={tag.id} className="pmy-agenda-tag" style={{ background: tag.color, color: contrastText(tag.color) }}>
                     {tag.name}
@@ -116,7 +117,7 @@ export default function DepartureTagsSection({
                     {pickerKey === key ? tr("Fechar", "Close") : tr("+ Etiqueta", "+ Tag")}
                   </button>
                 )}
-              </div>
+              </div>}
               {(() => {
                 const info = departureInfo[key] || {};
                 const guides = assignments

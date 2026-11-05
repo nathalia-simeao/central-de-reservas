@@ -63,7 +63,7 @@ export function normalizeAgendaLabels(raw) {
     const id = String(tag?.id || "").trim().slice(0, 64);
     const name = String(tag?.name || "").trim().slice(0, MAX_TAG_NAME);
     const color = cleanColor(tag?.color);
-    if (!id || !name || !color || seen.has(id)) continue;
+    if (!id || !color || seen.has(id)) continue;
     seen.add(id);
     tags.push({ id, name, color });
     if (tags.length >= MAX_TAGS) break;

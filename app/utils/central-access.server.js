@@ -74,7 +74,6 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "createTour",
   "syncQueueRun",
   "syncQueueRequeue",
-  "saveAgendaLabels",
   "saveCentralUser",
   "setGuidePortalAccess",
   "resetDepartureCheck",

@@ -1,3 +1,4 @@
+import AgendaBoard from "./AgendaBoard";
 import SharedSeatsIndicator from "./SharedSeatsIndicator";
 import ChannelCapacityEditor from "./ChannelCapacityEditor";
 import LanguageQuotaEditor from "./LanguageQuotaEditor";
@@ -126,6 +127,7 @@ export default function AgendaTab(props) {
     handleLanguageQuotaSave,
     languageQuotaRules = {},
     agendaLabels = null,
+    boardProps = null,
     handleSaveAgendaLabels,
     isCentralAdmin = true,
     guidesList = [],
@@ -233,6 +235,7 @@ export default function AgendaTab(props) {
     { value: "3d", label: t.view_3d },
     { value: "7d", label: t.view_7d },
     { value: "month", label: t.view_month },
+    { value: "board", label: tr("Quadro", "Board") },
   ];
 
   return (
@@ -877,6 +880,9 @@ export default function AgendaTab(props) {
           />
         </div>
 
+        {calendarView === "board" && boardProps ? (
+          <AgendaBoard {...boardProps} lang={lang} />
+        ) : (
         <div className="pmy-calendar-scroll">
           {calendarView === "month" ? (
             <div className="pmy-calendar-week-headers">
@@ -893,6 +899,7 @@ export default function AgendaTab(props) {
             {renderCalendarDays()}
           </div>
         </div>
+        )}
 
         <div className="pmy-ds-subsection">
           <h3 className="pmy-ds-capacity-heading">

@@ -2103,6 +2103,32 @@ function CentralDeReservasContent() {
     notify(ui("Cores da Agenda salvas.", "Agenda colours saved."), "success");
   };
 
+  // Agenda → Quadro: escalar/tirar guia direto no cartão.
+  const handleBoardAssignGuide = async ({ tourId, dateKey, time, guideId, languages = [] }) => {
+    const fd = new FormData();
+    fd.append("_action", "saveGuideAssignment");
+    fd.append("tourId", tourId);
+    fd.append("guideId", guideId);
+    fd.append("date", dateKey);
+    fd.append("time", time);
+    fd.append("languages", JSON.stringify(languages));
+    const result = await requestResourceJson("/api/guides", fd);
+    if (!result?.success || !result.assignment) throw new Error(result?.error || ui("Falha ao escalar.", "Unable to assign."));
+    setGuideAssignmentsList((current) => [
+      ...current.filter((item) => item.id !== result.assignment.id),
+      result.assignment,
+    ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
+  };
+  const handleBoardRemoveAssignment = async (id) => {
+    if (typeof window !== "undefined" && !window.confirm(ui("Tirar este guia da saída?", "Remove this guide from the departure?"))) return;
+    const fd = new FormData();
+    fd.append("_action", "removeGuideAssignment");
+    fd.append("id", id);
+    const result = await requestResourceJson("/api/guides", fd);
+    if (result?.success === false) throw new Error(result?.error || ui("Falha ao remover.", "Unable to remove."));
+    setGuideAssignmentsList((current) => current.filter((item) => item.id !== id));
+  };
+
   const handleSaveTourColor = async (tourId, color) => {
     const current = normalizeAgendaLabels(agendaLabels);
     const previous = current.tours[tourId] || { color: null, tagIds: [] };
@@ -2918,7 +2944,15 @@ function CentralDeReservasContent() {
             setCalendarView, setCustEmail, setCustLang, setCustName, setCustPhone,
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
             tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang,
-            agendaLabels, handleSaveAgendaLabels, isCentralAdmin
+            agendaLabels, handleSaveAgendaLabels, isCentralAdmin,
+            boardProps: {
+              bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: guidesList,
+              agendaLabels: colorLabels, departureTags, departureInfo,
+              onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
+              onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
+              onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
+              onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
+            },
           }} />
 
           <IntegrationsTab {...{
