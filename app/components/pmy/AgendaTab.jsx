@@ -238,6 +238,25 @@ export default function AgendaTab(props) {
     { value: "board", label: tr("Quadro", "Board") },
   ];
 
+  // Quadro estilo Trello: ocupa a tela inteira da Agenda, sem os formulários.
+  if (calendarView === "board" && boardProps) {
+    return (
+      <div className="pmy-ds-stack">
+        <Card>
+          <div className="pmy-board__top">
+            <SectionHeader
+              eyebrow={tr("Operação", "Operations")}
+              title={tr("Quadro das saídas", "Departures board")}
+              subtitle={tr("Uma coluna por dia, um cartão por saída. Clique no cartão para etiquetas, guias, clientes e anexos.", "One column per day, one card per departure.")}
+            />
+            <Tabs items={calendarTabs} value={calendarView} onChange={setCalendarView} ariaLabel={tr("Visualização da agenda", "Calendar view")} />
+          </div>
+          <AgendaBoard {...boardProps} lang={lang} />
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="pmy-ds-stack">
       <div className="pmy-agenda-form-grid">

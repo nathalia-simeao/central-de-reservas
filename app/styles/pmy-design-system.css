@@ -6191,3 +6191,5 @@
   .pmy-board-modal { padding: 0; }
   .pmy-board-modal__card { border-radius: 0; min-height: 100vh; }
 }
+.pmy-board__top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.pmy-board-card__title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

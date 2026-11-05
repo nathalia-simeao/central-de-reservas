@@ -479,13 +479,15 @@ function CentralDeReservasContent() {
   const navItems = [
     { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Visão geral" : "Overview" },
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
+    { key: "quadro", icon: "bookings", label: lang === "pt" ? "Quadro (Trello)" : "Board" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
     { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
   ].filter((item) => isCentralAdmin || !ADMIN_TABS.includes(item.key));
 
   const openNavigationTab = (key) => {
     if (!isCentralAdmin && ADMIN_TABS.includes(key)) return;
-    if (key === "agenda") handleOpenAgenda();
+    if (key === "agenda") { handleOpenAgenda(); if (calendarView === "board") setCalendarView("month"); }
+    else if (key === "quadro") { handleOpenAgenda(); setCalendarView("board"); }
     else setActiveTab(key);
     setMobileNavOpen(false);
   };
@@ -2807,7 +2809,7 @@ function CentralDeReservasContent() {
               <button
                 key={item.key}
                 type="button"
-                className={`pmy-menu-item ${activeTab === item.key ? "active" : ""}`}
+                className={`pmy-menu-item ${(item.key === "quadro" ? activeTab === "agenda" && calendarView === "board" : item.key === "agenda" ? activeTab === "agenda" && calendarView !== "board" : activeTab === item.key) ? "active" : ""}`}
                 onClick={() => openNavigationTab(item.key)}
                 title={sidebarCollapsed ? item.label : undefined}
               >
