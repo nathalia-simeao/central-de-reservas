@@ -479,7 +479,7 @@ function CentralDeReservasContent() {
   const navItems = [
     { key: "dashboard", icon: "dashboard", label: lang === "pt" ? "Visão geral" : "Overview" },
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
-    { key: "quadro", icon: "bookings", label: lang === "pt" ? "Quadro (Trello)" : "Board" },
+    { key: "quadro", icon: "bookings", label: lang === "pt" ? "Quadro" : "Board" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
     { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
   ].filter((item) => isCentralAdmin || !ADMIN_TABS.includes(item.key));
@@ -2859,7 +2859,7 @@ function CentralDeReservasContent() {
                 <div className="pmy-eyebrow">{lang === 'pt' ? 'Portugal Me & You · Central de Reservas' : 'Portugal Me & You · Booking Hub'}</div>
                 <h1 className="pmy-page-title">
               {activeTab==='dashboard' && t.dash_title}
-              {activeTab==='agenda' && t.agenda_title}
+              {activeTab==='agenda' && (calendarView === 'board' ? (lang === 'pt' ? 'Quadro' : 'Board') : t.agenda_title)}
               {activeTab==='integracoes' && t.integrations_title}
               {activeTab==='guias' && t.guides_title}
               {activeTab==='configuracoes' && t.settings_title}
