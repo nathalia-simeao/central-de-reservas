@@ -3,6 +3,7 @@ import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor }
 import { addDays, buildBoardColumns, cardLabelIds, initials } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import DepartureTagsSection from "./DepartureTagsSection";
+import { DatePicker } from "./PmyUI";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
@@ -366,7 +367,14 @@ export default function AgendaBoard({
         <button type="button" className="pmy-board-btn" onClick={() => setStart(addDays(start, 7))} aria-label={tr("Próxima semana", "Next week")}>›</button>
         <label className="pmy-board__date">
           {tr("A partir de", "From")}
-          <input type="date" value={start} onChange={(e) => e.target.value && setStart(e.target.value)} />
+          <DatePicker
+            value={start}
+            onChange={(e) => { const v = e?.target?.value ?? e; if (v) setStart(v); }}
+            locale={lang === "en" ? "en-GB" : "pt-PT"}
+            placeholder={lang === "en" ? "dd/mm/yyyy" : "dd/mm/aaaa"}
+            todayLabel={tr("Hoje", "Today")}
+            clearLabel={tr("Limpar", "Clear")}
+          />
         </label>
         <button type="button" className="pmy-board-btn" onClick={() => setExpanded(!expanded)} aria-pressed={expanded}>
           {expanded ? tr("Esconder nomes das etiquetas", "Hide label names") : tr("Mostrar nomes das etiquetas", "Show label names")}

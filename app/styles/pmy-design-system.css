@@ -6211,3 +6211,6 @@
 .pmy-board, .pmy-board *, .pmy-board-modal, .pmy-board-modal * { box-sizing: border-box; }
 .pmy-board__labels-panel { margin-bottom: 12px; padding: 4px 0 8px; border-bottom: 1px solid var(--pmy-ds-border, #e5e7eb); }
 .pmy-board__top .pmy-ds-button, .pmy-board__top button { align-self: center; }
+.pmy-board__date { position: relative; z-index: 20; }
+.pmy-board__date > div { min-width: 170px; }
+.pmy-board__date { white-space: nowrap; }
