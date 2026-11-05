@@ -3,6 +3,8 @@ import TourColorPicker from "./TourColorPicker";
 import { useState } from "react";
 import { Button, DropdownSelect, Icon } from "./PmyUI";
 import { classifyShopifyProduct } from "../../utils/shopify-product-classification";
+import { tourColor } from "../../utils/agenda-labels.js";
+import { matchShopifyProduct } from "../../utils/tour-matching.js";
 
 export default function IntegrationProductsPanel({
   activeProdPlatform,
@@ -63,6 +65,13 @@ export default function IntegrationProductsPanel({
     map[key].options.push(product);
     return map;
   }, {})).sort((a,b)=>a.name.localeCompare(b.name));
+  // Cor herdada do produto equivalente na Shopify (mesmo passeio mestre ou nome parecido).
+  const shopifyProducts = platformProducts.shopify || [];
+  const gygGroupColor = (group) => {
+    const match = matchShopifyProduct(group, shopifyProducts);
+    const inactive = match.product ? !match.product.active : !group.options.some((option) => option.active);
+    return { ...match, color: tourColor(agendaLabels, match.colorKey, { inactive }) };
+  };
   const gygLinked = gygItems.filter(p=>Boolean(p.gygOptionId)).length;
   const gygUnlinked = gygItems.length - gygLinked;
   const money = (value, currency = "EUR") => {
@@ -296,10 +305,17 @@ export default function IntegrationProductsPanel({
                                   {" "}{tr("Estes números NÃO são o catálogo publicado do portal. O estado Bookable, Deactivated ou Rejected precisa ser confirmado no GYG.", "These are NOT published portal product counts. Bookable, Deactivated or Rejected must be confirmed in GYG.")}
                                 </p>
                                 <div style={{ display: "grid", gap: 10 }}>
-                                  {gygGroups.map(group => (
-                                    <details key={group.key} style={{ border: "1px solid var(--border-color, #d6d9d8)", borderRadius: 12, padding: "12px 14px", background: "var(--card-bg, transparent)" }}>
+                                  {gygGroups.map(group => { const look = gygGroupColor(group); return (
+                                    <details key={group.key} className="pmy-gyg-tour-card" style={{ "--tour-color": look.color }}>
                                       <summary style={{ cursor: "pointer", fontWeight: 700, overflowWrap: "anywhere" }}>
                                         {group.name} <span style={{ opacity: .7, fontWeight: 400 }}>· {group.options.length} {tr("opções", "options")}</span>
+                                        <span className="pmy-gyg-tour-card__origin">
+                                          {look.matchedBy === "name"
+                                            ? `${tr("Cor da Shopify:", "Shopify colour:")} ${look.product.name}`
+                                            : look.matchedBy === "id"
+                                              ? (look.product.name !== group.name ? `${tr("Na Shopify:", "On Shopify:")} ${look.product.name}` : "")
+                                              : tr("Sem produto equivalente na Shopify", "No matching Shopify product")}
+                                        </span>
                                       </summary>
                                       <div style={{ display: "grid", gap: 9, marginTop: 12 }}>
                                         {group.options.map(option => (
@@ -329,7 +345,7 @@ export default function IntegrationProductsPanel({
                                         ))}
                                       </div>
                                     </details>
-                                  ))}
+                                  ); })}
                                 </div>
                               </section>
                             )}
