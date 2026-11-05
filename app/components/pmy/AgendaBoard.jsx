@@ -140,48 +140,113 @@ function LabelPopover({ labels, card, onToggleDeparture, onToggleTour, onSaveLab
 }
 
 /* ---------- Guias no cartão ---------- */
-function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
+function GuideAvatar({ guide, size = 28 }) {
+  const photo = guide?.photo && !/placeholder/.test(guide.photo) ? guide.photo : null;
+  return photo
+    ? <img className="pmy-board-avatar" src={photo} alt="" style={{ width: size, height: size }} />
+    : <i className="pmy-board-avatar" style={{ width: size, height: size, background: guideColor(guide?.id || guide?.guideId) }}>{initials(guide?.name)}</i>;
+}
+
+// Lista de guias no estilo "Membros" do Trello: busca, foto/iniciais, ✓ em quem já está.
+function GuideMenu({ guides, assignedIds = [], withLanguages = true, onPick, onUnpick, onClose, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
-  const [guideId, setGuideId] = useState("");
+  const [query, setQuery] = useState("");
+  const [pending, setPending] = useState(null);
   const [languages, setLanguages] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const q = query.trim().toLowerCase();
+  const list = guides.filter((g) => String(g.name || "").toLowerCase().includes(q));
+  const assigned = list.filter((g) => assignedIds.includes(g.id));
+  const others = list.filter((g) => !assignedIds.includes(g.id));
   const run = async (fn) => {
     setBusy(true);
     setError("");
     try { await fn(); } catch (e) { setError(e?.message || tr("Não foi possível salvar.", "Could not save.")); }
     finally { setBusy(false); }
   };
+  const pick = (guide) => {
+    if (!withLanguages) { onPick(guide, []); onClose?.(); return; }
+    setPending(pending?.id === guide.id ? null : guide);
+    setLanguages([]);
+  };
+  const row = (guide, on) => (
+    <div key={guide.id} className={`pmy-board-member ${pending?.id === guide.id ? "is-open" : ""}`}>
+      <button type="button" className="pmy-board-member__main" disabled={busy}
+        onClick={() => (on ? run(() => onUnpick(guide)) : pick(guide))}>
+        <GuideAvatar guide={guide} />
+        <span>{guide.name}</span>
+        <b aria-hidden="true">{on ? "✓" : ""}</b>
+      </button>
+      {pending?.id === guide.id && (
+        <div className="pmy-board-member__langs">
+          <span>{tr("Idioma do grupo (opcional):", "Group language (optional):")}</span>
+          <span className="pmy-board-guides__langs" role="group">
+            {LANG_KEYS.map((k) => (
+              <button key={k} type="button" className={languages.includes(k) ? "is-on" : ""} onClick={() => setLanguages((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))}>
+                {languageLabel(k, lang)}
+              </button>
+            ))}
+          </span>
+          <button type="button" className="pmy-board-btn is-primary" disabled={busy}
+            onClick={() => run(async () => { await onPick(guide, languages); setPending(null); setLanguages([]); })}>
+            {busy ? "…" : tr(`Escalar ${String(guide.name).split(" ")[0]}`, `Assign ${String(guide.name).split(" ")[0]}`)}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+  return (
+    <div className="pmy-board-pop is-members" role="dialog" aria-label={tr("Guias", "Guides")}>
+      <div className="pmy-board-pop__head">
+        <span />
+        <strong>{tr("Guias", "Guides")}</strong>
+        <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={onClose}>×</button>
+      </div>
+      <div className="pmy-board-pop__body">
+        <input autoFocus className="pmy-board-pop__search" placeholder={tr("Buscar guia…", "Search guide…")} value={query} onChange={(e) => setQuery(e.target.value)} />
+        {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
+        {assigned.length > 0 && <span className="pmy-board-pop__sub">{tr("Neste cartão", "On this card")}</span>}
+        {assigned.map((g) => row(g, true))}
+        {others.length > 0 && <span className="pmy-board-pop__sub">{tr("Guias da equipe", "Team guides")}</span>}
+        <div className="pmy-board-member__list">{others.map((g) => row(g, false))}</div>
+        {!list.length && <p className="pmy-board-pop__empty">{tr("Nenhum guia encontrado.", "No guide found.")}</p>}
+      </div>
+    </div>
+  );
+}
+
+function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const byId = new Map(guides.map((g) => [g.id, g]));
+  const assignedIds = card.guides.map((g) => g.guideId);
+  const assignmentFor = (guideId) => card.guides.find((g) => g.guideId === guideId);
   return (
     <div className="pmy-board-guides">
       {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
-      {card.guides.map((g) => (
-        <span key={g.assignmentId} className="pmy-board-guide">
-          <i style={{ background: guideColor(g.guideId) }}>{initials(g.name)}</i>
-          {g.name}{g.languages.length ? ` · ${g.languages.map((k) => languageLabel(k, lang)).join(", ")}` : ""}
-          <button type="button" disabled={busy} aria-label={tr(`Tirar ${g.name}`, `Remove ${g.name}`)} onClick={() => run(() => onRemove(g.assignmentId))}>×</button>
-        </span>
-      ))}
-      <div className="pmy-board-guides__add">
-        <select value={guideId} onChange={(e) => setGuideId(e.target.value)} aria-label={tr("Guia", "Guide")}>
-          <option value="">{tr("+ Adicionar guia", "+ Add guide")}</option>
-          {guides.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
-        {guideId && (
-          <>
-            <span className="pmy-board-guides__langs" role="group" aria-label={tr("Idioma do grupo", "Group language")}>
-              {LANG_KEYS.map((k) => (
-                <button key={k} type="button" className={languages.includes(k) ? "is-on" : ""} onClick={() => setLanguages((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))}>
-                  {languageLabel(k, lang)}
-                </button>
-              ))}
-            </span>
-            <button type="button" className="pmy-board-btn is-primary" disabled={busy} onClick={() => run(async () => { await onAssign(card, guideId, languages); setGuideId(""); setLanguages([]); })}>
-              {tr("Escalar", "Assign")}
-            </button>
-          </>
-        )}
+      <div className="pmy-board-guides__row">
+        {card.guides.map((g) => (
+          <span key={g.assignmentId} className="pmy-board-guide">
+            <GuideAvatar guide={{ ...(byId.get(g.guideId) || {}), id: g.guideId, name: g.name }} size={26} />
+            {g.name}{g.languages.length ? ` · ${g.languages.map((k) => languageLabel(k, lang)).join(", ")}` : ""}
+            <button type="button" aria-label={tr(`Tirar ${g.name}`, `Remove ${g.name}`)}
+              onClick={async () => { setError(""); try { await onRemove(g.assignmentId); } catch (e) { setError(e?.message || ""); } }}>×</button>
+          </span>
+        ))}
+        <button type="button" className="pmy-board-btn" onClick={() => setOpen(!open)}>{tr("+ Guia", "+ Guide")}</button>
       </div>
+      {open && (
+        <GuideMenu
+          guides={guides}
+          assignedIds={assignedIds}
+          onPick={(guide, languages) => onAssign(card, guide.id, languages)}
+          onUnpick={(guide) => onRemove(assignmentFor(guide.id)?.assignmentId)}
+          onClose={() => setOpen(false)}
+          lang={lang}
+        />
+      )}
       <small className="pmy-board-hint">{tr("Sem idioma marcado = o guia atende todos os idiomas da saída.", "No language = the guide covers every language.")}</small>
     </div>
   );
@@ -193,6 +258,7 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onTag, onClose, lang })
   const [tourId, setTourId] = useState("");
   const [time, setTime] = useState("10:00");
   const [guideId, setGuideId] = useState("");
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submit = async () => {
@@ -217,11 +283,14 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onTag, onClose, lang })
       </select>
       <div className="pmy-board-add__row">
         <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={tr("Horário", "Time")} />
-        <select value={guideId} onChange={(e) => setGuideId(e.target.value)} aria-label={tr("Guia", "Guide")}>
-          <option value="">{tr("Guia…", "Guide…")}</option>
-          {guides.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
+        <button type="button" className="pmy-board-pick" onClick={() => setPicking(!picking)}>
+          {guideId ? <><GuideAvatar guide={guides.find((g) => g.id === guideId)} size={22} /> {guides.find((g) => g.id === guideId)?.name}</> : tr("Escolher guia…", "Choose guide…")}
+        </button>
       </div>
+      {picking && (
+        <GuideMenu guides={guides} assignedIds={guideId ? [guideId] : []} withLanguages={false}
+          onPick={(g) => setGuideId(g.id)} onUnpick={() => setGuideId("")} onClose={() => setPicking(false)} lang={lang} />
+      )}
       {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
       <div className="pmy-board-pop__actions">
         <button type="button" className="pmy-board-btn is-primary" disabled={busy} onClick={submit}>{busy ? "…" : tr("Adicionar cartão", "Add card")}</button>
@@ -340,7 +409,7 @@ export default function AgendaBoard({
                       </span>
                       <span className="pmy-board-card__avatars">
                         {card.guides.map((g) => (
-                          <i key={g.assignmentId} title={g.name} style={{ background: guideColor(g.guideId) }}>{initials(g.name)}</i>
+                          <span key={g.assignmentId} title={g.name}><GuideAvatar guide={{ ...(guides.find((x) => x.id === g.guideId) || {}), id: g.guideId, name: g.name }} size={26} /></span>
                         ))}
                       </span>
                     </span>

@@ -6193,3 +6193,19 @@
 }
 .pmy-board__top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .pmy-board-card__title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Quadro: lista de guias estilo "Membros" do Trello */
+.pmy-board-avatar { display: inline-grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #fff; font-style: normal; font-size: 11px; font-weight: 700; object-fit: cover; }
+.pmy-board-card__avatars > span { margin-left: -6px; border-radius: 50%; box-shadow: 0 0 0 2px #fff; display: inline-flex; }
+.pmy-board-card__avatars > span:first-child { margin-left: 0; }
+.pmy-board-guides__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pmy-board-pop.is-members { top: auto; margin-top: 4px; position: relative; width: min(340px, 100%); }
+.pmy-board-member__list { display: grid; gap: 2px; max-height: 320px; overflow-y: auto; }
+.pmy-board-member { border-radius: 8px; }
+.pmy-board-member.is-open { background: #f1f2f4; }
+.pmy-board-member__main { display: grid; grid-template-columns: 32px minmax(0,1fr) 18px; align-items: center; gap: 8px; width: 100%; padding: 5px 6px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; color: #172b4d; text-align: left; cursor: pointer; }
+.pmy-board-member__main:hover { background: #f1f2f4; }
+.pmy-board-member__main b { color: #0c66e4; }
+.pmy-board-member__langs { display: grid; gap: 6px; padding: 4px 8px 10px 46px; font-size: 12px; color: #44546f; }
+.pmy-board-member__langs .pmy-board-btn { justify-self: start; }
+.pmy-board-pick { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid #dcdfe4; background: #fff; font: inherit; font-size: 14px; color: #172b4d; cursor: pointer; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pmy-board, .pmy-board *, .pmy-board-modal, .pmy-board-modal * { box-sizing: border-box; }
