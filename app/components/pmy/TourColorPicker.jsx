@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AGENDA_PICKER_PALETTE, INACTIVE_TOUR_COLOR, tourColor } from "../../utils/agenda-labels.js";
+import { AGENDA_PICKER_PALETTE, INACTIVE_TOUR_COLOR, colorsUsedByOtherTours, tourColor } from "../../utils/agenda-labels.js";
 
 // Cor do passeio na Agenda, escolhida no próprio produto
 // (Integrações → Produtos por Plataforma). Vale para o passeio em todos os canais.
@@ -10,6 +10,8 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive
   const ref = useRef(null);
   const customRef = useRef(null);
   const color = tourColor(agendaLabels, tourId, { inactive });
+  const used = colorsUsedByOtherTours(agendaLabels, tourId);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (!open) return undefined;
@@ -31,6 +33,12 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive
   if (!tourId || !onSave) return null;
 
   const pick = async (value) => {
+    const normalized = String(value || "").toLowerCase();
+    if (used.has(normalized)) {
+      setNotice(tr("Essa cor já é de outro passeio.", "That colour belongs to another tour."));
+      return;
+    }
+    setNotice("");
     setBusy(true);
     try {
       await onSave(tourId, value);
@@ -63,9 +71,11 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive
             <button
               key={value}
               type="button"
-              className={`pmy-tour-color__option ${value === color ? "is-current" : ""}`}
+              className={`pmy-tour-color__option ${value === color ? "is-current" : ""} ${used.has(value) ? "is-used" : ""}`}
               style={{ background: value }}
-              aria-label={value}
+              aria-label={used.has(value) ? `${value} · ${tr("já usada", "already used")}` : value}
+              title={used.has(value) ? tr("Já usada por outro passeio", "Already used by another tour") : undefined}
+              disabled={used.has(value)}
               onClick={() => pick(value)}
             />
           ))}
@@ -89,6 +99,7 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive
               input.click();
             }}
           >+</button>
+          {notice && <span className="pmy-tour-color__notice" role="status">{notice}</span>}
           <input ref={customRef} className="pmy-tour-color__native" type="color" defaultValue={color} tabIndex={-1} aria-hidden="true" />
         </span>
       )}

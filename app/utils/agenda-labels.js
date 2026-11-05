@@ -23,13 +23,13 @@ export const AGENDA_PALETTE = [
   "#65a30d", // lima
 ];
 
-// Cores oferecidas no seletor do passeio (30 opções bem diferentes entre si).
+// Cores oferecidas no seletor do passeio: 60 opções (12 tons × 5 intensidades).
 export const AGENDA_PICKER_PALETTE = [
-  "#b91c1c", "#dc2626", "#f43f5e", "#db2777", "#c026d3", "#9333ea",
-  "#7c3aed", "#4f46e5", "#1d4ed8", "#2563eb", "#0284c7", "#0891b2",
-  "#0d9488", "#059669", "#16a34a", "#65a30d", "#4d7c0f", "#a16207",
-  "#ca8a04", "#eab308", "#f59e0b", "#ea580c", "#c2410c", "#9a3412",
-  "#78350f", "#57534e", "#1e3a8a", "#134e4a", "#831843", "#0f172a",
+  "#861313", "#864313", "#866913", "#608613", "#138626", "#138669", "#137386", "#134c86", "#131d86", "#431386", "#731386", "#86134d",
+  "#ad1f1f", "#ad5a1f", "#ad8a1f", "#7ead1f", "#1fad36", "#1fad8a", "#1f96ad", "#1f66ad", "#1f2aad", "#5a1fad", "#961fad", "#ad1f66",
+  "#d22d2d", "#d2722d", "#d2a92d", "#9bd22d", "#2dd248", "#2dd2a9", "#2db7d2", "#2d7fd2", "#2d3ad2", "#722dd2", "#b72dd2", "#d22d80",
+  "#d16161", "#d19061", "#d1b561", "#acd161", "#61d174", "#61d1b5", "#61bed1", "#6199d1", "#616ad1", "#9061d1", "#be61d1", "#d16199",
+  "#9b4b4b", "#9b6c4b", "#9b874b", "#809b4b", "#4b9b58", "#4b9b87", "#4b8e9b", "#4b739b", "#4b519b", "#6c4b9b", "#8e4b9b", "#9b4b73",
 ];
 
 // Passeio inativo: cinza padrão.
@@ -89,6 +89,15 @@ export function tourColor(labels, tourId, { inactive = false } = {}) {
   const chosen = normalizeAgendaLabels(labels).tours[tourId]?.color;
   if (chosen) return chosen;
   return inactive ? INACTIVE_TOUR_COLOR : automaticTourColor(tourId);
+}
+
+/** Cores já escolhidas por outros passeios (o cinza de inativo pode repetir). */
+export function colorsUsedByOtherTours(labels, tourId) {
+  const used = new Set();
+  for (const [id, value] of Object.entries(normalizeAgendaLabels(labels).tours)) {
+    if (id !== String(tourId) && value.color && value.color !== INACTIVE_TOUR_COLOR) used.add(value.color);
+  }
+  return used;
 }
 
 export function tourTags(labels, tourId) {

@@ -6093,3 +6093,9 @@
 .pmy-tour-color__inactive { grid-column: 1 / span 5; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--pmy-ds-border, #e5e7eb); background: var(--pmy-ds-surface, #fff); font: inherit; font-size: 12px; font-weight: 600; color: inherit; cursor: pointer; }
 .pmy-tour-color__inactive i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .pmy-tour-color__inactive.is-current { border-color: currentColor; }
+.pmy-tour-color__menu { grid-template-columns: repeat(12, 22px); gap: 5px; }
+.pmy-tour-color__option, .pmy-tour-color__custom { width: 22px; height: 22px; }
+.pmy-tour-color__option.is-used { opacity: .18; cursor: not-allowed; position: relative; }
+.pmy-tour-color__option.is-used::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; color: #111; font-weight: 800; font-size: 14px; opacity: .9; }
+.pmy-tour-color__inactive { grid-column: 1 / span 4; }
+.pmy-tour-color__notice { grid-column: 1 / -1; font-size: 12px; color: #b91c1c; }
