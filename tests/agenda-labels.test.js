@@ -25,7 +25,11 @@ test("chosen colours and tags are kept; garbage is dropped", () => {
       empty: { color: "nope", tagIds: [] },
     },
   });
-  assert.deepEqual(labels.tags, [{ id: "priv", name: "Privado", color: "#7c3aed" }]);
+  // Etiqueta só com cor (sem nome) é válida, como no Trello; cor inválida é descartada.
+  assert.deepEqual(labels.tags, [
+    { id: "priv", name: "Privado", color: "#7c3aed" },
+    { id: "bad", name: "", color: "#000000" },
+  ]);
   assert.deepEqual(labels.tours, { jer: { color: "#16a34a", tagIds: ["priv"] } });
   assert.equal(tourColor(labels, "jer"), "#16a34a");
   assert.deepEqual(tourTags(labels, "jer").map((t) => t.name), ["Privado"]);
