@@ -23,6 +23,18 @@ export const AGENDA_PALETTE = [
   "#65a30d", // lima
 ];
 
+// Cores oferecidas no seletor do passeio (30 opções bem diferentes entre si).
+export const AGENDA_PICKER_PALETTE = [
+  "#b91c1c", "#dc2626", "#f43f5e", "#db2777", "#c026d3", "#9333ea",
+  "#7c3aed", "#4f46e5", "#1d4ed8", "#2563eb", "#0284c7", "#0891b2",
+  "#0d9488", "#059669", "#16a34a", "#65a30d", "#4d7c0f", "#a16207",
+  "#ca8a04", "#eab308", "#f59e0b", "#ea580c", "#c2410c", "#9a3412",
+  "#78350f", "#57534e", "#1e3a8a", "#134e4a", "#831843", "#0f172a",
+];
+
+// Passeio inativo: cinza padrão.
+export const INACTIVE_TOUR_COLOR = "#9ca3af";
+
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const MAX_TAGS = 40;
 const MAX_TAG_NAME = 30;
@@ -73,8 +85,10 @@ export function normalizeAgendaLabels(raw) {
   return { tags, tours };
 }
 
-export function tourColor(labels, tourId) {
-  return normalizeAgendaLabels(labels).tours[tourId]?.color || automaticTourColor(tourId);
+export function tourColor(labels, tourId, { inactive = false } = {}) {
+  const chosen = normalizeAgendaLabels(labels).tours[tourId]?.color;
+  if (chosen) return chosen;
+  return inactive ? INACTIVE_TOUR_COLOR : automaticTourColor(tourId);
 }
 
 export function tourTags(labels, tourId) {

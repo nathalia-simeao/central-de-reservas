@@ -6086,3 +6086,10 @@
 .pmy-rotation__error { color: #b91c1c; font-size: 14px; margin: 10px 0; }
 .pmy-rotation__field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; margin: 8px 0 12px; }
 .pmy-rotation__field input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pmy-ds-border, #e5e7eb); }
+
+/* Seletor de cor do passeio: 30 cores + cinza de inativo */
+.pmy-tour-color__menu { grid-template-columns: repeat(6, 24px); gap: 6px; }
+.pmy-tour-color__option, .pmy-tour-color__custom { width: 24px; height: 24px; border-radius: 50%; }
+.pmy-tour-color__inactive { grid-column: 1 / span 5; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--pmy-ds-border, #e5e7eb); background: var(--pmy-ds-surface, #fff); font: inherit; font-size: 12px; font-weight: 600; color: inherit; cursor: pointer; }
+.pmy-tour-color__inactive i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.pmy-tour-color__inactive.is-current { border-color: currentColor; }

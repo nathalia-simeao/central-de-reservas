@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { AGENDA_PALETTE, tourColor } from "../../utils/agenda-labels.js";
+import { AGENDA_PICKER_PALETTE, INACTIVE_TOUR_COLOR, tourColor } from "../../utils/agenda-labels.js";
 
 // Cor do passeio na Agenda, escolhida no próprio produto
 // (Integrações → Produtos por Plataforma). Vale para o passeio em todos os canais.
-export default function TourColorPicker({ tourId, agendaLabels, onSave, lang = "pt" }) {
+export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive = false, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
   const customRef = useRef(null);
-  const color = tourColor(agendaLabels, tourId);
+  const color = tourColor(agendaLabels, tourId, { inactive });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -59,7 +59,7 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, lang = "
       />
       {open && (
         <span className="pmy-tour-color__menu" role="group" aria-label={tr("Escolher cor", "Choose colour")}>
-          {AGENDA_PALETTE.map((value) => (
+          {AGENDA_PICKER_PALETTE.map((value) => (
             <button
               key={value}
               type="button"
@@ -69,6 +69,14 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, lang = "
               onClick={() => pick(value)}
             />
           ))}
+          <button
+            type="button"
+            className={`pmy-tour-color__inactive ${color === INACTIVE_TOUR_COLOR ? "is-current" : ""}`}
+            title={tr("Cinza (passeio inativo)", "Grey (inactive tour)")}
+            onClick={() => pick(INACTIVE_TOUR_COLOR)}
+          >
+            <i style={{ background: INACTIVE_TOUR_COLOR }} />{tr("Inativo", "Inactive")}
+          </button>
           <button
             type="button"
             className="pmy-tour-color__custom"
