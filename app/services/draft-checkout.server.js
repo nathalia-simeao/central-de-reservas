@@ -614,5 +614,5 @@ export async function createDraftCheckout({ admin, session, formData, requestUrl
       { status: scopeError ? 403 : Number(error?.status || 500) },
     );
   }
-};
+}
 

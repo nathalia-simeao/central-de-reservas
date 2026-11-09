@@ -128,7 +128,8 @@ export async function getGuideFromRequest(prisma, request) {
   });
   if (!session || session.expiresAt < new Date()) return null;
   if (!session.guide?.portalEnabled || !session.guide?.passwordHash) return null;
-  const { passwordHash, ...guide } = session.guide;
+  const guide = { ...session.guide };
+  delete guide.passwordHash;
   return guide;
 }
 

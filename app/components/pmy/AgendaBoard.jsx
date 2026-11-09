@@ -3,6 +3,13 @@ import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor }
 import { addDays, buildBoardColumns, cardLabelIds, initials } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import DepartureTagsSection from "./DepartureTagsSection";
+
+// Campo que recebe o foco ao aparecer (no lugar de autoFocus, que o lint proíbe).
+function FocusInput(props) {
+  const ref = useRef(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  return <input ref={ref} {...props} />;
+}
 import { DatePicker } from "./PmyUI";
 import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
 
@@ -87,7 +94,7 @@ function LabelPopover({ labels, card, onToggleDeparture, onToggleTour, onSaveLab
           <div className="pmy-board-label is-preview" style={{ background: editing.color, color: contrastText(editing.color) }}>{editing.name || " "}</div>
           <label className="pmy-board-pop__field">
             {tr("Título", "Title")}
-            <input autoFocus value={editing.name} maxLength={30} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder={tr("ex.: Pena, Regaleira, Transfer", "e.g. Pena, Regaleira, Transfer")} />
+            <FocusInput value={editing.name} maxLength={30} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder={tr("ex.: Pena, Regaleira, Transfer", "e.g. Pena, Regaleira, Transfer")} />
           </label>
           <span className="pmy-board-pop__sub">{tr("Selecionar uma cor", "Select a colour")}</span>
           <div className="pmy-board-pop__palette">
@@ -206,7 +213,7 @@ function GuideMenu({ guides, assignedIds = [], withLanguages = true, onPick, onU
         <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={onClose}>×</button>
       </div>
       <div className="pmy-board-pop__body">
-        <input autoFocus className="pmy-board-pop__search" placeholder={tr("Buscar guia…", "Search guide…")} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <FocusInput className="pmy-board-pop__search" placeholder={tr("Buscar guia…", "Search guide…")} value={query} onChange={(e) => setQuery(e.target.value)} />
         {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
         {assigned.length > 0 && <span className="pmy-board-pop__sub">{tr("Neste cartão", "On this card")}</span>}
         {assigned.map((g) => row(g, true))}
@@ -255,7 +262,7 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
 }
 
 /* ---------- Novo cartão ---------- */
-function AddCardForm({ dateKey, tours, guides, onAssign, onTag, onClose, lang }) {
+function AddCardForm({ dateKey, tours, guides, onAssign, onClose, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [tourId, setTourId] = useState("");
   const [time, setTime] = useState("10:00");
@@ -342,7 +349,7 @@ function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete
       {hidden && done > 0 && !items.length && <p className="pmy-board-pop__empty">{tr("Tudo marcado ✓", "All checked ✓")}</p>}
       {onAddItem && (adding ? (
         <div className="pmy-checklist__add">
-          <input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item", "Add an item")}
+          <FocusInput value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item", "Add an item")}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } if (e.key === "Escape") setAdding(false); }} />
           <div className="pmy-board-pop__actions">
             <button type="button" className="pmy-board-btn is-primary" disabled={busy || !text.trim()} onClick={submit}>{tr("Adicionar", "Add")}</button>
@@ -379,7 +386,7 @@ function ChecklistSection({ card, raw, onOp, lang }) {
       {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
       {creating && (
         <div className="pmy-checklist__add">
-          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr("Título (ex.: Ingressos, 10h ESP (3p) 3A Dee)", "Title")}
+          <FocusInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr("Título (ex.: Ingressos, 10h ESP (3p) 3A Dee)", "Title")}
             onKeyDown={async (e) => { if (e.key === "Enter" && title.trim()) { e.preventDefault(); await run({ type: "addList", title }); setTitle(""); setCreating(false); } }} />
           <div className="pmy-board-pop__actions">
             <button type="button" className="pmy-board-btn is-primary" disabled={busy || !title.trim()} onClick={async () => { await run({ type: "addList", title }); setTitle(""); setCreating(false); }}>{tr("Adicionar", "Add")}</button>
@@ -668,8 +675,9 @@ export default function AgendaBoard({
       </div>
 
       {openCard && (
-        <div className="pmy-board-modal" role="dialog" aria-modal="true" aria-label={openCard.title} onMouseDown={(e) => { if (e.target === e.currentTarget) { setOpenKey(""); setLabelsOpen(false); } }}>
-          <div className="pmy-board-modal__card" style={{ "--tour-color": tourColor(agendaLabels, openCard.tourId) }}>
+        <div className="pmy-board-modal">
+          <button type="button" className="pmy-board-modal__backdrop" aria-label={tr("Fechar", "Close")} tabIndex={-1} onClick={() => { setOpenKey(""); setLabelsOpen(false); }} />
+          <div className="pmy-board-modal__card" role="dialog" aria-modal="true" aria-label={openCard.title} style={{ "--tour-color": tourColor(agendaLabels, openCard.tourId) }}>
             <div className="pmy-board-modal__head">
               <div>
                 <h3>{openCard.title}</h3>

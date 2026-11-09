@@ -6251,3 +6251,7 @@
 @media (max-width: 650px) {
   .pmy-board-move__fields { grid-template-columns: 1fr; }
 }
+.pmy-board-modal__backdrop { position: fixed; inset: 0; border: 0; padding: 0; background: transparent; cursor: default; }
+.pmy-board-modal__card { z-index: 1; }
+.pmy-prices__cell { display: block; min-width: 0; }
+.pmy-prices__cell input { width: 100%; }

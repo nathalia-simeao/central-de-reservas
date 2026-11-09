@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 
 process.env.GYG_NOTIFY_MODE = "sandbox";
 process.env.GYG_OUTGOING_USER = "sandbox-user";
