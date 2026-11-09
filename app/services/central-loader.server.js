@@ -222,6 +222,17 @@ export const loader = async ({ request }) => {
       return [];
     });
 
+  // Lista de espera das saídas no período da Agenda. Tolerante à migração pendente.
+  const waitlistEntries = await prisma.waitlistEntry
+    .findMany({
+      where: { startTime: { gte: assignmentStart, lte: assignmentEnd }, status: { not: "REMOVED" } },
+      orderBy: { createdAt: "asc" },
+    })
+    .catch((error) => {
+      console.error("[PMY] waitlist load failed:", error?.message || error);
+      return [];
+    });
+
   // Migração legada apenas em memória: o loader não escreve mais no banco.
   if (
     platformFieldMappings.length === 0 &&
@@ -468,6 +479,7 @@ export const loader = async ({ request }) => {
       : { ...businessSettings, costSettings: null, fieldMappings: null, platformPrices: null },
     platformFieldMappings: userIsAdmin ? platformFieldMappings : [],
     tourDepartures,
+    waitlistEntries,
     centralUser: {
       id: centralUser.id,
       name: centralUser.name || null,

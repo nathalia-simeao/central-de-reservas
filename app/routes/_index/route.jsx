@@ -1,6 +1,7 @@
 import { buildTourColorAliases } from "../../utils/tour-matching.js";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
+import { normalizeFeatureFlags } from "../../utils/feature-flags";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -44,7 +45,7 @@ export const headers = () => ({
 });
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [], centralUser = null, centralUsers = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [], waitlistEntries = [], centralUser = null, centralUsers = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [costSettings, setCostSettings] = useState(() => businessSettings?.costSettings || null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -2134,6 +2135,42 @@ function CentralDeReservasContent() {
       result.assignment,
     ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
   };
+  // Funcionalidades opcionais: tudo novo chega desligado (Configurações → Funcionalidades).
+  const [featureFlags, setFeatureFlags] = useState(() => normalizeFeatureFlags(businessSettings?.featureFlags));
+  const handleSaveFeatureFlags = async (patch) => {
+    const fd = new FormData();
+    fd.append("_action", "saveFeatureFlags");
+    fd.append("featureFlags", JSON.stringify(patch || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível salvar.", "Unable to save."));
+    setFeatureFlags(normalizeFeatureFlags(result.featureFlags));
+  };
+
+  // Quadro: lista de espera por saída.
+  const [waitlist, setWaitlist] = useState(waitlistEntries || []);
+  const handleAddWaitlist = async (tourId, startTime, entry) => {
+    const fd = new FormData();
+    fd.append("_action", "addWaitlistEntry");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("entry", JSON.stringify(entry || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível adicionar.", "Unable to add."));
+    setWaitlist((current) => [...current, result.entry]);
+  };
+  const handleWaitlistStatus = async (id, status) => {
+    const fd = new FormData();
+    fd.append("_action", "setWaitlistStatus");
+    fd.append("id", id);
+    fd.append("status", status);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível atualizar.", "Unable to update."));
+    setWaitlist((current) => current
+      .map((item) => (item.id === id ? result.entry : item))
+      .filter((item) => item.status !== "REMOVED"));
+  };
+  const loadWeather = useCallback(() => requestResourceJson("/api/weather"), [requestResourceJson]);
+
   // Quadro: administrador move a saída inteira para outra data (e, se quiser, outro horário).
   const handleMoveDeparture = async ({ tourId, fromStartTime, dateKey, timeKey }) => {
     const fd = new FormData();
@@ -2148,6 +2185,8 @@ function CentralDeReservasContent() {
     const movedBookings = new Set(result.bookingIds || []);
     const movedAssignments = new Set(result.assignmentIds || []);
     setBookingsList((current) => current.map((item) => (movedBookings.has(item.id) ? { ...item, startTime: to } : item)));
+    const fromIso = new Date(fromStartTime).toISOString();
+    setWaitlist((current) => current.map((item) => (item.tourId === tourId && new Date(item.startTime).toISOString() === fromIso ? { ...item, startTime: to } : item)));
     setGuideAssignmentsList((current) => current
       .map((item) => (movedAssignments.has(item.id) ? { ...item, startTime: to } : item))
       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
@@ -3013,7 +3052,12 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              onMoveDeparture: isCentralAdmin ? handleMoveDeparture : null,
+              onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
+              waitlist,
+              onAddWaitlist: featureFlags.waitlist ? handleAddWaitlist : null,
+              onWaitlistStatus: featureFlags.waitlist ? handleWaitlistStatus : null,
+              loadWeather: featureFlags.weatherAlerts ? loadWeather : null,
+              showGuestMessages: featureFlags.guestMessages,
             },
           }} />
 
@@ -3051,7 +3095,8 @@ function CentralDeReservasContent() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson
+            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson,
+            featureFlags, handleSaveFeatureFlags
           }} />
 
 

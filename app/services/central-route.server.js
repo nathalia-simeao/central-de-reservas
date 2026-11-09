@@ -38,6 +38,8 @@ import {
 } from "../utils/sync-queue.server";
 import { localSlotToInstant } from "../utils/gyg-v1.server";
 import { moveDeparture } from "../utils/departure-move.server";
+import { normalizeWaitlistInput, WAITLIST_STATUSES } from "../utils/waitlist";
+import { normalizeFeatureFlags, sanitizeFeatureFlagsPatch } from "../utils/feature-flags";
 import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability-metafields.server";
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
@@ -527,6 +529,76 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] updateDepartureChecklist error:", e);
       return json({ success: false, error: e?.message?.startsWith("Limite") || e?.message?.startsWith("Operação") ? e.message : "Não foi possível salvar o checklist." }, { status: 500 });
+    }
+  }
+
+  // Funcionalidades opcionais (tudo novo chega desligado).
+  const featureEnabled = async (key) => {
+    const row = session?.shop
+      ? await prisma.businessSetting.findUnique({ where: { shop: session.shop }, select: { featureFlags: true } }).catch(() => null)
+      : null;
+    return normalizeFeatureFlags(row?.featureFlags)[key];
+  };
+
+  if (_action === "saveFeatureFlags") {
+    try {
+      const shop = session?.shop;
+      if (!shop) return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      let patch;
+      try { patch = sanitizeFeatureFlagsPatch(JSON.parse(String(formData.get("featureFlags") || "{}"))); }
+      catch (e) { return json({ success: false, error: e?.message || "Funcionalidades inválidas." }, { status: 400 }); }
+      const current = await prisma.businessSetting.findUnique({ where: { shop }, select: { featureFlags: true } });
+      const featureFlags = { ...normalizeFeatureFlags(current?.featureFlags), ...patch };
+      await prisma.businessSetting.upsert({ where: { shop }, create: { shop, featureFlags }, update: { featureFlags } });
+      return json({ success: true, featureFlags });
+    } catch (e) {
+      console.error("[PMY] saveFeatureFlags error:", e);
+      return json({ success: false, error: "Não foi possível salvar." }, { status: 500 });
+    }
+  }
+
+  if ((_action === "addWaitlistEntry" || _action === "setWaitlistStatus") && !(await featureEnabled("waitlist"))) {
+    return json({ success: false, error: "A lista de espera está desligada em Configurações → Funcionalidades." }, { status: 403 });
+  }
+  if (_action === "moveDeparture" && !(await featureEnabled("boardMove"))) {
+    return json({ success: false, error: "Mover saídas está desligado em Configurações → Funcionalidades." }, { status: 403 });
+  }
+
+  if (_action === "addWaitlistEntry") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      if (!tourId || Number.isNaN(startTime.getTime())) {
+        return json({ success: false, error: "Saída inválida." }, { status: 400 });
+      }
+      let input;
+      try { input = normalizeWaitlistInput(JSON.parse(String(formData.get("entry") || "{}"))); }
+      catch (e) { return json({ success: false, error: e?.message || "Dados inválidos." }, { status: 400 }); }
+      const entry = await prisma.waitlistEntry.create({
+        data: { tourId, startTime, ...input, createdBy: centralUser?.name || centralUser?.email || "Equipe" },
+      });
+      return json({ success: true, entry });
+    } catch (e) {
+      console.error("[PMY] addWaitlistEntry error:", e);
+      return json({ success: false, error: "Não foi possível adicionar à lista de espera." }, { status: 500 });
+    }
+  }
+
+  if (_action === "setWaitlistStatus") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      const status = String(formData.get("status") || "").trim().toUpperCase();
+      if (!id || !WAITLIST_STATUSES.includes(status)) {
+        return json({ success: false, error: "Status inválido." }, { status: 400 });
+      }
+      const entry = await prisma.waitlistEntry.update({
+        where: { id },
+        data: { status, ...(status === "NOTIFIED" ? { notifiedAt: new Date() } : {}) },
+      });
+      return json({ success: true, entry });
+    } catch (e) {
+      console.error("[PMY] setWaitlistStatus error:", e);
+      return json({ success: false, error: "Não foi possível atualizar a lista de espera." }, { status: 500 });
     }
   }
 

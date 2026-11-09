@@ -6251,6 +6251,26 @@
 @media (max-width: 650px) {
   .pmy-board-move__fields { grid-template-columns: 1fr; }
 }
+
+/* Quadro: clima, avisar clientes e lista de espera */
+.pmy-board-badge.is-weather-watch { background: #fff7d6; color: #533f04; }
+.pmy-board-badge.is-weather-bad { background: #ffeceb; color: #ae2e24; }
+.pmy-board-badge.is-open { background: #dcfff1; color: #164b35; font-weight: 700; }
+.pmy-weather-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #f7f8f9; font-size: 14px; color: #44546f; }
+.pmy-weather-note.is-watch { background: #fff7d6; color: #533f04; }
+.pmy-weather-note.is-bad { background: #ffeceb; color: #ae2e24; }
+.pmy-weather-note__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.pmy-guest-msg, .pmy-waitlist { display: grid; gap: 8px; }
+.pmy-guest-msg textarea { font: inherit; width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #c7cdd6; border-radius: 6px; resize: vertical; }
+.pmy-board-hint { margin: 0; font-size: 13px; color: #626f86; }
+.pmy-waitlist__open { margin: 0; padding: 8px 10px; border-radius: 8px; background: #dcfff1; color: #164b35; font-weight: 700; font-size: 14px; }
+.pmy-board-guests li.is-match { outline: 2px solid #22a06b; }
+.pmy-waitlist__actions { display: flex; gap: 6px; }
+.pmy-waitlist__form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.pmy-waitlist__form input { font: inherit; padding: 7px 8px; border: 1px solid #c7cdd6; border-radius: 6px; min-width: 0; }
+.pmy-waitlist__form .pmy-board-pop__actions { grid-column: 1 / -1; }
+a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: center; }
+.pmy-feature-flags { display: grid; gap: 14px; }
 .pmy-board-modal__backdrop { position: fixed; inset: 0; border: 0; padding: 0; background: transparent; cursor: default; }
 .pmy-board-modal__card { z-index: 1; }
 .pmy-prices__cell { display: block; min-width: 0; }

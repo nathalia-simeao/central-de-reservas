@@ -12,6 +12,9 @@ function FocusInput(props) {
 }
 import { DatePicker } from "./PmyUI";
 import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
+import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../utils/weather.js";
+import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
+import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
@@ -510,6 +513,11 @@ export default function AgendaBoard({
   onResetCheck,
   onChecklistOp,
   onMoveDeparture = null,
+  waitlist = [],
+  onAddWaitlist,
+  onWaitlistStatus,
+  loadWeather,
+  showGuestMessages = false,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -524,6 +532,24 @@ export default function AgendaBoard({
   const [moveNotice, setMoveNotice] = useState("");
   const scrollRef = useRef(null);
   const canMove = typeof onMoveDeparture === "function";
+  const [weather, setWeather] = useState(null); // { [placeKey]: { [dateKey]: day } }
+  const [guestMsg, setGuestMsg] = useState(""); // modelo aberto em "Avisar clientes"
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof loadWeather !== "function") return undefined;
+    let alive = true;
+    loadWeather().then((r) => { if (alive && r?.success) setWeather(r.places || null); }).catch(() => {});
+    return () => { alive = false; };
+  }, [loadWeather]);
+
+  const tourById = useMemo(() => new Map(tours.map((t) => [t.id, t])), [tours]);
+  const dayFor = (card) => weather?.[placeForTour(card.title)]?.[card.dateKey] || null;
+  const cardAlert = (card) => (isOutdoorTour(card.title) ? weatherAlert(dayFor(card)) : null);
+  const waitlistFor = (card) => {
+    const iso = new Date(card.startTime).toISOString();
+    return waitlist.filter((w) => w.tourId === card.tourId && new Date(w.startTime).toISOString() === iso && w.status !== "REMOVED");
+  };
   const { tags } = normalizeAgendaLabels(agendaLabels);
   const tagById = new Map(tags.map((t) => [t.id, t]));
 
@@ -616,7 +642,10 @@ export default function AgendaBoard({
           >
             <div className="pmy-board__col-head">
               <strong>{columnTitle(col.dateKey, lang)}</strong>
-              <span>{col.cards.length}</span>
+              <span>
+                {weather?.lisboa?.[col.dateKey] && <span title={tr("Previsão para Lisboa", "Lisbon forecast")}>{weatherIcon(weather.lisboa[col.dateKey])} {Math.round(weather.lisboa[col.dateKey].tempMax)}° · </span>}
+                {col.cards.length}
+              </span>
             </div>
             <div className="pmy-board__cards">
               {col.cards.map((card) => {
@@ -632,7 +661,7 @@ export default function AgendaBoard({
                     draggable={canMove}
                     onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.key); setDragKey(card.key); } : undefined}
                     onDragEnd={canMove ? endDrag : undefined}
-                    onClick={() => { setOpenKey(card.key); setLabelsOpen(false); }}
+                    onClick={() => { setOpenKey(card.key); setLabelsOpen(false); setGuestMsg(""); setWaitlistOpen(false); }}
                   >
                     <span className="pmy-board-card__labels">
                       {labelIds.length
@@ -645,6 +674,10 @@ export default function AgendaBoard({
                     <span className="pmy-board-card__title"><b>{card.timeKey}</b> {card.title}</span>
                     <span className="pmy-board-card__foot">
                       <span className="pmy-board-card__badges">
+                        {cardAlert(card) && <span className={`pmy-board-badge is-weather-${cardAlert(card)}`} title={tr("Alerta de clima", "Weather alert")}>{weatherIcon(dayFor(card))} {cardAlert(card) === "bad" ? tr("mau tempo", "bad weather") : tr("atenção", "watch")}</span>}
+                        {onAddWaitlist && waitlistFor(card).length > 0 && (
+                          <span className={`pmy-board-badge${waitlistMatches(waitlistFor(card), freeSeats(card, tourById.get(card.tourId))).length ? " is-open" : ""}`} title={tr("Lista de espera", "Waiting list")}>⏳ {waitlistFor(card).length}</span>
+                        )}
                         {card.notes > 0 && <span title={tr("Observações", "Notes")}>💬 {card.notes}</span>}
                         {card.attachments > 0 && <span title={tr("Anexos", "Attachments")}>📎 {card.attachments}</span>}
                         {progress.total > 0 && (
@@ -686,6 +719,14 @@ export default function AgendaBoard({
               <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={() => { setOpenKey(""); setLabelsOpen(false); }}>×</button>
             </div>
 
+            <WeatherNote
+              card={openCard}
+              day={dayFor(openCard)}
+              onNotify={showGuestMessages ? () => setGuestMsg("weather") : null}
+              onMove={canMove ? () => setPendingMove({ card: openCard, dateKey: openCard.dateKey, timeKey: openCard.timeKey }) : null}
+              lang={lang}
+            />
+
             <div className="pmy-board-modal__section">
               <span className="pmy-board-pop__sub">{tr("Etiquetas", "Labels")}</span>
               <div className="pmy-board-modal__labels">
@@ -704,6 +745,26 @@ export default function AgendaBoard({
               <span className="pmy-board-pop__sub">{tr("Guias", "Guides")}</span>
               <GuidePicker card={openCard} guides={guides} onAssign={assignOnCard} onRemove={onRemoveAssignment} lang={lang} />
             </div>
+
+            {showGuestMessages && <div className="pmy-board-modal__section">
+              <span className="pmy-board-pop__sub">{tr("Avisar clientes", "Notify guests")}</span>
+              {guestMsg ? (
+                <GuestMessages key={guestMsg} card={openCard} initialTemplate={guestMsg} lang={lang} />
+              ) : (
+                <button type="button" className="pmy-board-btn" onClick={() => setGuestMsg("delay")}>{tr("Mandar mensagem para os clientes desta saída", "Message this departure's guests")}</button>
+              )}
+            </div>}
+
+            {onAddWaitlist && (
+              <div className="pmy-board-modal__section">
+                <span className="pmy-board-pop__sub">{tr("Lista de espera", "Waiting list")} ({waitlistFor(openCard).length})</span>
+                {waitlistOpen || waitlistFor(openCard).length ? (
+                  <WaitlistSection card={openCard} tour={tourById.get(openCard.tourId)} entries={waitlistFor(openCard)} onAdd={onAddWaitlist} onStatus={onWaitlistStatus} lang={lang} />
+                ) : (
+                  <button type="button" className="pmy-board-btn" onClick={() => setWaitlistOpen(true)}>{tr("Abrir lista de espera", "Open waiting list")}</button>
+                )}
+              </div>
+            )}
 
             {canMove && (
               <div className="pmy-board-modal__section">
