@@ -84,15 +84,15 @@ export default function PlatformPricesPanel({ tours = [], platformPrices, onSave
             <div key={platform} className="pmy-prices__row" role="row">
               <strong role="cell">{PLATFORM_NAMES[platform]}</strong>
               {PRICE_CATEGORIES.map((category) => (
-                <input
-                  key={category}
-                  role="cell"
-                  inputMode="decimal"
-                  value={current[platform]?.[category] ?? ""}
-                  onChange={(e) => setPrice(platform, category, e.target.value)}
-                  placeholder={tr("site", "site")}
-                  aria-label={`${PLATFORM_NAMES[platform]} · ${tr(...CATEGORY_NAMES[category])}`}
-                />
+                <span key={category} role="cell" className="pmy-prices__cell">
+                  <input
+                    inputMode="decimal"
+                    value={current[platform]?.[category] ?? ""}
+                    onChange={(e) => setPrice(platform, category, e.target.value)}
+                    placeholder={tr("site", "site")}
+                    aria-label={`${PLATFORM_NAMES[platform]} · ${tr(...CATEGORY_NAMES[category])}`}
+                  />
+                </span>
               ))}
               <span role="cell">
                 {platform !== "GETYOURGUIDE" && (

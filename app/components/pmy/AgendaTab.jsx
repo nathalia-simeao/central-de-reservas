@@ -129,7 +129,6 @@ export default function AgendaTab(props) {
     agendaLabels = null,
     boardProps = null,
     handleSaveAgendaLabels,
-    isCentralAdmin = true,
     guidesList = [],
     guideAssignmentsList = [],
     handleCreateBlock,

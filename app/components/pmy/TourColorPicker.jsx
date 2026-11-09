@@ -52,8 +52,10 @@ export default function TourColorPicker({ tourId, agendaLabels, onSave, inactive
     <span
       className="pmy-tour-color"
       ref={ref}
-      // Lives inside <summary> on the GYG list: keep clicks from toggling the row.
+      role="presentation"
+      // Lives inside <summary> on the GYG list: keep clicks and keys from toggling the row.
       onClick={(event) => { event.stopPropagation(); if (event.target !== customRef.current) event.preventDefault(); }}
+      onKeyDown={(event) => event.stopPropagation()}
     >
       <button
         type="button"
