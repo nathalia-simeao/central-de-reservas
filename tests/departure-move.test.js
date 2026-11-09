@@ -46,6 +46,7 @@ function fakePrisma({ bookings, assignments, departures }) {
       update: async ({ where, data }) => Object.assign(departures.find((d) => d.id === where.id), data),
       delete: async ({ where }) => { calls.deleted = where.id; departures.splice(departures.findIndex((d) => d.id === where.id), 1); },
     },
+    waitlistEntry: { updateMany: async () => ({ count: 0 }) },
     departureAttachment: { updateMany: async ({ where, data }) => { calls.attachmentsMoved = [where.departureId, data.departureId]; } },
   };
   return { prisma: { $transaction: (fn) => fn(tx) }, calls };

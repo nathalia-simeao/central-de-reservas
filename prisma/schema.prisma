@@ -150,6 +150,7 @@ model Tour {
   blockedDates           BlockedDate[]
   guideAssignments       GuideAssignment[]
   departures             TourDeparture[]
+  waitlist               WaitlistEntry[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @default(now()) @updatedAt
 
@@ -537,4 +538,27 @@ model WorkerHeartbeat {
   lastOkAt   DateTime?
   lastError  String?
   updatedAt  DateTime @updatedAt
+}
+
+// Lista de espera de uma saída esgotada (passeio + data/hora).
+// WAITING = na fila · NOTIFIED = avisado da vaga · BOOKED = reservou · REMOVED = saiu da fila
+model WaitlistEntry {
+  id            String    @id @default(uuid())
+  tourId        String
+  tour          Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  startTime     DateTime
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  language      String?
+  pax           Int       @default(1)
+  notes         String?   @db.Text
+  status        String    @default("WAITING")
+  notifiedAt    DateTime?
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+
+  @@index([tourId, startTime])
+  @@index([status, startTime])
 }

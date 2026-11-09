@@ -94,6 +94,12 @@ export async function moveDeparture(prisma, { tourId, fromStartTime, toStartTime
       });
     }
 
+    // A lista de espera acompanha a saída.
+    await tx.waitlistEntry.updateMany({
+      where: { tourId, startTime: fromStartTime, status: { not: "REMOVED" } },
+      data: { startTime: toStartTime },
+    });
+
     const source = await tx.tourDeparture.findUnique({ where: { tourId_startTime: { tourId, startTime: fromStartTime } } });
     let departure = null;
     if (source) {
