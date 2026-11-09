@@ -1,5 +1,6 @@
 import { buildTourColorAliases } from "../../utils/tour-matching.js";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useLocation } from "react-router";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
 import { normalizeFeatureFlags } from "../../utils/feature-flags";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
@@ -63,7 +64,13 @@ function CentralDeReservasContent() {
   }, []);
 
   // A. NAVEGAÇÃO
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // A aba aberta fica no endereço (?tab=) e no navegador: recarregar volta para a mesma aba.
+  const location = useLocation();
+  const initialNavKey = (() => {
+    const value = new URLSearchParams(location.search || "").get("tab") || "";
+    return /^[a-z_-]{2,30}$/.test(value) ? value : "";
+  })();
+  const [activeTab, setActiveTab] = useState(initialNavKey === "quadro" ? "agenda" : (initialNavKey || "dashboard"));
   const [lang, setLang] = useState("pt");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem("pmy_sidebar_collapsed") === "1"; } catch { return false; }
@@ -196,7 +203,7 @@ function CentralDeReservasContent() {
   // A Agenda abre sempre no mês/dia atual de Portugal, nunca em uma data fixa.
   const [currentMonth, setCurrentMonth] = useState(() => getLisbonToday().monthIndex);
   const [currentYear, setCurrentYear] = useState(() => getLisbonToday().year);
-  const [calendarView, setCalendarView] = useState("month");
+  const [calendarView, setCalendarView] = useState(initialNavKey === "quadro" ? "board" : "month");
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(() => getLisbonToday().day);
 
   // G. GUIAS E CAPACIDADE
@@ -492,6 +499,32 @@ function CentralDeReservasContent() {
     else setActiveTab(key);
     setMobileNavOpen(false);
   };
+
+  const navKey = activeTab === "agenda" && calendarView === "board" ? "quadro" : activeTab;
+  const navRestoredRef = useRef(false);
+  // Sem ?tab= no endereço: volta para a última aba usada neste navegador.
+  useEffect(() => {
+    if (navRestoredRef.current) return;
+    navRestoredRef.current = true;
+    if (initialNavKey) return;
+    let saved = "";
+    try { saved = localStorage.getItem("pmy_active_tab") || ""; } catch { /* armazenamento bloqueado */ }
+    if (!saved || saved === "dashboard" || !/^[a-z_-]{2,30}$/.test(saved)) return;
+    if (!isCentralAdmin && ADMIN_TABS.includes(saved)) return;
+    if (saved === "quadro") { setActiveTab("agenda"); setCalendarView("board"); }
+    else setActiveTab(saved);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!navRestoredRef.current) return;
+    try { localStorage.setItem("pmy_active_tab", navKey); } catch { /* armazenamento bloqueado */ }
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("tab") !== navKey) {
+        url.searchParams.set("tab", navKey);
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch { /* sem history */ }
+  }, [navKey]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed((current) => {
@@ -2862,9 +2895,6 @@ function CentralDeReservasContent() {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Assistant:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
-      `}</style>
       <style>{styles}</style>
       <div className="pmy-app-container">
         <button
@@ -3269,6 +3299,15 @@ function CentralDeReservasContent() {
     </>
   );
 }
+
+// Fontes no <head> (antes ficavam num @import no meio da página e a tela
+// aparecia primeiro com a fonte errada). display=block evita a troca visível.
+const CENTRAL_FONTS_URL = "https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Assistant:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Montserrat:wght@400;600;700;800&family=Nunito:wght@400;600;700;800&display=block";
+export const links = () => [
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+  { rel: "stylesheet", href: CENTRAL_FONTS_URL },
+];
 
 export default function CentralDeReservas() {
   const { apiKey = "" } = useLoaderData() || {};
