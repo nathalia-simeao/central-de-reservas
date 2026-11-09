@@ -39,6 +39,7 @@ import {
 import { localSlotToInstant } from "../utils/gyg-v1.server";
 import { moveDeparture } from "../utils/departure-move.server";
 import { normalizeWaitlistInput, WAITLIST_STATUSES } from "../utils/waitlist";
+import { normalizeFeatureFlags, sanitizeFeatureFlagsPatch } from "../utils/feature-flags";
 import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability-metafields.server";
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
@@ -529,6 +530,38 @@ export const action = async ({ request }) => {
       console.error("[PMY] updateDepartureChecklist error:", e);
       return json({ success: false, error: e?.message?.startsWith("Limite") || e?.message?.startsWith("Operação") ? e.message : "Não foi possível salvar o checklist." }, { status: 500 });
     }
+  }
+
+  // Funcionalidades opcionais (tudo novo chega desligado).
+  const featureEnabled = async (key) => {
+    const row = session?.shop
+      ? await prisma.businessSetting.findUnique({ where: { shop: session.shop }, select: { featureFlags: true } }).catch(() => null)
+      : null;
+    return normalizeFeatureFlags(row?.featureFlags)[key];
+  };
+
+  if (_action === "saveFeatureFlags") {
+    try {
+      const shop = session?.shop;
+      if (!shop) return json({ success: false, error: "Loja Shopify não identificada." }, { status: 400 });
+      let patch;
+      try { patch = sanitizeFeatureFlagsPatch(JSON.parse(String(formData.get("featureFlags") || "{}"))); }
+      catch (e) { return json({ success: false, error: e?.message || "Funcionalidades inválidas." }, { status: 400 }); }
+      const current = await prisma.businessSetting.findUnique({ where: { shop }, select: { featureFlags: true } });
+      const featureFlags = { ...normalizeFeatureFlags(current?.featureFlags), ...patch };
+      await prisma.businessSetting.upsert({ where: { shop }, create: { shop, featureFlags }, update: { featureFlags } });
+      return json({ success: true, featureFlags });
+    } catch (e) {
+      console.error("[PMY] saveFeatureFlags error:", e);
+      return json({ success: false, error: "Não foi possível salvar." }, { status: 500 });
+    }
+  }
+
+  if ((_action === "addWaitlistEntry" || _action === "setWaitlistStatus") && !(await featureEnabled("waitlist"))) {
+    return json({ success: false, error: "A lista de espera está desligada em Configurações → Funcionalidades." }, { status: 403 });
+  }
+  if (_action === "moveDeparture" && !(await featureEnabled("boardMove"))) {
+    return json({ success: false, error: "Mover saídas está desligado em Configurações → Funcionalidades." }, { status: 403 });
   }
 
   if (_action === "addWaitlistEntry") {

@@ -1,6 +1,7 @@
 import { buildTourColorAliases } from "../../utils/tour-matching.js";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
+import { normalizeFeatureFlags } from "../../utils/feature-flags";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -2134,6 +2135,17 @@ function CentralDeReservasContent() {
       result.assignment,
     ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
   };
+  // Funcionalidades opcionais: tudo novo chega desligado (Configurações → Funcionalidades).
+  const [featureFlags, setFeatureFlags] = useState(() => normalizeFeatureFlags(businessSettings?.featureFlags));
+  const handleSaveFeatureFlags = async (patch) => {
+    const fd = new FormData();
+    fd.append("_action", "saveFeatureFlags");
+    fd.append("featureFlags", JSON.stringify(patch || {}));
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível salvar.", "Unable to save."));
+    setFeatureFlags(normalizeFeatureFlags(result.featureFlags));
+  };
+
   // Quadro: lista de espera por saída.
   const [waitlist, setWaitlist] = useState(waitlistEntries || []);
   const handleAddWaitlist = async (tourId, startTime, entry) => {
@@ -3040,9 +3052,12 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              onMoveDeparture: isCentralAdmin ? handleMoveDeparture : null,
-              waitlist, onAddWaitlist: handleAddWaitlist, onWaitlistStatus: handleWaitlistStatus,
-              loadWeather,
+              onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
+              waitlist,
+              onAddWaitlist: featureFlags.waitlist ? handleAddWaitlist : null,
+              onWaitlistStatus: featureFlags.waitlist ? handleWaitlistStatus : null,
+              loadWeather: featureFlags.weatherAlerts ? loadWeather : null,
+              showGuestMessages: featureFlags.guestMessages,
             },
           }} />
 
@@ -3080,7 +3095,8 @@ function CentralDeReservasContent() {
             imageShape, internalFields, logoOnLightUrl, logoOnDarkUrl, logoUploadingVariant,
             sidebarIsDark, activeSidebarLogoUrl, mappingSaveState, platformConnections,
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
-            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson
+            t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson,
+            featureFlags, handleSaveFeatureFlags
           }} />
 
 

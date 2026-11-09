@@ -19,9 +19,9 @@ export function WeatherNote({ card, day, onNotify, onMove, lang }) {
       <span>{weatherIcon(day)} {weatherSummary(day, lang)}</span>
       {level === "bad" && <strong>{tr("Mau tempo previsto. Avalie remarcar.", "Bad weather forecast. Consider rescheduling.")}</strong>}
       {level === "watch" && <strong>{tr("Atenção à previsão.", "Keep an eye on the forecast.")}</strong>}
-      {level && (
+      {level && (onNotify || onMove) && (
         <span className="pmy-weather-note__actions">
-          <button type="button" className="pmy-board-btn" onClick={onNotify}>{tr("Avisar clientes", "Notify guests")}</button>
+          {onNotify && <button type="button" className="pmy-board-btn" onClick={onNotify}>{tr("Avisar clientes", "Notify guests")}</button>}
           {onMove && <button type="button" className="pmy-board-btn" onClick={onMove}>{tr("Remarcar saída", "Reschedule")}</button>}
         </span>
       )}

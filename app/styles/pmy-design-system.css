@@ -6270,3 +6270,4 @@
 .pmy-waitlist__form input { font: inherit; padding: 7px 8px; border: 1px solid #c7cdd6; border-radius: 6px; min-width: 0; }
 .pmy-waitlist__form .pmy-board-pop__actions { grid-column: 1 / -1; }
 a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: center; }
+.pmy-feature-flags { display: grid; gap: 14px; }

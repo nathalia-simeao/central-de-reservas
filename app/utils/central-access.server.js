@@ -79,4 +79,5 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "resetDepartureCheck",
   "savePlatformPrices",
   "moveDeparture",
+  "saveFeatureFlags",
 ]);

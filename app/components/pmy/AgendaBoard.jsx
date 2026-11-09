@@ -510,6 +510,7 @@ export default function AgendaBoard({
   onAddWaitlist,
   onWaitlistStatus,
   loadWeather,
+  showGuestMessages = false,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -667,7 +668,7 @@ export default function AgendaBoard({
                     <span className="pmy-board-card__foot">
                       <span className="pmy-board-card__badges">
                         {cardAlert(card) && <span className={`pmy-board-badge is-weather-${cardAlert(card)}`} title={tr("Alerta de clima", "Weather alert")}>{weatherIcon(dayFor(card))} {cardAlert(card) === "bad" ? tr("mau tempo", "bad weather") : tr("atenção", "watch")}</span>}
-                        {waitlistFor(card).length > 0 && (
+                        {onAddWaitlist && waitlistFor(card).length > 0 && (
                           <span className={`pmy-board-badge${waitlistMatches(waitlistFor(card), freeSeats(card, tourById.get(card.tourId))).length ? " is-open" : ""}`} title={tr("Lista de espera", "Waiting list")}>⏳ {waitlistFor(card).length}</span>
                         )}
                         {card.notes > 0 && <span title={tr("Observações", "Notes")}>💬 {card.notes}</span>}
@@ -713,7 +714,7 @@ export default function AgendaBoard({
             <WeatherNote
               card={openCard}
               day={dayFor(openCard)}
-              onNotify={() => setGuestMsg("weather")}
+              onNotify={showGuestMessages ? () => setGuestMsg("weather") : null}
               onMove={canMove ? () => setPendingMove({ card: openCard, dateKey: openCard.dateKey, timeKey: openCard.timeKey }) : null}
               lang={lang}
             />
@@ -737,14 +738,14 @@ export default function AgendaBoard({
               <GuidePicker card={openCard} guides={guides} onAssign={assignOnCard} onRemove={onRemoveAssignment} lang={lang} />
             </div>
 
-            <div className="pmy-board-modal__section">
+            {showGuestMessages && <div className="pmy-board-modal__section">
               <span className="pmy-board-pop__sub">{tr("Avisar clientes", "Notify guests")}</span>
               {guestMsg ? (
                 <GuestMessages key={guestMsg} card={openCard} initialTemplate={guestMsg} lang={lang} />
               ) : (
                 <button type="button" className="pmy-board-btn" onClick={() => setGuestMsg("delay")}>{tr("Mandar mensagem para os clientes desta saída", "Message this departure's guests")}</button>
               )}
-            </div>
+            </div>}
 
             {onAddWaitlist && (
               <div className="pmy-board-modal__section">

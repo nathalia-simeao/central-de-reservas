@@ -511,6 +511,8 @@ model BusinessSetting {
   costSettings   Json?
   // Preço por plataforma. Ver app/utils/platform-prices.js.
   platformPrices Json?
+  // Funcionalidades opcionais ligadas/desligadas pelo administrador. Ver app/utils/feature-flags.js.
+  featureFlags   Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 

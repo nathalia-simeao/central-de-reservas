@@ -1,6 +1,8 @@
 import { data } from "react-router";
 import { authenticate } from "../shopify.server";
 import { WEATHER_PLACES, parseOpenMeteoDaily } from "../utils/weather.js";
+import { normalizeFeatureFlags } from "../utils/feature-flags.js";
+import prisma from "../db.server";
 
 // Previsão de 14 dias para os locais dos passeios (Open-Meteo, sem chave).
 // Guardada em memória por 1 hora para não consultar a cada abertura do Quadro.
@@ -22,7 +24,13 @@ async function fetchPlace(place) {
 }
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const settings = session?.shop
+    ? await prisma.businessSetting.findUnique({ where: { shop: session.shop }, select: { featureFlags: true } }).catch(() => null)
+    : null;
+  if (!normalizeFeatureFlags(settings?.featureFlags).weatherAlerts) {
+    return json({ success: false, disabled: true, error: "Alerta de clima desligado." }, { status: 403 });
+  }
   if (cache.places && Date.now() - cache.at < TTL_MS) {
     return json({ success: true, places: cache.places, updatedAt: new Date(cache.at).toISOString() });
   }
