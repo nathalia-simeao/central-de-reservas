@@ -1,3 +1,4 @@
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
 import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
@@ -48,7 +49,7 @@ export const loader = async ({ request }) => {
   const tourIds = [...new Set(past.map((a) => a.tourId))];
   const pastBookings = tourIds.length
     ? await db.booking.findMany({
-        where: { tourId: { in: tourIds }, status: "CONFIRMED", startTime: { gte: since, lt: new Date() } },
+        where: { tourId: { in: tourIds }, status: "CONFIRMED", startTime: { gte: since, lt: new Date() }, AND: [excludeTestBookingsWhere()] },
         select: { tourId: true, startTime: true, language: true, groupGuideId: true, attendanceStatus: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
       })
     : [];

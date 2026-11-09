@@ -1,3 +1,4 @@
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router";
 import db from "../db.server";
 import { GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
@@ -29,7 +30,7 @@ export const loader = async ({ request, params }) => {
   const { guide, assignment } = await load(request, params);
   const [bookings, departure] = await Promise.all([
     db.booking.findMany({
-      where: departureBookingWhere(assignment.tourId, assignment.startTime),
+      where: { AND: [departureBookingWhere(assignment.tourId, assignment.startTime), excludeTestBookingsWhere()] },
       orderBy: { customerName: "asc" },
       select: {
         id: true, customerName: true, customerPhone: true, language: true, platform: true, bookingRef: true,

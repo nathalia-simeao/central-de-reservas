@@ -1,3 +1,4 @@
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { data } from "react-router";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
@@ -58,6 +59,7 @@ export const loader = async ({ request }) => {
   upcomingEnd.setDate(upcomingEnd.getDate() + 30);
 
   const where = {
+    AND: [excludeTestBookingsWhere()],
     OR: [
       { createdAt: { gte: start, lte: end } },
       { externalCreatedAt: { gte: start, lte: end } },

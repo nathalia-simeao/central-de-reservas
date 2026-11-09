@@ -1,3 +1,4 @@
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useLoaderData } from "react-router";
 import db from "../db.server";
 import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
@@ -20,11 +21,11 @@ export const loader = async ({ request }) => {
   const [bookings, departures] = tourIds.length
     ? await Promise.all([
         db.booking.findMany({
-          where: { tourId: { in: tourIds }, status: { in: ["CONFIRMED", "PENDING"] }, startTime: { gte: from, lte: to } },
+          where: { tourId: { in: tourIds }, status: { in: ["CONFIRMED", "PENDING"] }, startTime: { gte: from, lte: to }, AND: [excludeTestBookingsWhere()] },
           select: { tourId: true, startTime: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true, language: true, groupGuideId: true },
         }),
         db.tourDeparture.findMany({
-          where: { tourId: { in: tourIds }, startTime: { gte: from, lte: to } },
+          where: { tourId: { in: tourIds }, startTime: { gte: from, lte: to }, AND: [excludeTestBookingsWhere()] },
           select: { tourId: true, startTime: true, checkStartAt: true, checkEndAt: true },
         }),
       ])

@@ -1,3 +1,4 @@
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { data } from "react-router";
 import { isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
 import { authenticate, registerWebhooks } from "../shopify.server";
@@ -77,6 +78,7 @@ export const loader = async ({ request }) => {
         ],
       },
       { syncStatus: { not: "HOLD_RELEASED" } },
+      excludeTestBookingsWhere(),
     ],
   };
 
