@@ -1,4 +1,5 @@
 import { data } from "react-router";
+import { normalizeAreas } from "../utils/team-areas.js";
 
 const json = (body, init) => data(body, init);
 
@@ -16,6 +17,7 @@ export async function handleCentralGuideAction({ action, formData, prisma, sessi
         const submittedPhotoUrl = String(formData.get("photoUrl") || "").trim() || null;
         const submittedPhotoMediaId = String(formData.get("photoMediaId") || "").trim() || null;
         const utmId = String(formData.get("utmId") || "").trim() || null;
+        const areas = formData.has("areas") ? normalizeAreas(formData.get("areas")) : null;
         const baseUrl = String(
           formData.get("baseUrl") || "https://portugalmeandyou.com/",
         ).trim();
@@ -92,6 +94,7 @@ export async function handleCentralGuideAction({ action, formData, prisma, sessi
           whatsapp,
           utmId,
           referralLink,
+          ...(areas && areas.length ? { areas } : {}),
         };
   
         let guide;
@@ -118,6 +121,7 @@ export async function handleCentralGuideAction({ action, formData, prisma, sessi
               utmId,
               referralLink,
               source: "CENTRAL",
+              ...(areas && areas.length ? { areas } : {}),
             },
           });
         }

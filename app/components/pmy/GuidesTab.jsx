@@ -1,4 +1,6 @@
+import { useState } from "react";
 import TourCountryFlag from "./TourCountryFlag";
+import { TEAM_AREAS, areaLabel, personAreas } from "../../utils/team-areas.js";
 import {
   Badge,
   Button,
@@ -23,11 +25,54 @@ export default function GuidesTab(props) {
     t,
     upcomingToursFilter,
     lang,
+    isCentralAdmin = true,
+    centralUsers = [],
+    centralUser = null,
+    handleSaveCentralUser,
+    handleAddPerson,
+    ddiList = [],
   } = props;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const [area, setArea] = useState("ALL");
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", ddi: "+351", phone: "", areas: ["GUIA"] });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   if (activeTab !== "guias") return null;
+
+  const areaTabs = [
+    { value: "ALL", label: `${tr("Todos", "All")} (${guidesList.length})` },
+    ...TEAM_AREAS.map((a) => ({
+      value: a.key,
+      label: `${tr(a.pt, a.en)} (${guidesList.filter((p) => personAreas(p).includes(a.key)).length})`,
+    })),
+  ];
+  const people = area === "ALL" ? guidesList : guidesList.filter((p) => personAreas(p).includes(area));
+  const accessOf = (person) => centralUsers.find((u) => u.guideId === person.id) || null;
+  const unlinkedUsers = centralUsers.filter((u) => !u.guideId);
+
+  const submitPerson = async (event) => {
+    event.preventDefault();
+    if (!form.name.trim()) { setFormError(tr("Informe o nome.", "Enter the name.")); return; }
+    setSaving(true);
+    setFormError("");
+    try {
+      await handleAddPerson({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        whatsapp: form.phone.trim() ? `${form.ddi} ${form.phone.trim()}` : "",
+        areas: form.areas,
+      });
+      setForm({ name: "", email: "", ddi: "+351", phone: "", areas: area !== "ALL" ? [area] : ["GUIA"] });
+      setAdding(false);
+    } catch (error) {
+      setFormError(error?.message || tr("Não foi possível salvar.", "Could not save."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const upcomingTabs = [
     { value: "today", label: t.filter_today },
@@ -99,6 +144,204 @@ export default function GuidesTab(props) {
     <div className="pmy-ds-stack">
       <Card>
         <SectionHeader
+          eyebrow={tr("Equipe", "Team")}
+          title={tr("Pessoas da PMY", "PMY people")}
+          subtitle={tr(
+            "Guias, administração, comercial, marketing e operação num lugar só. Clique na pessoa para editar as áreas e o acesso à Central.",
+            "Guides, admin, sales, marketing and operations in one place.",
+          )}
+          actions={handleAddPerson ? (
+            <Button type="button" size="sm" icon="plus" onClick={() => { setAdding(!adding); setForm((f) => ({ ...f, areas: area !== "ALL" ? [area] : f.areas })); }}>
+              {adding ? tr("Fechar", "Close") : tr("Adicionar pessoa", "Add person")}
+            </Button>
+          ) : null}
+        />
+
+        <Tabs items={areaTabs} value={area} onChange={setArea} ariaLabel={tr("Áreas da equipe", "Team areas")} />
+
+        {adding && (
+          <form className="pmy-person-form" onSubmit={submitPerson}>
+            <label>{tr("Nome", "Name")}<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
+            <label>E-mail<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+            <label>WhatsApp
+              <span className="pmy-person-form__phone">
+                <select value={form.ddi} onChange={(e) => setForm({ ...form, ddi: e.target.value })} aria-label={tr("Código do país", "Country code")}>
+                  {(ddiList.length ? ddiList : [{ code: "+351" }, { code: "+55" }]).map((d) => <option key={`${d.iso || ""}${d.code}`} value={d.code}>{d.code}</option>)}
+                </select>
+                <input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </span>
+            </label>
+            <div className="pmy-person-areas">
+              <span className="pmy-person-access__label">{tr("Áreas", "Areas")}</span>
+              <div className="pmy-person-areas__chips" role="group">
+                {TEAM_AREAS.map((a) => {
+                  const on = form.areas.includes(a.key);
+                  return (
+                    <button key={a.key} type="button" className={on ? "is-on" : ""} aria-pressed={on}
+                      onClick={() => setForm({ ...form, areas: on ? form.areas.filter((k) => k !== a.key) : [...form.areas, a.key] })}>
+                      {on ? "✓ " : ""}{areaLabel(a.key, lang)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {formError && <p role="alert" className="pmy-rotation__error">{formError}</p>}
+            <div className="pmy-person-form__actions">
+              <Button type="submit" size="sm" disabled={saving}>{saving ? "…" : tr("Salvar pessoa", "Save person")}</Button>
+              <small className="pmy-person-access__hint">{tr("O acesso à Central e o portal do guia se configuram depois, no card da pessoa.", "Central access and guide portal are set later on the person card.")}</small>
+            </div>
+          </form>
+        )}
+
+        {people.length === 0 ? (
+          <EmptyState
+            icon="users"
+            title={tr("Ninguém nesta área ainda", "Nobody in this area yet")}
+            description={tr(
+              "Use \"Adicionar pessoa\" ou edite uma pessoa e marque esta área.",
+              "Use \"Add person\" or edit someone and tick this area.",
+            )}
+          />
+        ) : (
+          <div className="pmy-guides-grid">
+            {people.map((guide) => (
+              <div
+                key={guide.id}
+                className="pmy-guide-card-square"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedGuideInfo(guide);
+                  setActiveModal("guideDetails");
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedGuideInfo(guide);
+                    setActiveModal("guideDetails");
+                  }
+                }}
+              >
+                <img src={guide.photo} alt={guide.name} className="pmy-guide-square-img" />
+                <div className="pmy-guide-square-name">
+                  {guide.name.split(" ")[0]}<br />
+                  {guide.name.split(" ").slice(1).join(" ")}
+                </div>
+                <div className="pmy-person-badges">
+                  {personAreas(guide).map((key) => <Badge key={key} tone={key === "GUIA" ? "accent" : "neutral"}>{areaLabel(key, lang)}</Badge>)}
+                  {accessOf(guide) && (
+                    <Badge tone="success">{accessOf(guide).role === "ADMIN" ? tr("Central: Admin", "Central: Admin") : tr("Central: Equipe", "Central: Team")}</Badge>
+                  )}
+                </div>
+
+                <div className="pmy-ds-guide-actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon="settings"
+                    onClick={() => handleOpenEditGuide(guide)}
+                  >
+                    {tr("Editar", "Edit")}
+                  </Button>
+
+                  {guide.referralLink ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      icon="link"
+                      iconOnly
+                      aria-label={tr("Copiar link de indicação", "Copy referral link")}
+                      title={tr("Copiar link de indicação", "Copy referral link")}
+                      onClick={() =>
+                        navigator.clipboard
+                          .writeText(guide.referralLink)
+                          .then(() => alert(tr("Link copiado!", "Link copied!")))
+                          .catch(() => {})
+                      }
+                    />
+                  ) : null}
+
+                  {!guide.shopifyMetaobjectId ? (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      icon="trash"
+                      iconOnly
+                      aria-label={tr("Excluir guia", "Delete guide")}
+                      onClick={() => handleDeleteGuide(guide.id)}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {isCentralAdmin && handleSaveCentralUser && unlinkedUsers.length > 0 && (
+        <Card>
+          <SectionHeader
+            eyebrow={tr("Acesso à Central", "Central access")}
+            title={tr("Acessos ainda sem pessoa", "Logins not linked to a person")}
+            subtitle={tr(
+              "Quem abriu a Central pelo admin da Shopify e ainda não foi ligado a ninguém da equipe. Escolha a pessoa e o perfil.",
+              "People who opened the Central from Shopify and aren't linked to anyone yet.",
+            )}
+          />
+          <div className="pmy-unlinked-access">
+            {unlinkedUsers.map((u) => (
+              <UnlinkedAccessRow key={u.id} user={u} people={guidesList} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <SectionHeader
+          eyebrow={tr("Agenda", "Schedule")}
+          title={t.upcoming_tours_list}
+          actions={
+            <Tabs
+              items={upcomingTabs}
+              value={upcomingToursFilter}
+              onChange={setUpcomingToursFilter}
+              ariaLabel={tr("Período dos próximos tours", "Upcoming tours period")}
+            />
+          }
+        />
+
+        <div className="pmy-ds-panel-soft">
+          {upcomingAssignments.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title={tr("Nenhuma escala neste período", "No assignments in this period")}
+              description={tr(
+                "As escalas publicadas na Agenda Central aparecerão aqui automaticamente.",
+                "Assignments published in the Central Agenda will appear here automatically.",
+              )}
+            />
+          ) : (
+            <div className="pmy-ds-list-plain">
+              {upcomingAssignments.map((assignment) => (
+                <div key={assignment.id} className="pmy-ds-list-plain__row">
+                  <span className="pmy-ds-list-plain__title">
+                    <Icon name="calendar" size={17} />
+                    <TourCountryFlag tour={assignment.tour} lang={lang}/>{assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
+                  </span>
+                  <Badge tone={lisbonDateKey(assignment.startTime) === todayLisbon ? "accent" : "neutral"}>
+                    {formatAssignmentWhen(assignment)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+      <Card>
+        <SectionHeader
           eyebrow={tr("Fonte dos perfis", "Profile source")}
           title={tr("Guias sincronizados do Shopify", "Guides synced from Shopify")}
           subtitle={tr(
@@ -147,147 +390,32 @@ export default function GuidesTab(props) {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
 
-      <Card>
-        <SectionHeader
-          eyebrow={tr("Equipe", "Team")}
-          title={t.registered_guides_list}
-          subtitle={tr(
-            "Os perfis editoriais vêm do Shopify; dados operacionais e escalas continuam na Central.",
-            "Editorial profiles come from Shopify; operational data and assignments remain in the Central.",
-          )}
-        />
-
-        {guidesList.length === 0 ? (
-          <EmptyState
-            icon="users"
-            title={tr("Nenhum guia cadastrado", "No guides registered")}
-            description={tr(
-              "Os guias cadastrados aparecerão aqui com foto e ações rápidas.",
-              "Registered guides will appear here with their photo and quick actions.",
-            )}
-          />
-        ) : (
-          <div className="pmy-guides-grid">
-            {guidesList.map((guide) => (
-              <div
-                key={guide.id}
-                className="pmy-guide-card-square"
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setSelectedGuideInfo(guide);
-                  setActiveModal("guideDetails");
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setSelectedGuideInfo(guide);
-                    setActiveModal("guideDetails");
-                  }
-                }}
-              >
-                <img src={guide.photo} alt={guide.name} className="pmy-guide-square-img" />
-                <div className="pmy-guide-square-name">
-                  {guide.name.split(" ")[0]}<br />
-                  {guide.name.split(" ").slice(1).join(" ")}
-                </div>
-                <div className="pmy-u-mt-2">
-                  <Badge tone={guide.shopifyMetaobjectId ? "accent" : "neutral"}>
-                    {guide.shopifyMetaobjectId ? "Shopify" : tr("Local", "Local")}
-                  </Badge>
-                </div>
-
-                <div className="pmy-ds-guide-actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    icon="settings"
-                    onClick={() => handleOpenEditGuide(guide)}
-                  >
-                    {guide.shopifyMetaobjectId
-                      ? tr("Dados operacionais", "Operational data")
-                      : tr("Editar", "Edit")}
-                  </Button>
-
-                  {guide.referralLink ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon="link"
-                      iconOnly
-                      aria-label={tr("Copiar link de indicação", "Copy referral link")}
-                      title={tr("Copiar link de indicação", "Copy referral link")}
-                      onClick={() =>
-                        navigator.clipboard
-                          .writeText(guide.referralLink)
-                          .then(() => alert(tr("Link copiado!", "Link copied!")))
-                          .catch(() => {})
-                      }
-                    />
-                  ) : null}
-
-                  {!guide.shopifyMetaobjectId ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      icon="trash"
-                      iconOnly
-                      aria-label={tr("Excluir guia", "Delete guide")}
-                      onClick={() => handleDeleteGuide(guide.id)}
-                    />
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card>
-        <SectionHeader
-          eyebrow={tr("Agenda", "Schedule")}
-          title={t.upcoming_tours_list}
-          actions={
-            <Tabs
-              items={upcomingTabs}
-              value={upcomingToursFilter}
-              onChange={setUpcomingToursFilter}
-              ariaLabel={tr("Período dos próximos tours", "Upcoming tours period")}
-            />
-          }
-        />
-
-        <div className="pmy-ds-panel-soft">
-          {upcomingAssignments.length === 0 ? (
-            <EmptyState
-              icon="calendar"
-              title={tr("Nenhuma escala neste período", "No assignments in this period")}
-              description={tr(
-                "As escalas publicadas na Agenda Central aparecerão aqui automaticamente.",
-                "Assignments published in the Central Agenda will appear here automatically.",
-              )}
-            />
-          ) : (
-            <div className="pmy-ds-list-plain">
-              {upcomingAssignments.map((assignment) => (
-                <div key={assignment.id} className="pmy-ds-list-plain__row">
-                  <span className="pmy-ds-list-plain__title">
-                    <Icon name="calendar" size={17} />
-                    <TourCountryFlag tour={assignment.tour} lang={lang}/>{assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
-                  </span>
-                  <Badge tone={lisbonDateKey(assignment.startTime) === todayLisbon ? "accent" : "neutral"}>
-                    {formatAssignmentWhen(assignment)}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
+function UnlinkedAccessRow({ user, people, currentUser, onSave, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const run = async (patch) => {
+    setBusy(true);
+    setMessage("");
+    try { await onSave(user.id, patch); } catch (error) { setMessage(error?.message || tr("Não foi possível salvar.", "Could not save.")); }
+    finally { setBusy(false); }
+  };
+  const seen = new Date(user.lastSeenAt);
+  return (
+    <div className="pmy-unlinked-access__row">
+      <div>
+        <strong>{user.name || `${tr("Acesso Shopify", "Shopify login")} #${String(user.shopifyUserId).slice(-6)}`}{currentUser?.id === user.id ? ` · ${tr("você", "you")}` : ""}</strong>
+        <small>{tr("Último acesso", "Last seen")}: {Number.isNaN(seen.getTime()) ? "—" : new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "pt-PT", { dateStyle: "short", timeStyle: "short" }).format(seen)} · {user.role === "ADMIN" ? tr("Administrador", "Admin") : tr("Equipe", "Team")}</small>
+      </div>
+      <select value="" disabled={busy} onChange={(e) => e.target.value && run({ guideId: e.target.value })} aria-label={tr("Ligar a pessoa", "Link to person")}>
+        <option value="">{tr("Ligar a…", "Link to…")}</option>
+        {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+      {message && <small role="alert" className="pmy-rotation__error">{message}</small>}
     </div>
   );
 }
