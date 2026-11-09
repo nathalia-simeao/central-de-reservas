@@ -189,9 +189,22 @@ export const action = async ({ request }) => {
           return json({ success: false, error: "A Central precisa de pelo menos um administrador." }, { status: 409 });
         }
       }
+      // Ligar este acesso a uma pessoa da Equipe ("" desliga).
+      let guideLink;
+      if (formData.has("guideId")) {
+        const guideId = String(formData.get("guideId") || "").trim();
+        if (guideId) {
+          const person = await prisma.guide.findUnique({ where: { id: guideId }, select: { id: true, name: true } });
+          if (!person) return json({ success: false, error: "Pessoa não encontrada." }, { status: 404 });
+          await prisma.centralUser.updateMany({ where: { guideId, NOT: { id } }, data: { guideId: null } });
+          guideLink = { guideId, ...(name === undefined ? { name: person.name } : {}) };
+        } else {
+          guideLink = { guideId: null };
+        }
+      }
       const user = await prisma.centralUser.update({
         where: { id },
-        data: { ...(role ? { role } : {}), ...(name !== undefined ? { name: name || null } : {}) },
+        data: { ...(role ? { role } : {}), ...(name !== undefined ? { name: name || null } : {}), ...(guideLink || {}) },
       });
       return json({ success: true, user });
     } catch (e) {

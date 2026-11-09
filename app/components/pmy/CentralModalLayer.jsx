@@ -1,5 +1,7 @@
 import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../../utils/tour-languages.js";
 import GuidePortalAccess from "./GuidePortalAccess";
+import PersonAccessControl from "./PersonAccessControl";
+import { TEAM_AREAS, isGuide } from "../../utils/team-areas.js";
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
 import DepartureTagsSection, { departureKey } from "./DepartureTagsSection";
@@ -51,6 +53,12 @@ export default function CentralModalLayer(props) {
     guidePhotoUploadError,
     guidePhotoUploading,
     guidesList,
+    scheduleGuides = guidesList,
+    editGuideAreas = ["GUIA"],
+    setEditGuideAreas = () => {},
+    centralUsers = [],
+    centralUser = null,
+    handleSaveCentralUser,
     gygConfigActivityId,
     gygConfigOptions,
     gygConfigCutoff,
@@ -1324,7 +1332,7 @@ export default function CentralModalLayer(props) {
                       onChange={(event) => setModalSelectedGuide(event.target.value)}
                     >
                       <option value="">{ui("-- Selecione o Guia --", "-- Select Guide --")}</option>
-                      {guidesList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {scheduleGuides.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   {guideAssignmentMessage && (
@@ -1394,7 +1402,7 @@ export default function CentralModalLayer(props) {
             </div>
           )}
 
-          {isCentralAdmin && (
+          {isCentralAdmin && isGuide(selectedGuideInfo) && (
             <GuidePortalAccess guide={selectedGuideInfo} onSave={handleSetGuidePortalAccess} lang={lang} />
           )}
 
@@ -1896,7 +1904,7 @@ export default function CentralModalLayer(props) {
           className="pmy-ds-migrated-zuczkc"
           role="dialog"
           aria-modal="true"
-          aria-label={ui("Editar guia", "Edit guide")}
+          aria-label={ui("Editar pessoa", "Edit person")}
           tabIndex={-1}
           data-pmy-dialog="edit-guide"
         >
@@ -2044,6 +2052,24 @@ export default function CentralModalLayer(props) {
                 )}
               </div>
             </div>
+            <div className="pmy-person-areas">
+              <span className="pmy-person-access__label">{ui("Áreas", "Areas")}</span>
+              <div className="pmy-person-areas__chips" role="group" aria-label={ui("Áreas", "Areas")}>
+                {TEAM_AREAS.map((area) => {
+                  const on = editGuideAreas.includes(area.key);
+                  return (
+                    <button key={area.key} type="button" className={on ? "is-on" : ""} aria-pressed={on}
+                      onClick={() => setEditGuideAreas(on ? editGuideAreas.filter((k) => k !== area.key) : [...editGuideAreas, area.key])}>
+                      {on ? "✓ " : ""}{ui(area.one[0], area.one[1])}
+                    </button>
+                  );
+                })}
+              </div>
+              <small className="pmy-person-access__hint">{ui("Só quem tem \"Guia\" aparece na escala, no Quadro e no portal do guia.", "Only \"Guide\" shows up in scheduling.")}</small>
+            </div>
+            {isCentralAdmin && handleSaveCentralUser && (
+              <PersonAccessControl person={guide} users={centralUsers} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
+            )}
             <div className="pmy-ds-migrated-y37ip1">
               <button type="submit" className="pmy-btn-submit pmy-ds-migrated-ckcaff">
                 {ui("Salvar dados operacionais", "Save operational data")}

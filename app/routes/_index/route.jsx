@@ -1,4 +1,5 @@
 import { buildTourColorAliases } from "../../utils/tour-matching.js";
+import { isGuide, normalizeAreas } from "../../utils/team-areas.js";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "react-router";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
@@ -248,9 +249,14 @@ function CentralDeReservasContent() {
           portalEnabled: Boolean(g.portalEnabled),
           portalHasPassword: Boolean(g.portalHasPassword),
           sales90d: g.sales90d || null,
+          areas: normalizeAreas(g.areas).length ? normalizeAreas(g.areas) : ["GUIA"],
         }))
       : []
   );
+  // Equipe: só quem tem a área GUIA entra na escala, no Quadro e nos seletores de guia.
+  const scheduleGuides = useMemo(() => guidesList.filter(isGuide), [guidesList]);
+  const [centralUsersList, setCentralUsersList] = useState(centralUsers);
+  const [editGuideAreas, setEditGuideAreas] = useState(["GUIA"]);
   const [selectedGuideInfo, setSelectedGuideInfo] = useState(null);
   const [upcomingToursFilter, setUpcomingToursFilter] = useState("7d");
   const [guideUtmId, setGuideUtmId] = useState("");        // campo UTM no form de cadastro
@@ -489,7 +495,7 @@ function CentralDeReservasContent() {
     { key: "agenda", icon: "calendar", label: lang === "pt" ? "Agenda Central" : "Central Agenda" },
     { key: "quadro", icon: "bookings", label: lang === "pt" ? "Quadro" : "Board" },
     { key: "integracoes", icon: "link", label: lang === "pt" ? "Integrações" : "Integrations" },
-    { key: "guias", icon: "users", label: lang === "pt" ? "Guias" : "Guides" },
+    { key: "guias", icon: "users", label: lang === "pt" ? "Equipe" : "Team" },
   ].filter((item) => isCentralAdmin || !ADMIN_TABS.includes(item.key));
 
   const openNavigationTab = (key) => {
@@ -1167,6 +1173,7 @@ function CentralDeReservasContent() {
     setEditGuidePhoto(guide.photo || null);
     setEditGuidePhotoMediaId(guide.photoMediaId || null);
     setEditGuideUtmId(guide.utmId || "");
+    setEditGuideAreas(guide.areas?.length ? guide.areas : ["GUIA"]);
   };
 
   const handleSaveEditGuide = async (e) => {
@@ -1197,6 +1204,7 @@ function CentralDeReservasContent() {
         fd.append("email", editGuideEmail || "");
         fd.append("whatsapp", whatsapp);
         fd.append("utmId", editGuideUtmId || "");
+        fd.append("areas", JSON.stringify(editGuideAreas.length ? editGuideAreas : ["GUIA"]));
         if (!shopifyManaged && editGuidePhoto) fd.append("photoUrl", editGuidePhoto);
         if (!shopifyManaged && editGuidePhotoMediaId) fd.append("photoMediaId", editGuidePhotoMediaId);
 
@@ -1213,6 +1221,7 @@ function CentralDeReservasContent() {
                 photoMediaId: shopifyManaged ? g.photoMediaId : editGuidePhotoMediaId,
                 utmId: editGuideUtmId,
                 referralLink: editReferralLink,
+                areas: editGuideAreas.length ? editGuideAreas : ["GUIA"],
               }
             : g
         ));
@@ -2057,9 +2066,37 @@ function CentralDeReservasContent() {
     fd.append("id", id);
     if (patch.role) fd.append("role", patch.role);
     if (patch.name !== undefined) fd.append("name", patch.name || "");
+    if (patch.guideId !== undefined) fd.append("guideId", patch.guideId || "");
     const result = await requestResourceJson("/api/central-actions", fd);
     if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    setCentralUsersList((current) => current.map((u) => {
+      if (u.id === result.user.id) return { ...u, ...result.user };
+      if (patch.guideId && u.guideId === patch.guideId) return { ...u, guideId: null };
+      return u;
+    }));
     return result.user;
+  };
+
+  // Equipe → "Adicionar pessoa".
+  const handleAddPerson = async ({ name, email, whatsapp, areas }) => {
+    const fd = new FormData();
+    fd.append("_action", "saveGuide");
+    fd.append("name", name);
+    fd.append("email", email || "");
+    fd.append("whatsapp", whatsapp || "");
+    fd.append("areas", JSON.stringify(areas?.length ? areas : ["GUIA"]));
+    const result = await requestResourceJson("/api/guides", fd);
+    if (!result?.success || !result.guide) throw new Error(result?.error || ui("Não foi possível salvar.", "Could not save."));
+    const g = result.guide;
+    setGuidesList((current) => [...current, {
+      id: g.id, name: g.name, email: g.email || "", whatsapp: g.whatsapp || "",
+      photo: g.photoUrl || "https://via.placeholder.com/150", photoMediaId: g.photoMediaId || null,
+      description: "", videoUrl: "", galleryUrls: [], exclusiveProducts: [],
+      shopifyMetaobjectId: null, shopifyHandle: "", shopifyActive: false, shopifyUpdatedAt: null,
+      source: g.source || "CENTRAL", utmId: g.utmId || "", referralLink: g.referralLink || "",
+      portalEnabled: false, portalHasPassword: false, sales90d: null,
+      areas: normalizeAreas(g.areas).length ? normalizeAreas(g.areas) : ["GUIA"],
+    }].sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   const [platformPrices, setPlatformPrices] = useState(() => businessSettings?.platformPrices || null);
@@ -2988,7 +3025,7 @@ function CentralDeReservasContent() {
               {activeTab==='dashboard' && t.dash_title}
               {activeTab==='agenda' && (calendarView === 'board' ? (lang === 'pt' ? 'Quadro' : 'Board') : t.agenda_title)}
               {activeTab==='integracoes' && t.integrations_title}
-              {activeTab==='guias' && t.guides_title}
+              {activeTab==='guias' && (lang === 'pt' ? 'Equipe' : 'Team')}
               {activeTab==='configuracoes' && t.settings_title}
             </h1>
               </div>
@@ -3064,7 +3101,7 @@ function CentralDeReservasContent() {
             currentYear, custEmail, custLang, custName, custPhone, draftOrderError,
             draftOrderInfo, draftOrderLoading, generatedLink, getBookingTimesForTour,
             getLisbonToday, handleBlockTourSelectionChange, handleCapacityChange, handleChannelCapacityChange, channelCapacityLimits,
-            handleLanguageQuotaSave, languageQuotaRules, guidesList, guideAssignmentsList,
+            handleLanguageQuotaSave, languageQuotaRules, guidesList: scheduleGuides, guideAssignmentsList,
             handleCreateBlock, handleGeneratePaymentLink, handleNextMonth, handlePrevMonth,
             handleRemoveBlock, handleTogglePlatformSelection, handleTourSelectionChange,
             imageShape, platformConnections, renderCalendarDays, reservationPlatforms,
@@ -3075,7 +3112,7 @@ function CentralDeReservasContent() {
             tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang,
             agendaLabels, handleSaveAgendaLabels, isCentralAdmin,
             boardProps: {
-              bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: guidesList,
+              bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: scheduleGuides,
               agendaLabels: colorLabels, departureTags, departureInfo,
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
               onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
@@ -3114,7 +3151,8 @@ function CentralDeReservasContent() {
             handleDeleteGuide, handleGuidePhotoChange, handleOpenEditGuide,
             openMediaLibraryPicker, setActiveModal, setGuideDdi, setGuideEmail,
             setGuideName, setGuidePhoto, setGuideUtmId, setGuideWhatsapp,
-            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang
+            setSelectedGuideInfo, setUpcomingToursFilter, t, upcomingToursFilter, lang,
+            isCentralAdmin, centralUsers: centralUsersList, centralUser, handleSaveCentralUser, handleAddPerson,
           }} />
 
           <SettingsTab {...{
@@ -3180,6 +3218,12 @@ function CentralDeReservasContent() {
         guidePhotoUploadError,
         guidePhotoUploading,
         guidesList,
+        scheduleGuides,
+        editGuideAreas,
+        setEditGuideAreas,
+        centralUsers: centralUsersList,
+        centralUser,
+        handleSaveCentralUser,
         gygConfigActivityId,
         gygConfigOptions,
         gygConfigCutoff,

@@ -6275,3 +6275,25 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-board-modal__card { z-index: 1; }
 .pmy-prices__cell { display: block; min-width: 0; }
 .pmy-prices__cell input { width: 100%; }
+
+/* ===== Equipe: áreas e acesso à Central ===== */
+.pmy-person-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; }
+.pmy-person-areas, .pmy-person-access { display: grid; gap: 6px; margin: 12px 0; }
+.pmy-person-access__label { font-size: 13px; font-weight: 700; }
+.pmy-person-areas__chips, .pmy-person-access__roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.pmy-person-areas__chips button, .pmy-person-access__roles button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--pmy-ds-border, #dcdfe4); background: var(--pmy-ds-surface, #fff); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: inherit; }
+.pmy-person-areas__chips button.is-on, .pmy-person-access__roles button.is-on { background: color-mix(in srgb, var(--pmy-ds-accent, #0a7525) 12%, #fff); border-color: var(--pmy-ds-accent, #0a7525); color: var(--pmy-ds-accent, #0a7525); }
+.pmy-person-access select, .pmy-unlinked-access select { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--pmy-ds-border, #dcdfe4); background: var(--pmy-ds-surface, #fff); max-width: 100%; }
+.pmy-person-access__hint { font-size: 12px; opacity: .75; }
+.pmy-person-access__msg { font-size: 12px; color: var(--pmy-ds-accent, #0a7525); }
+.pmy-person-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 14px; background: var(--pmy-ds-soft, #f6f8f7); }
+.pmy-person-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; }
+.pmy-person-form input, .pmy-person-form select { font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--pmy-ds-border, #dcdfe4); background: #fff; min-width: 0; width: 100%; box-sizing: border-box; }
+.pmy-person-form__phone { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 6px; }
+.pmy-person-form .pmy-person-areas, .pmy-person-form__actions { grid-column: 1 / -1; margin: 0; }
+.pmy-person-form__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.pmy-unlinked-access { display: grid; gap: 8px; }
+.pmy-unlinked-access__row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 12px; }
+.pmy-unlinked-access__row strong { display: block; font-size: 14px; }
+.pmy-unlinked-access__row small { font-size: 12px; opacity: .75; }
+@media (max-width: 650px) { .pmy-unlinked-access__row { grid-template-columns: 1fr; } }

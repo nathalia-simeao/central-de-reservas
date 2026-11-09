@@ -1,4 +1,3 @@
-import TeamAccessPanel from "./TeamAccessPanel";
 import FeatureFlagsPanel from "./FeatureFlagsPanel";
 import ShopifySecretRotationPanel from "./ShopifySecretRotationPanel";
 import EncryptionKeyRotationPanel from "./EncryptionKeyRotationPanel";
@@ -46,9 +45,7 @@ export default function SettingsTab(props) {
     settingsSaveMessage,
     theme,
     lang,
-    centralUsers = [],
     centralUser = null,
-    handleSaveCentralUser,
     requestResourceJson,
   } = props;
 
@@ -219,7 +216,6 @@ export default function SettingsTab(props) {
 
   return (
     <div className="pmy-ds-settings-stack">
-      <TeamAccessPanel users={centralUsers} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
       {props.handleSaveFeatureFlags && (!centralUser || String(centralUser.role || "").toUpperCase() === "ADMIN") && (
         <FeatureFlagsPanel flags={props.featureFlags} onSave={props.handleSaveFeatureFlags} lang={lang} />
       )}

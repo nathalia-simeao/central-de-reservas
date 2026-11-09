@@ -47,6 +47,8 @@ model CentralUser {
   shopifyUserId String   @unique
   name          String?
   role          String   @default("STAFF")
+  // Pessoa da Equipe (cadastro em Guide) dona deste acesso.
+  guideId       String?  @unique
   lastSeenAt    DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
@@ -314,6 +316,8 @@ model Guide {
   passwordHash        String?
   portalEnabled       Boolean           @default(false)
   lastLoginAt         DateTime?
+  // Equipe: áreas da pessoa (GUIA, ADMIN, COMERCIAL, MARKETING, OPERACAO). Só GUIA aparece na escala.
+  areas               String[]          @default(["GUIA"])
   sessions            GuideSession[]
   assignments         GuideAssignment[]
   createdAt           DateTime          @default(now())
