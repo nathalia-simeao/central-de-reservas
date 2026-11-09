@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "./PmyUI";
+import { Button, DropdownSelect } from "./PmyUI";
 
 export default function GygNotifySandboxTest({ lang = "pt" }) {
   const [productId, setProductId] = useState("");
@@ -130,11 +130,8 @@ export default function GygNotifySandboxTest({ lang = "pt" }) {
     <p>{tr("Usa o mesmo UUID do produto acima. Ordem do GYG: 1) Criar deal, 2) Listar deals, 3) Apagar o deal listado. Nada é criado de verdade.", "Uses the product UUID above. GYG order: 1) Create deal, 2) Get deals, 3) Delete the listed deal. Nothing real is created.")}</p>
     <div className="pmy-gyg-sandbox-test__fields">
       <label>{tr("Tipo","Type")}
-        <select value={deal.dealType} onChange={setDealField("dealType")}>
-          <option value="last_minute">last_minute</option>
-          <option value="early_bird">early_bird</option>
-          <option value="standard">standard</option>
-        </select>
+        <DropdownSelect value={deal.dealType} onChange={(v) => setDealField("dealType")({ target: { value: v } })}
+          options={["last_minute", "early_bird", "standard"].map((v) => ({ value: v, label: v }))} />
       </label>
       <label>{tr("Desconto %","Discount %")}
         <input value={deal.discountPercentage} onChange={setDealField("discountPercentage")} inputMode="decimal" />

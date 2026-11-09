@@ -6,7 +6,7 @@ import { TEAM_AREAS, isGuide } from "../../utils/team-areas.js";
 import { useEffect, useRef } from "react";
 import DepartureTagsSection, { departureKey } from "./DepartureTagsSection";
 import { tourColor, tourTags, contrastText } from "../../utils/agenda-labels.js";
-import { Button, Icon } from "./PmyUI";
+import { Button, DropdownSelect, Icon, PhoneCodeSelect } from "./PmyUI";
 import PickerModalContent from "./PickerModalContent";
 import ViatorOnboardingPanel from "./ViatorOnboardingPanel";
 import CivitatisOnboardingPanel from "./CivitatisOnboardingPanel";
@@ -14,7 +14,6 @@ import HeadoutOnboardingPanel from "./HeadoutOnboardingPanel";
 import {
   allPlatforms,
   ddiList,
-  getFlagUrl,
 } from "../../config/pmy-central-config";
 
 export default function CentralModalLayer(props) {
@@ -449,21 +448,14 @@ export default function CentralModalLayer(props) {
                     <label className="pmy-ds-migrated-1ygjrzr" htmlFor="gyg-quick-tour">
                       {ui("Tour mestre PMY", "PMY master tour")}
                     </label>
-                    <select
-                      id="gyg-quick-tour"
-                      className="pmy-form-input"
+                    <DropdownSelect
                       value={gygConfigTourId}
-                      onChange={(event) => handleGygTourSelection(event.target.value)}
-                    >
-                      <option value="">{ui("-- Selecione um passeio --", "-- Select a tour --")}</option>
-                      {(tours || [])
-                        .filter((tour) => tour.shopifyStatus !== "INACTIVE")
-                        .map((tour) => (
-                          <option key={tour.id} value={tour.id}>
-                            {tour.title}{tour.gygActivityId ? " ✓ GYG" : ""}
-                          </option>
-                        ))}
-                    </select>
+                      onChange={handleGygTourSelection}
+                      placeholder={ui("Selecione um passeio", "Select a tour")}
+                      searchPlaceholder={ui("Buscar passeio…", "Search tour…")}
+                      ariaLabel={ui("Passeio", "Tour")}
+                      options={(tours || []).filter((tour) => tour.shopifyStatus !== "INACTIVE").map((tour) => ({ value: tour.id, label: `${tour.title}${tour.gygActivityId ? " ✓ GYG" : ""}`, searchText: tour.title }))}
+                    />
                   </div>
 
                   {selectedGygTour && (
@@ -586,16 +578,14 @@ export default function CentralModalLayer(props) {
   
                   <div className="pmy-form-group pmy-ds-migrated-1bzrduz" >
                     <label className="pmy-ds-migrated-1ygjrzr">{ui("Tour mestre PMY", "PMY master tour")}</label>
-                    <select className="pmy-form-input" value={gygConfigTourId} onChange={(e) => handleGygTourSelection(e.target.value)}>
-                      <option value="">{ui("-- Selecione --", "-- Select --")}</option>
-                      {(tours || [])
-                        .filter((tour) => tour.shopifyStatus !== 'INACTIVE')
-                        .map((tour) => (
-                          <option key={tour.id} value={tour.id}>
-                            {tour.title}{tour.gygActivityId ? ' ✓ GYG' : ''}
-                          </option>
-                        ))}
-                    </select>
+                    <DropdownSelect
+                      value={gygConfigTourId}
+                      onChange={handleGygTourSelection}
+                      placeholder={ui("Selecione", "Select")}
+                      searchPlaceholder={ui("Buscar passeio…", "Search tour…")}
+                      ariaLabel={ui("Tour mestre PMY", "PMY master tour")}
+                      options={(tours || []).filter((tour) => tour.shopifyStatus !== "INACTIVE").map((tour) => ({ value: tour.id, label: `${tour.title}${tour.gygActivityId ? " ✓ GYG" : ""}`, searchText: tour.title }))}
+                    />
                   </div>
   
                   {selectedGygTour && (
@@ -992,14 +982,12 @@ export default function CentralModalLayer(props) {
                           </div>
                           <div className="pmy-form-group pmy-ds-migrated-1x7aa6i pmy-civitatis-environment-field">
                             <label className="pmy-ds-migrated-18dm9zi">{ui("Ambiente", "Environment")}</label>
-                            <select
-                              className="pmy-form-input"
+                            <DropdownSelect
                               value={integrationEnvironmentInput}
-                              onChange={(event) => setIntegrationEnvironmentInput(event.target.value)}
-                            >
-                              <option value="test">test</option>
-                              <option value="live">live</option>
-                            </select>
+                              onChange={setIntegrationEnvironmentInput}
+                              ariaLabel={ui("Ambiente", "Environment")}
+                              options={[{ value: "test", label: "test" }, { value: "live", label: "live" }]}
+                            />
                           </div>
                         </>
                       )}
@@ -1197,15 +1185,13 @@ export default function CentralModalLayer(props) {
                           return (
                             <label className="pmy-booking-group">
                               {ui("Grupo:", "Group:")}
-                              <select
+                              <DropdownSelect
+                                className="pmy-ds-dropdown--inline"
                                 value={booking.groupGuideId || ""}
-                                onChange={(e) => handleSetBookingGroup(booking.id, e.target.value).catch((error) => notify?.(error.message, "error"))}
-                              >
-                                <option value="">{ui("Automático (pelo idioma)", "Automatic (by language)")}</option>
-                                {groupGuides.map((a) => (
-                                  <option key={a.guideId || a.guide.id} value={a.guideId || a.guide.id}>{a.guide.name}</option>
-                                ))}
-                              </select>
+                                onChange={(value) => handleSetBookingGroup(booking.id, value).catch((error) => notify?.(error.message, "error"))}
+                                ariaLabel={ui("Grupo", "Group")}
+                                options={[{ value: "", label: ui("Automático (pelo idioma)", "Automatic (by language)") }, ...groupGuides.map((a) => ({ value: a.guideId || a.guide.id, label: a.guide.name }))]}
+                              />
                             </label>
                           );
                         })()}
@@ -1276,21 +1262,26 @@ export default function CentralModalLayer(props) {
                   <h4 className="pmy-ds-migrated-1j7wbnq">{ui("➕ Escalar Passeio na Folha Diária", "➕ Assign Tour to Daily Schedule")}</h4>
                   <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                     <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Tour", "Select Tour")}</label>
-                    <select className="pmy-form-input" value={modalSelectedTour} onChange={e => handleModalTourChange(e.target.value)} required>
-                      <option value="">{ui("-- Selecione o Tour --", "-- Select Tour --")}</option>
-                      {tourOptions.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                    </select>
+                    <DropdownSelect
+                      value={modalSelectedTour}
+                      onChange={handleModalTourChange}
+                      required
+                      placeholder={ui("Selecione o tour", "Select tour")}
+                      searchPlaceholder={ui("Buscar passeio…", "Search tour…")}
+                      ariaLabel={ui("Tour", "Tour")}
+                      options={tourOptions.map((t) => ({ value: t.id, label: t.title }))}
+                    />
                   </div>
                   {modalSelectedTour && (
                     <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                       <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Horário:", "Select Time:")}</label>
-                      <select
-                        className="pmy-form-input"
+                      <DropdownSelect
                         value={modalSelectedHour}
-                        onChange={(event) => setModalSelectedHour(event.target.value)}
-                      >
-                        {modalAvailableHours.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
+                        onChange={setModalSelectedHour}
+                        ariaLabel={ui("Horário", "Time")}
+                        placeholder={ui("Horário", "Time")}
+                        options={modalAvailableHours.map((h) => ({ value: h, label: h }))}
+                      />
                     </div>
                   )}
                   {modalSelectedTour && (() => {
@@ -1326,14 +1317,14 @@ export default function CentralModalLayer(props) {
                   })()}
                   <div className="pmy-form-box-item pmy-ds-migrated-ismtyz" >
                     <label className="pmy-ds-migrated-67de2v">{ui("Selecione o Guia:", "Select Guide:")}</label>
-                    <select
-                      className="pmy-form-input"
+                    <DropdownSelect
                       value={modalSelectedGuide}
-                      onChange={(event) => setModalSelectedGuide(event.target.value)}
-                    >
-                      <option value="">{ui("-- Selecione o Guia --", "-- Select Guide --")}</option>
-                      {scheduleGuides.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
+                      onChange={setModalSelectedGuide}
+                      placeholder={ui("Selecione o guia", "Select guide")}
+                      searchPlaceholder={ui("Buscar guia…", "Search guide…")}
+                      ariaLabel={ui("Guia", "Guide")}
+                      options={scheduleGuides.map((g) => ({ value: g.id, label: g.name }))}
+                    />
                   </div>
                   {guideAssignmentMessage && (
                     <div className={`pmy-ds-inline-message ${guideAssignmentMessage.toLowerCase().includes("erro") || guideAssignmentMessage.toLowerCase().includes("já está") || guideAssignmentMessage.toLowerCase().includes("não foi") ? "is-danger" : "is-success"}`}>
@@ -1891,7 +1882,6 @@ export default function CentralModalLayer(props) {
     if (!editingGuide) return null;
     const guide = guidesList.find(g => g.id === editingGuide);
     if (!guide) return null;
-    const currentDdi = ddiList.find(d => d.code === editGuideDdi) || { iso: "PT" };
     const shopifyManaged = Boolean(guide.shopifyMetaobjectId);
     return (
       <div
@@ -2004,21 +1994,7 @@ export default function CentralModalLayer(props) {
               <div className="pmy-form-group pmy-ds-migrated-1a0iesu" >
                 <label htmlFor="pmy-edit-guide-whatsapp">WhatsApp</label>
                 <div className="pmy-guide-phone-row">
-                  <div className="pmy-guide-phone-prefix">
-                    <img
-                      src={getFlagUrl(currentDdi.iso)}
-                      alt={currentDdi.iso || ""}
-                      className="pmy-guide-phone-flag"
-                    />
-                    <select
-                      className="pmy-form-input pmy-guide-phone-select"
-                      value={editGuideDdi}
-                      onChange={e => setEditGuideDdi(e.target.value)}
-                      aria-label={ui("DDI do WhatsApp", "WhatsApp country code")}
-                    >
-                      {ddiList.map((d,i) => <option key={i} value={d.code}>{d.code}</option>)}
-                    </select>
-                  </div>
+                  <PhoneCodeSelect value={editGuideDdi} onChange={setEditGuideDdi} ddiList={ddiList} lang={lang} ariaLabel={ui("DDI do WhatsApp", "WhatsApp country code")} />
                   <input
                     id="pmy-edit-guide-whatsapp"
                     type="tel"

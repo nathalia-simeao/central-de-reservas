@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, SectionHeader } from "./PmyUI";
+import { Button, Card, SectionHeader, DropdownSelect } from "./PmyUI";
 import { PRICE_CATEGORIES, PRICE_PLATFORMS, normalizePlatformPrices } from "../../utils/platform-prices.js";
 
 const PLATFORM_NAMES = { GETYOURGUIDE: "GetYourGuide", VIATOR: "Viator", HEADOUT: "Headout", CIVITATIS: "Civitatis" };
@@ -65,12 +65,9 @@ export default function PlatformPricesPanel({ tours = [], platformPrices, onSave
       />
       <label className="pmy-prices__tour">
         {tr("Passeio", "Tour")}
-        <select value={tourId} onChange={(e) => setTourId(e.target.value)}>
-          <option value="">{tr("Escolha o passeio", "Choose a tour")}</option>
-          {sortedTours.map((t) => (
-            <option key={t.id} value={t.id}>{configured.has(t.id) ? "● " : ""}{t.title}</option>
-          ))}
-        </select>
+        <DropdownSelect value={tourId} onChange={setTourId} placeholder={tr("Escolha o passeio", "Choose a tour")}
+          searchPlaceholder={tr("Buscar passeio…", "Search tour…")}
+          options={sortedTours.map((t) => ({ value: t.id, label: `${configured.has(t.id) ? "● " : ""}${t.title}`, searchText: t.title, meta: configured.has(t.id) ? tr("preços definidos", "prices set") : undefined }))} />
       </label>
 
       {tourId && (

@@ -1,15 +1,7 @@
 import { useState } from "react";
 import TourCountryFlag from "./TourCountryFlag";
 import { TEAM_AREAS, areaLabel, personAreas } from "../../utils/team-areas.js";
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Icon,
-  SectionHeader,
-  Tabs,
-} from "./PmyUI";
+import { Badge, Button, Card, EmptyState, Icon, SectionHeader, Tabs, DropdownSelect, PhoneCodeSelect } from "./PmyUI";
 
 export default function GuidesTab(props) {
   const {
@@ -165,9 +157,7 @@ export default function GuidesTab(props) {
             <label>E-mail<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
             <label>WhatsApp
               <span className="pmy-person-form__phone">
-                <select value={form.ddi} onChange={(e) => setForm({ ...form, ddi: e.target.value })} aria-label={tr("Código do país", "Country code")}>
-                  {(ddiList.length ? ddiList : [{ code: "+351" }, { code: "+55" }]).map((d) => <option key={`${d.iso || ""}${d.code}`} value={d.code}>{d.code}</option>)}
-                </select>
+                <PhoneCodeSelect value={form.ddi} onChange={(ddi) => setForm({ ...form, ddi })} ddiList={ddiList} lang={lang} />
                 <input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </span>
             </label>
@@ -411,10 +401,9 @@ function UnlinkedAccessRow({ user, people, currentUser, onSave, lang }) {
         <strong>{user.name || `${tr("Acesso Shopify", "Shopify login")} #${String(user.shopifyUserId).slice(-6)}`}{currentUser?.id === user.id ? ` · ${tr("você", "you")}` : ""}</strong>
         <small>{tr("Último acesso", "Last seen")}: {Number.isNaN(seen.getTime()) ? "—" : new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "pt-PT", { dateStyle: "short", timeStyle: "short" }).format(seen)} · {user.role === "ADMIN" ? tr("Administrador", "Admin") : tr("Equipe", "Team")}</small>
       </div>
-      <select value="" disabled={busy} onChange={(e) => e.target.value && run({ guideId: e.target.value })} aria-label={tr("Ligar a pessoa", "Link to person")}>
-        <option value="">{tr("Ligar a…", "Link to…")}</option>
-        {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
+      <DropdownSelect value="" disabled={busy} placeholder={tr("Ligar a…", "Link to…")} ariaLabel={tr("Ligar a pessoa", "Link to person")}
+        searchPlaceholder={tr("Buscar pessoa…", "Search person…")}
+        onChange={(id) => id && run({ guideId: id })} options={people.map((p) => ({ value: p.id, label: p.name }))} />
       {message && <small role="alert" className="pmy-rotation__error">{message}</small>}
     </div>
   );

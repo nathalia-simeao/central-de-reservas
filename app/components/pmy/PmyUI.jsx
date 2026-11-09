@@ -207,7 +207,7 @@ export function DropdownSelect({
   options = [],
   onChange,
   placeholder = "Selecione",
-  searchable = false,
+  searchable,
   searchPlaceholder = "Pesquisar...",
   emptyLabel = "Nenhuma opção encontrada.",
   disabled = false,
@@ -227,9 +227,12 @@ export function DropdownSelect({
     .toLowerCase()
     .trim();
 
+  // Regra da Central: listas com mais de 7 opções sempre têm busca.
+  const withSearch = searchable ?? options.length > 7;
+
   const visibleOptions = normalizedQuery
     ? options.filter((option) =>
-        String(option?.label || "")
+        String(option?.searchText ?? (typeof option?.label === "string" ? option.label : option?.value) ?? "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase()
@@ -262,7 +265,7 @@ export function DropdownSelect({
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
-    const focusTimer = searchable
+    const focusTimer = withSearch
       ? window.setTimeout(() => searchRef.current?.focus?.(), 0)
       : null;
 
@@ -271,7 +274,7 @@ export function DropdownSelect({
       document.removeEventListener("keydown", handleKeyDown);
       if (focusTimer) window.clearTimeout(focusTimer);
     };
-  }, [open, searchable]);
+  }, [open, withSearch]);
 
   const selectOption = (option) => {
     if (option?.disabled) return;
@@ -314,7 +317,7 @@ export function DropdownSelect({
         }}
       >
         <span className="pmy-ds-dropdown__value">
-          {selectedOption?.label || placeholder}
+          {selectedOption?.selectedLabel || selectedOption?.label || placeholder}
         </span>
         <Icon
           name="chevronDown"
@@ -325,7 +328,7 @@ export function DropdownSelect({
 
       {open ? (
         <div className="pmy-ds-dropdown__popover">
-          {searchable ? (
+          {withSearch ? (
             <div className="pmy-ds-dropdown__search-wrap">
               <Icon name="search" size={16} />
               <input
@@ -350,7 +353,7 @@ export function DropdownSelect({
                   String(option?.value ?? "") === String(value ?? "");
                 return (
                   <button
-                    key={String(option?.value ?? option?.label)}
+                    key={String(option?.key ?? option?.value ?? option?.label)}
                     type="button"
                     role="option"
                     aria-selected={selected}
@@ -382,6 +385,70 @@ export function DropdownSelect({
         </div>
       ) : null}
     </div>
+  );
+}
+
+// DDI com bandeira e nome do país; a busca acha por "Brasil", "brazil", "55" ou "+55".
+export function PhoneCodeSelect({ value, onChange, ddiList = [], lang = "pt", ariaLabel, className = "", disabled = false }) {
+  const names = (() => {
+    try { return new Intl.DisplayNames([lang === "en" ? "en" : "pt-PT"], { type: "region" }); } catch { return null; }
+  })();
+  const namesEn = (() => {
+    try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; }
+  })();
+  const flag = (iso) => (iso ? <img src={`https://flagcdn.com/w20/${String(iso).toLowerCase()}.png`} alt="" width="20" height="14" className="pmy-ds-dropdown__flag" /> : null);
+  const options = ddiList.map((d) => {
+    const country = (names && d.iso && names.of(d.iso)) || d.iso || "";
+    const countryEn = (namesEn && d.iso && namesEn.of(d.iso)) || "";
+    return {
+      key: `${d.iso || ""}${d.code}`,
+      value: d.code,
+      label: <span className="pmy-ds-dropdown__flag-row">{flag(d.iso)}<b>{d.code}</b><span>{country}</span></span>,
+      selectedLabel: <span className="pmy-ds-dropdown__flag-row">{flag(d.iso)}<b>{d.code}</b></span>,
+      searchText: `${d.code} ${String(d.code).replace("+", "")} ${country} ${countryEn} ${d.iso || ""}`,
+    };
+  }).sort((a, b) => String(a.searchText).localeCompare(String(b.searchText)));
+  // Mais usados primeiro.
+  const top = ["+351", "+55", "+1", "+44", "+34", "+33", "+39", "+49"];
+  const ordered = [
+    ...top.map((code) => options.find((o) => o.value === code)).filter(Boolean),
+    ...options.filter((o) => !top.includes(o.value)),
+  ];
+  return (
+    <DropdownSelect
+      className={["pmy-ds-phone-code", className].filter(Boolean).join(" ")}
+      value={value}
+      onChange={(next) => onChange?.(next)}
+      options={ordered}
+      searchable
+      searchPlaceholder={lang === "en" ? "Search country or code…" : "Buscar país ou código…"}
+      emptyLabel={lang === "en" ? "No country found." : "Nenhum país encontrado."}
+      ariaLabel={ariaLabel || (lang === "en" ? "Country code" : "Código do país")}
+      disabled={disabled}
+    />
+  );
+}
+
+// Horário no padrão da Central (a cada 15 min, com busca: digite "14" ou "14:30").
+export function TimeSelect({ value, onChange, step = 15, lang = "pt", ariaLabel, className = "", placeholder }) {
+  const options = [];
+  for (let m = 0; m < 24 * 60; m += step) {
+    const hh = String(Math.floor(m / 60)).padStart(2, "0");
+    const mm = String(m % 60).padStart(2, "0");
+    options.push({ value: `${hh}:${mm}`, label: `${hh}:${mm}`, searchText: `${hh}:${mm} ${hh}h${mm} ${hh}${mm}` });
+  }
+  if (value && !options.some((o) => o.value === value)) options.unshift({ value, label: value });
+  return (
+    <DropdownSelect
+      className={className}
+      value={value}
+      onChange={(next) => onChange?.(next)}
+      options={options}
+      searchable
+      placeholder={placeholder || (lang === "en" ? "Time" : "Horário")}
+      searchPlaceholder={lang === "en" ? "e.g. 14:30" : "ex.: 14:30"}
+      ariaLabel={ariaLabel || (lang === "en" ? "Time" : "Horário")}
+    />
   );
 }
 

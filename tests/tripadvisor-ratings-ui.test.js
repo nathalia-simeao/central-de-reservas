@@ -17,7 +17,7 @@ test("Tripadvisor modal uses Design System buttons", async () => {
     new URL("../app/components/pmy/CentralModalLayer.jsx", import.meta.url),
     "utf8",
   );
-  assert.equal(modal.includes('import { Button, Icon } from "./PmyUI";'), true);
+  assert.match(modal, /import \{[^}]*\bButton\b[^}]*\bIcon\b[^}]*\} from "\.\/PmyUI";/);
   assert.equal(modal.includes('icon="external"'), true);
   assert.equal(modal.includes('icon="refresh"'), true);
 });

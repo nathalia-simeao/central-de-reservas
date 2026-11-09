@@ -9,20 +9,7 @@ import { useMemo, useState } from "react";
 
 import { variantMatchesTourLanguage } from "../../utils/tour-languages";
 
-import {
-  Badge,
-  Button,
-  Card,
-  DatePicker,
-  DropdownSelect,
-  EmptyState,
-  FormField,
-  Icon,
-  Input,
-  SectionHeader,
-  Tabs,
-  Toast,
-} from "./PmyUI";
+import { Badge, Button, Card, DatePicker, DropdownSelect, EmptyState, FormField, Icon, Input, SectionHeader, Tabs, Toast, TimeSelect } from "./PmyUI";
 
 
 const TOUR_FIELD_LABELS = {
@@ -369,12 +356,14 @@ export default function AgendaTab(props) {
                 <div className="pmy-ds-inline-panel">
                   <div className="pmy-ds-booking-meta-grid">
                     <FormField label={tr("Data do Tour", "Tour Date")} required>
-                      <Input
-                        type="date"
+                      <DatePicker
                         min={todayKey}
                         value={bookingDate}
-                        onChange={(event) => setBookingDate(event.target.value)}
-                        required
+                        onChange={(event) => setBookingDate(event?.target?.value ?? event)}
+                        locale={lang === "en" ? "en-GB" : "pt-PT"}
+                        placeholder={lang === "en" ? "dd/mm/yyyy" : "dd/mm/aaaa"}
+                        todayLabel={tr("Hoje", "Today")}
+                        clearLabel={tr("Limpar", "Clear")}
                       />
                     </FormField>
 
@@ -399,12 +388,7 @@ export default function AgendaTab(props) {
                           }))}
                         />
                       ) : (
-                        <Input
-                          type="time"
-                          value={bookingTime}
-                          onChange={(event) => setBookingTime(event.target.value)}
-                          required
-                        />
+                        <TimeSelect value={bookingTime} onChange={setBookingTime} lang={lang} />
                       )}
                     </FormField>
                   </div>

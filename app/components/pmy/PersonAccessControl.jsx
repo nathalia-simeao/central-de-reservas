@@ -1,3 +1,4 @@
+import { DropdownSelect } from "./PmyUI";
 import { useState } from "react";
 
 // Acesso à Central de uma pessoa da Equipe: liga um usuário Shopify (que já
@@ -31,19 +32,17 @@ export default function PersonAccessControl({ person, users = [], currentUser = 
   return (
     <div className="pmy-person-access">
       <span className="pmy-person-access__label">{tr("Acesso à Central", "Central access")}</span>
-      <select
+      <DropdownSelect
         value={linked?.id || ""}
         disabled={busy}
-        aria-label={tr("Acesso à Central", "Central access")}
-        onChange={async (e) => {
-          const userId = e.target.value;
+        ariaLabel={tr("Acesso à Central", "Central access")}
+        placeholder={tr("Sem acesso", "No access")}
+        options={[{ value: "", label: tr("Sem acesso", "No access") }, ...free.map((u) => ({ value: u.id, label: userLabel(u) }))]}
+        onChange={async (userId) => {
           if (!userId && linked) await run(linked.id, { guideId: "" });
           else if (userId) await run(userId, { guideId: person.id });
         }}
-      >
-        <option value="">{tr("Sem acesso", "No access")}</option>
-        {free.map((u) => <option key={u.id} value={u.id}>{userLabel(u)}</option>)}
-      </select>
+      />
       {linked && (
         <div className="pmy-person-access__roles" role="group" aria-label={tr("Perfil", "Role")}>
           {[["ADMIN", tr("Administrador", "Admin")], ["STAFF", tr("Equipe", "Team")]].map(([role, label]) => (

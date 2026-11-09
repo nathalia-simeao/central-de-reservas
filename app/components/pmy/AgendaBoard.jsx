@@ -10,7 +10,7 @@ function FocusInput(props) {
   useEffect(() => { ref.current?.focus(); }, []);
   return <input ref={ref} {...props} />;
 }
-import { DatePicker } from "./PmyUI";
+import { DatePicker, DropdownSelect, TimeSelect } from "./PmyUI";
 import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../utils/weather.js";
 import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
@@ -289,12 +289,10 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onClose, lang }) {
   };
   return (
     <div className="pmy-board-add">
-      <select value={tourId} onChange={(e) => setTourId(e.target.value)} aria-label={tr("Passeio", "Tour")}>
-        <option value="">{tr("Passeio…", "Tour…")}</option>
-        {tours.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-      </select>
+      <DropdownSelect value={tourId} onChange={setTourId} placeholder={tr("Passeio…", "Tour…")} ariaLabel={tr("Passeio", "Tour")}
+        searchPlaceholder={tr("Buscar passeio…", "Search tour…")} options={tours.map((t) => ({ value: t.id, label: t.title }))} />
       <div className="pmy-board-add__row">
-        <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={tr("Horário", "Time")} />
+        <TimeSelect value={time} onChange={setTime} lang={lang} />
         <button type="button" className="pmy-board-pick" onClick={() => setPicking(!picking)}>
           {guideId ? <><GuideAvatar guide={guides.find((g) => g.id === guideId)} size={22} /> {guides.find((g) => g.id === guideId)?.name}</> : tr("Escolher guia…", "Choose guide…")}
         </button>
@@ -468,7 +466,7 @@ function MoveDialog({ move, columns, onConfirm, onCancel, lang }) {
           </label>
           <label className="pmy-board-pop__field">
             {tr("Horário", "Time")}
-            <input type="time" value={timeKey} onChange={(e) => setTimeKey(e.target.value)} />
+            <TimeSelect value={timeKey} onChange={setTimeKey} lang={lang} />
           </label>
         </div>
         <ul className="pmy-board-move__summary">
