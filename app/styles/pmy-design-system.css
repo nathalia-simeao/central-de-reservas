@@ -6297,3 +6297,7 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-unlinked-access__row strong { display: block; font-size: 14px; }
 .pmy-unlinked-access__row small { font-size: 12px; opacity: .75; }
 @media (max-width: 650px) { .pmy-unlinked-access__row { grid-template-columns: 1fr; } }
+
+/* Modal de editar pessoa: cabe na tela, rola por dentro e o botão Salvar fica sempre visível */
+.pmy-ds-migrated-zuczkc { width: 560px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.pmy-ds-migrated-zuczkc .pmy-ds-migrated-y37ip1 { position: sticky; bottom: 0; z-index: 2; margin-top: 16px; padding: 14px 0 16px; background: var(--pmy-ds-surface, #fff); box-shadow: 0 -10px 16px -12px rgba(0,0,0,.25); }
