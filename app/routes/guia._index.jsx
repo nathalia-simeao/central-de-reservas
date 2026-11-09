@@ -25,7 +25,7 @@ export const loader = async ({ request }) => {
           select: { tourId: true, startTime: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true, language: true, groupGuideId: true },
         }),
         db.tourDeparture.findMany({
-          where: { tourId: { in: tourIds }, startTime: { gte: from, lte: to }, AND: [excludeTestBookingsWhere()] },
+          where: { tourId: { in: tourIds }, startTime: { gte: from, lte: to } },
           select: { tourId: true, startTime: true, checkStartAt: true, checkEndAt: true },
         }),
       ])

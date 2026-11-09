@@ -29,7 +29,7 @@ export const loader = async ({ request }) => {
       : [],
     tourIds.length
       ? db.tourDeparture.findMany({
-          where: { tourId: { in: tourIds }, startTime: { gte: range.start, lt: range.end }, AND: [excludeTestBookingsWhere()] },
+          where: { tourId: { in: tourIds }, startTime: { gte: range.start, lt: range.end } },
           select: { tourId: true, startTime: true, checkEndAt: true },
         })
       : [],
