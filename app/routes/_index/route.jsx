@@ -2134,6 +2134,51 @@ function CentralDeReservasContent() {
       result.assignment,
     ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
   };
+  // Quadro: administrador move a saída inteira para outra data (e, se quiser, outro horário).
+  const handleMoveDeparture = async ({ tourId, fromStartTime, dateKey, timeKey }) => {
+    const fd = new FormData();
+    fd.append("_action", "moveDeparture");
+    fd.append("tourId", tourId);
+    fd.append("fromStartTime", new Date(fromStartTime).toISOString());
+    fd.append("date", dateKey);
+    fd.append("time", timeKey);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível mover a saída.", "Unable to move the departure."));
+    const to = result.toStartTime;
+    const movedBookings = new Set(result.bookingIds || []);
+    const movedAssignments = new Set(result.assignmentIds || []);
+    setBookingsList((current) => current.map((item) => (movedBookings.has(item.id) ? { ...item, startTime: to } : item)));
+    setGuideAssignmentsList((current) => current
+      .map((item) => (movedAssignments.has(item.id) ? { ...item, startTime: to } : item))
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime)));
+    const fromKey = departureKey(tourId, fromStartTime);
+    const toKey = departureKey(tourId, to);
+    const dep = result.departure;
+    setDepartureTags((current) => {
+      const next = { ...current };
+      delete next[fromKey];
+      if (dep) next[toKey] = dep.tagIds || [];
+      return next;
+    });
+    setDepartureInfo((current) => {
+      const next = { ...current };
+      const moved = next[fromKey];
+      delete next[fromKey];
+      if (dep) {
+        next[toKey] = {
+          ...(next[toKey] || {}),
+          checkStartAt: dep.checkStartAt || null,
+          checkMidAt: dep.checkMidAt || null,
+          checkEndAt: dep.checkEndAt || null,
+          guideNotes: Array.isArray(dep.guideNotes) ? dep.guideNotes : [],
+          checklists: dep.checklists || null,
+          attachments: [...(next[toKey]?.attachments || []), ...(moved?.attachments || [])],
+        };
+      }
+      return next;
+    });
+    return result;
+  };
   const handleBoardRemoveAssignment = async (id) => {
     if (typeof window !== "undefined" && !window.confirm(ui("Tirar este guia da saída?", "Remove this guide from the departure?"))) return;
     const fd = new FormData();
@@ -2968,6 +3013,7 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
+              onMoveDeparture: isCentralAdmin ? handleMoveDeparture : null,
             },
           }} />
 

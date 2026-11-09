@@ -411,6 +411,80 @@ function ChecklistSection({ card, raw, onOp, lang }) {
   );
 }
 
+/* ---------- Mover saída (só administradores) ---------- */
+const CENTRAL_CHANNELS = new Set(["MANUAL", "CENTRAL", "SHOPIFY", "GUIDE"]);
+
+function MoveDialog({ move, columns, onConfirm, onCancel, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [dateKey, setDateKey] = useState(move.dateKey);
+  const [timeKey, setTimeKey] = useState(move.timeKey);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const { card } = move;
+  const external = card.bookings.filter((b) => !CENTRAL_CHANNELS.has(String(b.platform || "").toUpperCase()));
+  const channels = [...new Set(external.map((b) => b.platform))];
+  const target = columns.find((c) => c.dateKey === dateKey)?.cards.find((c) => c.tourId === card.tourId && c.timeKey === timeKey && c.key !== card.key);
+  const unchanged = dateKey === card.dateKey && timeKey === card.timeKey;
+  const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(timeKey);
+
+  const confirm = async () => {
+    setBusy(true);
+    setError("");
+    try { await onConfirm({ card, dateKey, timeKey }); }
+    catch (e) { setError(e?.message || tr("Não foi possível mover a saída.", "Unable to move the departure.")); setBusy(false); }
+  };
+
+  return (
+    <div className="pmy-board-modal" role="dialog" aria-modal="true" aria-label={tr("Mover saída", "Move departure")}>
+      <div className="pmy-board-modal__card pmy-board-move">
+        <div className="pmy-board-modal__head">
+          <div>
+            <h3>{tr("Mover saída", "Move departure")}</h3>
+            <p>{card.title} · {columnTitle(card.dateKey, lang)} · {card.timeKey}</p>
+          </div>
+          <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} disabled={busy} onClick={onCancel}>×</button>
+        </div>
+        <div className="pmy-board-move__fields">
+          <label className="pmy-board-pop__field">
+            {tr("Nova data", "New date")}
+            <DatePicker
+              value={dateKey}
+              onChange={(e) => { const v = e?.target?.value ?? e; if (v) setDateKey(v); }}
+              locale={lang === "en" ? "en-GB" : "pt-PT"}
+              placeholder={lang === "en" ? "dd/mm/yyyy" : "dd/mm/aaaa"}
+              todayLabel={tr("Hoje", "Today")}
+              clearLabel={tr("Limpar", "Clear")}
+            />
+          </label>
+          <label className="pmy-board-pop__field">
+            {tr("Horário", "Time")}
+            <input type="time" value={timeKey} onChange={(e) => setTimeKey(e.target.value)} />
+          </label>
+        </div>
+        <ul className="pmy-board-move__summary">
+          <li>{tr("Vão junto", "Moving along")}: {card.bookings.length} {tr("reserva(s)", "booking(s)")} ({card.pax + card.pending} {tr("pessoas", "people")}), {card.guides.length} {tr("guia(s)", "guide(s)")}, {tr("etiquetas, checklists, observações e anexos", "labels, checklists, notes and attachments")}.</li>
+          {target && <li>{tr(`Já existe essa saída na data escolhida (${target.pax} pessoas). As duas vão virar uma só.`, `This departure already exists on that date (${target.pax} people). Both will be merged.`)}</li>}
+        </ul>
+        {channels.length > 0 && (
+          <p className="pmy-board-move__warn" role="note">
+            {tr(
+              `Atenção: ${external.length} reserva(s) vieram de ${channels.join(", ")}. A Central muda a data aqui, mas a remarcação também precisa ser feita na plataforma, senão o cliente continua com a data antiga no voucher.`,
+              `Heads up: ${external.length} booking(s) came from ${channels.join(", ")}. The Central changes the date here, but you must also reschedule on that platform.`,
+            )}
+          </p>
+        )}
+        {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
+        <div className="pmy-board-pop__actions">
+          <button type="button" className="pmy-board-btn is-primary" disabled={busy || unchanged || !validTime} onClick={confirm}>
+            {busy ? tr("Movendo…", "Moving…") : tr("Mover saída", "Move departure")}
+          </button>
+          <button type="button" className="pmy-board-btn" disabled={busy} onClick={onCancel}>{tr("Cancelar", "Cancel")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Quadro ---------- */
 export default function AgendaBoard({
   bookings = [],
@@ -428,6 +502,7 @@ export default function AgendaBoard({
   onRemoveAttachment,
   onResetCheck,
   onChecklistOp,
+  onMoveDeparture = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -436,7 +511,12 @@ export default function AgendaBoard({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [addingDate, setAddingDate] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [dragKey, setDragKey] = useState("");
+  const [dropDate, setDropDate] = useState("");
+  const [pendingMove, setPendingMove] = useState(null); // { card, dateKey, timeKey }
+  const [moveNotice, setMoveNotice] = useState("");
   const scrollRef = useRef(null);
+  const canMove = typeof onMoveDeparture === "function";
   const { tags } = normalizeAgendaLabels(agendaLabels);
   const tagById = new Map(tags.map((t) => [t.id, t]));
 
@@ -470,6 +550,24 @@ export default function AgendaBoard({
   const assignOnCard = (card, guideId, languages) =>
     onAssignGuide({ tourId: card.tourId, dateKey: card.dateKey, time: card.timeKey, guideId, languages });
 
+  const allCards = columns.flatMap((c) => c.cards);
+  const endDrag = () => { setDragKey(""); setDropDate(""); };
+  const dropOn = (dateKey) => {
+    const card = allCards.find((c) => c.key === dragKey);
+    endDrag();
+    if (card && dateKey !== card.dateKey) setPendingMove({ card, dateKey, timeKey: card.timeKey });
+  };
+  const confirmMove = async ({ card, dateKey, timeKey }) => {
+    const result = await onMoveDeparture({ tourId: card.tourId, fromStartTime: card.startTime, dateKey, timeKey });
+    setPendingMove(null);
+    setOpenKey("");
+    const external = result?.external?.length || 0;
+    setMoveNotice(
+      `${card.title}: ${tr("movida para", "moved to")} ${columnTitle(dateKey, lang)} ${timeKey}.` +
+      (external ? ` ${tr(`Lembre de remarcar ${external} reserva(s) na plataforma de origem.`, `Remember to reschedule ${external} booking(s) on the source platform.`)}` : ""),
+    );
+  };
+
   return (
     <section className="pmy-board" aria-label={tr("Quadro da Agenda", "Agenda board")}>
       <div className="pmy-board__toolbar">
@@ -492,9 +590,23 @@ export default function AgendaBoard({
         </button>
       </div>
 
+      {canMove && <p className="pmy-board__hint">{tr("Administradores: arraste um cartão para outra coluna para mudar a data da saída.", "Admins: drag a card to another column to change the departure date.")}</p>}
+      {moveNotice && (
+        <p className="pmy-board__notice" role="status">
+          {moveNotice}
+          <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar aviso", "Dismiss")} onClick={() => setMoveNotice("")}>×</button>
+        </p>
+      )}
+
       <div className="pmy-board__scroll" ref={scrollRef}>
         {columns.map((col) => (
-          <div key={col.dateKey} className="pmy-board__col">
+          <div
+            key={col.dateKey}
+            className={`pmy-board__col${dragKey && dropDate === col.dateKey ? " is-drop" : ""}`}
+            onDragOver={canMove ? (e) => { if (!dragKey) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropDate !== col.dateKey) setDropDate(col.dateKey); } : undefined}
+            onDragLeave={canMove ? (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropDate(""); } : undefined}
+            onDrop={canMove ? (e) => { e.preventDefault(); dropOn(col.dateKey); } : undefined}
+          >
             <div className="pmy-board__col-head">
               <strong>{columnTitle(col.dateKey, lang)}</strong>
               <span>{col.cards.length}</span>
@@ -505,7 +617,16 @@ export default function AgendaBoard({
                 const color = tourColor(agendaLabels, card.tourId);
                 const progress = checklistProgress(card, departureInfo[card.key]?.checklists);
                 return (
-                  <button key={card.key} type="button" className="pmy-board-card" style={{ "--tour-color": color }} onClick={() => { setOpenKey(card.key); setLabelsOpen(false); }}>
+                  <button
+                    key={card.key}
+                    type="button"
+                    className={`pmy-board-card${dragKey === card.key ? " is-dragging" : ""}`}
+                    style={{ "--tour-color": color }}
+                    draggable={canMove}
+                    onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.key); setDragKey(card.key); } : undefined}
+                    onDragEnd={canMove ? endDrag : undefined}
+                    onClick={() => { setOpenKey(card.key); setLabelsOpen(false); }}
+                  >
                     <span className="pmy-board-card__labels">
                       {labelIds.length
                         ? labelIds.map((id) => {
@@ -576,6 +697,15 @@ export default function AgendaBoard({
               <GuidePicker card={openCard} guides={guides} onAssign={assignOnCard} onRemove={onRemoveAssignment} lang={lang} />
             </div>
 
+            {canMove && (
+              <div className="pmy-board-modal__section">
+                <span className="pmy-board-pop__sub">{tr("Data da saída", "Departure date")}</span>
+                <button type="button" className="pmy-board-btn" onClick={() => setPendingMove({ card: openCard, dateKey: openCard.dateKey, timeKey: openCard.timeKey })}>
+                  {tr("Mover para outra data ou horário", "Move to another date or time")}
+                </button>
+              </div>
+            )}
+
             {openCard.bookings.length > 0 && (
               <div className="pmy-board-modal__section">
                 <span className="pmy-board-pop__sub">{tr("Clientes", "Guests")}</span>
@@ -609,6 +739,17 @@ export default function AgendaBoard({
             />
           </div>
         </div>
+      )}
+
+      {pendingMove && (
+        <MoveDialog
+          key={pendingMove.card.key + pendingMove.dateKey}
+          move={pendingMove}
+          columns={columns}
+          onConfirm={confirmMove}
+          onCancel={() => setPendingMove(null)}
+          lang={lang}
+        />
       )}
     </section>
   );

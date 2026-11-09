@@ -703,9 +703,12 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
       };
     }
 
+    // Saída movida no Quadro: a data escolhida pela gestão prevalece sobre o pedido.
+    const effectiveStartTime = existing.movedAt ? existing.startTime : group.startTime;
+
     const availability = await getCentralAvailability(prisma, {
       tourId: group.tour.id,
-      startTime: group.startTime,
+      startTime: effectiveStartTime,
       platform: SHOPIFY_PLATFORM,
       requestedSeats: group.totalParticipants,
       excludeBookingId: existing.id,
@@ -733,7 +736,7 @@ async function upsertShopifyBookingGroup(prisma, group, payload, status) {
         customerEmail: group.customer.customerEmail,
         customerPhone: group.customer.customerPhone,
         language: group.language,
-        startTime: group.startTime,
+        startTime: effectiveStartTime,
         commercialSource: group.commercialSource,
         status,
         bookingRef: group.bookingRef,

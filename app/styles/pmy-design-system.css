@@ -6236,3 +6236,18 @@
 .pmy-checklist__add { display: grid; gap: 6px; padding-left: 32px; }
 .pmy-checklist__add input { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px; border: 2px solid #388bff; width: 100%; }
 .pmy-checklist__add-btn { justify-self: start; margin-left: 32px; }
+
+/* Quadro: mover saída (arrastar o cartão para outra data, só administradores) */
+.pmy-board-card[draggable="true"] { cursor: grab; }
+.pmy-board-card.is-dragging { opacity: .45; }
+.pmy-board__col.is-drop { background: #e9f2ff; outline: 2px dashed #0c66e4; outline-offset: -2px; }
+.pmy-board__hint { margin: 0 0 8px; font-size: 13px; color: #626f86; }
+.pmy-board__notice { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 8px 10px; border-radius: 8px; background: #dcfff1; color: #164b35; font-size: 14px; }
+.pmy-board-move { width: min(520px, 100%); }
+.pmy-board-move__fields { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; }
+.pmy-board-move__fields input[type="time"] { font: inherit; padding: 7px 8px; border: 1px solid #c7cdd6; border-radius: 6px; }
+.pmy-board-move__summary { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: #44546f; }
+.pmy-board-move__warn { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fff7d6; color: #533f04; font-size: 14px; }
+@media (max-width: 650px) {
+  .pmy-board-move__fields { grid-template-columns: 1fr; }
+}

@@ -37,6 +37,7 @@ import {
   SYNC_EVENT_TYPES,
 } from "../utils/sync-queue.server";
 import { localSlotToInstant } from "../utils/gyg-v1.server";
+import { moveDeparture } from "../utils/departure-move.server";
 import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability-metafields.server";
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
@@ -526,6 +527,38 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] updateDepartureChecklist error:", e);
       return json({ success: false, error: e?.message?.startsWith("Limite") || e?.message?.startsWith("Operação") ? e.message : "Não foi possível salvar o checklist." }, { status: 500 });
+    }
+  }
+
+  if (_action === "moveDeparture") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const fromStartTime = new Date(String(formData.get("fromStartTime") || ""));
+      const dateKey = String(formData.get("date") || "").trim();
+      const timeKey = String(formData.get("time") || "").trim();
+      const tour = tourId ? await prisma.tour.findUnique({ where: { id: tourId }, select: { id: true, title: true, timezone: true } }) : null;
+      if (!tour) return json({ success: false, error: "Passeio não encontrado." }, { status: 404 });
+      const toStartTime = localSlotToInstant(dateKey, timeKey, tour.timezone || "Europe/Lisbon");
+      if (!toStartTime) return json({ success: false, error: "Data ou horário de destino inválido." }, { status: 400 });
+
+      const by = centralUser?.name || centralUser?.email || "Administrador";
+      const moved = await moveDeparture(prisma, { tourId: tour.id, fromStartTime, toStartTime, by });
+
+      // As vagas mudam nas duas datas: avisa as plataformas conectadas.
+      for (const startTime of [fromStartTime, toStartTime]) {
+        await enqueueAvailabilitySync(prisma, {
+          tourId: tour.id,
+          startTime,
+          sourcePlatform: "CENTRAL",
+          force: true,
+          payload: { reason: "DEPARTURE_MOVED", by },
+        }).catch((e) => console.error("[PMY] moveDeparture availability sync failed:", e?.message || e));
+      }
+
+      return json({ success: true, toStartTime: toStartTime.toISOString(), ...moved });
+    } catch (e) {
+      console.error("[PMY] moveDeparture error:", e);
+      return json({ success: false, error: e?.status === 400 ? e.message : "Não foi possível mover a saída." }, { status: e?.status || 500 });
     }
   }
 
