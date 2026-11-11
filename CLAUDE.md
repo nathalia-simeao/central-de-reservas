@@ -7,4 +7,4 @@
   - `PhoneCodeSelect` para DDI (bandeira + nome do país, busca por "Brasil" ou "55");
   - `DatePicker` para datas; `TimeSelect` para horários.
 - Toda lista longa precisa ter busca.
-- Exceção: o portal do guia (`app/routes/guia.*`) é página leve de celular e usa os controles nativos do telefone.
+- O portal do guia (`app/routes/guia.*`) também usa `DropdownSelect` e `DatePicker` (pedido da Nathalia, 11/11/2026: nada de lista nativa "estilo Windows"). As cores vêm do `GuideShell`, que mapeia as variáveis do design system para as do portal.

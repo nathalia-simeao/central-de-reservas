@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useSearchParams } from "react-router";
+import { DatePicker, DropdownSelect } from "../components/pmy/PmyUI";
 import db from "../db.server";
 import { unauthenticated } from "../shopify.server";
 import { GuideShell } from "../components/guide/GuideShell";
@@ -48,17 +49,47 @@ async function loadProduct(admin, productId) {
   return payload?.data?.product || null;
 }
 
+// Só passeios ATIVOS no Shopify (nada de rascunho, arquivado ou não listado).
+async function activeProductIds(admin, ids) {
+  const active = new Set();
+  for (let i = 0; i < ids.length; i += 100) {
+    const response = await admin.graphql(
+      `#graphql
+        query GuidePortalProductStatus($ids: [ID!]!) {
+          nodes(ids: $ids) { ... on Product { id status } }
+        }`,
+      { variables: { ids: ids.slice(i, i + 100) } },
+    );
+    const payload = await response.json();
+    for (const node of payload?.data?.nodes || []) {
+      if (node?.id && node.status === "ACTIVE") active.add(node.id);
+    }
+  }
+  return active;
+}
+
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
 
-  const tours = (
+  const linked = (
     await db.tour.findMany({
       where: { shopifyProductId: { not: null } },
       select: { id: true, title: true, shopifyProductId: true },
       orderBy: { title: "asc" },
     })
   ).filter((tour) => /^gid:\/\/shopify\/Product\/\d+$/.test(String(tour.shopifyProductId)));
+
+  let tours = [];
+  let listError = null;
+  try {
+    const { admin } = await shopAdmin();
+    const active = await activeProductIds(admin, [...new Set(linked.map((t) => t.shopifyProductId))]);
+    tours = linked.filter((t) => active.has(t.shopifyProductId));
+  } catch (e) {
+    console.error("[PMY guide sell] product status load failed:", e);
+    listError = "Não foi possível carregar os passeios agora. Tente de novo em instantes.";
+  }
 
   const url = new URL(request.url);
   const tourId = url.searchParams.get("tour");
@@ -87,7 +118,7 @@ export const loader = async ({ request }) => {
     tour: tour ? { id: tour.id, title: product?.title || tour.title } : null,
     variants,
     times,
-    error,
+    error: error || listError,
     today: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date()),
   };
 };
@@ -162,10 +193,15 @@ export default function GuideSell() {
   const { tours, tour, variants, times, error, today } = useLoaderData();
   const result = useActionData();
   const navigation = useNavigation();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const [date, setDate] = useState("");
+  const [language, setLanguage] = useState("");
   const busy = navigation.state !== "idle";
   const [time, setTime] = useState(times.length === 1 ? times[0] : "");
   const [copied, setCopied] = useState(false);
+  const tourKey = tour?.id || "";
+  const singleTime = times.length === 1 ? times[0] : "";
+  useEffect(() => { setTime(singleTime); }, [tourKey, singleTime]);
   const visible = variants.filter((v) => !v.time || v.time === time);
 
   if (result?.ok) {
@@ -211,39 +247,55 @@ export default function GuideSell() {
       {(error || result?.error) && <div className="g-error" role="alert">{result?.error || error}</div>}
 
       <div className="g-card">
-        <Form method="get">
-          <label className="g-field">
-            Passeio
-            <select name="tour" defaultValue={tour?.id || params.get("tour") || ""} onChange={(e) => e.currentTarget.form.requestSubmit()} className="g-select">
-              <option value="" disabled>Escolha o passeio</option>
-              {tours.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-            </select>
-          </label>
-          <noscript><button type="submit" className="g-btn">Continuar</button></noscript>
-        </Form>
+        <div className="g-field">
+          Passeio
+          <DropdownSelect
+            value={tour?.id || params.get("tour") || ""}
+            options={tours.map((t) => ({ value: t.id, label: t.title }))}
+            placeholder="Escolha o passeio"
+            searchPlaceholder="Buscar passeio..."
+            emptyLabel="Nenhum passeio ativo encontrado."
+            ariaLabel="Passeio"
+            onChange={(value) => {
+              const next = new URLSearchParams(params);
+              next.set("tour", value);
+              setParams(next);
+              setTime("");
+            }}
+          />
+        </div>
       </div>
 
       {tour && !error && (
         <Form method="post" className="g-card">
           <input type="hidden" name="tourId" value={tour.id} />
-          <label className="g-field">
+          <input type="hidden" name="date" value={date} />
+          <input type="hidden" name="time" value={time} />
+          <input type="hidden" name="language" value={language} />
+          <div className="g-field">
             Data
-            <input type="date" name="date" min={today} required />
-          </label>
-          <label className="g-field">
+            <DatePicker value={date} min={today} onChange={(value) => setDate(value || "")} />
+          </div>
+          <div className="g-field">
             Horário
-            <select name="time" required value={time} onChange={(e) => setTime(e.target.value)} className="g-select">
-              <option value="" disabled>Escolha o horário</option>
-              {times.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
-          <label className="g-field">
+            <DropdownSelect
+              value={time}
+              options={times.map((t) => ({ value: t, label: t }))}
+              placeholder="Escolha o horário"
+              ariaLabel="Horário"
+              onChange={(value) => setTime(value)}
+            />
+          </div>
+          <div className="g-field">
             Idioma
-            <select name="language" required defaultValue="" className="g-select">
-              <option value="" disabled>Escolha o idioma</option>
-              {LANGUAGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
+            <DropdownSelect
+              value={language}
+              options={LANGUAGES.map(([value, label]) => ({ value, label }))}
+              placeholder="Escolha o idioma"
+              ariaLabel="Idioma"
+              onChange={(value) => setLanguage(value)}
+            />
+          </div>
 
           <div className="g-field" style={{ marginBottom: 4 }}>Ingressos</div>
           {!time && times.length > 0 && <p className="g-empty" style={{ marginBottom: 12 }}>Escolha o horário para ver os ingressos.</p>}
@@ -259,7 +311,7 @@ export default function GuideSell() {
           <label className="g-field">WhatsApp<input name="customerPhone" type="tel" inputMode="tel" placeholder="+351 912 345 678" /></label>
           <label className="g-field">E-mail<input name="customerEmail" type="email" inputMode="email" /></label>
 
-          <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || (times.length > 0 && !time)}>
+          <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !date || !language || (times.length > 0 && !time)}>
             {busy ? "Gerando…" : "Gerar link de pagamento"}
           </button>
         </Form>

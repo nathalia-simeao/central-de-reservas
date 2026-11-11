@@ -1,6 +1,6 @@
 // Layout leve do portal do guia (celular primeiro, sem Polaris/Shopify).
 export const guideStyles = `
-:root { --g-bg:#f6f4f1; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b7280; --g-line:#e5e1db; --g-green:#166534; --g-green-soft:#dcfce7; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
+:root { --surface-color:var(--g-card); --dashboard-text:var(--g-ink); --dashboard-muted:var(--g-muted); --dashboard-accent:var(--g-green); --dashboard-border:var(--g-line); --g-bg:#f6f4f1; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b7280; --g-line:#e5e1db; --g-green:#166534; --g-green-soft:#dcfce7; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
 @media (prefers-color-scheme: dark) { :root { --g-bg:#111614; --g-card:#1a211e; --g-ink:#e8eee9; --g-muted:#9aa5a0; --g-line:#2b3530; --g-green:#4ade80; --g-green-soft:#14361f; --g-red:#f87171; --g-red-soft:#3b1515; --g-amber:#fbbf24; --g-amber-soft:#3a2a0b; } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--g-bg); color:var(--g-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size:16px; -webkit-text-size-adjust:100%; }
@@ -57,6 +57,7 @@ a { color: inherit; }
 .g-file { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--g-line); text-decoration:none; }
 .g-file:first-of-type { border-top:0; }
 .g-file span { overflow-wrap:anywhere; }
+.g-field .pmy-ds-input { font-size:16px; }
 .g-empty { color:var(--g-muted); font-size:14px; margin:0; }
 .g-summary { display:flex; gap:16px; flex-wrap:wrap; color:var(--g-muted); font-size:14px; }
 .g-summary b { color:var(--g-ink); }
