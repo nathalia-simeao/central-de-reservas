@@ -1,8 +1,8 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
-import { Form, Link, useLoaderData } from "react-router";
+import { Form, Link, data, useLoaderData } from "react-router";
 import db from "../db.server";
 import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
-import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookie, sessionTokenFromRequest } from "../utils/guide-portal.server";
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
@@ -50,7 +50,9 @@ export const loader = async ({ request }) => {
     };
   });
 
-  return { guide: { name: guide.name }, items };
+  // Regrava o cookie com Path=/ para quem entrou antes da correção da setinha de voltar.
+  const token = sessionTokenFromRequest(request);
+  return data({ guide: { name: guide.name }, items }, token ? { headers: { "Set-Cookie": sessionCookie(token) } } : undefined);
 };
 
 export default function GuideHome() {

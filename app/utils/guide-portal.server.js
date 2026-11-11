@@ -95,15 +95,32 @@ function readCookie(request, name) {
   return null;
 }
 
-export function sessionCookie(token, maxAgeSeconds = SESSION_DAYS * 24 * 3600) {
+// O cookie vale para o site todo (Path=/). Antes era Path=/guia, e o navegador
+// não mandava o cookie nas requisições internas "/guia.data" que o React Router
+// faz ao navegar sem recarregar: a setinha "← Minhas saídas" caía no login e
+// só funcionava atualizando a página. Path=/ também deixa o adm usar a Central (/).
+export function sessionCookie(token, maxAgeSeconds = SESSION_DAYS * 24 * 3600, path = "/") {
   return [
     `${SESSION_COOKIE}=${token ? encodeURIComponent(token) : ""}`,
-    "Path=/guia",
+    `Path=${path}`,
     "HttpOnly",
     "Secure",
     "SameSite=Lax",
     `Max-Age=${token ? maxAgeSeconds : 0}`,
   ].join("; ");
+}
+
+/** Cabeçalhos para sair: apaga o cookie novo (Path=/) e o antigo (Path=/guia). */
+export function logoutCookieHeaders() {
+  const headers = new Headers();
+  headers.append("Set-Cookie", sessionCookie(null, 0, "/"));
+  headers.append("Set-Cookie", sessionCookie(null, 0, "/guia"));
+  return headers;
+}
+
+/** Token da sessão atual (para regravar o cookie com Path=/ em quem logou antes da mudança). */
+export function sessionTokenFromRequest(request) {
+  return readCookie(request, SESSION_COOKIE);
 }
 
 export async function createGuideSession(prisma, guideId) {
