@@ -4,7 +4,7 @@
   "description": "Portal do guia da Portugal, Me & You: saídas, clientes, check-in e vendas.",
   "lang": "pt",
   "start_url": "/guia",
-  "scope": "/guia",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f6f4f1",

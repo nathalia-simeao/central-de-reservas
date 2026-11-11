@@ -18,6 +18,10 @@ export function shopifyUserIdFromAuth(auth) {
 }
 
 export async function resolveCentralUser(prisma, auth) {
+  // Adm logado pelo app do celular (sem conta Shopify): acesso total.
+  if (auth?.portalPerson) {
+    return { id: null, shopifyUserId: null, name: auth.portalPerson.name || null, role: "ADMIN", portal: true, guideId: auth.portalPerson.id };
+  }
   const shopifyUserId = shopifyUserIdFromAuth(auth);
   // Requests without a staff token (e.g. non-embedded or legacy flows) keep
   // the previous behaviour: full access, so nothing that worked breaks.
@@ -57,8 +61,9 @@ export function forbiddenResponse() {
 }
 
 /** For resource routes: authenticate and require an ADMIN in one call. */
-export async function requireCentralAdmin(prisma, authenticate, request) {
-  const auth = await authenticate.admin(request);
+export async function requireCentralAdmin(prisma, _authenticate, request) {
+  const { authenticateCentral } = await import("./central-auth.server.js");
+  const auth = await authenticateCentral(request);
   const user = await resolveCentralUser(prisma, auth);
   if (!isAdmin(user)) throw forbiddenResponse();
   return { auth, user };

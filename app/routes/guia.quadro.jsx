@@ -1,0 +1,125 @@
+import { Link, useLoaderData } from "react-router";
+import db from "../db.server";
+import { GuideShell } from "../components/guide/GuideShell";
+import { addDays, buildBoardColumns, initials } from "../utils/agenda-board.js";
+import { tourColor } from "../utils/agenda-labels.js";
+import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
+import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+
+// Aba Quadro do app: o mesmo quadro da Agenda (uma coluna por dia, um cartão
+// por saída), só para consulta. O guia vê a operação inteira, mas sem dados
+// de clientes de outras saídas; os cartões dele aparecem destacados e abrem
+// a tela da saída.
+
+const DAYS = 14;
+
+function todayKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
+}
+
+export const loader = async ({ request }) => {
+  const guide = await getGuideFromRequest(db, request);
+  if (!guide) return redirectTo("/guia/login");
+
+  const start = todayKey();
+  const from = new Date(`${start}T00:00:00Z`);
+  from.setUTCHours(from.getUTCHours() - 2);
+  const to = new Date(`${addDays(start, DAYS)}T02:00:00Z`);
+
+  const [bookings, assignments, departures, settings, tours] = await Promise.all([
+    db.booking.findMany({
+      where: { status: { in: ["CONFIRMED", "PENDING"] }, startTime: { gte: from, lt: to }, AND: [excludeTestBookingsWhere()] },
+      select: { tourId: true, startTime: true, status: true, syncStatus: true, attendanceStatus: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
+    }),
+    db.guideAssignment.findMany({
+      where: { status: "ASSIGNED", startTime: { gte: from, lt: to } },
+      select: { id: true, tourId: true, guideId: true, startTime: true, status: true, languages: true, guide: { select: { id: true, name: true } }, tour: { select: { id: true, title: true } } },
+    }),
+    db.tourDeparture.findMany({
+      where: { startTime: { gte: from, lt: to } },
+      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true },
+    }),
+    db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
+    db.tour.findMany({ select: { id: true, title: true } }),
+  ]);
+
+  const key = (tourId, startTime) => `${tourId}|${new Date(startTime).toISOString()}`;
+  const departureTags = {};
+  const departureInfo = {};
+  for (const d of departures) {
+    departureTags[key(d.tourId, d.startTime)] = d.tagIds || [];
+    departureInfo[key(d.tourId, d.startTime)] = d;
+  }
+
+  const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours });
+  const labels = settings?.agendaLabels || null;
+
+  return {
+    columns: columns.map((col) => ({
+      dateKey: col.dateKey,
+      cards: col.cards.map((card) => {
+        const mine = card.guides.find((g) => g.guideId === guide.id);
+        return {
+          key: card.key,
+          title: card.title,
+          time: card.timeKey,
+          pax: card.pax,
+          pending: card.pending,
+          color: tourColor(labels, card.tourId),
+          guides: card.guides.map((g) => ({ name: g.name, initials: initials(g.name) })),
+          checks: card.checks,
+          myAssignmentId: mine?.assignmentId || null,
+        };
+      }),
+    })),
+  };
+};
+
+function columnTitle(dateKey) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d, 12));
+  const weekday = new Intl.DateTimeFormat("pt-PT", { weekday: "short", timeZone: "UTC" }).format(date);
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} (${weekday.replace(".", "")})`;
+}
+
+function Card({ card }) {
+  const body = (
+    <>
+      <div className="g-bcard__bar" style={{ background: card.color }} />
+      <strong>{card.time} · {card.title}</strong>
+      <small>
+        {card.pax} pax{card.pending ? ` + ${card.pending} pendente(s)` : ""}
+        {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : " · sem guia"}
+        {card.checks ? ` · ✓ ${card.checks}/3` : ""}
+      </small>
+    </>
+  );
+  return card.myAssignmentId ? (
+    <Link to={`/guia/saida/${card.myAssignmentId}`} className="g-bcard mine">{body}</Link>
+  ) : (
+    <div className="g-bcard">{body}</div>
+  );
+}
+
+export default function GuideBoard() {
+  const { columns } = useLoaderData();
+  return (
+    <GuideShell title="Quadro" wide>
+      <div className="g-top">
+        <div>
+          <h1>Quadro</h1>
+          <small>Próximos {DAYS} dias · deslize para o lado · seus cartões em verde</small>
+        </div>
+      </div>
+      <div className="g-board">
+        {columns.map((col) => (
+          <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey)}>
+            <h3>{columnTitle(col.dateKey)} <small>{col.cards.length}</small></h3>
+            {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>Sem saídas.</p>}
+            {col.cards.map((card) => <Card key={card.key} card={card} />)}
+          </section>
+        ))}
+      </div>
+    </GuideShell>
+  );
+}

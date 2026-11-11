@@ -1,5 +1,5 @@
 import { data } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
 import { WEATHER_PLACES, parseOpenMeteoDaily } from "../utils/weather.js";
 import { normalizeFeatureFlags } from "../utils/feature-flags.js";
 import prisma from "../db.server";
@@ -24,7 +24,7 @@ async function fetchPlace(place) {
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateCentral(request);
   const settings = session?.shop
     ? await prisma.businessSetting.findUnique({ where: { shop: session.shop }, select: { featureFlags: true } }).catch(() => null)
     : null;

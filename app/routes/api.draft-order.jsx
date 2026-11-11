@@ -1,9 +1,9 @@
-import { authenticate } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
 import { createDraftCheckout } from "../services/draft-checkout.server";
 
 // Central (admin embutido) → link de pagamento Shopify com reserva de vaga.
 export const action = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } = await authenticateCentral(request);
   const formData = await request.formData();
   return createDraftCheckout({ admin, session, formData, requestUrl: request.url });
 };

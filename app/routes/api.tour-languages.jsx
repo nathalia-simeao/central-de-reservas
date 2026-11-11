@@ -1,5 +1,5 @@
 import { data } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
 
 const json = (body, init) => data(body, init);
 
@@ -28,7 +28,7 @@ function splitLanguageList(value) {
 }
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin } = await authenticateCentral(request);
   const url = new URL(request.url);
   const productId = clean(url.searchParams.get("productId"));
 

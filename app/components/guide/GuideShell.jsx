@@ -1,3 +1,5 @@
+import { Link, NavLink, useRouteLoaderData } from "react-router";
+
 // Layout leve do portal do guia (celular primeiro, sem Polaris/Shopify).
 export const guideStyles = `
 :root { --surface-color:var(--g-card); --dashboard-text:var(--g-ink); --dashboard-muted:var(--g-muted); --dashboard-accent:var(--g-green); --dashboard-border:var(--g-line); --g-bg:#f6f4f1; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b7280; --g-line:#e5e1db; --g-green:#166534; --g-green-soft:#dcfce7; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
@@ -6,6 +8,27 @@ export const guideStyles = `
 body { margin:0; background:var(--g-bg); color:var(--g-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size:16px; -webkit-text-size-adjust:100%; }
 a { color: inherit; }
 .g-wrap { max-width: 640px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(48px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.g-wrap.has-tabs { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.g-wrap.wide { max-width: none; }
+.g-tabs { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; justify-content:center; background:var(--g-card); border-top:1px solid var(--g-line); padding:6px 8px calc(6px + env(safe-area-inset-bottom)); }
+.g-tabs__inner { display:flex; gap:4px; width:100%; max-width:640px; }
+.g-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; border-radius:12px; text-decoration:none; color:var(--g-muted); font-size:12px; font-weight:700; }
+.g-tab span { font-size:20px; line-height:1; }
+.g-tab.active { color:var(--g-green); background:var(--g-green-soft); }
+.g-kpis { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+.g-kpi { border:1px solid var(--g-line); border-radius:12px; padding:10px 12px; }
+.g-kpi small { display:block; color:var(--g-muted); font-size:12px; font-weight:600; }
+.g-kpi b { font-size:20px; font-variant-numeric:tabular-nums; }
+.g-board { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+.g-col { flex:0 0 min(82vw, 300px); scroll-snap-align:start; background:color-mix(in srgb, var(--g-line) 45%, var(--g-bg)); border-radius:14px; padding:10px; align-self:flex-start; }
+.g-col h3 { font-size:14px; margin:2px 4px 10px; display:flex; justify-content:space-between; }
+.g-col h3 small { color:var(--g-muted); font-weight:600; }
+.g-bcard { display:block; background:var(--g-card); border:1px solid var(--g-line); border-radius:10px; padding:10px; margin-bottom:8px; text-decoration:none; }
+.g-bcard.mine { border-color:var(--g-green); box-shadow:0 0 0 1px var(--g-green); }
+.g-bcard__bar { height:6px; width:44px; border-radius:99px; margin-bottom:6px; }
+.g-bcard strong { display:block; font-size:14px; overflow-wrap:anywhere; }
+.g-bcard small { display:block; color:var(--g-muted); font-size:12px; margin-top:4px; overflow-wrap:anywhere; }
+.g-bcard pre { white-space:pre-wrap; font:inherit; font-size:13px; margin:6px 0 0; color:var(--g-ink); }
 .g-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .g-top h1 { font-size:20px; margin:0; }
 .g-top small { color:var(--g-muted); display:block; font-size:13px; }
@@ -63,7 +86,38 @@ a { color: inherit; }
 .g-summary b { color:var(--g-ink); }
 `;
 
-export function GuideShell({ children, title = "Portal do guia" }) {
+const TABS = [
+  { to: "/guia", label: "Saídas", icon: "🗓️", end: true },
+  { to: "/guia/quadro", label: "Quadro", icon: "🗂️" },
+  { to: "/guia/dash", label: "Dash", icon: "📊" },
+];
+
+function GuideTabs() {
+  const layout = useRouteLoaderData("routes/guia");
+  const person = layout?.person;
+  if (!person) return null;
+  return (
+    <nav className="g-tabs" aria-label="Menu do app">
+      <div className="g-tabs__inner">
+        {TABS.map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.end} className={({ isActive }) => `g-tab${isActive ? " active" : ""}`}>
+            <span aria-hidden="true">{tab.icon}</span>{tab.label}
+          </NavLink>
+        ))}
+        {person.isAdmin && (
+          // A Central é outra tela (fora do /guia): carrega a página inteira.
+          <Link to="/" reloadDocument className="g-tab">
+            <span aria-hidden="true">🏢</span>Central
+          </Link>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+export function GuideShell({ children, title = "Portal do guia", wide = false }) {
+  const layout = useRouteLoaderData("routes/guia");
+  const withTabs = Boolean(layout?.person);
   return (
     <>
       <title>{`${title} · Portugal, Me & You`}</title>
@@ -76,7 +130,8 @@ export function GuideShell({ children, title = "Portal do guia" }) {
       <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       <link rel="apple-touch-icon" href="/guia-apple-touch-icon.png" />
       <style>{guideStyles}</style>
-      <div className="g-wrap">{children}</div>
+      <div className={`g-wrap${withTabs ? " has-tabs" : ""}${wide ? " wide" : ""}`}>{children}</div>
+      <GuideTabs />
     </>
   );
 }

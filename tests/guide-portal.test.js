@@ -34,11 +34,11 @@ test("login is blocked after repeated failures and unblocked on success", () => 
   assert.equal(loginBlocked(key), false);
 });
 
-test("session cookie is HttpOnly, Secure and scoped to the guide portal", () => {
+test("session cookie is HttpOnly, Secure and valid for the whole site (React Router .data requests)", () => {
   const cookie = sessionCookie("tok");
   assert.ok(cookie.includes("HttpOnly"));
   assert.ok(cookie.includes("Secure"));
-  assert.ok(cookie.includes("Path=/guia"));
+  assert.ok(cookie.includes("Path=/;"));
   assert.ok(sessionCookie(null).includes("Max-Age=0"));
 });
 

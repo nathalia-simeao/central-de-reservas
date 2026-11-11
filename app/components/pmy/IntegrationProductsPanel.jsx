@@ -45,7 +45,7 @@ export default function IntegrationProductsPanel({
       }
       const response = await fetch(url.toString(), {
         credentials: "include",
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
       });
       if (!response.headers.get("content-type")?.includes("application/json")) throw new Error(`${tr("O diagnóstico recebeu HTML em vez de JSON", "Diagnostic received HTML instead of JSON")} (HTTP ${response.status}). ${tr("Confirme que a Central está aberta dentro do admin Shopify.", "Open Central from Shopify admin.")}`);
       const payload = await response.json();

@@ -3354,10 +3354,11 @@ export const links = () => [
 ];
 
 export default function CentralDeReservas() {
-  const { apiKey = "" } = useLoaderData() || {};
+  const { apiKey = "", portalMode = false } = useLoaderData() || {};
 
+  // portalMode: adm aberto pelo app do celular, fora do admin do Shopify (sem App Bridge).
   return (
-    <AppProvider embedded apiKey={apiKey}>
+    <AppProvider embedded={!portalMode} apiKey={apiKey}>
       <CentralDeReservasContent />
     </AppProvider>
   );

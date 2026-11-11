@@ -15,7 +15,7 @@ import {
   safeFileName,
 } from "../utils/guide-portal.server.js";
 import { normalizeCostSettings } from "../utils/profit.js";
-import { authenticate } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
 import db from "../db.server";
 import {
   buildTourPassportUpdate,
@@ -163,7 +163,7 @@ async function assignGuideToDeparture({ tour, guide, startTime, languages = [], 
 }
 
 export const action = async ({ request }) => {
-  const auth = await authenticate.admin(request);
+  const auth = await authenticateCentral(request);
   const { admin, session } = auth;
   const formData = await request.formData();
   const _action = formData.get("_action");

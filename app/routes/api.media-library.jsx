@@ -1,6 +1,6 @@
 import { data } from "react-router";
+import { authenticateCentral } from "../utils/central-auth.server";
 import db from "../db.server";
-import { authenticate } from "../shopify.server";
 import { syncShopifyMediaLibrary } from "../utils/central-refresh.server";
 
 const json = (body, init) => data(body, init);
@@ -37,7 +37,7 @@ async function readPage(shop, page, pageSize) {
 }
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateCentral(request);
   const url = new URL(request.url);
   const page = parsePage(url.searchParams.get("page"), 1);
   const pageSize = Math.min(
@@ -50,7 +50,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } = await authenticateCentral(request);
   const formData = await request.formData();
   const actionName = String(formData.get("_action") || "").trim();
 

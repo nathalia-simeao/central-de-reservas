@@ -1,7 +1,7 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
+import { authenticateCentral } from "../utils/central-auth.server";
 import { data } from "react-router";
 import db from "../db.server";
-import { authenticate } from "../shopify.server";
 
 const json = (body, init) => data(body, init);
 
@@ -11,7 +11,7 @@ function parseDate(value, fallback) {
 }
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  await authenticateCentral(request);
 
   const url = new URL(request.url);
   const now = new Date();

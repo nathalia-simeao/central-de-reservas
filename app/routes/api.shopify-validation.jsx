@@ -1,5 +1,6 @@
 import { data } from "react-router";
-import { authenticate, unauthenticated } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
+import { unauthenticated } from "../shopify.server";
 import db from "../db.server";
 import { getCentralAvailability } from "../utils/capacity.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
@@ -764,7 +765,7 @@ async function validationStatus(serviceAdmin, orderId = null) {
 }
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } = await authenticateCentral(request);
   const serviceAdmin = await getServiceAdmin(admin, session);
   const url = new URL(request.url);
   return json(
@@ -773,7 +774,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } = await authenticateCentral(request);
   const serviceAdmin = await getServiceAdmin(admin, session);
   const formData = await request.formData();
   const action = clean(formData.get("_action"));

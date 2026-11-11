@@ -1,7 +1,8 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { data } from "react-router";
 import { isAdmin, resolveCentralUser } from "../utils/central-access.server.js";
-import { authenticate, registerWebhooks } from "../shopify.server";
+import { registerWebhooks } from "../shopify.server";
+import { authenticateCentral } from "../utils/central-auth.server";
 import db from "../db.server";
 import {
   integrationEncryptionReady,
@@ -44,7 +45,7 @@ function bookingForClient(booking) {
 }
 
 export const loader = async ({ request }) => {
-  const auth = await authenticate.admin(request);
+  const auth = await authenticateCentral(request);
   const { admin, session } = auth;
   const centralUser = await resolveCentralUser(prisma, auth);
   const userIsAdmin = isAdmin(centralUser);
@@ -456,6 +457,7 @@ export const loader = async ({ request }) => {
 
   return json({
     apiKey: process.env.SHOPIFY_API_KEY || "",
+    portalMode: Boolean(auth.portalPerson),
     tours,
     bookings,
     bookingPage: {
