@@ -115,7 +115,7 @@ function GuideTabs() {
   );
 }
 
-export function GuideShell({ children, title = "Portal do guia", wide = false }) {
+export function GuideShell({ children, title = "Portal do guia", wide = false, bare = false }) {
   const layout = useRouteLoaderData("routes/guia");
   const withTabs = Boolean(layout?.person);
   return (
@@ -129,8 +129,8 @@ export function GuideShell({ children, title = "Portal do guia", wide = false })
       <meta name="apple-mobile-web-app-title" content="PMY Guias" />
       <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       <link rel="apple-touch-icon" href="/guia-apple-touch-icon.png" />
-      <style>{guideStyles}</style>
-      <div className={`g-wrap${withTabs ? " has-tabs" : ""}${wide ? " wide" : ""}`}>{children}</div>
+      <style dangerouslySetInnerHTML={{ __html: guideStyles }} />
+      {bare ? children : <div className={`g-wrap${withTabs ? " has-tabs" : ""}${wide ? " wide" : ""}`}>{children}</div>}
       <GuideTabs />
     </>
   );
