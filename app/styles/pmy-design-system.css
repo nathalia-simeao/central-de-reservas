@@ -6713,3 +6713,13 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-person-photo__menu button { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--pmy-ds-text, #1f2937); font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; white-space: nowrap; }
 .pmy-person-photo__menu button:hover, .pmy-person-photo__menu button:focus-visible { background: var(--pmy-ds-soft, #f3f5f3); outline: none; }
 .pmy-person-photo__menu svg { color: var(--pmy-ds-muted, #6b7280); }
+
+/* Equipe: cada área com a sua cor (nome e contorno), como o "Guia". */
+.pmy-area--GUIA { --area: #15803d; }
+.pmy-area--ADMIN { --area: #1d4ed8; }
+.pmy-area--COMERCIAL { --area: #c2410c; }
+.pmy-area--MARKETING { --area: #be185d; }
+.pmy-area--OPERACAO { --area: #0f766e; }
+.pmy-area--DESENVOLVIMENTO { --area: #6d28d9; }
+.pmy-area-tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--area, #6b7280) 35%, transparent); background: color-mix(in srgb, var(--area, #6b7280) 9%, #fff); color: var(--area, #6b7280); font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.pmy-person-areas__chips button[class*="pmy-area--"].is-on { background: color-mix(in srgb, var(--area) 10%, #fff); border-color: var(--area); color: var(--area); }

@@ -146,7 +146,7 @@ export default function GuidesTab(props) {
                 {TEAM_AREAS.map((a) => {
                   const on = form.areas.includes(a.key);
                   return (
-                    <button key={a.key} type="button" className={on ? "is-on" : ""} aria-pressed={on}
+                    <button key={a.key} type="button" className={`pmy-area--${a.key}${on ? " is-on" : ""}`} aria-pressed={on}
                       onClick={() => setForm({ ...form, areas: on ? form.areas.filter((k) => k !== a.key) : [...form.areas, a.key] })}>
                       {on ? "✓ " : ""}{areaLabel(a.key, lang)}
                     </button>
@@ -197,7 +197,7 @@ export default function GuidesTab(props) {
                   {guide.name.split(" ").slice(1).join(" ")}
                 </div>
                 <div className="pmy-person-badges">
-                  {personAreas(guide).map((key) => <Badge key={key} tone={key === "GUIA" ? "accent" : "neutral"}>{areaLabel(key, lang)}</Badge>)}
+                  {personAreas(guide).map((key) => <span key={key} className={`pmy-area-tag pmy-area--${key}`}>{areaLabel(key, lang)}</span>)}
                   {accessOf(guide) && (
                     <Badge tone="success">{accessOf(guide).role === "ADMIN" ? tr("Central: Admin", "Central: Admin") : tr("Central: Equipe", "Central: Team")}</Badge>
                   )}

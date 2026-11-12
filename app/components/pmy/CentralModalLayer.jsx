@@ -1382,7 +1382,7 @@ export default function CentralModalLayer(props) {
               <div className="pmy-ds-migrated-llii8p">✉️ {selectedGuideInfo.email||'N/A'}</div>
               <div className="pmy-ds-migrated-1g1g73g">📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
               <div className="pmy-person-areas">
-                {personAreas(selectedGuideInfo).map((key) => <span key={key} className="pmy-tag">{areaLabel(key, lang)}</span>)}
+                {personAreas(selectedGuideInfo).map((key) => <span key={key} className={`pmy-area-tag pmy-area--${key}`}>{areaLabel(key, lang)}</span>)}
               </div>
               {selectedGuideInfo.shopifyMetaobjectId && (
                 <div className="pmy-u-mt-2">
@@ -2031,7 +2031,7 @@ export default function CentralModalLayer(props) {
                 {TEAM_AREAS.map((area) => {
                   const on = editGuideAreas.includes(area.key);
                   return (
-                    <button key={area.key} type="button" className={on ? "is-on" : ""} aria-pressed={on}
+                    <button key={area.key} type="button" className={`pmy-area--${area.key}${on ? " is-on" : ""}`} aria-pressed={on}
                       onClick={() => setEditGuideAreas(on ? editGuideAreas.filter((k) => k !== area.key) : [...editGuideAreas, area.key])}>
                       {on ? "✓ " : ""}{ui(area.one[0], area.one[1])}
                     </button>
