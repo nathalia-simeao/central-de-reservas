@@ -174,14 +174,17 @@ function FilesList({ files, basePath, loadImage, onOpen, lang }) {
 }
 
 /** Guias escritos nos checklists do Trello que não estão escalados nesta saída. */
-export function trelloGuideGaps(info, card, guides = []) {
-  const assigned = new Set((card.guides || []).map((g) => normalizeText(g.name).split(" ")[0]));
+export function trelloGuideGaps(info, card, guides = [], aliases = {}) {
+  const assignedIds = new Set((card.guides || []).map((g) => g.guideId));
+  const assignedFirst = new Set((card.guides || []).map((g) => normalizeText(g.name).split(" ")[0]));
   const gaps = new Map();
   for (const list of normalizeChecklists(info?.checklists).lists) {
     if (!String(list.id).startsWith("trello_")) continue;
     const name = guideNameFromTitle(list.title);
-    if (!name || assigned.has(normalizeText(name).split(" ")[0]) || gaps.has(name)) continue;
-    gaps.set(name, { name, inTeam: Boolean(matchGuide(name, guides)) });
+    if (!name || gaps.has(name)) continue;
+    const guide = matchGuide(name, guides, aliases);
+    if (guide ? assignedIds.has(guide.id) : assignedFirst.has(normalizeText(name).split(" ")[0])) continue;
+    gaps.set(name, { name, guideName: guide?.name || null, inTeam: Boolean(guide) });
   }
   return [...gaps.values()];
 }
@@ -193,7 +196,7 @@ export function TrelloGuideCheck({ gaps, lang = "pt" }) {
     <ul className="pmy-mirror__gaps" role="status">
       {gaps.map((gap) => (
         <li key={gap.name}>
-          ⚠ {tr("No Trello:", "In Trello:")} <b>{gap.name}</b> — {gap.inTeam
+          ⚠ {tr("No Trello:", "In Trello:")} <b>{gap.name}</b>{gap.guideName && gap.guideName !== gap.name ? ` (${gap.guideName})` : ""} — {gap.inTeam
             ? tr("está na Equipe, mas não foi escalado nesta saída.", "is in the Team but not assigned here.")
             : tr("não está cadastrado(a) na Equipe da Central.", "is not registered in the Central Team.")}
         </li>
@@ -202,13 +205,13 @@ export function TrelloGuideCheck({ gaps, lang = "pt" }) {
   );
 }
 
-function DepartureDetail({ card, info, agendaLabels, tagById, collections, guides = [], nav, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
+function DepartureDetail({ card, info, agendaLabels, tagById, collections, guides = [], aliases = {}, nav, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
   const state = normalizeChecklists(info?.checklists);
   const autos = autoChecklists(card);
   const notes = Array.isArray(info?.guideNotes) ? info.guideNotes : [];
-  const gaps = trelloGuideGaps(info, card, guides);
+  const gaps = trelloGuideGaps(info, card, guides, aliases);
   return (
     <MirrorShell
       lang={lang} onClose={onClose} onBack={onBack} nav={nav}
@@ -373,7 +376,7 @@ export default function CalendarMirror({
   bookings = [], assignments = [], tours = [], guides = [], agendaLabels = null,
   departureTags = {}, departureInfo = {}, supportCards = [], blockedDates = [],
   loadBookings = null, loadImage = null, onOpenAttachment = null, onOpenSupportAttachment = null,
-  onOpenBoard, view = "month", onViewChange, lang = "pt",
+  onOpenBoard, view = "month", onViewChange, trelloAliases = {}, lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [anchor, setAnchor] = useState(todayKey);
@@ -624,7 +627,7 @@ export default function CalendarMirror({
 
       {detailCard ? (
         <DepartureDetail card={detailCard} info={departureInfo[detailCard.key]} agendaLabels={agendaLabels} tagById={tagById}
-          collections={collectionsByTour.get(detailCard.tourId) || []} guides={guides} nav={nav} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenAttachment}
+          collections={collectionsByTour.get(detailCard.tourId) || []} guides={guides} aliases={trelloAliases} nav={nav} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenAttachment}
           loadImage={loadImage} onClose={closeAll} onBack={back} lang={lang} />
       ) : detailTask ? (
         <TaskDetail task={detailTask} guides={guides} nav={nav} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenSupportAttachment}

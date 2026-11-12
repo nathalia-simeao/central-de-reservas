@@ -6,7 +6,7 @@
 // A ligação "cartão do Trello → passeio da Central" é a mesma escolhida na tela
 // de importação; fica salva em BusinessSetting.trelloSync.
 
-import { parseTrelloBoard } from "../utils/trello-import.js";
+import { normalizeText, parseTrelloBoard } from "../utils/trello-import.js";
 import { downloadTrelloAttachment, fetchTrelloBoard, trelloCredentials } from "../utils/trello-api.server.js";
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, safeFileName } from "../utils/guide-portal.server.js";
 import { importTrelloPlan } from "./trello-import.server.js";
@@ -25,8 +25,15 @@ export function normalizeTrelloSync(raw) {
     const v = asText(value, 64);
     if (k && v) mapping[k] = v;
   }
+  const aliases = {};
+  for (const [key, value] of Object.entries(source.aliases && typeof source.aliases === "object" ? source.aliases : {})) {
+    const k = normalizeText(key).trim();
+    const v = asText(value, 64);
+    if (k && v) aliases[k] = v;
+  }
   return {
     enabled: source.enabled === true,
+    aliases,
     mapping,
     includeFlagged: source.includeFlagged === true,
     assignGuides: source.assignGuides !== false,
@@ -133,7 +140,7 @@ export async function runTrelloSync(prisma, { assignGuide, force = false, now = 
     if (!creds) throw new Error("Trello desconectado: conecte de novo em Integrações → Conexões.");
     const board = await fetchBoard(creds);
     const plan = planFromBoard(board, config, { today: now });
-    const summary = await importTrelloPlan({ prisma, plan, assignGuide, now });
+    const summary = await importTrelloPlan({ prisma, plan, assignGuide, aliases: config.aliases, now });
     if (downloadFiles) {
       const files = await downloadPendingTrelloFiles(prisma, creds, { limit: 30 }).catch(() => null);
       summary.files = files?.saved || 0;

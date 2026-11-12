@@ -45,7 +45,7 @@ import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 import { importTrelloPlan } from "./trello-import.server.js";
-import { compactSummary, saveTrelloSync } from "./trello-sync.server.js";
+import { compactSummary, readTrelloSync, saveTrelloSync } from "./trello-sync.server.js";
 import { cardChecklists, isDateKey, isTimeKey } from "../utils/board-tasks.js";
 import { actorFor, departureTargetKey, describeChecklistOp, logActivity } from "./board-activity.server.js";
 
@@ -533,9 +533,11 @@ export const action = async ({ request }) => {
       let plan;
       try { plan = JSON.parse(String(formData.get("plan") || "{}")); } catch { plan = null; }
       if (!plan || !Array.isArray(plan.cards)) return json({ success: false, error: "Plano de importação inválido." }, { status: 400 });
+      const { config: syncConfig } = await readTrelloSync(prisma).catch(() => ({ config: { aliases: {} } }));
       const summary = await importTrelloPlan({
         prisma,
         plan,
+        aliases: syncConfig.aliases,
         assignGuide: ({ tour, guide, startTime, languages }) => assignGuideToDeparture({ tour, guide, startTime, languages }),
       });
       // Leitura automática a cada 1 hora com a mesma ligação cartão → passeio.

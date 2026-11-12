@@ -127,3 +127,10 @@ test("guide name comes from the checklist title when the card has no members", (
   assert.equal(matchGuide(guideNameFromTitle("14h ENG Miguel"), guides)?.id, "m");
   assert.equal(matchGuide(guideNameFromTitle("14h FR Solal"), guides), null);
 });
+
+test("nicknames from Trello resolve to the right Team member", () => {
+  const guides = [{ id: "maria", name: "Maria Aldina" }, { id: "m", name: "Miguel Alves" }];
+  assert.equal(matchGuide("Dee", guides), null);
+  assert.equal(matchGuide("Dee", guides, { dee: "maria" })?.id, "maria");
+  assert.equal(matchGuide("Miguel", guides, { dee: "maria" })?.id, "m");
+});

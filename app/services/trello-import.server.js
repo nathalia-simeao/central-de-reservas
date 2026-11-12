@@ -84,7 +84,7 @@ function cleanPlanCard(raw) {
  * plan: { cards: [{ ...cartão da prévia, tourId }], support: [...], assignGuides: boolean }
  * assignGuide: ({ tour, guide, startTime, languages }) => { ok, error }
  */
-export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Date() }) {
+export async function importTrelloPlan({ prisma, plan, assignGuide, aliases = {}, now = new Date() }) {
   const cards = (Array.isArray(plan?.cards) ? plan.cards : []).slice(0, MAX_CARDS).map(cleanPlanCard);
   const support = Array.isArray(plan?.support) ? plan.support.slice(0, 200) : [];
   const summary = {
@@ -214,9 +214,10 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Da
     const tour = tourById.get(bucket.tourId);
     const done = new Set();
     for (const entry of bucket.guides) {
-      const guide = (entry.member && matchGuide(entry.member, guides)) || (entry.name && matchGuide(entry.name, guides)) || null;
+      // O nome escrito no checklist manda (pode ser apelido); o membro do cartão é o plano B.
+      const guide = (entry.name && matchGuide(entry.name, guides, aliases)) || (entry.member && matchGuide(entry.member, guides, aliases)) || null;
       if (!guide) {
-        summary.guideWarnings.push(`${entry.card.listName} · ${entry.card.name}: "${entry.member || entry.name}" não está na Equipe da Central.`);
+        summary.guideWarnings.push(`${entry.card.listName} · ${entry.card.name}: "${entry.name || entry.member}" não está na Equipe da Central.`);
         continue;
       }
       if (done.has(guide.id)) continue;

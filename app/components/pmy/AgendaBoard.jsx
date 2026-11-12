@@ -513,6 +513,7 @@ export default function AgendaBoard({
   onMoveDeparture = null,
   focus = null,
   onFocusHandled = null,
+  trelloAliases = {},
   onArchiveDeparture = null,
   onDeleteDepartureCard = null,
   waitlist = [],
@@ -907,7 +908,7 @@ export default function AgendaBoard({
             <div className="pmy-board-modal__section">
               <span className="pmy-board-pop__sub">{tr("Guias", "Guides")}</span>
               <GuidePicker card={openCard} guides={guides} onAssign={assignOnCard} onRemove={onRemoveAssignment} lang={lang} />
-              <TrelloGuideCheck gaps={trelloGuideGaps(departureInfo[openCard.key], openCard, guides)} lang={lang} />
+              <TrelloGuideCheck gaps={trelloGuideGaps(departureInfo[openCard.key], openCard, guides, trelloAliases)} lang={lang} />
             </div>
 
             {showGuestMessages && <div className="pmy-board-modal__section">

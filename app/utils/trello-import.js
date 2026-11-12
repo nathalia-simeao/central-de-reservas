@@ -266,9 +266,15 @@ export function parseTrelloBoard(board, { today = new Date() } = {}) {
 }
 
 /** Guia do Trello → guia da Central (nome completo, ou primeiro + último nome, ou primeiro nome único). */
-export function matchGuide(memberName, guides = []) {
+export function matchGuide(memberName, guides = [], aliases = {}) {
   const wanted = normalizeText(memberName);
   if (!wanted) return null;
+  // Apelidos usados no Trello ("Dee" → Maria Aldina), salvos em Integrações → Trello.
+  const aliasId = aliases?.[wanted] || aliases?.[wanted.split(" ")[0]];
+  if (aliasId) {
+    const byAlias = guides.find((g) => g.id === aliasId);
+    if (byAlias) return byAlias;
+  }
   const exact = guides.find((g) => normalizeText(g.name) === wanted);
   if (exact) return exact;
   const parts = wanted.split(" ");

@@ -3242,10 +3242,12 @@ function CentralDeReservasContent() {
               agendaLabels: colorLabels, departureTags, departureInfo, supportCards,
               loadBookings: loadBoardBookings, loadImage: loadCentralImage,
               onOpenAttachment: openDepartureAttachment, onOpenSupportAttachment: supportHandlers.openAttachment,
+              trelloAliases: businessSettings?.trelloSync?.aliases || {},
             },
             onOpenBoard: openInBoard,
             boardProps: {
               focus: boardFocus, onFocusHandled: () => setBoardFocus(null),
+              trelloAliases: businessSettings?.trelloSync?.aliases || {},
               bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: scheduleGuides,
               agendaLabels: colorLabels, departureTags, departureInfo,
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,

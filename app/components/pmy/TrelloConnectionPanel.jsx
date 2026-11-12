@@ -1,9 +1,50 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, SectionHeader } from "./PmyUI";
+import { Button, Card, DropdownSelect, SectionHeader } from "./PmyUI";
 
 const when = (value, lang) => (value
   ? new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value))
   : "—");
+
+/** Apelidos usados nos checklists do Trello ("Dee" → Maria Aldina). */
+function TrelloAliases({ sync, busy, onSave, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [alias, setAlias] = useState("");
+  const [guideId, setGuideId] = useState("");
+  if (!sync) return null;
+  const aliases = sync.aliases || {};
+  const guides = sync.guides || [];
+  const nameOf = (id) => guides.find((g) => g.id === id)?.name || tr("(pessoa removida)", "(removed)");
+  const save = (next) => onSave(JSON.stringify(next));
+  return (
+    <div className="pmy-trello-sync">
+      <strong>{tr("Apelidos usados no Trello", "Nicknames used in Trello")}</strong>
+      <p>{tr("Quando o checklist do Trello usa um apelido (ex.: \"Dee\"), diga quem é na Equipe para a Central escalar a pessoa certa.", "When a Trello checklist uses a nickname, pick who it is in the Team.")}</p>
+      {Object.keys(aliases).length > 0 && (
+        <ul className="pmy-trello-aliases">
+          {Object.entries(aliases).map(([key, id]) => (
+            <li key={key}>
+              <span><b>{key.charAt(0).toUpperCase() + key.slice(1)}</b> → {nameOf(id)}</span>
+              <button type="button" disabled={Boolean(busy)} aria-label={tr(`Remover apelido ${key}`, `Remove ${key}`)} onClick={() => { const next = { ...aliases }; delete next[key]; save(next); }}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="pmy-trello-aliases__add" onSubmit={(e) => {
+        e.preventDefault();
+        const key = alias.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (!key || !guideId) return;
+        save({ ...aliases, [key]: guideId });
+        setAlias(""); setGuideId("");
+      }}>
+        <input className="pmy-ds-input" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder={tr("Apelido no Trello", "Trello nickname")} aria-label={tr("Apelido no Trello", "Trello nickname")} />
+        <DropdownSelect value={guideId} onChange={setGuideId} placeholder={tr("Quem é na Equipe", "Who in the Team")} ariaLabel={tr("Pessoa da Equipe", "Team member")}
+          searchPlaceholder={tr("Buscar pessoa...", "Search person...")}
+          options={guides.map((g) => ({ value: g.id, label: g.name }))} />
+        <Button type="submit" size="sm" variant="secondary" disabled={Boolean(busy) || !alias.trim() || !guideId}>{tr("Adicionar", "Add")}</Button>
+      </form>
+    </div>
+  );
+}
 
 /** Leitura automática do Trello (a cada 1 hora): ligada/desligada, última leitura e avisos. */
 function TrelloSyncStatus({ sync, busy, onToggle, onRunNow, lang }) {
@@ -119,6 +160,7 @@ export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
               return post("syncSettings", { enabled: String(enabled), mapping: mapping || "" });
             }}
             onRunNow={() => post("syncNow")} />
+          <TrelloAliases sync={state.sync} busy={busy} lang={lang} onSave={(aliases) => post("saveAliases", { aliases })} />
           {summary && (
             <div className="pmy-trello-conn__summary">
               <p><b>{summary.saved}</b> {tr("arquivo(s) salvos na Central.", "file(s) saved.")}</p>

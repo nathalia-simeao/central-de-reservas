@@ -24,7 +24,8 @@ async function syncStatus() {
   const { config } = await readTrelloSync(db).catch(() => ({ config: null }));
   if (!config) return null;
   const { mapping, ...rest } = config;
-  return { ...rest, mappedTours: Object.keys(mapping).length };
+  const guides = await db.guide.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }).catch(() => []);
+  return { ...rest, mappedTours: Object.keys(mapping).length, guides };
 }
 
 async function status() {
@@ -114,6 +115,15 @@ export const action = async ({ request }) => {
       await saveTrelloSync(db, { enabled: false });
       return json({ success: false, error: "Faça uma importação pelo Quadro (Importar do Trello) para ligar os cartões aos passeios." }, { status: 409 });
     }
+    return json({ success: true, ...(await status()) });
+  }
+
+  // Apelidos do Trello: { "dee": guideId }.
+  if (intent === "saveAliases") {
+    let aliases;
+    try { aliases = JSON.parse(String(form.get("aliases") || "{}")); } catch { aliases = null; }
+    if (!aliases || typeof aliases !== "object" || Array.isArray(aliases)) return json({ success: false, error: "Apelidos inválidos." }, { status: 400 });
+    await saveTrelloSync(db, { aliases: Object.fromEntries(Object.entries(aliases).slice(0, 60)) });
     return json({ success: true, ...(await status()) });
   }
 
