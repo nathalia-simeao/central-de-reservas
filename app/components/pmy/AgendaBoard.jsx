@@ -843,7 +843,6 @@ export default function AgendaBoard({
                           </span>
                         )}
                         {card.pax > 0 && <span title={tr("Pessoas confirmadas", "Confirmed people")}>👥 {card.pax}{card.pending ? ` +${card.pending}` : ""}</span>}
-                        {card.checks > 0 && <span title={tr("Checks do guia (Início/Meio/Fim)", "Guide checks")}>✓ {card.checks}/3</span>}
                       </span>
                       <span className="pmy-board-card__avatars">
                         {card.guides.map((g) => (

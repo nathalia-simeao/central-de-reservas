@@ -22,7 +22,6 @@ export default function DepartureTagsSection({
   onRemoveAttachment,
   onOpenAttachment,
   loadImage = null,
-  onResetCheck,
   hideTags = false,
   lang = "pt",
 }) {
@@ -129,37 +128,12 @@ export default function DepartureTagsSection({
                     ? `${a.guide.name}${(a.languages || []).length ? ` (${a.languages.map((key) => languageLabel(key, lang)).join(", ")})` : ""}`
                     : null)
                   .filter(Boolean);
-                const steps = [
-                  [tr("Início", "Start"), info.checkStartAt],
-                  [tr("Meio", "Mid"), info.checkMidAt],
-                  [tr("Fim", "End"), info.checkEndAt],
-                ];
                 const notes = info.guideNotes || [];
                 const files = info.attachments || [];
                 return (
                   <div className="pmy-departure-tags__ops">
                     <div className="pmy-departure-tags__line">
                       <span>🧭 {guides.length ? guides.join(", ") : tr("sem guia escalado", "no guide assigned")}</span>
-                      <span className="pmy-departure-tags__steps">
-                        {steps.map(([label, at], index) => (
-                          <span key={label} className={`pmy-departure-step ${at ? "is-done" : ""}`}>
-                            {at ? "✓" : "○"} {label}{at ? ` ${timeOf(at)}` : ""}
-                            {at && onResetCheck && (
-                              <button
-                                type="button"
-                                className="pmy-departure-step__undo"
-                                title={tr("Desfazer este check (e os seguintes)", "Undo this check (and the next ones)")}
-                                aria-label={tr(`Desfazer ${label}`, `Undo ${label}`)}
-                                onClick={async () => {
-                                  setError("");
-                                  try { await onResetCheck(departure.tourId, departure.startTime, ["start", "mid", "end"][index]); }
-                                  catch (e) { setError(e?.message || tr("Não foi possível desfazer.", "Could not undo.")); }
-                                }}
-                              >↺</button>
-                            )}
-                          </span>
-                        ))}
-                      </span>
                     </div>
                     {notes.length > 0 && (
                       <div className="pmy-departure-tags__notes">
