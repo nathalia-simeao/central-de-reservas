@@ -2167,6 +2167,21 @@ function CentralDeReservasContent() {
     return result.board;
   };
   const handleImportTrello = async (plan) => (await postCentral({ _action: "importTrelloBoard", plan })).summary;
+  // Capas e miniaturas: busca com o token da sessão e guarda o endereço local (blob).
+  const imageCacheRef = useRef(new Map());
+  const loadCentralImage = useCallback(async (path) => {
+    const cache = imageCacheRef.current;
+    if (!cache.has(path)) {
+      cache.set(path, (async () => {
+        const headers = {};
+        try { const token = await window.shopify?.idToken?.(); if (token) headers.Authorization = `Bearer ${token}`; } catch { /* cookie do app */ }
+        const response = await fetch(resourceUrl(path), { credentials: "include", headers });
+        if (!response.ok) throw new Error(String(response.status));
+        return URL.createObjectURL(await response.blob());
+      })().catch((e) => { cache.delete(path); throw e; }));
+    }
+    return cache.get(path);
+  }, [resourceUrl]);
   const openSupportAttachment = (id) => openCentralFile(`/suporte/anexo/${id}`);
   const openDepartureAttachment = (id) => openCentralFile(`/saida/anexo/${id}`);
   const openCentralFile = async (path) => {
@@ -3195,7 +3210,7 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              supportCards, supportHandlers, loadBookings: loadBoardBookings,
+              supportCards, supportHandlers, loadBookings: loadBoardBookings, loadImage: loadCentralImage,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
               loadTrelloBoard: isCentralAdmin ? loadTrelloBoard : null,
               onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
@@ -3289,6 +3304,7 @@ function CentralDeReservasContent() {
         handleUploadDepartureAttachment,
         handleRemoveDepartureAttachment,
         openDepartureAttachment,
+        loadCentralImage,
         handleSetGuidePortalAccess,
         handleSetBookingGroup,
         handleResetDepartureCheck,

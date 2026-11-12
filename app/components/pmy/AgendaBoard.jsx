@@ -11,6 +11,7 @@ import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../ut
 import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
 import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
 import { SupportColumn, SupportModal, TaskCard } from "./SupportCards";
+import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import TrelloImportDialog from "./TrelloImportDialog";
 import { ChecklistBlock, ChecklistEditor, FocusInput } from "./ChecklistBlock";
 
@@ -518,6 +519,7 @@ export default function AgendaBoard({
   onImportTrello = null,
   loadBookings = null,
   loadTrelloBoard = null,
+  loadImage = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -725,7 +727,7 @@ export default function AgendaBoard({
       {onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
       <div className="pmy-board__scroll" ref={scrollRef} onScroll={onBoardScroll}>
         {supportHandlers && (
-          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} lang={lang} />
+          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} loadImage={loadImage} lang={lang} />
         )}
         {columns.map((col) => (
           <div
@@ -758,6 +760,10 @@ export default function AgendaBoard({
                     onDragEnd={canMove ? endDrag : undefined}
                     onClick={() => { setOpenKey(card.key); setLabelsOpen(false); setGuestMsg(""); setWaitlistOpen(false); }}
                   >
+                    {(() => {
+                      const cover = loadImage && (departureInfo[card.key]?.attachments || []).find(isPreviewableImage);
+                      return cover ? <AuthedImage path={`/saida/anexo/${cover.id}`} loadImage={loadImage} className="pmy-board-card__cover" /> : null;
+                    })()}
                     <span className="pmy-board-card__labels">
                       {labelIds.length
                         ? labelIds.map((id) => {
@@ -796,7 +802,7 @@ export default function AgendaBoard({
                 );
               })}
               {(col.tasks || []).map((task) => (
-                <TaskCard key={task.id} card={task} guides={guides} lang={lang} onOpen={() => setOpenTaskId(task.id)} />
+                <TaskCard key={task.id} card={task} guides={guides} loadImage={loadImage} lang={lang} onOpen={() => setOpenTaskId(task.id)} />
               ))}
             </div>
             {addingDate === col.dateKey ? (
@@ -908,6 +914,7 @@ export default function AgendaBoard({
               onUpload={onUpload}
               onRemoveAttachment={onRemoveAttachment}
               onOpenAttachment={onOpenAttachment}
+              loadImage={loadImage}
               onResetCheck={onResetCheck}
               hideTags
               lang={lang}
@@ -927,7 +934,7 @@ export default function AgendaBoard({
         />
       )}
       {openTask && (
-        <SupportModal key={openTask.id} card={openTask} guides={guides} handlers={supportHandlers || {}} lang={lang} onClose={() => setOpenTaskId("")} />
+        <SupportModal key={openTask.id} card={openTask} guides={guides} handlers={supportHandlers || {}} loadImage={loadImage} lang={lang} onClose={() => setOpenTaskId("")} />
       )}
       {trelloOpen && (
         <TrelloImportDialog

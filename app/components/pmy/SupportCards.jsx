@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { DatePicker, TimeSelect } from "./PmyUI";
 import { ChecklistEditor } from "./ChecklistBlock";
+import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import { cardChecklists } from "../../utils/board-tasks.js";
 import { checklistProgress } from "../../utils/departure-checklists.js";
 
@@ -19,7 +20,7 @@ export function taskProgress(card) {
   return checklistProgress({ bookings: [] }, cardChecklists(card?.checklists));
 }
 
-export function SupportModal({ card, guides = [], handlers = {}, onClose, lang = "pt" }) {
+export function SupportModal({ card, guides = [], handlers = {}, loadImage = null, onClose, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const isNew = !card.id;
   const isTask = Boolean(card.dateKey);
@@ -140,6 +141,13 @@ export function SupportModal({ card, guides = [], handlers = {}, onClose, lang =
           <div className="pmy-board-modal__section">
             <h4>{tr("Arquivos", "Files")}</h4>
             {!(card.attachments || []).length && <p className="pmy-support-empty">{tr("Nenhum arquivo ainda.", "No files yet.")}</p>}
+            {loadImage && (card.attachments || []).some(isPreviewableImage) && (
+              <div className="pmy-attach-thumbs">
+                {(card.attachments || []).filter(isPreviewableImage).map((file) => (
+                  <AuthedImage key={file.id} path={`/suporte/anexo/${file.id}`} loadImage={loadImage} alt={file.fileName} className="pmy-attach-thumb" onClick={() => handlers.openAttachment?.(file.id)} />
+                ))}
+              </div>
+            )}
             <div className="pmy-departure-tags__files">
               {(card.attachments || []).map((file) => (
                 <span key={file.id} className="pmy-departure-file">
@@ -180,12 +188,13 @@ export function SupportModal({ card, guides = [], handlers = {}, onClose, lang =
 }
 
 /** Cartão de demanda na coluna do dia. */
-export function TaskCard({ card, guides = [], onOpen, lang = "pt" }) {
+export function TaskCard({ card, guides = [], loadImage = null, onOpen, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const progress = taskProgress(card);
   const people = (card.assigneeIds || []).map((id) => guides.find((g) => g.id === id)).filter(Boolean);
   return (
     <button type="button" className={`pmy-board-card pmy-task-card${card.done ? " is-done" : ""}`} onClick={onOpen}>
+      <CardCover card={card} loadImage={loadImage} />
       <span className="pmy-task-card__badge">{card.done ? tr("✓ Demanda concluída", "✓ Task done") : tr("Demanda", "Task")}</span>
       <span className="pmy-board-card__title">{card.time && <b>{card.time}</b>} {card.title}</span>
       <span className="pmy-board-card__foot">
@@ -202,7 +211,12 @@ export function TaskCard({ card, guides = [], onOpen, lang = "pt" }) {
   );
 }
 
-export function SupportColumn({ cards = [], guides = [], handlers = {}, lang = "pt" }) {
+function CardCover({ card, loadImage }) {
+  const cover = loadImage && (card.attachments || []).find(isPreviewableImage);
+  return cover ? <AuthedImage path={`/suporte/anexo/${cover.id}`} loadImage={loadImage} className="pmy-board-card__cover" /> : null;
+}
+
+export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImage = null, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [openId, setOpenId] = useState(null); // id | "new"
   const docs = cards.filter((c) => !c.dateKey);
@@ -222,6 +236,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, lang = "
           const links = Array.isArray(card.links) ? card.links.length : 0;
           return (
             <button key={card.id} type="button" className="pmy-board-card pmy-support-card" onClick={() => setOpenId(card.id)}>
+              <CardCover card={card} loadImage={loadImage} />
               <span className="pmy-board-card__title">{card.title}</span>
               <span className="pmy-board-card__foot">
                 <span className="pmy-board-card__badges">
@@ -237,7 +252,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, lang = "
       </div>
       {canEdit && <button type="button" className="pmy-board__add" onClick={() => setOpenId("new")}>+ {tr("Adicionar documento", "Add document")}</button>}
       {open && (
-        <SupportModal key={open.id || "new"} card={open} guides={guides} handlers={handlers} lang={lang} onClose={(nextId) => setOpenId(nextId || null)} />
+        <SupportModal key={open.id || "new"} card={open} guides={guides} handlers={handlers} loadImage={loadImage} lang={lang} onClose={(nextId) => setOpenId(nextId || null)} />
       )}
     </div>
   );

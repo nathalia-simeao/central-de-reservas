@@ -6394,3 +6394,11 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-board-add__mode { display: inline-flex; border: 1px solid #dcdfe4; border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
 .pmy-board-add__mode button { border: 0; background: #fff; padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; color: #44546f; cursor: pointer; }
 .pmy-board-add__mode button.is-on { background: #0c66e4; color: #fff; }
+/* Capas e miniaturas de imagens anexadas (12/11/2026) */
+.pmy-authed-img { display: block; background: #f1f2f4; overflow: hidden; border: 0; padding: 0; }
+.pmy-authed-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pmy-board-card .pmy-board-card__cover { display: block; width: calc(100% + 20px); margin: -8px -10px 8px; aspect-ratio: 4 / 3; max-height: 200px; border-radius: 8px 8px 0 0; }
+.pmy-board-card .pmy-board-card__cover:not(.is-loaded) { aspect-ratio: auto; height: 0; margin-bottom: 0; }
+.pmy-attach-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.pmy-attach-thumbs .pmy-attach-thumb { width: 120px; height: 90px; border-radius: 8px; cursor: pointer; }
+.pmy-attach-thumbs .pmy-attach-thumb:focus-visible { outline: 2px solid #0c66e4; outline-offset: 2px; }

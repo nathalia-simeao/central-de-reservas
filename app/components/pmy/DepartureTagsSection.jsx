@@ -1,3 +1,4 @@
+import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import { languageLabel } from "../../utils/tour-languages.js";
 import { useState } from "react";
 import { contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
@@ -20,6 +21,7 @@ export default function DepartureTagsSection({
   onUpload,
   onRemoveAttachment,
   onOpenAttachment,
+  loadImage = null,
   onResetCheck,
   hideTags = false,
   lang = "pt",
@@ -163,6 +165,13 @@ export default function DepartureTagsSection({
                       <div className="pmy-departure-tags__notes">
                         {notes.map((note, index) => (
                           <p key={index}>📝 {note.text} <small>— {note.by}, {timeOf(note.at)}</small></p>
+                        ))}
+                      </div>
+                    )}
+                    {loadImage && files.some(isPreviewableImage) && (
+                      <div className="pmy-attach-thumbs">
+                        {files.filter(isPreviewableImage).map((file) => (
+                          <AuthedImage key={file.id} path={`/saida/anexo/${file.id}`} loadImage={loadImage} alt={file.fileName} className="pmy-attach-thumb" onClick={onOpenAttachment ? () => onOpenAttachment(file.id) : undefined} />
                         ))}
                       </div>
                     )}
