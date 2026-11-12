@@ -6625,3 +6625,4 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-int-summary__item.is-required, .pmy-int-summary__item.is-error { --sum-color: #c9372c; --sum-soft: #ffeceb; --sum-border: #ffd5d2; }
 .pmy-int-summary__item.is-waiting { --sum-color: #0c66e4; --sum-soft: #e9f2ff; --sum-border: #cce0ff; }
 .pmy-trello-conn.is-bare .pmy-trello-sync:first-of-type { margin-top: 14px; }
+.pmy-guide-portal__hint { margin: 0 0 8px; font-size: 13px; color: var(--pmy-ds-muted); }

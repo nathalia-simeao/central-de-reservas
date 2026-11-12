@@ -157,7 +157,7 @@ export default function GuidesTab(props) {
             {formError && <p role="alert" className="pmy-rotation__error">{formError}</p>}
             <div className="pmy-person-form__actions">
               <Button type="submit" size="sm" disabled={saving}>{saving ? "…" : tr("Salvar pessoa", "Save person")}</Button>
-              <small className="pmy-person-access__hint">{tr("O acesso à Central e o portal do guia se configuram depois, no card da pessoa.", "Central access and guide portal are set later on the person card.")}</small>
+              <small className="pmy-person-access__hint">{tr("Depois de salvar, libere o acesso pelo app (e-mail e senha) no cadastro da pessoa — não precisa de Shopify.", "After saving, enable app access (email and password) on the person card — no Shopify needed.")}</small>
             </div>
           </form>
         )}

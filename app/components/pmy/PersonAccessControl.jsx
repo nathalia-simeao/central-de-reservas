@@ -31,13 +31,13 @@ export default function PersonAccessControl({ person, users = [], currentUser = 
 
   return (
     <div className="pmy-person-access">
-      <span className="pmy-person-access__label">{tr("Acesso à Central", "Central access")}</span>
+      <span className="pmy-person-access__label">{tr("Login pela Shopify (opcional)", "Shopify login (optional)")}</span>
       <DropdownSelect
         value={linked?.id || ""}
         disabled={busy}
-        ariaLabel={tr("Acesso à Central", "Central access")}
-        placeholder={tr("Sem acesso", "No access")}
-        options={[{ value: "", label: tr("Sem acesso", "No access") }, ...free.map((u) => ({ value: u.id, label: userLabel(u) }))]}
+        ariaLabel={tr("Login pela Shopify", "Shopify login")}
+        placeholder={tr("Não usa a Shopify", "Doesn't use Shopify")}
+        options={[{ value: "", label: tr("Não usa a Shopify", "Doesn't use Shopify") }, ...free.map((u) => ({ value: u.id, label: userLabel(u) }))]}
         onChange={async (userId) => {
           if (!userId && linked) await run(linked.id, { guideId: "" });
           else if (userId) await run(userId, { guideId: person.id });
@@ -57,7 +57,7 @@ export default function PersonAccessControl({ person, users = [], currentUser = 
           ? (linked.role === "ADMIN"
             ? tr("Vê tudo, inclusive Financeiro, Integrações e Configurações.", "Sees everything.")
             : tr("Não vê Financeiro, Desempenho, Saúde das integrações, Integrações e Configurações.", "No Finance, Performance, Integrations or Settings."))
-          : tr("Para ter acesso, a pessoa precisa de um usuário na Shopify e abrir a Central uma vez; depois ela aparece aqui para escolher.", "The person needs a Shopify user and to open the Central once; then pick it here.")}
+          : tr("Só para quem entra pelo admin da Shopify. Guias e equipe não precisam: liberam o acesso pelo app logo abaixo, com e-mail e senha.", "Only for people who use the Shopify admin. Others get app access below with email and password.")}
       </small>
       {message && <small role="status" className="pmy-person-access__msg">{message}</small>}
     </div>

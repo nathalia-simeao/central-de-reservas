@@ -31,7 +31,7 @@ export default function GuidePortalAccess({ guide, onSave, lang = "pt" }) {
 
   const message = shownPassword
     ? tr(
-        `Olá, ${guide.name?.split(" ")[0] || ""}! Seu acesso ao portal do guia da Portugal, Me & You:\n${portalUrl}\nE-mail: ${guide.email}\nSenha: ${shownPassword}\nNo celular, abra o link e use "Adicionar à tela inicial" para ter o atalho.`,
+        `Olá, ${guide.name?.split(" ")[0] || ""}! Seu acesso ao app da Portugal, Me & You:\n${portalUrl}\nE-mail: ${guide.email}\nSenha: ${shownPassword}\nNo celular, abra o link e use "Adicionar à tela inicial" para ter o atalho.`,
         `Hi ${guide.name?.split(" ")[0] || ""}! Your guide portal access:\n${portalUrl}\nEmail: ${guide.email}\nPassword: ${shownPassword}`,
       )
     : "";
@@ -39,17 +39,19 @@ export default function GuidePortalAccess({ guide, onSave, lang = "pt" }) {
 
   return (
     <div className="pmy-ds-panel-soft pmy-u-mt-3 pmy-guide-portal">
-      <h4 className="pmy-u-mb-2">{tr("Acesso ao portal do guia", "Guide portal access")}</h4>
+      <h4 className="pmy-u-mb-2">{tr("Acesso pelo app (e-mail e senha)", "App access (email and password)")}</h4>
+      <p className="pmy-guide-portal__hint">{tr("Não precisa de Shopify. Quem tem a área Guia vê suas saídas e o Quadro; quem tem Administração vê também a Central completa.", "No Shopify needed. Guides see their departures and the Board; Administration also gets the full Central.")}</p>
       <p className="pmy-guide-portal__status">
         {state.portalEnabled
-          ? tr("✅ Liberado — o guia entra em ", "✅ Enabled — the guide signs in at ")
+          ? tr("✅ Liberado — entra em ", "✅ Enabled — signs in at ")
           : tr("⛔ Sem acesso — ", "⛔ No access — ")}
         {state.portalEnabled ? <code>{portalUrl}</code> : tr("libere abaixo depois de definir a senha.", "enable below after setting a password.")}
         <br />
-        <small>{tr("Login:", "Login:")} {guide.email || tr("sem e-mail cadastrado (edite o guia)", "no email (edit the guide)")}</small>
+        <small>{tr("Login:", "Login:")} {guide.email || tr("sem e-mail cadastrado — preencha o e-mail e salve antes de liberar", "no email — fill in and save first")}</small>
       </p>
 
       {error && <p role="alert" className="pmy-booking-list__error">{error}</p>}
+
 
       {shownPassword && (
         <div className="pmy-guide-portal__password" role="status">
@@ -73,7 +75,8 @@ export default function GuidePortalAccess({ guide, onSave, lang = "pt" }) {
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           placeholder={tr("ou digite uma senha (mín. 8)", "or type a password (min 8)")}
-          aria-label={tr("Senha do guia", "Guide password")}
+          aria-label={tr("Senha do app", "App password")}
+          onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
           autoComplete="new-password"
         />
         <Button type="button" size="sm" variant="secondary" disabled={busy || typed.length < 8 || !guide.email} onClick={() => run({ enabled: true, password: typed })}>

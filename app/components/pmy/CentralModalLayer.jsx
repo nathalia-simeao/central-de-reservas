@@ -1402,7 +1402,7 @@ export default function CentralModalLayer(props) {
             </div>
           )}
 
-          {isCentralAdmin && isGuide(selectedGuideInfo) && (
+          {isCentralAdmin && (
             <GuidePortalAccess guide={selectedGuideInfo} onSave={handleSetGuidePortalAccess} lang={lang} />
           )}
 
@@ -2054,6 +2054,10 @@ export default function CentralModalLayer(props) {
               </div>
               <small className="pmy-person-access__hint">{ui("Só quem tem \"Guia\" aparece na escala, no Quadro e no portal do guia.", "Only \"Guide\" shows up in scheduling.")}</small>
             </div>
+            {/* Acesso pelo app (e-mail + senha) vem primeiro: é o caminho de guias e equipe. */}
+            {isCentralAdmin && handleSetGuidePortalAccess && (
+              <GuidePortalAccess key={guide.id} guide={guide} onSave={handleSetGuidePortalAccess} lang={lang} />
+            )}
             {isCentralAdmin && handleSaveCentralUser && (
               <PersonAccessControl person={guide} users={centralUsers} currentUser={centralUser} onSave={handleSaveCentralUser} lang={lang} />
             )}
