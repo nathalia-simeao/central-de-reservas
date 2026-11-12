@@ -6372,7 +6372,9 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-editable__btn { border: 0; background: none; padding: 0 2px; color: #626f86; cursor: pointer; font-size: 13px; opacity: 0; transition: opacity .15s; }
 .pmy-checklist__item:hover .pmy-editable__btn, .pmy-checklist__head:hover .pmy-editable__btn, .pmy-editable__btn:focus-visible { opacity: 1; }
 .pmy-editable.is-editing { display: block; width: 100%; }
-.pmy-editable.is-editing input { width: 100%; font: inherit; padding: 4px 8px; border: 1px solid #0c66e4; border-radius: 6px; }
+/* Campo de edição do item: borda fina e um pouco mais alto (pedido 12/11). */
+.pmy-board-modal .pmy-editable.is-editing input { width: 100%; min-height: 36px; font: inherit; padding: 7px 10px; border: 1px solid #c1c7d0; border-radius: 8px; background: #fff; outline: none; box-shadow: none; }
+.pmy-board-modal .pmy-editable.is-editing input:focus, .pmy-board-modal .pmy-editable.is-editing input:focus-visible { border-color: #0c66e4; outline: none; box-shadow: 0 0 0 2px rgba(12,102,228,.15); }
 .pmy-checklist__item.is-done .pmy-editable__btn { text-decoration: none; }
 @media (hover: none) { .pmy-editable__btn { opacity: 1; } }
 /* Quadro: demandas sem passeio (12/11/2026) */
