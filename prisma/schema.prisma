@@ -580,6 +580,8 @@ model BusinessSetting {
   platformPrices Json?
   // Funcionalidades opcionais ligadas/desligadas pelo administrador. Ver app/utils/feature-flags.js.
   featureFlags   Json?
+  // Leitura automática do Trello (a cada 1 hora). Ver app/services/trello-sync.server.js.
+  trelloSync     Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 

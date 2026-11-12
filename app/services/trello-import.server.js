@@ -7,7 +7,7 @@
 
 import { normalizeChecklists } from "../utils/departure-checklists.js";
 import { lisbonParts } from "../utils/agenda-board.js";
-import { guideNameFromTitle, matchGuide, memberForGroup, noteTextForCard } from "../utils/trello-import.js";
+import { guideNameFromTitle, matchGuide, memberForGroup, normalizeText, noteTextForCard } from "../utils/trello-import.js";
 
 const MAX_CARDS = 2000;
 const MAX_LISTS = 20;
@@ -159,17 +159,31 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Da
     const existing = await prisma.tourDeparture.findUnique({ where, select: { checklists: true, guideNotes: true } });
     const current = normalizeChecklists(existing?.checklists);
     const kept = current.lists.filter((list) => !String(list.id).startsWith(TRELLO_PREFIX));
-    const imported = bucket.lists.map((group) => ({
-      id: `${TRELLO_PREFIX}${group.trelloId}`.slice(0, 64),
-      title: group.title,
-      items: group.items.map((item, index) => ({
-        id: `${TRELLO_PREFIX}${group.trelloId}_${index}`.slice(0, 64),
-        text: item.text,
-        done: item.done,
-        at: item.done ? nowIso : null,
-        by: item.done ? "Trello" : null,
-      })),
-    }));
+    // O que a equipe marcou na Central continua marcado quando o Trello é lido de novo
+    // (o mesmo item = mesma lista do Trello + mesmo texto).
+    const markedHere = new Map();
+    for (const list of current.lists) {
+      if (!String(list.id).startsWith(TRELLO_PREFIX)) continue;
+      for (const item of list.items) if (item.done) markedHere.set(`${list.id}|${normalizeText(item.text)}`, item);
+    }
+    const imported = bucket.lists.map((group) => {
+      const listId = `${TRELLO_PREFIX}${group.trelloId}`.slice(0, 64);
+      return {
+        id: listId,
+        title: group.title,
+        items: group.items.map((item, index) => {
+          const before = markedHere.get(`${listId}|${normalizeText(item.text)}`);
+          const done = item.done || Boolean(before);
+          return {
+            id: `${TRELLO_PREFIX}${group.trelloId}_${index}`.slice(0, 64),
+            text: item.text,
+            done,
+            at: done ? before?.at || nowIso : null,
+            by: done ? before?.by || "Trello" : null,
+          };
+        }),
+      };
+    });
     const room = Math.max(0, MAX_LISTS - kept.length);
     if (imported.length > room) {
       summary.unplaced.push({ list: bucket.startTime.toISOString(), name: tourById.get(bucket.tourId)?.title || "", reason: `Limite de ${MAX_LISTS} checklists por saída` });

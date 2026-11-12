@@ -6600,3 +6600,9 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-mirror__nav span { padding: 0 4px; }
 .pmy-mirror__gaps { display: grid; gap: 4px; margin: 8px 0 0; padding: 8px 10px; list-style: none; border-radius: 8px; background: #fff7d6; color: #533f04; font-size: 13.5px; }
 .pmy-mirror__guides .pmy-guide-lang { display: inline-block; padding: 1px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; }
+/* Integrações → Trello: leitura automática */
+.pmy-trello-sync { display: grid; gap: 6px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--pmy-ds-border); border-radius: 12px; }
+.pmy-trello-sync__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.pmy-trello-sync p { margin: 0; font-size: 14px; }
+.pmy-trello-sync__meta { color: var(--pmy-ds-muted); }
+.pmy-trello-sync__toggle { justify-self: start; padding: 0; border: 0; background: none; color: var(--pmy-ds-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }

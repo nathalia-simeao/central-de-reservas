@@ -807,6 +807,7 @@ export function startSyncQueueWorker(
 
   let running = false;
   let lastFxRunAt = 0;
+  let lastTrelloCheckAt = 0;
 
   const tick = async () => {
     if (running) return;
@@ -819,6 +820,14 @@ export function startSyncQueueWorker(
         lastFxRunAt = Date.now();
         const { convertBookingsToEur } = await import("./fx.server.js");
         await convertBookingsToEur(prisma).catch((error) => console.error("[FX] worker step failed:", error?.message || error));
+      }
+      // Trello → Central a cada 1 hora (confere a cada 5 minutos se já está na hora).
+      if (Date.now() - lastTrelloCheckAt > 5 * 60 * 1000) {
+        lastTrelloCheckAt = Date.now();
+        const { trelloSyncWorkerStep } = await import("../services/trello-sync.server.js");
+        const result = await trelloSyncWorkerStep(prisma).catch((error) => ({ ok: false, error: error?.message || String(error) }));
+        if (result?.ok) console.log("[TRELLO_SYNC] ok", JSON.stringify({ ...result.summary, guideWarnings: result.summary.guideWarnings.length }));
+        else if (result?.error) console.error("[TRELLO_SYNC] failed:", result.error);
       }
     } catch (error) {
       failure = error;

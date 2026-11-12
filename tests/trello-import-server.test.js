@@ -79,3 +79,14 @@ test("cards without a chosen tour are skipped; support cards are saved by Trello
   assert.equal(summary.support, 1);
   assert.equal(prisma.support.get("s1").links[0].name, "v.pdf");
 });
+
+test("checks made in the Central survive the next Trello read", async () => {
+  const prisma = fakePrisma();
+  await importTrelloPlan({ prisma, plan: { cards: [card], assignGuides: false } });
+  const key = "belem|2026-11-12T09:30:00.000Z";
+  const row = prisma.rows.get(key);
+  row.checklists.lists[0].items[1] = { ...row.checklists.lists[0].items[1], done: true, by: "Renan", at: "2026-11-12T10:00:00Z" };
+  await importTrelloPlan({ prisma, plan: { cards: [card], assignGuides: false } });
+  const items = prisma.rows.get(key).checklists.lists[0].items;
+  assert.deepEqual(items.map((i) => [i.text, i.done, i.by]), [["JOHN (2A)", true, "Trello"], ["Fim de tour", true, "Renan"]]);
+});

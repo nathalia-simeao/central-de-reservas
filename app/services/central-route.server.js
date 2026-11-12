@@ -45,6 +45,7 @@ import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 import { importTrelloPlan } from "./trello-import.server.js";
+import { compactSummary, saveTrelloSync } from "./trello-sync.server.js";
 import { cardChecklists, isDateKey, isTimeKey } from "../utils/board-tasks.js";
 import { actorFor, departureTargetKey, describeChecklistOp, logActivity } from "./board-activity.server.js";
 
@@ -78,7 +79,7 @@ function cleanLanguageList(values) {
   return [...new Set(list.map((value) => languageKey(value)).filter((key) => QUOTA_LANGUAGE_KEYS.includes(key)))];
 }
 
-async function assignGuideToDeparture({ tour, guide, startTime, languages = [], replaceDeparture = false }) {
+export async function assignGuideToDeparture({ tour, guide, startTime, languages = [], replaceDeparture = false }) {
   const wanted = cleanLanguageList(languages);
   const [guideConflict, departureAssignments] = await Promise.all([
     prisma.guideAssignment.findFirst({
@@ -537,6 +538,17 @@ export const action = async ({ request }) => {
         plan,
         assignGuide: ({ tour, guide, startTime, languages }) => assignGuideToDeparture({ tour, guide, startTime, languages }),
       });
+      // Leitura automática a cada 1 hora com a mesma ligação cartão → passeio.
+      if (plan.sync && typeof plan.sync === "object") {
+        const nowIso = new Date().toISOString();
+        await saveTrelloSync(prisma, {
+          enabled: plan.sync.enabled === true,
+          mapping: plan.sync.mapping,
+          includeFlagged: plan.sync.includeFlagged === true,
+          assignGuides: plan.assignGuides !== false,
+          lastRunAt: nowIso, lastOkAt: nowIso, lastError: null, lastSummary: compactSummary(summary),
+        }, { shop: session?.shop || null }).catch((e) => console.error("[PMY] trello sync config save failed:", e));
+      }
       return json({ success: true, summary });
     } catch (e) {
       console.error("[PMY] importTrelloBoard error:", e);

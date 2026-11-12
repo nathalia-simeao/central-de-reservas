@@ -9,14 +9,23 @@ import {
   updateIntegrationValidation,
   getSafeIntegrationSecretStatus,
 } from "../utils/integration-secrets.server";
-import { TRELLO_PROVIDER, downloadTrelloAttachment, fetchTrelloBoard, testTrello, trelloBoardId, trelloCredentials } from "../utils/trello-api.server";
-import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, safeFileName } from "../utils/guide-portal.server";
-import { saveTrelloFile } from "../services/trello-files.server";
+import { TRELLO_PROVIDER, fetchTrelloBoard, testTrello, trelloBoardId, trelloCredentials } from "../utils/trello-api.server";
+import { downloadPendingTrelloFiles, pendingTrelloLinks, readTrelloSync, runTrelloSync, saveTrelloSync } from "../services/trello-sync.server";
+import { assignGuideToDeparture } from "../services/central-route.server";
+
+const pendingLinks = () => pendingTrelloLinks(db);
 
 // Integrações → Trello: chave + token (criptografados), teste, leitura do
 // quadro para a importação e download dos anexos para dentro da Central.
 const json = (body, init) => data(body, init);
 const clean = (v) => String(v ?? "").trim();
+
+async function syncStatus() {
+  const { config } = await readTrelloSync(db).catch(() => ({ config: null }));
+  if (!config) return null;
+  const { mapping, ...rest } = config;
+  return { ...rest, mappedTours: Object.keys(mapping).length };
+}
 
 async function status() {
   const record = await getSafeIntegrationSecretStatus(db, TRELLO_PROVIDER).catch(() => null);
@@ -28,26 +37,8 @@ async function status() {
     boardName: record?.metadata?.boardName || null,
     lastMessage: record?.lastValidationMessage || null,
     lastStatus: record?.lastValidationStatus || null,
+    sync: await syncStatus(),
   };
-}
-
-/** Todos os anexos que ainda estão como link do Trello (documentos de suporte e observações das saídas). */
-async function pendingLinks() {
-  const out = [];
-  const support = await db.supportCard.findMany({ where: { NOT: { trelloId: null } }, select: { trelloId: true, links: true } });
-  for (const card of support) for (const link of Array.isArray(card.links) ? card.links : []) out.push({ trelloCardId: card.trelloId, url: link.url, name: link.name });
-  const departures = await db.tourDeparture.findMany({ where: { startTime: { gte: new Date(Date.now() - 90 * 24 * 3600 * 1000) } }, select: { guideNotes: true } });
-  for (const d of departures) {
-    for (const n of Array.isArray(d.guideNotes) ? d.guideNotes : []) {
-      if (n?.source !== "trello") continue;
-      for (const line of String(n.text || "").split("\n")) {
-        const m = line.match(/^• (.+?): (https:\/\/trello\.com\/\S+)$/);
-        if (m) out.push({ trelloCardId: n.trelloId, url: m[2], name: m[1] });
-      }
-    }
-  }
-  const seen = new Set();
-  return out.filter((l) => /^https:\/\/trello\.com\//.test(l.url) && !seen.has(`${l.trelloCardId}|${l.url}`) && seen.add(`${l.trelloCardId}|${l.url}`));
 }
 
 export const loader = async ({ request }) => {
@@ -105,22 +96,35 @@ export const action = async ({ request }) => {
   if (intent === "downloadFiles") {
     const creds = await trelloCredentials(db);
     if (!creds) return json({ success: false, error: "Conecte o Trello primeiro." }, { status: 409 });
-    const links = await pendingLinks();
-    const summary = { total: links.length, saved: 0, skipped: [], failed: [] };
-    for (const link of links.slice(0, 80)) {
-      try {
-        const file = await downloadTrelloAttachment(creds, link.url, link.name);
-        if (!ALLOWED_ATTACHMENT_TYPES.has(file.mimeType)) { summary.skipped.push(`${link.name}: tipo ${file.mimeType} não aceito`); continue; }
-        if (file.bytes.length > MAX_ATTACHMENT_BYTES) { summary.skipped.push(`${link.name}: maior que 8 MB`); continue; }
-        const r = await saveTrelloFile({ prisma: db, trelloCardId: link.trelloCardId, url: link.url, fileName: safeFileName(link.name || file.fileName), mimeType: file.mimeType, bytes: file.bytes, by: "Trello" });
-        summary.saved += r.saved;
-      } catch (e) {
-        summary.failed.push(`${link.name}: ${e.message}`);
-        if (e.status === 401) break;
-      }
-    }
+    const summary = await downloadPendingTrelloFiles(db, creds, { limit: 80 });
     await updateIntegrationValidation(db, TRELLO_PROVIDER, { status: "CONNECTED", message: `Anexos: ${summary.saved} baixados, ${summary.skipped.length} ignorados, ${summary.failed.length} com erro.` }).catch(() => {});
     return json({ success: true, summary, ...(await status()), pending: (await pendingLinks()).length });
+  }
+
+  // Leitura automática a cada 1 hora: ligar/desligar (com a ligação cartão → passeio
+  // salva neste navegador na última importação) e "Ler agora".
+  if (intent === "syncSettings") {
+    const enabled = clean(form.get("enabled")) === "true";
+    let mapping;
+    try { mapping = JSON.parse(String(form.get("mapping") || "null")); } catch { mapping = null; }
+    const patch = { enabled };
+    if (mapping && typeof mapping === "object" && Object.keys(mapping).length) patch.mapping = mapping;
+    const next = await saveTrelloSync(db, patch);
+    if (enabled && !Object.keys(next.mapping).length) {
+      await saveTrelloSync(db, { enabled: false });
+      return json({ success: false, error: "Faça uma importação pelo Quadro (Importar do Trello) para ligar os cartões aos passeios." }, { status: 409 });
+    }
+    return json({ success: true, ...(await status()) });
+  }
+
+  if (intent === "syncNow") {
+    const result = await runTrelloSync(db, {
+      force: true,
+      assignGuide: ({ tour, guide, startTime, languages }) => assignGuideToDeparture({ tour, guide, startTime, languages }),
+    });
+    if (result?.skipped === "no-mapping") return json({ success: false, error: "Faça uma importação pelo Quadro (Importar do Trello) para ligar os cartões aos passeios." }, { status: 409 });
+    if (!result?.ok) return json({ success: false, error: result?.error || "Falha ao ler o Trello." }, { status: 502 });
+    return json({ success: true, ...(await status()), pending: (await pendingLinks()).length });
   }
 
   return json({ success: false, error: "Ação inválida." }, { status: 400 });

@@ -1,6 +1,47 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card, SectionHeader } from "./PmyUI";
 
+const when = (value, lang) => (value
+  ? new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value))
+  : "—");
+
+/** Leitura automática do Trello (a cada 1 hora): ligada/desligada, última leitura e avisos. */
+function TrelloSyncStatus({ sync, busy, onToggle, onRunNow, lang }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [open, setOpen] = useState(false);
+  if (!sync) return null;
+  const s = sync.lastSummary;
+  const warnings = s?.guideWarnings || [];
+  return (
+    <div className="pmy-trello-sync">
+      <div className="pmy-trello-sync__head">
+        <strong>{sync.enabled ? tr("🔄 Leitura automática ligada (a cada 1 hora)", "🔄 Auto-read on (hourly)") : tr("Leitura automática desligada", "Auto-read off")}</strong>
+        <div className="pmy-support-actions" style={{ marginTop: 0 }}>
+          <Button size="sm" variant="secondary" disabled={Boolean(busy)} onClick={onRunNow}>{busy === "syncNow" ? tr("Lendo o Trello…", "Reading…") : tr("Ler agora", "Read now")}</Button>
+          <Button size="sm" variant={sync.enabled ? "secondary" : "primary"} disabled={Boolean(busy)} onClick={() => onToggle(!sync.enabled)}>
+            {sync.enabled ? tr("Desligar", "Turn off") : tr("Ligar", "Turn on")}
+          </Button>
+        </div>
+      </div>
+      <p>{tr("Traz do Trello checklists, descrições, guias, documentos de suporte e anexos novos. O que muda só na Central não volta para o Trello; itens marcados na Central continuam marcados.", "Brings checklists, descriptions, guides, support docs and new files from Trello. Central-only changes don't go back to Trello.")}</p>
+      <p className="pmy-trello-sync__meta">
+        {tr("Última leitura:", "Last read:")} {when(sync.lastOkAt, lang)}
+        {s ? ` · ${s.departures} ${tr("saídas", "departures")} · ${s.guidesAssigned} ${tr("guias escalados", "guides assigned")}${s.files ? ` · ${s.files} ${tr("anexos baixados", "files downloaded")}` : ""}` : ""}
+        {` · ${sync.mappedTours} ${tr("passeios ligados", "tours linked")}`}
+      </p>
+      {sync.lastError && <p className="pmy-support-error" role="alert">{sync.lastError}</p>}
+      {warnings.length > 0 && (
+        <>
+          <button type="button" className="pmy-trello-sync__toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? "▾" : "▸"} {warnings.length + (s.moreWarnings || 0)} {tr("aviso(s) de guias", "guide warning(s)")}
+          </button>
+          {open && <ul className="pmy-trello__list">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
+        </>
+      )}
+    </div>
+  );
+}
+
 // Integrações → Conexões → Trello. A chave e o token ficam criptografados no
 // servidor; a tela nunca mostra os valores de volta, só se está conectado.
 export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
@@ -71,6 +112,13 @@ export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
             <Button variant="secondary" disabled={Boolean(busy)} onClick={() => setEditing(true)}>{tr("Trocar chave ou quadro", "Change key or board")}</Button>
             <Button variant="secondary" disabled={Boolean(busy)} onClick={() => { if (window.confirm(tr("Desconectar o Trello? A chave e o token serão apagados da Central.", "Disconnect Trello?"))) post("remove"); }}>{tr("Desconectar", "Disconnect")}</Button>
           </div>
+          <TrelloSyncStatus sync={state.sync} busy={busy} lang={lang}
+            onToggle={(enabled) => {
+              let mapping = null;
+              try { mapping = window.localStorage.getItem("pmy.trelloTourMapping"); } catch { /* sem armazenamento */ }
+              return post("syncSettings", { enabled: String(enabled), mapping: mapping || "" });
+            }}
+            onRunNow={() => post("syncNow")} />
           {summary && (
             <div className="pmy-trello-conn__summary">
               <p><b>{summary.saved}</b> {tr("arquivo(s) salvos na Central.", "file(s) saved.")}</p>

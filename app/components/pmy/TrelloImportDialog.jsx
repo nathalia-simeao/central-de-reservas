@@ -29,6 +29,7 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, load
   const [mapping, setMapping] = useState({});
   const [includeFlagged, setIncludeFlagged] = useState(false);
   const [assignGuides, setAssignGuides] = useState(true);
+  const [autoSync, setAutoSync] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -94,6 +95,8 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, load
         assignGuides,
         cards: selected.map((c) => ({ ...c, tourId: mapping[c.tourKey] })),
         support: plan.support,
+        // Leitura automática a cada 1 hora com esta mesma ligação cartão → passeio.
+        sync: { enabled: autoSync, mapping: Object.fromEntries(Object.entries(mapping).filter(([, v]) => v)), includeFlagged },
       });
       setResult(summary);
     } catch (e) {
@@ -207,6 +210,10 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, load
                   <label className="pmy-support-check">
                     <input type="checkbox" checked={assignGuides} onChange={(e) => setAssignGuides(e.target.checked)} />
                     {tr("Escalar os guias dos cartões (pelo nome no título do checklist)", "Assign card guides (by name in checklist title)")}
+                  </label>
+                  <label className="pmy-support-check">
+                    <input type="checkbox" checked={autoSync} onChange={(e) => setAutoSync(e.target.checked)} />
+                    {tr("Depois, ler o Trello sozinho a cada 1 hora (só Trello → Central)", "Then read Trello automatically every hour (Trello → Central only)")}
                   </label>
                   {error && <p className="pmy-support-error" role="alert">{error}</p>}
                   <div className="pmy-support-actions">
