@@ -37,10 +37,10 @@ export function PlatformPicker({ value, onChange, lang = "pt", disabled = false,
       {open && (
         <span className="pmy-plat-picker__menu" role="menu">
           {CHECKLIST_PLATFORMS.map((p) => (
-            <button key={p.key} type="button" role="menuitemradio" aria-checked={p.key === current?.key}
+            <button key={p.key} type="button" role="menuitemradio" aria-checked={p.key === current?.key} aria-label={p.name} title={p.name}
               className={p.key === current?.key ? "is-on" : ""}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onChange(p.key); }}>
-              <PlatformBadge platform={p.key} /> {p.name}
+              <PlatformBadge platform={p.key} />
             </button>
           ))}
           {current && (

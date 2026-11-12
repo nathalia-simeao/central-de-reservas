@@ -6650,3 +6650,8 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-checklist__item > .pmy-checklist__del { margin-left: 2px; }
 .pmy-checklist__item.is-done .pmy-plat, .pmy-checklist__item.is-done .pmy-plat-picker, .pmy-checklist__item.is-done .pmy-plat-picker * { text-decoration: none; }
 .pmy-checklist__item.is-done .pmy-plat { color: #fff; }
+/* Menu de plataformas: só as siglas (pedido 12/11) */
+.pmy-plat-picker__menu { display: flex; flex-wrap: wrap; gap: 4px; width: 200px; min-width: 0; }
+.pmy-plat-picker__menu button { padding: 4px; }
+.pmy-plat-picker__menu button.is-on { box-shadow: inset 0 0 0 2px #172b4d; }
+.pmy-plat-picker__clear { flex-basis: 100%; justify-content: center; font-size: 12.5px !important; }
