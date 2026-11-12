@@ -19,6 +19,7 @@ export default function DepartureTagsSection({
   assignments = [],
   onUpload,
   onRemoveAttachment,
+  onOpenAttachment,
   onResetCheck,
   hideTags = false,
   lang = "pt",
@@ -168,7 +169,9 @@ export default function DepartureTagsSection({
                     <div className="pmy-departure-tags__files">
                       {files.map((file) => (
                         <span key={file.id} className="pmy-departure-file">
-                          📎 {file.fileName}
+                          {onOpenAttachment
+                            ? <button type="button" className="pmy-departure-file__open" title={tr("Abrir arquivo", "Open file")} onClick={() => onOpenAttachment(file.id)}>📎 {file.fileName}</button>
+                            : <>📎 {file.fileName}</>}
                           {onRemoveAttachment && (
                             <button type="button" aria-label={tr(`Remover ${file.fileName}`, `Remove ${file.fileName}`)} onClick={() => remove(departure, file)}>×</button>
                           )}

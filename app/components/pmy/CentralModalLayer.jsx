@@ -117,6 +117,7 @@ export default function CentralModalLayer(props) {
     departureInfo = {},
     handleUploadDepartureAttachment,
     handleRemoveDepartureAttachment,
+    openDepartureAttachment,
     handleSetGuidePortalAccess,
     handleSetBookingGroup,
     handleResetDepartureCheck,
@@ -1120,6 +1121,7 @@ export default function CentralModalLayer(props) {
             assignments={dayAssignments}
             onUpload={handleUploadDepartureAttachment}
             onRemoveAttachment={handleRemoveDepartureAttachment}
+            onOpenAttachment={openDepartureAttachment}
             onResetCheck={isCentralAdmin ? handleResetDepartureCheck : null}
             lang={lang}
           />

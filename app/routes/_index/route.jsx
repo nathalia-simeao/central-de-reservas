@@ -2167,13 +2167,15 @@ function CentralDeReservasContent() {
     return result.board;
   };
   const handleImportTrello = async (plan) => (await postCentral({ _action: "importTrelloBoard", plan })).summary;
-  const openSupportAttachment = async (id) => {
+  const openSupportAttachment = (id) => openCentralFile(`/suporte/anexo/${id}`);
+  const openDepartureAttachment = (id) => openCentralFile(`/saida/anexo/${id}`);
+  const openCentralFile = async (path) => {
     // Abre a janela antes do fetch (bloqueador de pop-up) e troca o endereço depois.
     const win = window.open("", "_blank");
     try {
       const headers = {};
       try { const token = await window.shopify?.idToken?.(); if (token) headers.Authorization = `Bearer ${token}`; } catch { /* cookie do app */ }
-      const response = await fetch(resourceUrl(`/suporte/anexo/${id}`), { credentials: "include", headers });
+      const response = await fetch(resourceUrl(path), { credentials: "include", headers });
       if (!response.ok) throw new Error(await response.text());
       const url = URL.createObjectURL(await response.blob());
       if (win) win.location.href = url; else window.location.href = url;
@@ -3181,7 +3183,7 @@ function CentralDeReservasContent() {
               agendaLabels: colorLabels, departureTags, departureInfo,
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
               onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
-              onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
+              onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
               supportCards, supportHandlers, loadBookings: loadBoardBookings,
@@ -3277,6 +3279,7 @@ function CentralDeReservasContent() {
         departureInfo,
         handleUploadDepartureAttachment,
         handleRemoveDepartureAttachment,
+        openDepartureAttachment,
         handleSetGuidePortalAccess,
         handleSetBookingGroup,
         handleResetDepartureCheck,

@@ -552,6 +552,7 @@ export default function AgendaBoard({
   onRemoveAssignment,
   onUpload,
   onRemoveAttachment,
+  onOpenAttachment = null,
   onResetCheck,
   onChecklistOp,
   onMoveDeparture = null,
@@ -938,6 +939,7 @@ export default function AgendaBoard({
               assignments={assignments}
               onUpload={onUpload}
               onRemoveAttachment={onRemoveAttachment}
+              onOpenAttachment={onOpenAttachment}
               onResetCheck={onResetCheck}
               hideTags
               lang={lang}
