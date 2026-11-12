@@ -5940,6 +5940,9 @@
 .pmy-overview-section-btn__text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .pmy-overview-section-btn__text strong { font-size: 15px; }
 .pmy-overview-section-btn__text small { font-size: 12px; opacity: .7; }
+.pmy-overview-section-btn__end { display: inline-flex; align-items: center; gap: 10px; flex: none; margin-left: auto; color: var(--pmy-ds-muted, #6b7280); }
+.pmy-overview-section-btn__lock { display: inline-flex; opacity: .55; }
+.pmy-inline-lock { display: inline-flex; vertical-align: -2px; opacity: .6; }
 .pmy-overview-back { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
 .pmy-overview-back h2 { margin: 0; font-size: 20px; }
 

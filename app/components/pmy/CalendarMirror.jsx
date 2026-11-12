@@ -12,7 +12,7 @@ import { languageLabel } from "../../utils/tour-languages.js";
 import { guideNameFromTitle, matchGuide, normalizeText } from "../../utils/trello-import.js";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import { PlatformBadge } from "./ChecklistBlock";
-import { Button, DatePicker, Tabs } from "./PmyUI";
+import { Button, DatePicker, Icon, Tabs } from "./PmyUI";
 
 const LANG_COLORS = { en: "#0c66e4", pt: "#1f845a", es: "#c9372c", fr: "#6e5dc6", it: "#b65c02", de: "#44546f" };
 const CHUNK = 60; // dias por busca de reservas
@@ -343,7 +343,7 @@ function DayDetail({ dateKey, items, blocks, agendaLabels, onPick, onOpenBoard, 
       )}
     >
       {blocks.length > 0 && (
-        <p className="pmy-mirror__blocks">🔒 {blocks.length === 1 ? tr("1 bloqueio de disponibilidade neste dia", "1 availability block on this day") : tr(`${blocks.length} bloqueios de disponibilidade neste dia`, `${blocks.length} availability blocks on this day`)}
+        <p className="pmy-mirror__blocks"><span className="pmy-inline-lock" aria-hidden="true"><Icon name="lock" size={13} /></span> {blocks.length === 1 ? tr("1 bloqueio de disponibilidade neste dia", "1 availability block on this day") : tr(`${blocks.length} bloqueios de disponibilidade neste dia`, `${blocks.length} availability blocks on this day`)}
           {": "}{blocks.map((b) => [b.tour?.title || tr("todos os passeios", "all tours"), b.timeSlot && b.timeSlot !== "ALL" ? b.timeSlot : ""].filter(Boolean).join(" ")).join("; ")}</p>
       )}
       {items.length > 0 && (
@@ -502,7 +502,7 @@ export default function CalendarMirror({
               <div key={key} className={`pmy-cal-cell${outside ? " is-outside" : ""}${key === today ? " is-today" : ""}`}>
                 <button type="button" className="pmy-cal-cell__day" onClick={() => setDayKey(key)} aria-label={dayButtonLabel(key)}>
                   <span className="pmy-cal-cell__num">{Number(key.slice(8))}</span>
-                  {blocked && <span title={tr("Tem bloqueio de disponibilidade", "Has an availability block")}>🔒</span>}
+                  {blocked && <span title={tr("Tem bloqueio de disponibilidade", "Has an availability block")}><Icon name="lock" size={12} /></span>}
                 </button>
                 <div className="pmy-cal-cell__items">
                   {visible.map((item) => renderChip(item, true))}
@@ -568,7 +568,7 @@ export default function CalendarMirror({
           return (
             <div key={key} className={`pmy-cal-daycol${key === today ? " is-today" : ""}`}>
               <button type="button" className="pmy-cal-daycol__head" onClick={() => setDayKey(key)}>
-                <span>{label}</span>{blocked && <span>🔒</span>}<small>{items.length || ""}</small>
+                <span>{label}</span>{blocked && <span className="pmy-inline-lock" aria-hidden="true"><Icon name="lock" size={13} /></span>}<small>{items.length || ""}</small>
               </button>
               <div className="pmy-cal-daycol__items">
                 {items.length ? items.map((item) => (

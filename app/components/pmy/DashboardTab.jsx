@@ -2018,10 +2018,14 @@ export default function DashboardTab(props) {
                         <button key={item.key} type="button" className="pmy-overview-section-btn" onClick={() => setSection(item.key)}>
                           <span className="pmy-kpi-icon"><Icon name={item.icon} size={20} /></span>
                           <span className="pmy-overview-section-btn__text">
-                            <strong>{item.label}{item.admin ? " 🔒" : ""}</strong>
+                            <strong>{item.label}</strong>
                             <small>{item.hint}</small>
                           </span>
-                          <Icon name="chevronRight" size={16} />
+                          {/* Só administradores: cadeado discreto no canto direito, junto da seta. */}
+                          <span className="pmy-overview-section-btn__end">
+                            {item.admin && <span className="pmy-overview-section-btn__lock" title={tr("Só administradores", "Admins only")} aria-label={tr("Só administradores", "Admins only")}><Icon name="lock" size={15} /></span>}
+                            <Icon name="chevronRight" size={16} />
+                          </span>
                         </button>
                       ))}
                     </section>

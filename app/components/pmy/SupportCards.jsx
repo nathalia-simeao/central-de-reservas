@@ -4,7 +4,7 @@
 // Toda a equipe cria e edita; apagar pede confirmação.
 
 import { useState } from "react";
-import { DatePicker, TimeSelect } from "./PmyUI";
+import { DatePicker, Icon, TimeSelect } from "./PmyUI";
 import { ChecklistEditor } from "./ChecklistBlock";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import ActivityPanel from "./ActivityPanel";
@@ -254,7 +254,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImag
                   {card.body && <span title={tr("Tem descrição", "Has description")}>≡</span>}
                   {files > 0 && <span title={tr("Arquivos", "Files")}>📄 {files}</span>}
                   {links > 0 && <span title={tr("Links", "Links")}>🔗 {links}</span>}
-                  {card.visibleToGuides === false && <span className="pmy-board-badge" title={tr("Só a equipe vê", "Team only")}>🔒</span>}
+                  {card.visibleToGuides === false && <span className="pmy-board-badge" title={tr("Só a equipe vê", "Team only")}><Icon name="lock" size={12} /></span>}
                 </span>
               </span>
             </button>

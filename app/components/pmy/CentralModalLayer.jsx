@@ -1249,13 +1249,13 @@ export default function CentralModalLayer(props) {
           <hr className="pmy-ds-migrated-1gk8eya" />
           {dayBlocks.length > 0 && (
             <div className="pmy-ds-migrated-9ru3fj">
-              🔒 {dayBlocks.length} regra{dayBlocks.length===1?'':'s'} de disponibilidade ativa{dayBlocks.length===1?'':'s'} neste dia.
+              <span className="pmy-inline-lock" aria-hidden="true"><Icon name="lock" size={13} /></span> {dayBlocks.length} regra{dayBlocks.length===1?'':'s'} de disponibilidade ativa{dayBlocks.length===1?'':'s'} neste dia.
               {isGloballyBlocked ? ' O dia inteiro está bloqueado.' : ' Os bloqueios são aplicados apenas aos tours/horários configurados.'}
             </div>
           )}
           {isGloballyBlocked ? (
             <div className="pmy-ds-migrated-11ejay0">
-              {ui('🔒 Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.','🔒 Allocation Suspended: this day has a global block in the Central Agenda.')}
+              {ui('Alocação Suspensa: este dia possui um bloqueio global na Agenda Central.','Allocation Suspended: this day has a global block in the Central Agenda.')}
             </div>
           ) : (
             <div>
