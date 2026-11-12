@@ -6341,7 +6341,7 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-board__toolbar .pmy-board__filter { flex: 0 0 220px; width: 220px; min-width: 0; }
 .pmy-board-card__collection { display: block; font-size: 11px; font-weight: 600; color: #626f86; margin-top: 2px; overflow-wrap: anywhere; }
 .pmy-board-modal__collection { display: block; font-size: 12px; font-weight: 700; color: #626f86; margin-bottom: 2px; }
-.pmy-board-guide .pmy-board-guide__lang { border: 1px solid #dcdfe4; border-radius: 999px; background: #fff; padding: 2px 8px; font-size: 12px; font-weight: 600; color: #44546f; cursor: pointer; }
+.pmy-board-guide .pmy-board-guide__lang { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #dcdfe4; border-radius: 999px; background: #fff; padding: 2px 6px 2px 3px; font-size: 12px; font-weight: 600; color: #44546f; cursor: pointer; }
 .pmy-board-guide .pmy-board-guide__lang.is-open { background: #e9f2ff; border-color: #0c66e4; color: #0c66e4; }
 .pmy-board-guides__edit { margin-top: 8px; padding: 10px; border: 1px solid #dcdfe4; border-radius: 10px; display: grid; gap: 8px; }
 .pmy-board-guides__actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -6354,3 +6354,4 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-departure-file:has(.pmy-departure-file__open) { background: #006600; border-color: #006600; color: #fff; }
 .pmy-departure-file .pmy-departure-file__open { font: inherit; font-weight: 600; color: #fff; text-decoration: none; padding: 0; }
 .pmy-departure-file .pmy-departure-file__open:hover { text-decoration: none; opacity: .9; }
+.pmy-lang-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; }

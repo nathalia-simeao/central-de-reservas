@@ -32,6 +32,9 @@ export function tourCollections(tour) {
   return (Array.isArray(list) ? list : []).map((c) => (typeof c === "string" ? c : c?.title)).filter(Boolean);
 }
 const LANG_KEYS = ["en", "pt", "es", "fr", "it", "de"];
+// Uma cor por idioma para bater o olho no grupo de cada guia (pedido 12/11).
+const LANG_COLORS = { en: "#0c66e4", pt: "#1f845a", es: "#c9372c", fr: "#6e5dc6", it: "#b65c02", de: "#44546f" };
+const langColor = (key) => LANG_COLORS[key] || "#626f86";
 
 function todayLisbon() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
@@ -261,7 +264,9 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
             <button type="button" className={`pmy-board-guide__lang${editing === g.assignmentId ? " is-open" : ""}`}
               title={tr("Trocar idioma do grupo", "Change group language")}
               onClick={() => { setError(""); setEditing(editing === g.assignmentId ? "" : g.assignmentId); setDraft(g.languages || []); }}>
-              {g.languages.length ? g.languages.map((k) => languageLabel(k, lang)).join(", ") : tr("Todos os idiomas", "All languages")} ▾
+              {g.languages.length
+                ? g.languages.map((k) => <span key={k} className="pmy-lang-pill" style={{ background: langColor(k) }}>{languageLabel(k, lang)}</span>)
+                : tr("Todos os idiomas", "All languages")} ▾
             </button>
             <button type="button" aria-label={tr(`Tirar ${g.name}`, `Remove ${g.name}`)}
               onClick={async () => { setError(""); try { await onRemove(g.assignmentId); } catch (e) { setError(e?.message || ""); } }}>×</button>
@@ -275,6 +280,7 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
           <span className="pmy-board-guides__langs" role="group">
             {LANG_KEYS.map((k) => (
               <button key={k} type="button" className={draft.includes(k) ? "is-on" : ""} aria-pressed={draft.includes(k)}
+                style={draft.includes(k) ? { background: langColor(k), borderColor: langColor(k), color: "#fff" } : undefined}
                 onClick={() => setDraft((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))}>
                 {languageLabel(k, lang)}
               </button>
