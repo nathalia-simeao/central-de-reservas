@@ -22,6 +22,15 @@ import TrelloImportDialog from "./TrelloImportDialog";
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
 
 const DAYS = 14;
+// Linha do tempo sem fim prático: vai carregando de 14 em 14 dias ao rolar,
+// até ~14 meses (o Trello tinha saídas até o fim de 2027).
+const MAX_DAYS = 430;
+
+// Coleções do site (Shopify) de um passeio: "Walking Tours", "Day Trips"...
+export function tourCollections(tour) {
+  const list = tour?.shopifySnapshot?.collections || tour?.collections || [];
+  return (Array.isArray(list) ? list : []).map((c) => (typeof c === "string" ? c : c?.title)).filter(Boolean);
+}
 const LANG_KEYS = ["en", "pt", "es", "fr", "it", "de"];
 
 function todayLisbon() {
@@ -237,6 +246,10 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
   const byId = new Map(guides.map((g) => [g.id, g]));
   const assignedIds = card.guides.map((g) => g.guideId);
   const assignmentFor = (guideId) => card.guides.find((g) => g.guideId === guideId);
+  const [editing, setEditing] = useState(""); // assignmentId com o idioma aberto
+  const [draft, setDraft] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const editingGuide = card.guides.find((g) => g.assignmentId === editing) || null;
   return (
     <div className="pmy-board-guides">
       {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
@@ -244,13 +257,42 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
         {card.guides.map((g) => (
           <span key={g.assignmentId} className="pmy-board-guide">
             <GuideAvatar guide={{ ...(byId.get(g.guideId) || {}), id: g.guideId, name: g.name }} size={26} />
-            {g.name}{g.languages.length ? ` · ${g.languages.map((k) => languageLabel(k, lang)).join(", ")}` : ""}
+            <span>{g.name}</span>
+            <button type="button" className={`pmy-board-guide__lang${editing === g.assignmentId ? " is-open" : ""}`}
+              title={tr("Trocar idioma do grupo", "Change group language")}
+              onClick={() => { setError(""); setEditing(editing === g.assignmentId ? "" : g.assignmentId); setDraft(g.languages || []); }}>
+              {g.languages.length ? g.languages.map((k) => languageLabel(k, lang)).join(", ") : tr("Todos os idiomas", "All languages")} ▾
+            </button>
             <button type="button" aria-label={tr(`Tirar ${g.name}`, `Remove ${g.name}`)}
               onClick={async () => { setError(""); try { await onRemove(g.assignmentId); } catch (e) { setError(e?.message || ""); } }}>×</button>
           </span>
         ))}
         <button type="button" className="pmy-board-btn" onClick={() => setOpen(!open)}>{tr("+ Guia", "+ Guide")}</button>
       </div>
+      {editingGuide && (
+        <div className="pmy-board-member__langs pmy-board-guides__edit">
+          <span>{tr(`Idioma do grupo de ${String(editingGuide.name).split(" ")[0]}:`, `${String(editingGuide.name).split(" ")[0]}'s group language:`)}</span>
+          <span className="pmy-board-guides__langs" role="group">
+            {LANG_KEYS.map((k) => (
+              <button key={k} type="button" className={draft.includes(k) ? "is-on" : ""} aria-pressed={draft.includes(k)}
+                onClick={() => setDraft((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))}>
+                {languageLabel(k, lang)}
+              </button>
+            ))}
+          </span>
+          <span className="pmy-board-guides__actions">
+            <button type="button" className="pmy-board-btn is-primary" disabled={saving}
+              onClick={async () => {
+                setSaving(true); setError("");
+                try { await onAssign(card, editingGuide.guideId, draft); setEditing(""); } catch (e) { setError(e?.message || tr("Não foi possível salvar.", "Could not save.")); }
+                setSaving(false);
+              }}>
+              {saving ? "…" : tr("Salvar idioma", "Save language")}
+            </button>
+            <button type="button" className="pmy-board-btn" onClick={() => setEditing("")}>{tr("Cancelar", "Cancel")}</button>
+          </span>
+        </div>
+      )}
       {open && (
         <GuideMenu
           guides={guides}
@@ -521,6 +563,7 @@ export default function AgendaBoard({
   supportCards = [],
   supportHandlers = null,
   onImportTrello = null,
+  loadBookings = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -539,6 +582,14 @@ export default function AgendaBoard({
   const [guestMsg, setGuestMsg] = useState(""); // modelo aberto em "Avisar clientes"
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [trelloOpen, setTrelloOpen] = useState(false);
+  const [days, setDays] = useState(DAYS);
+  const [onlyBusy, setOnlyBusy] = useState(() => {
+    try { return window.localStorage.getItem("pmy.board.onlyBusy") === "1"; } catch { return false; }
+  });
+  const [collection, setCollection] = useState("");
+  // Reservas de saídas além da janela que a Central carrega ao abrir (±30 dias).
+  const [extraBookings, setExtraBookings] = useState([]);
+  const fetchedRef = useRef(new Set());
   const [trelloDone, setTrelloDone] = useState(false);
 
   useEffect(() => {
@@ -558,10 +609,63 @@ export default function AgendaBoard({
   const { tags } = normalizeAgendaLabels(agendaLabels);
   const tagById = new Map(tags.map((t) => [t.id, t]));
 
-  const columns = useMemo(
-    () => buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours }),
-    [start, bookings, assignments, departureTags, departureInfo, tours],
-  );
+  const visibleDays = onlyBusy ? MAX_DAYS : days;
+  useEffect(() => { setDays(DAYS); }, [start]);
+  useEffect(() => {
+    try { window.localStorage.setItem("pmy.board.onlyBusy", onlyBusy ? "1" : "0"); } catch { /* ok */ }
+  }, [onlyBusy]);
+
+  // Busca as reservas por data de saída, em blocos de 60 dias, conforme a linha do tempo anda.
+  useEffect(() => {
+    if (typeof loadBookings !== "function") return undefined;
+    let alive = true;
+    const wanted = [];
+    for (let offset = 0; offset < visibleDays; offset += 60) {
+      const from = addDays(start, offset);
+      if (fetchedRef.current.has(from)) continue;
+      fetchedRef.current.add(from);
+      wanted.push([from, addDays(from, 61)]);
+    }
+    if (!wanted.length) return undefined;
+    Promise.all(wanted.map(([from, to]) => loadBookings(from, to).catch(() => [])))
+      .then((lists) => {
+        if (!alive) return;
+        setExtraBookings((current) => {
+          const byId = new Map(current.map((b) => [b.id, b]));
+          for (const list of lists) for (const b of list || []) if (b?.id) byId.set(b.id, b);
+          return [...byId.values()];
+        });
+      });
+    return () => { alive = false; };
+  }, [loadBookings, start, visibleDays]);
+
+  const allBookings = useMemo(() => {
+    if (!extraBookings.length) return bookings;
+    const byId = new Map(extraBookings.map((b) => [b.id, b]));
+    for (const b of bookings) byId.set(b.id, b);
+    return [...byId.values()];
+  }, [bookings, extraBookings]);
+
+  const collectionsByTour = useMemo(() => new Map(tours.map((t) => [t.id, tourCollections(t)])), [tours]);
+  const collectionOptions = useMemo(() => {
+    const names = [...new Set(tours.flatMap((t) => tourCollections(t)))].sort((a, b) => a.localeCompare(b));
+    return [{ value: "", label: tr("Todas as coleções", "All collections") }, ...names.map((n) => ({ value: n, label: n }))];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tours, lang]);
+
+  const columns = useMemo(() => {
+    const built = buildBoardColumns({ startDateKey: start, days: visibleDays, bookings: allBookings, assignments, departureTags, departureInfo, tours });
+    const filtered = collection
+      ? built.map((col) => ({ ...col, cards: col.cards.filter((c) => (collectionsByTour.get(c.tourId) || []).includes(collection)) }))
+      : built;
+    return onlyBusy ? filtered.filter((col) => col.cards.length) : filtered;
+  }, [start, visibleDays, allBookings, assignments, departureTags, departureInfo, tours, collection, collectionsByTour, onlyBusy]);
+
+  const onBoardScroll = (e) => {
+    const el = e.currentTarget;
+    if (onlyBusy || days >= MAX_DAYS) return;
+    if (el.scrollLeft + el.clientWidth > el.scrollWidth - 700) setDays((d) => Math.min(d + 14, MAX_DAYS));
+  };
   const openCard = columns.flatMap((c) => c.cards).find((c) => c.key === openKey) || null;
   const tourList = useMemo(() => [...tours].sort((a, b) => String(a.title).localeCompare(String(b.title))), [tours]);
 
@@ -626,6 +730,17 @@ export default function AgendaBoard({
         <button type="button" className="pmy-board-btn" onClick={() => setExpanded(!expanded)} aria-pressed={expanded}>
           {expanded ? tr("Esconder nomes das etiquetas", "Hide label names") : tr("Mostrar nomes das etiquetas", "Show label names")}
         </button>
+        <DropdownSelect
+          value={collection}
+          options={collectionOptions}
+          onChange={setCollection}
+          placeholder={tr("Todas as coleções", "All collections")}
+          ariaLabel={tr("Filtrar por coleção", "Filter by collection")}
+          className="pmy-board__filter"
+        />
+        <button type="button" className="pmy-board-btn" aria-pressed={onlyBusy} onClick={() => setOnlyBusy(!onlyBusy)}>
+          {onlyBusy ? tr("Mostrar todos os dias", "Show every day") : tr("Só dias com passeio", "Only days with tours")}
+        </button>
         {onImportTrello && (
           <button type="button" className="pmy-board-btn" onClick={() => { setTrelloDone(false); setTrelloOpen(true); }}>
             {tr("Importar do Trello", "Import from Trello")}
@@ -641,7 +756,8 @@ export default function AgendaBoard({
         </p>
       )}
 
-      <div className="pmy-board__scroll" ref={scrollRef}>
+      {onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
+      <div className="pmy-board__scroll" ref={scrollRef} onScroll={onBoardScroll}>
         {supportHandlers && (
           <SupportColumn cards={supportCards} canEdit={Boolean(supportHandlers.save)} handlers={supportHandlers} lang={lang} />
         )}
@@ -685,6 +801,9 @@ export default function AgendaBoard({
                         : <span className="pmy-board-chip" style={{ background: color }} title={card.title} />}
                     </span>
                     <span className="pmy-board-card__title"><b>{card.timeKey}</b> {card.title}</span>
+                    {(collectionsByTour.get(card.tourId) || []).length > 0 && (
+                      <span className="pmy-board-card__collection">{collectionsByTour.get(card.tourId).join(" · ")}</span>
+                    )}
                     <span className="pmy-board-card__foot">
                       <span className="pmy-board-card__badges">
                         {cardAlert(card) && <span className={`pmy-board-badge is-weather-${cardAlert(card)}`} title={tr("Alerta de clima", "Weather alert")}>{weatherIcon(dayFor(card))} {cardAlert(card) === "bad" ? tr("mau tempo", "bad weather") : tr("atenção", "watch")}</span>}
@@ -726,6 +845,9 @@ export default function AgendaBoard({
           <div className="pmy-board-modal__card" role="dialog" aria-modal="true" aria-label={openCard.title} style={{ "--tour-color": tourColor(agendaLabels, openCard.tourId) }}>
             <div className="pmy-board-modal__head">
               <div>
+                {(collectionsByTour.get(openCard.tourId) || []).length > 0 && (
+                  <small className="pmy-board-modal__collection">{collectionsByTour.get(openCard.tourId).join(" · ")}</small>
+                )}
                 <h3>{openCard.title}</h3>
                 <p>{columnTitle(openCard.dateKey, lang)} · {openCard.timeKey} · {openCard.pax} {tr("pessoas confirmadas", "confirmed people")}{openCard.pending ? ` · ${openCard.pending} ${tr("aguardando pagamento", "awaiting payment")}` : ""}</p>
               </div>

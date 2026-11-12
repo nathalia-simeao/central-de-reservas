@@ -58,7 +58,12 @@ export const loader = async ({ request }) => {
   const upcomingEnd = new Date(now);
   upcomingEnd.setDate(upcomingEnd.getDate() + 30);
 
-  const where = {
+  // scope=departures: só reservas cuja saída cai no período (Quadro rolando
+  // meses à frente). Sem scope: comportamento de sempre (criadas/atualizadas).
+  const byDeparture = url.searchParams.get("scope") === "departures";
+  const where = byDeparture ? {
+    AND: [excludeTestBookingsWhere(), { startTime: { gte: start, lte: end } }, { syncStatus: { not: "HOLD_RELEASED" } }],
+  } : {
     AND: [excludeTestBookingsWhere()],
     OR: [
       { createdAt: { gte: start, lte: end } },

@@ -2150,6 +2150,17 @@ function CentralDeReservasContent() {
     if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
     return result;
   };
+  // Quadro rolando meses à frente: reservas por data de saída (até 61 dias por vez).
+  const loadBoardBookings = useCallback(async (fromKey, toKey) => {
+    const items = [];
+    for (let page = 1; page <= 10; page += 1) {
+      const params = new URLSearchParams({ start: `${fromKey}T00:00:00Z`, end: `${toKey}T00:00:00Z`, scope: "departures", page: String(page), pageSize: "200" });
+      const payload = await requestResourceJson(`/api/bookings?${params.toString()}`);
+      items.push(...(Array.isArray(payload?.items) ? payload.items : []));
+      if (!payload?.page?.hasMore) break;
+    }
+    return items;
+  }, [requestResourceJson]);
   const handleImportTrello = async (plan) => (await postCentral({ _action: "importTrelloBoard", plan })).summary;
   const openSupportAttachment = async (id) => {
     // Abre a janela antes do fetch (bloqueador de pop-up) e troca o endereço depois.
@@ -3168,7 +3179,7 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              supportCards, supportHandlers,
+              supportCards, supportHandlers, loadBookings: loadBoardBookings,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
               onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
               waitlist,

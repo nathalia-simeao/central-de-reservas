@@ -21,6 +21,8 @@ export const ALLOWED_ATTACHMENT_TYPES = new Set([
   "image/webp",
   "image/heic",
   "image/heif",
+  // Word: a "Base de conhecimento" do Trello tem documentos .docx.
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
 // ---------------------------------------------------------------- passwords

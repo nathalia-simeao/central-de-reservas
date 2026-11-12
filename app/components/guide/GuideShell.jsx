@@ -36,6 +36,8 @@ a { color: inherit; }
 .g-bcard summary { cursor:pointer; list-style:none; }
 .g-bcard summary::-webkit-details-marker { display:none; }
 .g-doc { display:block; margin-top:8px; color:var(--g-green); font-weight:600; font-size:14px; text-decoration:none; overflow-wrap:anywhere; }
+.g-bcard__collection { font-weight:700; color:var(--g-green); }
+.g-col.more { background:none; display:flex; align-items:center; }
 .g-bcard.mine { border-color:var(--g-green); box-shadow:0 0 0 1px var(--g-green); }
 .g-bcard__bar { height:6px; width:44px; border-radius:99px; margin-bottom:6px; }
 .g-bcard strong { display:block; font-size:14px; overflow-wrap:anywhere; }

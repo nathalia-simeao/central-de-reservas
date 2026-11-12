@@ -11,7 +11,8 @@ import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 // de clientes de outras saídas; os cartões dele aparecem destacados e abrem
 // a tela da saída.
 
-const DAYS = 14;
+const DEFAULT_DAYS = 30;
+const MAX_DAYS = 430;
 
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
@@ -21,6 +22,8 @@ export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
 
+  const asked = Number(new URL(request.url).searchParams.get("dias"));
+  const DAYS = Number.isFinite(asked) && asked > 0 ? Math.min(Math.round(asked), MAX_DAYS) : DEFAULT_DAYS;
   const start = todayKey();
   const from = new Date(`${start}T00:00:00Z`);
   from.setUTCHours(from.getUTCHours() - 2);
@@ -40,7 +43,7 @@ export const loader = async ({ request }) => {
       select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true },
     }),
     db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
-    db.tour.findMany({ select: { id: true, title: true } }),
+    db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true } }),
     db.supportCard
       .findMany({
         where: { visibleToGuides: true },
@@ -58,18 +61,23 @@ export const loader = async ({ request }) => {
     departureInfo[key(d.tourId, d.startTime)] = d;
   }
 
+  const collections = new Map(tours.map((t) => [t.id, (Array.isArray(t.shopifySnapshot?.collections) ? t.shopifySnapshot.collections : []).map((c) => c?.title || c).filter(Boolean)]));
   const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours });
   const labels = settings?.agendaLabels || null;
 
   return {
+    days: DAYS,
+    maxDays: MAX_DAYS,
     supportCards,
-    columns: columns.map((col) => ({
+    // Só os dias com saída (como as listas do Trello).
+    columns: columns.filter((col) => col.cards.length).map((col) => ({
       dateKey: col.dateKey,
       cards: col.cards.map((card) => {
         const mine = card.guides.find((g) => g.guideId === guide.id);
         return {
           key: card.key,
           title: card.title,
+          collection: (collections.get(card.tourId) || []).join(" · "),
           time: card.timeKey,
           pax: card.pax,
           pending: card.pending,
@@ -95,6 +103,7 @@ function Card({ card }) {
     <>
       <div className="g-bcard__bar" style={{ background: card.color }} />
       <strong>{card.time} · {card.title}</strong>
+      {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
       <small>
         {card.pax} pax{card.pending ? ` + ${card.pending} pendente(s)` : ""}
         {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : " · sem guia"}
@@ -128,17 +137,18 @@ function SupportColumn({ cards }) {
 }
 
 export default function GuideBoard() {
-  const { columns, supportCards } = useLoaderData();
+  const { columns, supportCards, days, maxDays } = useLoaderData();
   return (
     <GuideShell title="Quadro" wide>
       <div className="g-top">
         <div>
           <h1>Quadro</h1>
-          <small>Próximos {DAYS} dias · deslize para o lado · seus cartões em verde</small>
+          <small>Próximos {days} dias, só os dias com saída · deslize para o lado · seus cartões em verde</small>
         </div>
       </div>
       <div className="g-board">
         <SupportColumn cards={supportCards} />
+        {!columns.length && <p className="g-empty">Nenhuma saída nos próximos {days} dias.</p>}
         {columns.map((col) => (
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey)}>
             <h3>{columnTitle(col.dateKey)} <small>{col.cards.length}</small></h3>
@@ -146,6 +156,11 @@ export default function GuideBoard() {
             {col.cards.map((card) => <Card key={card.key} card={card} />)}
           </section>
         ))}
+        {days < maxDays && (
+          <div className="g-col more">
+            <Link to={`/guia/quadro?dias=${Math.min(days + 60, maxDays)}`} className="g-btn" preventScrollReset>Ver mais 2 meses</Link>
+          </div>
+        )}
       </div>
     </GuideShell>
   );
