@@ -6612,8 +6612,29 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-trello-aliases__add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .pmy-trello-aliases__add { grid-template-columns: minmax(0, 1fr); } }
 .pmy-person-areas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.pmy-upcoming__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.pmy-upcoming__pax { margin-left: 8px; color: var(--pmy-ds-muted); font-weight: 500; }
+/* Equipe → Próximos tours: colunas fixas, tudo alinhado à esquerda. */
+.pmy-upcoming { display: grid; }
+.pmy-upcoming__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px 64px minmax(170px, 280px);
+  align-items: center;
+  column-gap: 20px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--pmy-ds-border);
+  text-align: left;
+}
+.pmy-upcoming__row:last-child { border-bottom: 0; }
+.pmy-upcoming__tour { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 700; color: var(--pmy-ds-text); }
+.pmy-upcoming__tour > svg { flex: none; color: var(--pmy-ds-muted); }
+.pmy-upcoming__title { min-width: 0; overflow-wrap: anywhere; line-height: 1.35; }
+.pmy-upcoming__when { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pmy-ds-text); white-space: nowrap; }
+.pmy-upcoming__when.is-today { color: var(--pmy-ds-accent); }
+.pmy-upcoming__pax { color: var(--pmy-ds-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pmy-upcoming__guides { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; min-width: 0; }
+@media (max-width: 760px) {
+  .pmy-upcoming__row { grid-template-columns: auto auto minmax(0, 1fr); row-gap: 8px; column-gap: 12px; }
+  .pmy-upcoming__tour { grid-column: 1 / -1; }
+}
 /* Integrações: resumo por situação, na cor do cartão */
 .pmy-int-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; }
 .pmy-int-summary__item { display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border: 1px solid var(--sum-border); border-left: 5px solid var(--sum-color); border-radius: var(--pmy-radius-sm); background: var(--sum-soft); }

@@ -293,18 +293,21 @@ export default function GuidesTab(props) {
               )}
             />
           ) : (
-            <div className="pmy-ds-list-plain">
+            <div className="pmy-upcoming">
               {upcomingDepartures.map((card) => (
-                <div key={card.key} className="pmy-ds-list-plain__row">
-                  <span className="pmy-ds-list-plain__title">
-                    <Icon name="calendar" size={17} />
-                    <TourCountryFlag tour={tourById.get(card.tourId)} lang={lang}/>{card.title}
-                    {card.pax + card.pending > 0 ? <small className="pmy-upcoming__pax">{card.pax + card.pending} pax</small> : null}
+                // Colunas fixas (pedido da Nathalia, 12/11/2026): passeio | data e hora | pax | guias,
+                // cada uma alinhada à esquerda, para ler de cima a baixo sem procurar.
+                <div key={card.key} className="pmy-upcoming__row">
+                  <span className="pmy-upcoming__tour">
+                    <Icon name="calendar" size={16} />
+                    <TourCountryFlag tour={tourById.get(card.tourId)} lang={lang}/>
+                    <span className="pmy-upcoming__title">{card.title}</span>
                   </span>
-                  <span className="pmy-upcoming__meta">
-                    <Badge tone={lisbonDateKey(card.startTime) === todayLisbon ? "accent" : "neutral"}>{formatDepartureWhen(card)}</Badge>
+                  <span className={`pmy-upcoming__when${lisbonDateKey(card.startTime) === todayLisbon ? " is-today" : ""}`}>{formatDepartureWhen(card)}</span>
+                  <span className="pmy-upcoming__pax">{card.pax + card.pending > 0 ? `${card.pax + card.pending} pax` : "—"}</span>
+                  <span className="pmy-upcoming__guides">
                     {card.guides.length
-                      ? <Badge tone="success">{card.guides.map((g) => g.name).join(", ")}</Badge>
+                      ? card.guides.map((g) => <Badge key={g.guideId || g.name} tone="success">{g.name}</Badge>)
                       : <Badge tone="warning">{tr("Sem guia", "No guide")}</Badge>}
                   </span>
                 </div>
