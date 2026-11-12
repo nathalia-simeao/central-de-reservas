@@ -3512,6 +3512,9 @@ export const links = () => [
   { rel: "stylesheet", href: CENTRAL_FONTS_URL },
 ];
 
+// Nome da aba do navegador.
+export const meta = () => [{ title: "Central PMY · Portugal, Me & You" }];
+
 export default function CentralDeReservas() {
   const { apiKey = "", portalMode = false } = useLoaderData() || {};
 
