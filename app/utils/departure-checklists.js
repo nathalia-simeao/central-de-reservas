@@ -121,7 +121,7 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
 }
 
 function ages(booking) {
-  const parts = [["adults", "A"], ["youths", "J"], ["children", "C"], ["seniors", "S"]]
+  const parts = [["adults", "A"], ["youths", "Y"], ["children", "C"], ["seniors", "S"]]
     .map(([field, letter]) => [Number(booking?.[field] || 0), letter])
     .filter(([n]) => n > 0)
     .map(([n, letter]) => `${n}${letter}`);
@@ -138,12 +138,12 @@ function pax(booking) {
 }
 
 function sumAges(bookings) {
-  const totals = { A: 0, J: 0, C: 0, S: 0 };
+  const totals = { A: 0, Y: 0, C: 0, S: 0 };
   for (const b of bookings) {
-    totals.A += Number(b.adults || 0); totals.J += Number(b.youths || 0);
+    totals.A += Number(b.adults || 0); totals.Y += Number(b.youths || 0);
     totals.C += Number(b.children || 0); totals.S += Number(b.seniors || 0);
   }
-  return ["A", "J", "C", "S"].filter((k) => totals[k]).map((k) => `${totals[k]}${k}`).join(" ");
+  return ["A", "Y", "C", "S"].filter((k) => totals[k]).map((k) => `${totals[k]}${k}`).join(" ");
 }
 
 /**
