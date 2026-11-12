@@ -283,6 +283,23 @@ export function matchGuide(memberName, guides = []) {
   return byFirst.length === 1 ? byFirst[0] : null;
 }
 
+const NOT_NAMES = new Set(["horario", "combinar", "checklist", "grupo", "privado", "private", "tour", "transfer", "pm", "am", "pax", "teste"]);
+
+/**
+ * Nome do guia escrito no título do checklist do Trello:
+ * "09h30 ENG (15p) 12A 2S 1C Luis | T1" → "Luis"; "14h PT e ESP (5p) 4A 1Y Dee" → "Dee".
+ * Pega as palavras com inicial maiúscula que não são horário, idioma, faixas nem códigos.
+ */
+export function guideNameFromTitle(title) {
+  const head = String(title || "").split("|")[0].replace(/\(.*?\)/g, " ");
+  const words = head.split(/\s+/).filter((w) => {
+    if (!/^[A-ZÀ-Ý][a-zà-ÿ]+$/.test(w)) return false;
+    const key = normalizeText(w);
+    return !LANGUAGE_TOKENS[key] && !NOT_NAMES.has(key);
+  });
+  return words.length ? words.join(" ") : null;
+}
+
 /** Qual membro do cartão guia este grupo: o nome dele aparece no título do checklist. */
 export function memberForGroup(groupTitle, members = []) {
   const words = new Set(normalizeText(groupTitle).split(" "));

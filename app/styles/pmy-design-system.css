@@ -6592,3 +6592,11 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-block-tabs .pmy-ds-tab { justify-content: center; text-align: center; }
 .pmy-block-list-tab { display: grid; gap: 12px; }
 .pmy-block-list-tab .pmy-ds-block-list { max-height: none; }
+/* Calendário: setas entre passeios do dia e conferência com o Trello */
+.pmy-mirror__head-actions { display: flex; align-items: flex-start; gap: 8px; flex: none; }
+.pmy-mirror__nav { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid #dfe1e6; border-radius: 8px; background: #f7f8f9; font-size: 12.5px; color: #44546f; white-space: nowrap; }
+.pmy-mirror__nav button { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: #172b4d; font-size: 18px; line-height: 1; cursor: pointer; }
+.pmy-mirror__nav button:hover, .pmy-mirror__nav button:focus-visible { background: #dfe1e6; outline: none; }
+.pmy-mirror__nav span { padding: 0 4px; }
+.pmy-mirror__gaps { display: grid; gap: 4px; margin: 8px 0 0; padding: 8px 10px; list-style: none; border-radius: 8px; background: #fff7d6; color: #533f04; font-size: 13.5px; }
+.pmy-mirror__guides .pmy-guide-lang { display: inline-block; padding: 1px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; }

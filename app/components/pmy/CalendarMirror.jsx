@@ -9,6 +9,7 @@ import { addDays, buildBoardColumns, cardLabelIds } from "../../utils/agenda-boa
 import { autoChecklists, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { cardChecklists } from "../../utils/board-tasks.js";
 import { languageLabel } from "../../utils/tour-languages.js";
+import { guideNameFromTitle, matchGuide, normalizeText } from "../../utils/trello-import.js";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import { Button, DatePicker, Tabs } from "./PmyUI";
 
@@ -81,7 +82,6 @@ function blocksOn(blockedDates, dateKey) {
   ));
 }
 
-const timeOf = (value, lang) => (value ? new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "pt-PT", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "");
 const pax = (b) => {
   const explicit = Number(b?.totalParticipants || 0);
   if (explicit > 0) return explicit;
@@ -90,13 +90,18 @@ const pax = (b) => {
 };
 
 /* ---------- Janela (mesmo visual dos cartões do Quadro) ---------- */
-function MirrorShell({ color, eyebrow, title, subtitle, onClose, onBack, footer, children, lang }) {
+function MirrorShell({ color, eyebrow, title, subtitle, onClose, onBack, nav = null, footer, children, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      // Setas do teclado: passeio anterior / seguinte do mesmo dia.
+      if (nav && e.key === "ArrowLeft" && !/INPUT|TEXTAREA/.test(e.target?.tagName || "")) nav.prev();
+      if (nav && e.key === "ArrowRight" && !/INPUT|TEXTAREA/.test(e.target?.tagName || "")) nav.next();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, nav]);
   return (
     <div className="pmy-board-modal pmy-mirror">
       <button type="button" className="pmy-board-modal__backdrop" aria-label={tr("Fechar", "Close")} tabIndex={-1} onClick={onClose} />
@@ -108,7 +113,16 @@ function MirrorShell({ color, eyebrow, title, subtitle, onClose, onBack, footer,
             <h3>{title}</h3>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={onClose}>×</button>
+          <div className="pmy-mirror__head-actions">
+            {nav && (
+              <div className="pmy-mirror__nav" role="group" aria-label={tr("Outros passeios do dia", "Other tours this day")}>
+                <button type="button" onClick={nav.prev} aria-label={tr("Passeio anterior do dia", "Previous tour this day")}>‹</button>
+                <span>{nav.index + 1} {tr("de", "of")} {nav.total}</span>
+                <button type="button" onClick={nav.next} aria-label={tr("Próximo passeio do dia", "Next tour this day")}>›</button>
+              </div>
+            )}
+            <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={onClose}>×</button>
+          </div>
         </div>
         {children}
         {footer && <div className="pmy-mirror__footer">{footer}</div>}
@@ -159,16 +173,45 @@ function FilesList({ files, basePath, loadImage, onOpen, lang }) {
   );
 }
 
-function DepartureDetail({ card, info, agendaLabels, tagById, collections, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
+/** Guias escritos nos checklists do Trello que não estão escalados nesta saída. */
+export function trelloGuideGaps(info, card, guides = []) {
+  const assigned = new Set((card.guides || []).map((g) => normalizeText(g.name).split(" ")[0]));
+  const gaps = new Map();
+  for (const list of normalizeChecklists(info?.checklists).lists) {
+    if (!String(list.id).startsWith("trello_")) continue;
+    const name = guideNameFromTitle(list.title);
+    if (!name || assigned.has(normalizeText(name).split(" ")[0]) || gaps.has(name)) continue;
+    gaps.set(name, { name, inTeam: Boolean(matchGuide(name, guides)) });
+  }
+  return [...gaps.values()];
+}
+
+export function TrelloGuideCheck({ gaps, lang = "pt" }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  if (!gaps.length) return null;
+  return (
+    <ul className="pmy-mirror__gaps" role="status">
+      {gaps.map((gap) => (
+        <li key={gap.name}>
+          ⚠ {tr("No Trello:", "In Trello:")} <b>{gap.name}</b> — {gap.inTeam
+            ? tr("está na Equipe, mas não foi escalado nesta saída.", "is in the Team but not assigned here.")
+            : tr("não está cadastrado(a) na Equipe da Central.", "is not registered in the Central Team.")}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DepartureDetail({ card, info, agendaLabels, tagById, collections, guides = [], nav, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
   const state = normalizeChecklists(info?.checklists);
   const autos = autoChecklists(card);
   const notes = Array.isArray(info?.guideNotes) ? info.guideNotes : [];
-  const steps = [[tr("Início", "Start"), info?.checkStartAt], [tr("Meio", "Mid"), info?.checkMidAt], [tr("Fim", "End"), info?.checkEndAt]];
+  const gaps = trelloGuideGaps(info, card, guides);
   return (
     <MirrorShell
-      lang={lang} onClose={onClose} onBack={onBack}
+      lang={lang} onClose={onClose} onBack={onBack} nav={nav}
       color={tourColor(agendaLabels, card.tourId)}
       eyebrow={collections.join(" · ")}
       title={card.title}
@@ -203,9 +246,7 @@ function DepartureDetail({ card, info, agendaLabels, tagById, collections, onOpe
             ))}
           </ul>
         ) : <p className="pmy-mirror__empty">{tr("Nenhum guia escalado.", "No guide assigned.")}</p>}
-        <div className="pmy-departure-tags__steps">
-          {steps.map(([label, at]) => <span key={label} className={`pmy-departure-step ${at ? "is-done" : ""}`}>{at ? "✓" : "○"} {label}{at ? ` ${timeOf(at, lang)}` : ""}</span>)}
-        </div>
+        <TrelloGuideCheck gaps={gaps} lang={lang} />
       </div>
 
       {card.bookings.length > 0 && (
@@ -244,13 +285,13 @@ function DepartureDetail({ card, info, agendaLabels, tagById, collections, onOpe
   );
 }
 
-function TaskDetail({ task, guides, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
+function TaskDetail({ task, guides, nav, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const people = (task.assigneeIds || []).map((id) => guides.find((g) => g.id === id)?.name).filter(Boolean);
   const lists = normalizeChecklists(cardChecklists(task.checklists)).lists;
   return (
     <MirrorShell
-      lang={lang} onClose={onClose} onBack={onBack}
+      lang={lang} onClose={onClose} onBack={onBack} nav={nav}
       eyebrow={tr("Demanda (sem passeio)", "Task (no tour)")}
       title={task.title}
       subtitle={[fmt(task.dateKey, lang, { weekday: "long", day: "numeric", month: "long" }), task.time, task.done ? tr("concluída", "done") : ""].filter(Boolean).join(" · ")}
@@ -546,6 +587,16 @@ export default function CalendarMirror({
   const detailCard = detail?.kind === "departure" ? findCard(detail.key) : null;
   const detailTask = detail?.kind === "task" ? supportCards.find((c) => c.id === detail.id) : null;
   const back = dayKey ? () => setDetail(null) : null;
+  // Setinhas ‹ › para ver os outros passeios do mesmo dia sem fechar a janela.
+  const detailDate = detailCard?.dateKey || detailTask?.dateKey || "";
+  const siblings = detailDate ? itemsOn(detailDate) : [];
+  const detailIndex = siblings.findIndex((it) => (it.kind === "task" ? detail?.kind === "task" && it.task.id === detail.id : detail?.kind === "departure" && it.card.key === detail.key));
+  const nav = siblings.length > 1 && detailIndex >= 0 ? {
+    index: detailIndex,
+    total: siblings.length,
+    prev: () => openItem(siblings[(detailIndex - 1 + siblings.length) % siblings.length]),
+    next: () => openItem(siblings[(detailIndex + 1) % siblings.length]),
+  } : null;
 
   return (
     <div className="pmy-cal">
@@ -573,10 +624,10 @@ export default function CalendarMirror({
 
       {detailCard ? (
         <DepartureDetail card={detailCard} info={departureInfo[detailCard.key]} agendaLabels={agendaLabels} tagById={tagById}
-          collections={collectionsByTour.get(detailCard.tourId) || []} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenAttachment}
+          collections={collectionsByTour.get(detailCard.tourId) || []} guides={guides} nav={nav} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenAttachment}
           loadImage={loadImage} onClose={closeAll} onBack={back} lang={lang} />
       ) : detailTask ? (
-        <TaskDetail task={detailTask} guides={guides} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenSupportAttachment}
+        <TaskDetail task={detailTask} guides={guides} nav={nav} onOpenBoard={onOpenBoard} onOpenAttachment={onOpenSupportAttachment}
           loadImage={loadImage} onClose={closeAll} onBack={back} lang={lang} />
       ) : dayKey ? (
         <DayDetail dateKey={dayKey} items={itemsOn(dayKey)} blocks={blocksOn(blockedDates, dayKey)} agendaLabels={agendaLabels}

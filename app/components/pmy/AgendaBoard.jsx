@@ -14,6 +14,7 @@ import { SupportColumn, SupportModal, TaskCard } from "./SupportCards";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
 import ActivityPanel from "./ActivityPanel";
 import TrelloImportDialog from "./TrelloImportDialog";
+import { TrelloGuideCheck, trelloGuideGaps } from "./CalendarMirror";
 import { ChecklistBlock, ChecklistEditor, FocusInput } from "./ChecklistBlock";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
@@ -906,6 +907,7 @@ export default function AgendaBoard({
             <div className="pmy-board-modal__section">
               <span className="pmy-board-pop__sub">{tr("Guias", "Guides")}</span>
               <GuidePicker card={openCard} guides={guides} onAssign={assignOnCard} onRemove={onRemoveAssignment} lang={lang} />
+              <TrelloGuideCheck gaps={trelloGuideGaps(departureInfo[openCard.key], openCard, guides)} lang={lang} />
             </div>
 
             {showGuestMessages && <div className="pmy-board-modal__section">

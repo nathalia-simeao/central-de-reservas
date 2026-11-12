@@ -7,7 +7,7 @@
 
 import { normalizeChecklists } from "../utils/departure-checklists.js";
 import { lisbonParts } from "../utils/agenda-board.js";
-import { matchGuide, memberForGroup, noteTextForCard } from "../utils/trello-import.js";
+import { guideNameFromTitle, matchGuide, memberForGroup, noteTextForCard } from "../utils/trello-import.js";
 
 const MAX_CARDS = 2000;
 const MAX_LISTS = 20;
@@ -131,8 +131,11 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Da
       const bucket = bucketFor(card.tourId, startTime);
       bucket.lists.push(group);
       placed.add(bucket);
-      const member = memberForGroup(group.title, card.members) || (card.members.length === 1 ? card.members[0] : null);
-      if (member) bucket.guides.push({ member, languages: group.languages, title: group.title, card });
+      // Guia: o membro do cartão citado no título; senão, o nome escrito no título
+      // (muitos cartões do Trello não têm membros, só "… Miguel" no checklist).
+      const titleName = guideNameFromTitle(group.title);
+      const member = memberForGroup(group.title, card.members) || (!titleName && card.members.length === 1 ? card.members[0] : null);
+      if (member || titleName) bucket.guides.push({ member, name: titleName, languages: group.languages, title: group.title, card });
     }
     if (!card.groups.length && fallback) {
       const bucket = bucketFor(card.tourId, lisbonLocalDateTimeToUtc(card.dateKey, fallback));
@@ -197,9 +200,9 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Da
     const tour = tourById.get(bucket.tourId);
     const done = new Set();
     for (const entry of bucket.guides) {
-      const guide = matchGuide(entry.member, guides);
+      const guide = (entry.member && matchGuide(entry.member, guides)) || (entry.name && matchGuide(entry.name, guides)) || null;
       if (!guide) {
-        summary.guideWarnings.push(`${entry.card.listName} · ${entry.card.name}: "${entry.member}" não está na Equipe da Central.`);
+        summary.guideWarnings.push(`${entry.card.listName} · ${entry.card.name}: "${entry.member || entry.name}" não está na Equipe da Central.`);
         continue;
       }
       if (done.has(guide.id)) continue;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  matchGuide, memberForGroup, parseGroupTitle, parseListDate, parseTrelloBoard, resolveListDates, suggestTour,
+  guideNameFromTitle, matchGuide, memberForGroup, parseGroupTitle, parseListDate, parseTrelloBoard, resolveListDates, suggestTour,
 } from "../app/utils/trello-import.js";
 
 const TODAY = new Date("2026-11-12T10:00:00Z");
@@ -111,4 +111,18 @@ test("checklist items can be reordered and moved to another checklist", async ()
   assert.deepEqual(moved.lists[1].items.map((i) => i.id), ["2", "5"]);
   const end = applyChecklistOp(moved, { type: "moveItem", listId: "b", itemId: "2", toIndex: 99 });
   assert.deepEqual(end.lists[1].items.map((i) => i.id), ["5", "2"]);
+});
+
+test("guide name comes from the checklist title when the card has no members", () => {
+  assert.equal(guideNameFromTitle("09h30 ENG (15p) 12A 2S 1C Luis | T1"), "Luis");
+  assert.equal(guideNameFromTitle("14h PT e ESP (5p) 4A 1Y Dee | T2"), "Dee");
+  assert.equal(guideNameFromTitle("14h IT  Luis"), "Luis");
+  assert.equal(guideNameFromTitle("15h IT Beatrice"), "Beatrice");
+  assert.equal(guideNameFromTitle("09h30 ENG"), null);
+  assert.equal(guideNameFromTitle("02h00 pm ENG (1p)"), null);
+  assert.equal(guideNameFromTitle("Horário a combinar"), null);
+  assert.equal(guideNameFromTitle("Checklist"), null);
+  const guides = [{ id: "m", name: "Miguel Alves" }, { id: "s", name: "Simone Silva" }];
+  assert.equal(matchGuide(guideNameFromTitle("14h ENG Miguel"), guides)?.id, "m");
+  assert.equal(matchGuide(guideNameFromTitle("14h FR Solal"), guides), null);
 });
