@@ -265,7 +265,7 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
               title={tr("Trocar idioma do grupo", "Change group language")}
               onClick={() => { setError(""); setEditing(editing === g.assignmentId ? "" : g.assignmentId); setDraft(g.languages || []); }}>
               {g.languages.length
-                ? g.languages.map((k) => <span key={k} className="pmy-lang-pill" style={{ background: langColor(k) }}>{languageLabel(k, lang)}</span>)
+                ? g.languages.map((k) => <span key={k} className="pmy-guide-lang" style={{ background: langColor(k) }}>{languageLabel(k, lang)}</span>)
                 : tr("Todos os idiomas", "All languages")} ▾
             </button>
             <button type="button" aria-label={tr(`Tirar ${g.name}`, `Remove ${g.name}`)}
