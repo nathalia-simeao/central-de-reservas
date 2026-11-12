@@ -6,7 +6,7 @@
 // Hoje o GetYourGuide recebe esses valores automaticamente quando o passeio tem
 // "Preço via API" ligado; as outras plataformas ficam registradas até serem conectadas.
 
-export const PRICE_PLATFORMS = ["GETYOURGUIDE", "VIATOR", "HEADOUT", "CIVITATIS"];
+export const PRICE_PLATFORMS = ["GETYOURGUIDE", "VIATOR", "HEADOUT", "CIVITATIS", "AIRBNB", "TIQETS", "KLOOK"];
 export const PRICE_CATEGORIES = ["ADULT", "CHILD", "YOUTH", "SENIOR"];
 
 function euros(value) {

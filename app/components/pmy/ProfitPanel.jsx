@@ -8,6 +8,9 @@ const PLATFORM_NAMES = {
   VIATOR: "Viator",
   HEADOUT: "Headout",
   CIVITATIS: "Civitatis",
+  AIRBNB: "Airbnb",
+  TIQETS: "Tiqets",
+  KLOOK: "Klook",
   CENTRAL: "Central / manual",
 };
 

@@ -64,7 +64,9 @@ export default function IntegrationConnectionsPanel({
                           const isConfigured = Boolean(conn.configured);
                           const isAwaitingExternal = Boolean(conn.awaitingExternalResponse) ||
                             (isConfigured && !conn.connected && !conn.validationError);
-                          const statusLabel = conn.connected
+                          const statusLabel = conn.noDirectApi
+                            ? tr("SEM CONEXÃO DIRETA", "NO DIRECT CONNECTION")
+                            : conn.connected
                             ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
                             : conn.validationError
                               ? tr("ERRO NA CREDENCIAL", "CREDENTIAL ERROR")
@@ -141,7 +143,15 @@ export default function IntegrationConnectionsPanel({
                                       )}
                                 </div>
                               )}
-                              {isPendingOnboarding && (
+                              {conn.noDirectApi && (
+                                <div className="pmy-int-connection-note is-error">
+                                  {tr(
+                                    "Esta plataforma ainda não tem integração com a Central. As reservas vão entrar pela leitura automática do Gmail (em construção).",
+                                    "No integration with the Central yet. Bookings will come in through the automatic Gmail reading (in progress).",
+                                  )}
+                                </div>
+                              )}
+                              {isPendingOnboarding && !conn.noDirectApi && (
                                 <div className="pmy-int-connection-note">
                                   {tr(
                                     "Campos de credencial ocultos até existir uma API verificável para a conta PMY.",
@@ -150,6 +160,9 @@ export default function IntegrationConnectionsPanel({
                                 </div>
                               )}
                               <div className="pmy-int-actions">
+                                {conn.noDirectApi ? (
+                                  <Button variant="secondary" size="sm" icon="mail" disabled>{tr("Via Gmail · em breve", "Via Gmail · soon")}</Button>
+                                ) : (
                                 <Button
                                   variant={conn.connected || isAwaitingExternal || isPendingOnboarding ? "secondary" : "primary"}
                                   size="sm"
@@ -158,6 +171,7 @@ export default function IntegrationConnectionsPanel({
                                 >
                                   {actionLabel}
                                 </Button>
+                                )}
                                 {conn.connected && ["viator", "civitatis"].includes(platform.key) && (
                                   <button
                                     className="pmy-int-btn-disconnect"

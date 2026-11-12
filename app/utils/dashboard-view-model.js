@@ -148,6 +148,9 @@ export function buildDashboardViewModel({
     VIATOR: "Viator",
     CIVITATIS: "Civitatis",
     HEADOUT: "Headout",
+    AIRBNB: "Airbnb",
+    TIQETS: "Tiqets",
+    KLOOK: "Klook",
     MANUAL: lang === "pt" ? "Manual" : "Manual",
     CENTRAL: "Central PMY",
   }[String(platform || "").toUpperCase()] || String(platform || "Outro"));

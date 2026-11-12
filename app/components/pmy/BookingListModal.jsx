@@ -11,6 +11,9 @@ const PLATFORM_LABELS = {
   VIATOR: "Viator",
   CIVITATIS: "Civitatis",
   HEADOUT: "Headout",
+  AIRBNB: "Airbnb",
+  TIQETS: "Tiqets",
+  KLOOK: "Klook",
   CENTRAL: "Central",
 };
 

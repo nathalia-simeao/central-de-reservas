@@ -268,6 +268,14 @@ export const allPlatforms = [
     desc: { pt: "Alcance viajantes de língua hispânica. Sincronize atividades e reservas.", en: "Reach Spanish-speaking travelers. Sync activities and bookings." },
     authType: "api", oauthLabel: "Acessar Portal Civitatis", oauthUrl: "https://operadores.civitatis.com/",
     docsUrl: "https://www.civitatis.com/en/partners/" },
+  // Canais que a PMY já usa mas ainda sem conexão direta (12/11/2026): as reservas
+  // vão entrar pela leitura do Gmail; sigla no checklist: Airbnb, Tiqets, Klook.
+  { key: "airbnb", icon: "mapPin", name: "Airbnb Experiences", noDirectApi: true,
+    desc: { pt: "Experiências vendidas no Airbnb.", en: "Experiences sold on Airbnb." } },
+  { key: "tiqets", icon: "ticket", name: "Tiqets", noDirectApi: true,
+    desc: { pt: "Ingressos e passeios vendidos na Tiqets.", en: "Tickets and tours sold on Tiqets." } },
+  { key: "klook", icon: "globe", name: "Klook", noDirectApi: true,
+    desc: { pt: "Passeios vendidos na Klook, forte no público asiático.", en: "Tours sold on Klook, strong with Asian travelers." } },
 ];
 
 export const reservationPlatforms = allPlatforms.filter((platform) => platform.key !== "tripadvisor");

@@ -20,7 +20,7 @@
 //   guia         = 1 pagamento por saída (passeio + horário), pela faixa de pax presentes
 //   lucro        = faturamento − comissão − taxa − ingressos − guia
 
-export const COST_PLATFORMS = ["SHOPIFY", "GETYOURGUIDE", "VIATOR", "HEADOUT", "CIVITATIS", "CENTRAL"];
+export const COST_PLATFORMS = ["SHOPIFY", "GETYOURGUIDE", "VIATOR", "HEADOUT", "CIVITATIS", "AIRBNB", "TIQETS", "KLOOK", "CENTRAL"];
 export const TICKET_CATEGORIES = ["ADULT", "CHILD", "YOUTH", "SENIOR"];
 
 function money(value) {

@@ -435,6 +435,10 @@ function CentralDeReservasContent() {
       "CIVITATIS",
       Boolean(integrationCredentialStatus?.environment?.civitatis?.configured),
     ),
+    // Sem conexão direta por enquanto: reservas virão pela leitura do Gmail.
+    airbnb: { connected: false, configured: false, noDirectApi: true },
+    tiqets: { connected: false, configured: false, noDirectApi: true },
+    klook: { connected: false, configured: false, noDirectApi: true },
   });
   const [connectingPlatform, setConnectingPlatform] = useState(null);
   const [apiKeyInput, setApiKeyInput] = useState("");

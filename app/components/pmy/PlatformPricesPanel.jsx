@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, SectionHeader, DropdownSelect } from "./PmyUI";
 import { PRICE_CATEGORIES, PRICE_PLATFORMS, normalizePlatformPrices } from "../../utils/platform-prices.js";
 
-const PLATFORM_NAMES = { GETYOURGUIDE: "GetYourGuide", VIATOR: "Viator", HEADOUT: "Headout", CIVITATIS: "Civitatis" };
+const PLATFORM_NAMES = { GETYOURGUIDE: "GetYourGuide", VIATOR: "Viator", HEADOUT: "Headout", CIVITATIS: "Civitatis", AIRBNB: "Airbnb", TIQETS: "Tiqets", KLOOK: "Klook" };
 const CATEGORY_NAMES = { ADULT: ["Adulto", "Adult"], CHILD: ["Criança", "Child"], YOUTH: ["Jovem", "Youth"], SENIOR: ["Sênior", "Senior"] };
 
 // Integrações → Preços por plataforma (item 3). Só administradores.
