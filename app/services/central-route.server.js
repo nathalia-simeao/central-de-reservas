@@ -44,6 +44,7 @@ import { syncShopifyAvailabilityMetafields } from "../utils/shopify-availability
 import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
+import { importTrelloPlan } from "./trello-import.server.js";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -513,6 +514,87 @@ export const action = async ({ request }) => {
       return json({ success: true, id });
     } catch (e) {
       console.error("[PMY] removeDepartureAttachment error:", e);
+      return json({ success: false, error: "Não foi possível remover o arquivo." }, { status: 500 });
+    }
+  }
+
+  // Trello → Quadro (reunião 11/11/2026). O navegador lê o JSON exportado do
+  // Trello e manda só o plano (cartões já ligados aos passeios da Central).
+  if (_action === "importTrelloBoard") {
+    try {
+      let plan;
+      try { plan = JSON.parse(String(formData.get("plan") || "{}")); } catch { plan = null; }
+      if (!plan || !Array.isArray(plan.cards)) return json({ success: false, error: "Plano de importação inválido." }, { status: 400 });
+      const summary = await importTrelloPlan({
+        prisma,
+        plan,
+        assignGuide: ({ tour, guide, startTime, languages }) => assignGuideToDeparture({ tour, guide, startTime, languages }),
+      });
+      return json({ success: true, summary });
+    } catch (e) {
+      console.error("[PMY] importTrelloBoard error:", e);
+      return json({ success: false, error: "Não foi possível importar o quadro do Trello." }, { status: 500 });
+    }
+  }
+
+  // Coluna "Documentos de suporte" do Quadro.
+  if (_action === "saveSupportCard") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      const title = String(formData.get("title") || "").replace(/\s+/g, " ").trim().slice(0, 160);
+      if (!title) return json({ success: false, error: "Dê um título ao documento." }, { status: 400 });
+      const body = String(formData.get("body") || "").slice(0, 8000) || null;
+      const visibleToGuides = String(formData.get("visibleToGuides") || "true") !== "false";
+      const select = { id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true, attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } } };
+      const card = id
+        ? await prisma.supportCard.update({ where: { id }, data: { title, body, visibleToGuides }, select })
+        : await prisma.supportCard.create({ data: { title, body, visibleToGuides, position: (await prisma.supportCard.count()) }, select });
+      return json({ success: true, card });
+    } catch (e) {
+      console.error("[PMY] saveSupportCard error:", e);
+      return json({ success: false, error: "Não foi possível salvar o documento." }, { status: 500 });
+    }
+  }
+
+  if (_action === "deleteSupportCard") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      await prisma.supportCard.delete({ where: { id } });
+      return json({ success: true, id });
+    } catch (e) {
+      console.error("[PMY] deleteSupportCard error:", e);
+      return json({ success: false, error: "Não foi possível apagar o documento." }, { status: 500 });
+    }
+  }
+
+  if (_action === "uploadSupportAttachment") {
+    try {
+      const cardId = String(formData.get("cardId") || "").trim();
+      const file = formData.get("file");
+      if (!cardId || !file || typeof file.arrayBuffer !== "function") return json({ success: false, error: "Arquivo inválido." }, { status: 400 });
+      const mimeType = String(file.type || "").toLowerCase();
+      if (!ALLOWED_ATTACHMENT_TYPES.has(mimeType)) return json({ success: false, error: "Envie PDF ou imagem (JPG, PNG, WEBP, HEIC)." }, { status: 400 });
+      if (!file.size || file.size > MAX_ATTACHMENT_BYTES) return json({ success: false, error: "Arquivo vazio ou maior que 8 MB." }, { status: 400 });
+      const count = await prisma.supportCardAttachment.count({ where: { cardId } });
+      if (count >= 30) return json({ success: false, error: "Limite de 30 arquivos por documento." }, { status: 400 });
+      const attachment = await prisma.supportCardAttachment.create({
+        data: { cardId, fileName: safeFileName(file.name), mimeType, size: file.size, data: Buffer.from(await file.arrayBuffer()), uploadedBy: centralUser?.name || "central" },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+      });
+      return json({ success: true, attachment, cardId });
+    } catch (e) {
+      console.error("[PMY] uploadSupportAttachment error:", e);
+      return json({ success: false, error: "Não foi possível enviar o arquivo." }, { status: 500 });
+    }
+  }
+
+  if (_action === "removeSupportAttachment") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      await prisma.supportCardAttachment.delete({ where: { id } });
+      return json({ success: true, id });
+    } catch (e) {
+      console.error("[PMY] removeSupportAttachment error:", e);
       return json({ success: false, error: "Não foi possível remover o arquivo." }, { status: 500 });
     }
   }

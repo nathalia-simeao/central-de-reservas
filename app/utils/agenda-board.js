@@ -97,9 +97,16 @@ export function buildBoardColumns({
     });
   }
 
-  // Saídas que só têm etiquetas/checks (sem reserva nem guia) também aparecem.
+  // Saídas que só têm etiquetas, checklists ou observações (sem reserva nem guia)
+  // também aparecem — é o caso dos cartões importados do Trello.
   for (const [key, tagIds] of Object.entries(departureTags)) {
     if (!tagIds?.length) continue;
+    const [tourId, iso] = key.split("|");
+    ensure(tourId, iso);
+  }
+  for (const [key, info] of Object.entries(departureInfo)) {
+    const lists = info?.checklists?.lists;
+    if (!(Array.isArray(lists) && lists.length) && !(Array.isArray(info?.guideNotes) && info.guideNotes.length)) continue;
     const [tourId, iso] = key.split("|");
     ensure(tourId, iso);
   }

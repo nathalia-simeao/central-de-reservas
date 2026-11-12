@@ -15,6 +15,8 @@ import { autoChecklists, checklistProgress, normalizeChecklists } from "../../ut
 import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../utils/weather.js";
 import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
 import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
+import { SupportColumn } from "./SupportCards";
+import TrelloImportDialog from "./TrelloImportDialog";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
@@ -516,6 +518,9 @@ export default function AgendaBoard({
   onWaitlistStatus,
   loadWeather,
   showGuestMessages = false,
+  supportCards = [],
+  supportHandlers = null,
+  onImportTrello = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -533,6 +538,8 @@ export default function AgendaBoard({
   const [weather, setWeather] = useState(null); // { [placeKey]: { [dateKey]: day } }
   const [guestMsg, setGuestMsg] = useState(""); // modelo aberto em "Avisar clientes"
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [trelloOpen, setTrelloOpen] = useState(false);
+  const [trelloDone, setTrelloDone] = useState(false);
 
   useEffect(() => {
     if (typeof loadWeather !== "function") return undefined;
@@ -619,6 +626,11 @@ export default function AgendaBoard({
         <button type="button" className="pmy-board-btn" onClick={() => setExpanded(!expanded)} aria-pressed={expanded}>
           {expanded ? tr("Esconder nomes das etiquetas", "Hide label names") : tr("Mostrar nomes das etiquetas", "Show label names")}
         </button>
+        {onImportTrello && (
+          <button type="button" className="pmy-board-btn" onClick={() => { setTrelloDone(false); setTrelloOpen(true); }}>
+            {tr("Importar do Trello", "Import from Trello")}
+          </button>
+        )}
       </div>
 
       {canMove && <p className="pmy-board__hint">{tr("Administradores: arraste um cartão para outra coluna para mudar a data da saída.", "Admins: drag a card to another column to change the departure date.")}</p>}
@@ -630,6 +642,9 @@ export default function AgendaBoard({
       )}
 
       <div className="pmy-board__scroll" ref={scrollRef}>
+        {supportHandlers && (
+          <SupportColumn cards={supportCards} canEdit={Boolean(supportHandlers.save)} handlers={supportHandlers} lang={lang} />
+        )}
         {columns.map((col) => (
           <div
             key={col.dateKey}
@@ -816,6 +831,15 @@ export default function AgendaBoard({
           onConfirm={confirmMove}
           onCancel={() => setPendingMove(null)}
           lang={lang}
+        />
+      )}
+      {trelloOpen && (
+        <TrelloImportDialog
+          tours={tours}
+          lang={lang}
+          onImport={async (plan) => { const summary = await onImportTrello(plan); setTrelloDone(true); return summary; }}
+          // Depois de importar, recarrega a Central para trazer as saídas novas.
+          onClose={() => { setTrelloOpen(false); if (trelloDone) window.location.reload(); }}
         />
       )}
     </section>

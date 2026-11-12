@@ -15,6 +15,14 @@ a { color: inherit; }
 .g-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; border-radius:12px; text-decoration:none; color:var(--g-muted); font-size:12px; font-weight:700; }
 .g-tab span { font-size:20px; line-height:1; }
 .g-tab.active { color:var(--g-green); background:var(--g-green-soft); }
+.g-cl { border:1px solid var(--g-line); border-radius:12px; padding:10px; margin-top:10px; }
+.g-cl.mine { border-color:var(--g-green); }
+.g-cl h3 { font-size:14px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; overflow-wrap:anywhere; }
+.g-cl h3 small { color:var(--g-muted); font-weight:600; white-space:nowrap; }
+.g-cl-item { display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; background:none; border:0; border-top:1px solid var(--g-line); padding:10px 2px; font:inherit; font-size:15px; color:var(--g-ink); cursor:pointer; min-height:44px; }
+.g-cl-item.done span:last-child { color:var(--g-muted); text-decoration:line-through; }
+.g-cl-box { flex:0 0 22px; height:22px; border-radius:6px; border:2px solid var(--g-line); display:grid; place-items:center; font-size:14px; font-weight:800; color:#fff; }
+.g-cl-item.done .g-cl-box { background:var(--g-green); border-color:var(--g-green); }
 .g-kpis { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
 .g-kpi { border:1px solid var(--g-line); border-radius:12px; padding:10px 12px; }
 .g-kpi small { display:block; color:var(--g-muted); font-size:12px; font-weight:600; }
@@ -24,6 +32,10 @@ a { color: inherit; }
 .g-col h3 { font-size:14px; margin:2px 4px 10px; display:flex; justify-content:space-between; }
 .g-col h3 small { color:var(--g-muted); font-weight:600; }
 .g-bcard { display:block; background:var(--g-card); border:1px solid var(--g-line); border-radius:10px; padding:10px; margin-bottom:8px; text-decoration:none; }
+.g-col.support { background:color-mix(in srgb, #f4dcdc 60%, var(--g-bg)); }
+.g-bcard summary { cursor:pointer; list-style:none; }
+.g-bcard summary::-webkit-details-marker { display:none; }
+.g-doc { display:block; margin-top:8px; color:var(--g-green); font-weight:600; font-size:14px; text-decoration:none; overflow-wrap:anywhere; }
 .g-bcard.mine { border-color:var(--g-green); box-shadow:0 0 0 1px var(--g-green); }
 .g-bcard__bar { height:6px; width:44px; border-radius:99px; margin-bottom:6px; }
 .g-bcard strong { display:block; font-size:14px; overflow-wrap:anywhere; }

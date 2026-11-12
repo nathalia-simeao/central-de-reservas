@@ -85,4 +85,9 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "savePlatformPrices",
   "moveDeparture",
   "saveFeatureFlags",
+  "importTrelloBoard",
+  "saveSupportCard",
+  "deleteSupportCard",
+  "uploadSupportAttachment",
+  "removeSupportAttachment",
 ]);

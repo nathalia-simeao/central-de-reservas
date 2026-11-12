@@ -106,6 +106,40 @@ model DepartureAttachment {
   @@index([departureId])
 }
 
+// Coluna fixa "Documentos de suporte" do Quadro (passes, vouchers, instruções
+// do cacifo, mensagens-modelo...). Veio do Trello; guias veem e baixam os anexos.
+model SupportCard {
+  id              String                  @id @default(uuid())
+  title           String
+  body            String?                 @db.Text
+  // [{ name, url }] — links (inclusive anexos que ficaram no Trello)
+  links           Json?
+  // [{ title, items: [{ text, done }] }]
+  checklists      Json?
+  position        Int                     @default(0)
+  visibleToGuides Boolean                 @default(true)
+  trelloId        String?                 @unique
+  attachments     SupportCardAttachment[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @default(now()) @updatedAt
+
+  @@index([position])
+}
+
+model SupportCardAttachment {
+  id         String      @id @default(uuid())
+  cardId     String
+  card       SupportCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  fileName   String
+  mimeType   String
+  size       Int
+  data       Bytes
+  uploadedBy String?
+  createdAt  DateTime    @default(now())
+
+  @@index([cardId])
+}
+
 model GuideSession {
   id        String   @id @default(uuid())
   guideId   String

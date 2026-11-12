@@ -47,7 +47,7 @@ export const headers = () => ({
 });
 
 function CentralDeReservasContent() {
-  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [], waitlistEntries = [], centralUser = null, centralUsers = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
+  const { tours, bookings: initialBookings = [], bookingPage = null, blockedDates = [], shopifyProducts = [], shopName = "Minha Loja Shopify", mediaFiles = [], dbGuides = [], guideAssignments = [], guideShopifySync = null, shopifyWebhookStatus = null, gygIntegrationStatus = null, integrationCredentialStatus = null, businessSettings = null, platformFieldMappings = [], tourDepartures = [], supportCards: initialSupportCards = [], waitlistEntries = [], centralUser = null, centralUsers = [] } = useLoaderData() || { tours: [], bookings: [], bookingPage: null, blockedDates: [], shopifyProducts: [], shopName: "Minha Loja Shopify", mediaFiles: [], dbGuides: [], guideAssignments: [], guideShopifySync: null, shopifyWebhookStatus: null, gygIntegrationStatus: null, integrationCredentialStatus: null, businessSettings: null, platformFieldMappings: [] };
   const [bookingsList, setBookingsList] = useState(initialBookings);
   const [costSettings, setCostSettings] = useState(() => businessSettings?.costSettings || null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -2140,6 +2140,55 @@ function CentralDeReservasContent() {
       attachments: item.attachments || [],
       checklists: item.checklists || null,
     }])));
+  // Quadro: coluna "Documentos de suporte" e importação do Trello (11/11/2026).
+  const [supportCards, setSupportCards] = useState(() => initialSupportCards || []);
+  const postCentral = async (fields, file = null) => {
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(fields)) fd.append(key, typeof value === "string" ? value : JSON.stringify(value));
+    if (file) fd.append("file", file);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    return result;
+  };
+  const handleImportTrello = async (plan) => (await postCentral({ _action: "importTrelloBoard", plan })).summary;
+  const openSupportAttachment = async (id) => {
+    // Abre a janela antes do fetch (bloqueador de pop-up) e troca o endereço depois.
+    const win = window.open("", "_blank");
+    try {
+      const headers = {};
+      try { const token = await window.shopify?.idToken?.(); if (token) headers.Authorization = `Bearer ${token}`; } catch { /* cookie do app */ }
+      const response = await fetch(resourceUrl(`/suporte/anexo/${id}`), { credentials: "include", headers });
+      if (!response.ok) throw new Error(await response.text());
+      const url = URL.createObjectURL(await response.blob());
+      if (win) win.location.href = url; else window.location.href = url;
+    } catch (e) {
+      win?.close();
+      window.alert(ui("Não foi possível abrir o arquivo.", "Could not open the file.") + (e?.message ? `\n${e.message}` : ""));
+    }
+  };
+  const supportHandlers = {
+    openAttachment: openSupportAttachment,
+    ...(isCentralAdmin ? {
+      save: async ({ id, title, body, visibleToGuides }) => {
+        const { card } = await postCentral({ _action: "saveSupportCard", id: id || "", title, body: body || "", visibleToGuides: visibleToGuides ? "true" : "false" });
+        setSupportCards((list) => (list.some((c) => c.id === card.id) ? list.map((c) => (c.id === card.id ? { ...c, ...card } : c)) : [...list, card]));
+        return card;
+      },
+      remove: async (id) => {
+        await postCentral({ _action: "deleteSupportCard", id });
+        setSupportCards((list) => list.filter((c) => c.id !== id));
+      },
+      upload: async (cardId, file) => {
+        const { attachment } = await postCentral({ _action: "uploadSupportAttachment", cardId }, file);
+        setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: [...(c.attachments || []), attachment] } : c)));
+      },
+      removeAttachment: async (cardId, id) => {
+        await postCentral({ _action: "removeSupportAttachment", id });
+        setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: (c.attachments || []).filter((a) => a.id !== id) } : c)));
+      },
+    } : {}),
+  };
+
   // Quadro: checklists do cartão (operação aplicada no servidor).
   const handleChecklistOp = async (tourId, startTime, op) => {
     const fd = new FormData();
@@ -3119,6 +3168,8 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
+              supportCards, supportHandlers,
+              onImportTrello: isCentralAdmin ? handleImportTrello : null,
               onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
               waitlist,
               onAddWaitlist: featureFlags.waitlist ? handleAddWaitlist : null,

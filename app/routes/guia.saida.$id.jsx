@@ -1,5 +1,7 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router";
+import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
+import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/departure-checklists.js";
+import { normalizeText } from "../utils/trello-import.js";
 import db from "../db.server";
 import { GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
 import {
@@ -26,9 +28,35 @@ async function load(request, params) {
   return { guide, assignment };
 }
 
+// Checklists da saída, iguais aos do Quadro (e do Trello): os automáticos por
+// grupo de idioma (pronto → um item por cliente → fim de tour) e os da equipe /
+// importados do Trello. O guia vê os do grupo dele primeiro e só marca/desmarca.
+function guideChecklists({ guide, assignment, bookings, departure, teammates }) {
+  const state = normalizeChecklists(departure?.checklists);
+  const card = {
+    timeKey: lisbonParts(assignment.startTime).time,
+    bookings,
+    guides: teammates.map((t) => ({ guideId: t.guideId, name: t.guide?.name || "Guia", languages: t.languages || [] })),
+  };
+  const myLanguages = assignment.languages || [];
+  const auto = autoChecklists(card)
+    .filter((list) => !myLanguages.length || myLanguages.includes(list.id.replace("auto:", "")))
+    .map((list) => ({
+      id: list.id, title: list.title, auto: true, mine: true,
+      items: list.items.map((item) => ({ id: item.key, text: item.text, done: Boolean(state.auto[item.key]?.done) })),
+    }));
+  const firstName = normalizeText(guide.name).split(" ")[0];
+  const manual = state.lists.map((list) => ({
+    id: list.id, title: list.title, auto: false,
+    mine: Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
+    items: list.items.map((item) => ({ id: item.id, text: item.text, done: item.done })),
+  }));
+  return [...auto, ...manual].sort((a, b) => Number(b.mine) - Number(a.mine));
+}
+
 export const loader = async ({ request, params }) => {
   const { guide, assignment } = await load(request, params);
-  const [bookings, departure] = await Promise.all([
+  const [bookings, departure, teammates] = await Promise.all([
     db.booking.findMany({
       where: { AND: [departureBookingWhere(assignment.tourId, assignment.startTime), excludeTestBookingsWhere()] },
       orderBy: { customerName: "asc" },
@@ -41,10 +69,15 @@ export const loader = async ({ request, params }) => {
       where: { tourId_startTime: { tourId: assignment.tourId, startTime: assignment.startTime } },
       include: { attachments: { select: { id: true, fileName: true, mimeType: true, size: true }, orderBy: { createdAt: "asc" } } },
     }),
+    db.guideAssignment.findMany({
+      where: { tourId: assignment.tourId, startTime: assignment.startTime, status: "ASSIGNED" },
+      select: { guideId: true, languages: true, guide: { select: { name: true } } },
+    }),
   ]);
 
   const groupBookings = bookingsForGuideLanguages(bookings, assignment.languages, assignment.guideId);
   return {
+    checklists: guideChecklists({ guide, assignment, bookings, departure, teammates }),
     guide: { name: guide.name },
     departure: {
       languages: assignment.languages || [],
@@ -86,6 +119,16 @@ export const action = async ({ request, params }) => {
     const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
     await db.tourDeparture.update({ where: { id: departure.id }, data: { [field]: new Date(), checkedBy: by } });
     return { ok: step === "start" ? "Início registrado." : step === "mid" ? "Meio registrado." : "Fim registrado. Bom trabalho!" };
+  }
+
+  if (intent === "checklist") {
+    const listId = String(form.get("listId") || "");
+    const itemId = String(form.get("itemId") || "");
+    const op = listId.startsWith("auto:") ? { type: "toggleAuto", key: itemId } : { type: "toggleItem", listId, itemId };
+    const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
+    const checklists = applyChecklistOp(departure.checklists, op, guide.name);
+    await db.tourDeparture.update({ where: { id: departure.id }, data: { checklists } });
+    return { checklistSaved: true };
   }
 
   if (intent === "attendance") {
@@ -157,8 +200,24 @@ function paxDetail(b) {
   ].filter(([n]) => Number(n) > 0).map(([n, one, many]) => `${n} ${Number(n) === 1 ? one : many}`).join(", ");
 }
 
+function ChecklistItem({ listId, item }) {
+  const fetcher = useFetcher();
+  const done = fetcher.formData ? !item.done : item.done;
+  return (
+    <fetcher.Form method="post">
+      <input type="hidden" name="intent" value="checklist" />
+      <input type="hidden" name="listId" value={listId} />
+      <input type="hidden" name="itemId" value={item.id} />
+      <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
+        <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
+        <span>{item.text}</span>
+      </button>
+    </fetcher.Form>
+  );
+}
+
 export default function GuideDeparture() {
-  const { departure, permissions, bookings } = useLoaderData();
+  const { departure, permissions, bookings, checklists } = useLoaderData();
   const result = useActionData();
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
@@ -210,6 +269,21 @@ export default function GuideDeparture() {
           ))}
         </Form>
       </div>
+
+      {checklists.length > 0 && (
+        <div className="g-card">
+          <h2>Checklists do grupo</h2>
+          {checklists.map((list) => {
+            const doneCount = list.items.filter((i) => i.done).length;
+            return (
+              <section key={list.id} className={`g-cl${list.mine ? " mine" : ""}`} aria-label={list.title}>
+                <h3>{list.title}<small>{doneCount}/{list.items.length}</small></h3>
+                {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} />)}
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       <div className="g-card">
         <h2>Clientes</h2>

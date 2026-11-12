@@ -26,7 +26,7 @@ export const loader = async ({ request }) => {
   from.setUTCHours(from.getUTCHours() - 2);
   const to = new Date(`${addDays(start, DAYS)}T02:00:00Z`);
 
-  const [bookings, assignments, departures, settings, tours] = await Promise.all([
+  const [bookings, assignments, departures, settings, tours, supportCards] = await Promise.all([
     db.booking.findMany({
       where: { status: { in: ["CONFIRMED", "PENDING"] }, startTime: { gte: from, lt: to }, AND: [excludeTestBookingsWhere()] },
       select: { tourId: true, startTime: true, status: true, syncStatus: true, attendanceStatus: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
@@ -37,10 +37,17 @@ export const loader = async ({ request }) => {
     }),
     db.tourDeparture.findMany({
       where: { startTime: { gte: from, lt: to } },
-      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true },
+      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true },
     }),
     db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
     db.tour.findMany({ select: { id: true, title: true } }),
+    db.supportCard
+      .findMany({
+        where: { visibleToGuides: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, title: true, body: true, attachments: { select: { id: true, fileName: true }, orderBy: { createdAt: "asc" } } },
+      })
+      .catch(() => []),
   ]);
 
   const key = (tourId, startTime) => `${tourId}|${new Date(startTime).toISOString()}`;
@@ -55,6 +62,7 @@ export const loader = async ({ request }) => {
   const labels = settings?.agendaLabels || null;
 
   return {
+    supportCards,
     columns: columns.map((col) => ({
       dateKey: col.dateKey,
       cards: col.cards.map((card) => {
@@ -101,8 +109,26 @@ function Card({ card }) {
   );
 }
 
+function SupportColumn({ cards }) {
+  if (!cards.length) return null;
+  return (
+    <section className="g-col support" aria-label="Documentos de suporte">
+      <h3>Documentos de suporte <small>{cards.length}</small></h3>
+      {cards.map((card) => (
+        <details key={card.id} className="g-bcard">
+          <summary><strong>{card.title}</strong>{card.attachments.length > 0 && <small>📄 {card.attachments.length} arquivo(s)</small>}</summary>
+          {card.body && <pre>{card.body}</pre>}
+          {card.attachments.map((file) => (
+            <a key={file.id} className="g-doc" href={`/suporte/anexo/${file.id}`} target="_blank" rel="noreferrer">📄 {file.fileName}</a>
+          ))}
+        </details>
+      ))}
+    </section>
+  );
+}
+
 export default function GuideBoard() {
-  const { columns } = useLoaderData();
+  const { columns, supportCards } = useLoaderData();
   return (
     <GuideShell title="Quadro" wide>
       <div className="g-top">
@@ -112,6 +138,7 @@ export default function GuideBoard() {
         </div>
       </div>
       <div className="g-board">
+        <SupportColumn cards={supportCards} />
         {columns.map((col) => (
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey)}>
             <h3>{columnTitle(col.dateKey)} <small>{col.cards.length}</small></h3>

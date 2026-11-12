@@ -86,7 +86,8 @@ export const loader = async ({ request }) => {
   const assignmentStart = new Date(now);
   assignmentStart.setDate(assignmentStart.getDate() - 30);
   const assignmentEnd = new Date(now);
-  assignmentEnd.setDate(assignmentEnd.getDate() + 180);
+  // 400 dias: o quadro do Trello tem saídas até o fim de 2027.
+  assignmentEnd.setDate(assignmentEnd.getDate() + 400);
 
   const blockedEnd = new Date(now);
   blockedEnd.setDate(blockedEnd.getDate() + 400);
@@ -211,6 +212,20 @@ export const loader = async ({ request }) => {
 
   // Etiquetas por saída (passeio + dia + horário). Tolerante: se a migração
   // ainda não rodou, a Central abre normalmente sem etiquetas de saída.
+  // Coluna "Documentos de suporte" do Quadro (tolerante à migração pendente).
+  const supportCards = await prisma.supportCard
+    .findMany({
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true,
+        attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+      },
+    })
+    .catch((error) => {
+      console.error("[PMY] supportCard load failed:", error?.message || error);
+      return [];
+    });
+
   const tourDepartures = await prisma.tourDeparture
     .findMany({
       where: { startTime: { gte: assignmentStart, lte: assignmentEnd } },
@@ -483,6 +498,7 @@ export const loader = async ({ request }) => {
       : { ...businessSettings, costSettings: null, fieldMappings: null, platformPrices: null },
     platformFieldMappings: userIsAdmin ? platformFieldMappings : [],
     tourDepartures,
+    supportCards,
     waitlistEntries,
     centralUser: {
       id: centralUser.id,

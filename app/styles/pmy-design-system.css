@@ -6310,3 +6310,31 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-ds-dropdown__flag { width: 20px; height: 14px; object-fit: cover; border-radius: 2px; flex: 0 0 auto; }
 .pmy-ds-dropdown--inline { display: inline-block; min-width: 200px; vertical-align: middle; }
 .pmy-guide-phone-row { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 8px; }
+
+/* Quadro: coluna "Documentos de suporte" e importação do Trello (12/11/2026) */
+.pmy-board__col.is-support { background: #fdf0f0; border: 1px solid #f0d4d4; }
+.pmy-support-card .pmy-board-card__title { font-weight: 600; }
+.pmy-support-modal, .pmy-trello { max-width: 640px; }
+.pmy-board-modal__head small { display: block; color: #6b778c; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.pmy-board-modal__head .pmy-ds-input { font-size: 18px; font-weight: 700; min-width: min(420px, 70vw); }
+.pmy-support-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 14px; line-height: 1.5; }
+.pmy-support-empty { color: #6b778c; font-size: 13px; margin: 0 0 8px; }
+.pmy-support-error { background: #ffeceb; color: #ae2e24; border-radius: 8px; padding: 8px 10px; font-size: 14px; margin: 8px 0; }
+.pmy-support-text { width: 100%; min-height: 140px; resize: vertical; font: inherit; }
+.pmy-support-check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin-top: 8px; cursor: pointer; }
+.pmy-support-check input { margin-top: 3px; }
+.pmy-support-files { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.pmy-support-files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; overflow-wrap: anywhere; }
+.pmy-support-files a, .pmy-support-file { color: #0c66e4; text-decoration: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
+.pmy-support-upload { cursor: pointer; }
+.pmy-support-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pmy-trello__found { font-size: 14px; margin: 8px 0 0; }
+.pmy-trello__map { display: grid; gap: 8px; }
+.pmy-trello__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid #e3e6ea; border-radius: 10px; }
+.pmy-trello__row strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.pmy-trello__row small { color: #6b778c; font-size: 12px; }
+.pmy-trello__list { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+.pmy-trello__stats { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.pmy-trello__stats li { border: 1px solid #e3e6ea; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.pmy-trello__stats b { display: block; font-size: 20px; }
+@media (max-width: 640px) { .pmy-trello__row { grid-template-columns: minmax(0, 1fr); } }
