@@ -1,5 +1,5 @@
 import { Button, Icon } from "./PmyUI";
-import TrelloIntegrationCard from "./TrelloIntegrationCard";
+import TrelloIntegrationCard, { trelloCardState, useTrelloStatus } from "./TrelloIntegrationCard";
 
 /** Situação de um canal de reserva, igual à do cartão. */
 export function reservationState(conn = {}) {
@@ -21,11 +21,20 @@ export default function IntegrationConnectionsPanel({
   requestResourceJson = null,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
+  const [trelloStatus, reloadTrello] = useTrelloStatus(requestResourceJson);
+  // Resumo de TODAS as integrações da página: canais de reserva, Trello e conteúdo.
+  const contentState = (conn = {}) => (conn.connected ? "connected" : conn.validationError ? "error" : conn.configured ? "waiting" : "required");
+  const trelloState = { connected: "connected", configured: "waiting", error: "error", required: "required" }[trelloCardState(trelloStatus)];
+  const allStates = [
+    ...reservationPlatforms.map((p) => reservationState(platformConnections[p.key])),
+    ...contentPlatforms.map((p) => contentState(platformConnections[p.key])),
+    ...(requestResourceJson && trelloStatus ? [trelloState] : []),
+  ];
 
   return (
     <div>
                       <p className="pmy-ds-migrated-5553a5">
-                        {lang==='pt' ? 'Canais de reserva sincronizam vendas e disponibilidade. Integrações de conteúdo, como Tripadvisor, ficam separadas.' : 'Booking channels sync sales and availability. Content integrations, such as Tripadvisor, are kept separate.'}
+                        {lang==='pt' ? 'Canais de reserva sincronizam vendas e disponibilidade. Agenda e conteúdo (Trello, Tripadvisor) ficam separados. O resumo abaixo conta todas as integrações.' : 'Booking channels sync sales and availability. Agenda and content tools (Trello, Tripadvisor) are separate. The summary counts every integration.'}
                       </p>
                       <div className="pmy-int-summary" role="list" aria-label={tr("Situação dos canais", "Channel status")}>
                         {[
@@ -34,7 +43,7 @@ export default function IntegrationConnectionsPanel({
                           { key: "error", icon: "warning", label: [tr("Com erro", "With error"), tr("Com erro", "With errors")] },
                           { key: "waiting", icon: "clock", label: [tr("Aguardando validação", "Awaiting validation"), tr("Aguardando validação", "Awaiting validation")] },
                         ].map((item) => {
-                          const count = reservationPlatforms.filter((p) => reservationState(platformConnections[p.key]) === item.key).length;
+                          const count = allStates.filter((state) => state === item.key).length;
                           if (!count) return null;
                           return (
                             <div key={item.key} className={`pmy-int-summary__item is-${item.key}`} role="listitem">
@@ -167,7 +176,7 @@ export default function IntegrationConnectionsPanel({
                               <div className="pmy-ds-migrated-166ghmy"><Icon name="calendar" size={15} /> {tr("Agenda e operação", "Agenda & operations")}</div>
                               <div className="pmy-ds-migrated-htnqm2">{tr("Ferramentas que atualizam o Quadro e a Agenda da equipe. Não vendem nem mexem nas vagas.", "Tools that update the team's Board and Agenda. They don't sell or change availability.")}</div>
                             </div>
-                            <TrelloIntegrationCard requestJson={requestResourceJson} lang={lang} />
+                            <TrelloIntegrationCard requestJson={requestResourceJson} status={trelloStatus} onReload={reloadTrello} lang={lang} />
                           </>
                         )}
                         <div className="pmy-ds-migrated-1konp2u">

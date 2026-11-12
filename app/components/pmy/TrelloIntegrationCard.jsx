@@ -16,18 +16,24 @@ export function trelloCardState(status) {
   return "configured";
 }
 
-export default function TrelloIntegrationCard({ requestJson, lang = "pt" }) {
-  const tr = (pt, en) => (lang === "en" ? en : pt);
+/** Situação do Trello, lida uma vez pela página de conexões (também entra no resumo). */
+export function useTrelloStatus(requestJson) {
   const [status, setStatus] = useState(null);
-  const [open, setOpen] = useState(false);
-
   const load = useCallback(async () => {
+    if (typeof requestJson !== "function") return;
     try {
       const result = await requestJson("/api/trello");
       if (result?.success) setStatus(result);
     } catch { /* o cartão mostra "falta configurar" */ }
   }, [requestJson]);
   useEffect(() => { load(); }, [load]);
+  return [status, load];
+}
+
+export default function TrelloIntegrationCard({ requestJson, status, onReload, lang = "pt" }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [open, setOpen] = useState(false);
+  const load = onReload || (() => {});
 
   const state = trelloCardState(status);
   const label = {
