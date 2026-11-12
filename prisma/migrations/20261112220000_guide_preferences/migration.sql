@@ -1,0 +1,6 @@
+ALTER TABLE "Guide" ADD COLUMN "portalLanguage" TEXT;
+ALTER TABLE "Guide" ADD COLUMN "portalPhoto" BYTEA;
+ALTER TABLE "Guide" ADD COLUMN "portalPhotoType" TEXT;
+ALTER TABLE "Guide" ADD COLUMN "totpSecret" TEXT;
+ALTER TABLE "Guide" ADD COLUMN "totpEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "GuideSession" ADD COLUMN "pending" BOOLEAN NOT NULL DEFAULT false;

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import { DatePicker } from "../components/pmy/PmyUI";
 import db from "../db.server";
-import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
+import { GuideShell, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 
 // Aba Dash do app: só os números do próprio guia (vendas pelos links dele,
@@ -145,71 +145,73 @@ export default function GuideDash() {
   const [from, setFrom] = useState(customRange?.from || "");
   const [to, setTo] = useState(customRange?.to || "");
   const conversion = totals.links ? Math.round((totals.sales / totals.links) * 100) : null;
+  const t = useT();
+  const locale = useGuideLocale();
   return (
     <GuideShell title="Dash">
       <div className="g-top">
         <div>
-          <h1>Seus números</h1>
-          <small>Só as suas vendas e os passeios que você guiou</small>
+          <h1>{t("Seus números")}</h1>
+          <small>{t("Só as suas vendas e os passeios que você guiou")}</small>
         </div>
       </div>
 
-      <div className="g-periods" role="tablist" aria-label="Período">
+      <div className="g-periods" role="tablist" aria-label={t("Período")}>
         {Object.entries(PERIODS).map(([key, p]) => (
           <button key={key} type="button" role="tab" aria-selected={period === key}
             className={`g-chip ${period === key ? "on" : ""}`}
             onClick={() => { setPicking(false); setParams(key === "mes" ? {} : { p: key }); }}>
-            {p.label}
+            {t(p.label)}
           </button>
         ))}
         <button type="button" role="tab" aria-selected={period === "datas"} className={`g-chip ${period === "datas" || picking ? "on" : ""}`} onClick={() => setPicking(true)}>
-          Escolher datas
+          {t("Escolher datas")}
         </button>
       </div>
       {picking && (
         <div className="g-card g-range">
-          <div className="g-field"><span>De</span>
-            <DatePicker aria-label="Data inicial" value={from} onChange={(e) => setFrom(e?.target?.value ?? e)} locale="pt-PT" placeholder="dd/mm/aaaa" todayLabel="Hoje" clearLabel="Limpar" />
+          <div className="g-field"><span>{t("De")}</span>
+            <DatePicker aria-label={t("Data inicial")} value={from} onChange={(e) => setFrom(e?.target?.value ?? e)} locale={locale} placeholder="dd/mm/aaaa" todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
           </div>
-          <div className="g-field"><span>Até</span>
-            <DatePicker aria-label="Data final" value={to} onChange={(e) => setTo(e?.target?.value ?? e)} locale="pt-PT" placeholder="dd/mm/aaaa" todayLabel="Hoje" clearLabel="Limpar" />
+          <div className="g-field"><span>{t("Até")}</span>
+            <DatePicker aria-label={t("Data final")} value={to} onChange={(e) => setTo(e?.target?.value ?? e)} locale={locale} placeholder="dd/mm/aaaa" todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
           </div>
-          <button type="button" className="g-btn primary" disabled={!from || !to || from > to} onClick={() => setParams({ p: "datas", de: from, ate: to })}>Ver período</button>
+          <button type="button" className="g-btn primary" disabled={!from || !to || from > to} onClick={() => setParams({ p: "datas", de: from, ate: to })}>{t("Ver período")}</button>
         </div>
       )}
 
       <div className="g-card">
-        <h2>Vendas</h2>
+        <h2>{t("Vendas")}</h2>
         <div className="g-kpis">
-          <div className="g-kpi"><small>Vendas confirmadas</small><b>{totals.sales}</b></div>
-          <div className="g-kpi"><small>Valor vendido</small><b>{money(totals.revenue)}</b></div>
-          <div className="g-kpi"><small>Pessoas vendidas</small><b>{totals.pax}</b></div>
-          <div className="g-kpi"><small>Links que viraram venda</small><b>{conversion === null ? "—" : `${conversion}%`}</b></div>
+          <div className="g-kpi"><small>{t("Vendas confirmadas")}</small><b>{totals.sales}</b></div>
+          <div className="g-kpi"><small>{t("Valor vendido")}</small><b>{money(totals.revenue)}</b></div>
+          <div className="g-kpi"><small>{t("Pessoas vendidas")}</small><b>{totals.pax}</b></div>
+          <div className="g-kpi"><small>{t("Links que viraram venda")}</small><b>{conversion === null ? "—" : `${conversion}%`}</b></div>
         </div>
-        {guide.code && <p className="g-empty" style={{ marginTop: 8 }}>Seu código de vendas: <b>{guide.code}</b></p>}
+        {guide.code && <p className="g-empty" style={{ marginTop: 8 }}>{t("Seu código de vendas:")} <b>{guide.code}</b></p>}
       </div>
 
       <div className="g-card">
-        <h2>Passeios</h2>
+        <h2>{t("Passeios")}</h2>
         <div className="g-kpis">
-          <div className="g-kpi"><small>Passeios guiados</small><b>{totals.tours}</b></div>
-          <div className="g-kpi"><small>Pessoas atendidas</small><b>{totals.guided}</b></div>
+          <div className="g-kpi"><small>{t("Passeios guiados")}</small><b>{totals.tours}</b></div>
+          <div className="g-kpi"><small>{t("Pessoas atendidas")}</small><b>{totals.guided}</b></div>
           <div className="g-kpi"><small>No-show</small><b>{totals.noShow}</b></div>
-          <div className="g-kpi"><small>Média por passeio</small><b>{totals.tours ? (totals.guided / totals.tours).toFixed(1) : "—"}</b></div>
+          <div className="g-kpi"><small>{t("Média por passeio")}</small><b>{totals.tours ? (totals.guided / totals.tours).toFixed(1) : "—"}</b></div>
         </div>
       </div>
 
       <div className="g-card">
-        <h2>Vendas pelos seus links</h2>
-        {!sales.length && <p className="g-empty">Nenhuma venda neste período. Use “Vender” na aba Saídas para gerar um link.</p>}
+        <h2>{t("Vendas pelos seus links")}</h2>
+        {!sales.length && <p className="g-empty">{t("Nenhuma venda neste período. Use “Vender” na aba Saídas para gerar um link.")}</p>}
         {sales.map((s) => {
           const [label, tone] = STATUS[s.status] || [s.status, "wait"];
-          const when = lisbonParts(s.startTime);
+          const when = lisbonParts(s.startTime, locale);
           return (
             <div key={s.id} className="g-guest">
               <div className="g-guest__head">
                 <strong>{s.title}</strong>
-                <span className={`g-pill ${tone}`}>{label}</span>
+                <span className={`g-pill ${tone}`}>{t(label)}</span>
               </div>
               <div className="g-guest__meta">
                 {when.day} · {when.time} · {s.pax} pax · {money(s.price, s.currency)}{s.ref ? ` · ${s.ref}` : ""}
@@ -220,10 +222,10 @@ export default function GuideDash() {
       </div>
 
       <div className="g-card">
-        <h2>Passeios que você guiou</h2>
-        {!past.length && <p className="g-empty">Nenhum passeio neste período.</p>}
+        <h2>{t("Passeios que você guiou")}</h2>
+        {!past.length && <p className="g-empty">{t("Nenhum passeio neste período.")}</p>}
         {past.map((p) => {
-          const when = lisbonParts(p.startTime);
+          const when = lisbonParts(p.startTime, locale);
           return (
             <Link key={p.id} to={`/guia/saida/${p.id}`} className="g-guest" style={{ display: "block", textDecoration: "none" }}>
               <div className="g-guest__head"><strong>{p.title}</strong><span>{when.time}</span></div>

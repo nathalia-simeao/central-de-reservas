@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import db from "../db.server";
-import { GuideShell } from "../components/guide/GuideShell";
+import { GuideShell, useT } from "../components/guide/GuideShell";
 import {
   clearFailedLogins,
   createGuideSession,
+  createPendingLogin,
+  destroyPendingLogin,
   getGuideFromRequest,
+  getPendingLogin,
   loginBlocked,
   normalizeEmail,
+  pendingCookie,
   recordFailedLogin,
   redirectTo,
   sessionCookie,
   verifyPassword,
 } from "../utils/guide-portal.server";
+import { verifyTotp } from "../utils/totp.server.js";
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request).catch(() => null);
@@ -20,13 +25,41 @@ export const loader = async ({ request }) => {
   const brand = await db.businessSetting
     .findFirst({ select: { logoOnLightUrl: true, logoUrl: true } })
     .catch(() => null);
+  // Senha certa e verificação em duas etapas ligada: falta só o código.
+  const pending = await getPendingLogin(db, request).catch(() => null);
   return {
     logoLight: brand?.logoOnLightUrl || brand?.logoUrl || null,
+    needsCode: Boolean(pending),
   };
 };
 
 export const action = async ({ request }) => {
   const form = await request.formData();
+  const ip0 = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+  // Segunda etapa: código do app autenticador.
+  if (form.get("intent") === "code") {
+    const pending = await getPendingLogin(db, request);
+    if (!pending) return { error: "O tempo para digitar o código acabou. Entre de novo com e-mail e senha.", restart: true };
+    const codeKey = `code|${pending.guide.id}|${ip0}`;
+    if (loginBlocked(codeKey)) return { error: "Muitas tentativas. Espere 15 minutos ou fale com a gestão." };
+    if (!verifyTotp(pending.guide.totpSecret, form.get("code"))) {
+      recordFailedLogin(codeKey);
+      return { error: "Código inválido. Confira o código de 6 dígitos no app autenticador." };
+    }
+    clearFailedLogins(codeKey);
+    await destroyPendingLogin(db, request);
+    const token = await createGuideSession(db, pending.guide.id);
+    const headers = new Headers({ Location: "/guia" });
+    headers.append("Set-Cookie", sessionCookie(token));
+    headers.append("Set-Cookie", pendingCookie("", 0));
+    return new Response(null, { status: 302, headers });
+  }
+  if (form.get("intent") === "cancel") {
+    await destroyPendingLogin(db, request);
+    return redirectTo("/guia/login", { "Set-Cookie": pendingCookie("", 0) });
+  }
+
   const email = normalizeEmail(form.get("email"));
   const password = String(form.get("password") || "");
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -39,7 +72,7 @@ export const action = async ({ request }) => {
 
   const guide = await db.guide.findFirst({
     where: { email: { equals: email, mode: "insensitive" }, portalEnabled: true },
-    omit: { passwordHash: false },
+    omit: { passwordHash: false, totpSecret: false },
   });
   const ok = guide?.passwordHash ? verifyPassword(password, guide.passwordHash) : false;
   if (!ok) {
@@ -49,6 +82,10 @@ export const action = async ({ request }) => {
   }
 
   clearFailedLogins(key);
+  if (guide.totpEnabled && guide.totpSecret) {
+    const pendingToken = await createPendingLogin(db, guide.id);
+    return redirectTo("/guia/login", { "Set-Cookie": pendingCookie(pendingToken) });
+  }
   const token = await createGuideSession(db, guide.id);
   return redirectTo("/guia", { "Set-Cookie": sessionCookie(token) });
 };
@@ -97,12 +134,13 @@ const loginStyles = `
 
 export default function GuideLogin() {
   const result = useActionData();
-  const { logoLight } = useLoaderData() || {};
+  const { logoLight, needsCode } = useLoaderData() || {};
+  const t = useT();
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
   const [showPassword, setShowPassword] = useState(false);
   return (
-    <GuideShell title="Entrar" bare>
+    <GuideShell title={t("Entrar")} bare>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Asul:wght@400;700&family=Montserrat:wght@400;500;600;700&display=swap" />
       <style dangerouslySetInnerHTML={{ __html: loginStyles }} />
@@ -111,33 +149,57 @@ export default function GuideLogin() {
         <main className="gl-main">
           <div className="gl-card">
             <img className="gl-logo" src={logoLight || PMY_LOGO} alt="Portugal, Me & You" />
-            <h1>Portal dos guias</h1>
-            <p className="gl-sub">Entre com o e-mail e a senha que a gestão te enviou.</p>
+            <h1>{t("Portal dos guias")}</h1>
+            <p className="gl-sub">{needsCode && !result?.restart
+              ? t("Digite o código de 6 dígitos do seu app autenticador.")
+              : t("Entre com o e-mail e a senha que a gestão te enviou.")}</p>
 
-            {result?.error && <div className="g-error" role="alert">{result.error}</div>}
+            {result?.error && <div className="g-error" role="alert">{t(result.error)}</div>}
 
+            {needsCode && !result?.restart ? (
+              <>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="code" />
+                  <label className="gl-field">
+                    <span>{t("Código de 6 dígitos")}</span>
+                    <div className="gl-input">
+                      <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required />
+                    </div>
+                  </label>
+                  <button type="submit" className="gl-submit" disabled={busy}>
+                    {busy && <span className="gl-spin" aria-hidden="true" />}
+                    {busy ? t("Entrando") : t("Entrar")}
+                  </button>
+                </Form>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="cancel" />
+                  <button type="submit" className="gl-eye" style={{ display: "block", margin: "12px auto 0" }}>{t("Voltar")}</button>
+                </Form>
+              </>
+            ) : (
             <Form method="post">
               <label className="gl-field">
-                <span>E-mail</span>
+                <span>{t("E-mail")}</span>
                 <div className="gl-input">
                   <input name="email" type="email" autoComplete="username" inputMode="email" autoCapitalize="none" required />
                 </div>
               </label>
               <label className="gl-field">
-                <span>Senha</span>
+                <span>{t("Senha")}</span>
                 <div className="gl-input">
                   <input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required />
                   <button type="button" className="gl-eye" onClick={() => setShowPassword((v) => !v)} aria-pressed={showPassword}>
-                    {showPassword ? "Esconder" : "Mostrar"}
+                    {showPassword ? t("Esconder") : t("Mostrar")}
                   </button>
                 </div>
               </label>
               <button type="submit" className="gl-submit" disabled={busy}>
                 {busy && <span className="gl-spin" aria-hidden="true" />}
-                {busy ? "Entrando" : "Entrar"}
+                {busy ? t("Entrando") : t("Entrar")}
               </button>
             </Form>
-            <p className="gl-help">Esqueceu a senha? Peça uma nova para a gestão da PMY.</p>
+            )}
+            <p className="gl-help">{t("Esqueceu a senha? Peça uma nova para a gestão da PMY.")}</p>
           </div>
         </main>
       </div>

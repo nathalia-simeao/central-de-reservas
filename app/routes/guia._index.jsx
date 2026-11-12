@@ -1,7 +1,7 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, data, useLoaderData } from "react-router";
 import db from "../db.server";
-import { GIcon, GuideShell, lisbonParts } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookie, sessionTokenFromRequest } from "../utils/guide-portal.server";
 
 export const loader = async ({ request }) => {
@@ -74,9 +74,11 @@ export const action = async ({ request }) => {
 
 export default function GuideHome() {
   const { guide, items, mentions = [] } = useLoaderData();
+  const t = useT();
+  const locale = useGuideLocale();
   const groups = [];
   for (const item of items) {
-    const parts = lisbonParts(item.startTime);
+    const parts = lisbonParts(item.startTime, locale);
     const last = groups[groups.length - 1];
     if (last?.dayKey === parts.dayKey) last.items.push({ ...item, parts });
     else groups.push({ dayKey: parts.dayKey, day: parts.day, items: [{ ...item, parts }] });
@@ -84,53 +86,53 @@ export default function GuideHome() {
   const today = lisbonParts(Date.now()).dayKey;
 
   return (
-    <GuideShell title="Minhas saídas">
+    <GuideShell title={t("Minhas saídas")}>
       <div className="g-top">
         <div>
-          <h1>Olá, {guide.name?.split(" ")[0] || "guia"}</h1>
-          <small>Suas saídas dos próximos 30 dias</small>
+          <h1>{t("Olá, {name}", { name: guide.name?.split(" ")[0] || t("guia") })}</h1>
+          <small>{t("Suas saídas dos próximos 30 dias")}</small>
         </div>
         <Form method="post" action="/guia/sair">
-          <button type="submit" className="g-link" style={{ background: "none", border: 0, cursor: "pointer" }}>Sair</button>
+          <button type="submit" className="g-link" style={{ background: "none", border: 0, cursor: "pointer" }}>{t("Sair")}</button>
         </Form>
       </div>
 
       {mentions.length > 0 && (
         <div className="g-card g-mentions">
-          <h2><GIcon name="chat" /> Marcaram você ({mentions.length})</h2>
+          <h2><GIcon name="chat" /> {t("Marcaram você")} ({mentions.length})</h2>
           {mentions.map((m) => (
-            <p key={m.id}><b>{m.authorName || "Equipe"}</b>: {m.text}<br /><small>{lisbonParts(m.createdAt).day} · {lisbonParts(m.createdAt).time}</small></p>
+            <p key={m.id}><b>{m.authorName || t("Equipe")}</b>: {m.text}<br /><small>{lisbonParts(m.createdAt, locale).day} · {lisbonParts(m.createdAt, locale).time}</small></p>
           ))}
           <Form method="post">
             <input type="hidden" name="intent" value="mentionsRead" />
             <input type="hidden" name="ids" value={mentions.map((m) => m.id).join(",")} />
-            <button type="submit" className="g-btn" style={{ width: "100%" }}>OK, vi</button>
+            <button type="submit" className="g-btn" style={{ width: "100%" }}>{t("OK, vi")}</button>
           </Form>
         </div>
       )}
 
       <div className="g-row" style={{ marginBottom: 12 }}>
-        <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}><GIcon name="card" /> Vender · gerar link</Link>
+        <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}><GIcon name="card" /> {t("Vender · gerar link")}</Link>
       </div>
 
       {!groups.length && (
         <div className="g-card">
-          <p className="g-empty">Nenhuma saída escalada para você. Quando a gestão te escalar na Agenda, ela aparece aqui.</p>
+          <p className="g-empty">{t("Nenhuma saída escalada para você. Quando a gestão te escalar na Agenda, ela aparece aqui.")}</p>
         </div>
       )}
 
       {groups.map((group) => (
         <section key={group.dayKey}>
-          <div className="g-day">{group.dayKey === today ? "Hoje · " : ""}{group.day}</div>
+          <div className="g-day">{group.dayKey === today ? `${t("Hoje")} · ` : ""}{group.day}</div>
           {group.items.map((item) => (
             <Link key={item.id} to={`/guia/saida/${item.id}`} className="g-card g-dep" style={{ display: "flex" }}>
               <span className="g-dep__time">{item.parts.time}</span>
               <span className="g-dep__main">
                 <strong>{item.title}</strong>
-                <span>{item.pax} pax · {item.bookings} reserva(s){item.languages.length ? ` · ${item.languages.join(", ")}` : ""}</span>
+                <span>{item.pax} pax · {item.bookings} {t("reserva(s)")}{item.languages.length ? ` · ${item.languages.join(", ")}` : ""}</span>
               </span>
-              {item.status === "done" && <span className="g-pill ok">Concluída</span>}
-              {item.status === "running" && <span className="g-pill wait">Em andamento</span>}
+              {item.status === "done" && <span className="g-pill ok">{t("Concluída")}</span>}
+              {item.status === "running" && <span className="g-pill wait">{t("Em andamento")}</span>}
             </Link>
           ))}
         </section>

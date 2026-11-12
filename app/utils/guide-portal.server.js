@@ -138,6 +138,35 @@ export async function createGuideSession(prisma, guideId) {
   return token;
 }
 
+// Duas etapas: senha certa abre um "login pendente" de 5 minutos, guardado num
+// cookie próprio, que só vira sessão depois do código do autenticador.
+export const PENDING_COOKIE = "pmy_guide_2fa";
+const PENDING_MINUTES = 5;
+
+export async function createPendingLogin(prisma, guideId) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  await prisma.guideSession.create({
+    data: { guideId, tokenHash: sha256(token), pending: true, expiresAt: new Date(Date.now() + PENDING_MINUTES * 60 * 1000) },
+  });
+  return token;
+}
+
+export function pendingCookie(token, maxAgeSeconds = PENDING_MINUTES * 60) {
+  return [`${PENDING_COOKIE}=${token || ""}`, "Path=/guia", "HttpOnly", "Secure", "SameSite=Lax", `Max-Age=${maxAgeSeconds}`].join("; ");
+}
+
+/** O login pendente (e o guia, com o segredo do autenticador), ou null. */
+export async function getPendingLogin(prisma, request) {
+  const token = readCookie(request, PENDING_COOKIE);
+  if (!token) return null;
+  const session = await prisma.guideSession.findUnique({
+    where: { tokenHash: sha256(token) },
+    include: { guide: { omit: { totpSecret: false } } },
+  });
+  if (!session?.pending || session.expiresAt < new Date() || !session.guide?.portalEnabled) return null;
+  return { session, guide: session.guide };
+}
+
 export async function getGuideFromRequest(prisma, request) {
   const token = readCookie(request, SESSION_COOKIE);
   if (!token) return null;
@@ -145,11 +174,25 @@ export async function getGuideFromRequest(prisma, request) {
     where: { tokenHash: sha256(token) },
     include: { guide: { omit: { passwordHash: false } } },
   });
-  if (!session || session.expiresAt < new Date()) return null;
+  if (!session || session.pending || session.expiresAt < new Date()) return null;
   if (!session.guide?.portalEnabled || !session.guide?.passwordHash) return null;
   const guide = { ...session.guide };
   delete guide.passwordHash;
   return guide;
+}
+
+/** Troca de senha: sai de todos os outros aparelhos (fica só a sessão atual). */
+export async function revokeOtherSessions(prisma, guideId, request) {
+  const token = readCookie(request, SESSION_COOKIE);
+  await prisma.guideSession.deleteMany({
+    where: { guideId, ...(token ? { NOT: { tokenHash: sha256(token) } } : {}) },
+  });
+}
+
+/** Apaga o login pendente das duas etapas (depois do código ou ao cancelar). */
+export async function destroyPendingLogin(prisma, request) {
+  const token = readCookie(request, PENDING_COOKIE);
+  if (token) await prisma.guideSession.deleteMany({ where: { tokenHash: sha256(token), pending: true } }).catch(() => {});
 }
 
 export async function destroyGuideSession(prisma, request) {

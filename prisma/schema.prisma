@@ -174,6 +174,8 @@ model GuideSession {
   guideId   String
   guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
   tokenHash String   @unique
+  // Login aguardando o código de duas etapas: não vale como sessão.
+  pending   Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -379,6 +381,12 @@ model Guide {
   passwordHash        String?
   portalEnabled       Boolean           @default(false)
   lastLoginAt         DateTime?
+  // Preferências do app (12/11/2026): idioma, foto própria e verificação em duas etapas.
+  portalLanguage      String?
+  portalPhoto         Bytes?
+  portalPhotoType     String?
+  totpSecret          String?
+  totpEnabled         Boolean           @default(false)
   // Equipe: áreas da pessoa (GUIA, ADMIN, COMERCIAL, MARKETING, OPERACAO). Só GUIA aparece na escala.
   areas               String[]          @default(["GUIA"])
   sessions            GuideSession[]

@@ -1,6 +1,6 @@
 import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
-import { GIcon, GuideShell } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { addDays, buildBoardColumns, initials } from "../utils/agenda-board.js";
 import { tourColor } from "../utils/agenda-labels.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
@@ -96,22 +96,23 @@ export const loader = async ({ request }) => {
   };
 };
 
-function columnTitle(dateKey) {
+function columnTitle(dateKey, locale = "pt-PT") {
   const [y, m, d] = dateKey.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d, 12));
-  const weekday = new Intl.DateTimeFormat("pt-PT", { weekday: "short", timeZone: "UTC" }).format(date);
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(date);
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} (${weekday.replace(".", "")})`;
 }
 
 function Card({ card }) {
+  const t = useT();
   const body = (
     <>
       <div className="g-bcard__bar" style={{ background: card.color }} />
       <strong>{card.time} · {card.title}</strong>
       {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
       <small>
-        {card.pax} pax{card.pending ? ` + ${card.pending} pendente(s)` : ""}
-        {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : " · sem guia"}
+        {card.pax} pax{card.pending ? ` + ${card.pending} ${t("pendente(s)")}` : ""}
+        {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : ` · ${t("sem guia")}`}
         
       </small>
     </>
@@ -124,13 +125,14 @@ function Card({ card }) {
 }
 
 function SupportColumn({ cards }) {
+  const t = useT();
   if (!cards.length) return null;
   return (
-    <section className="g-col support" aria-label="Documentos de suporte">
-      <h3>Documentos de suporte <small>{cards.length}</small></h3>
+    <section className="g-col support" aria-label={t("Documentos de suporte")}>
+      <h3>{t("Documentos de suporte")} <small>{cards.length}</small></h3>
       {cards.map((card) => (
         <details key={card.id} className="g-bcard">
-          <summary><strong>{card.title}</strong>{card.attachments.length > 0 && <small><GIcon name="file" /> {card.attachments.length} arquivo(s)</small>}</summary>
+          <summary><strong>{card.title}</strong>{card.attachments.length > 0 && <small><GIcon name="file" /> {card.attachments.length} {t("arquivo(s)")}</small>}</summary>
           {card.body && <pre>{card.body}</pre>}
           {card.attachments.map((file) => (
             <a key={file.id} className="g-doc" href={`/suporte/anexo/${file.id}`} target="_blank" rel="noreferrer"><GIcon name="file" /> {file.fileName}</a>
@@ -143,29 +145,31 @@ function SupportColumn({ cards }) {
 
 export default function GuideBoard() {
   const { columns, supportCards, days, maxDays, seesAll } = useLoaderData();
+  const t = useT();
+  const locale = useGuideLocale();
   return (
-    <GuideShell title="Quadro" wide>
+    <GuideShell title={t("Quadro")} wide>
       <div className="g-top">
         <div>
-          <h1>Quadro</h1>
+          <h1>{t("Quadro")}</h1>
           <small>{seesAll
-            ? `Próximos ${days} dias, todas as saídas (você é administrador) · seus cartões em verde`
-            : `Próximos ${days} dias · só as saídas em que você está escalado`}</small>
+            ? t("Próximos {n} dias, todas as saídas (você é administrador) · seus cartões em verde", { n: days })
+            : t("Próximos {n} dias · só as saídas em que você está escalado", { n: days })}</small>
         </div>
       </div>
       <div className="g-board">
         <SupportColumn cards={supportCards} />
-        {!columns.length && <p className="g-empty">{seesAll ? `Nenhuma saída nos próximos ${days} dias.` : `Você não está escalado em nenhuma saída nos próximos ${days} dias.`}</p>}
+        {!columns.length && <p className="g-empty">{seesAll ? t("Nenhuma saída nos próximos {n} dias.", { n: days }) : t("Você não está escalado em nenhuma saída nos próximos {n} dias.", { n: days })}</p>}
         {columns.map((col) => (
-          <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey)}>
-            <h3>{columnTitle(col.dateKey)} <small>{col.cards.length}</small></h3>
-            {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>Sem saídas.</p>}
+          <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey, locale)}>
+            <h3>{columnTitle(col.dateKey, locale)} <small>{col.cards.length}</small></h3>
+            {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>{t("Sem saídas.")}</p>}
             {col.cards.map((card) => <Card key={card.key} card={card} />)}
           </section>
         ))}
         {days < maxDays && (
           <div className="g-col more">
-            <Link to={`/guia/quadro?dias=${Math.min(days + 60, maxDays)}`} className="g-btn" preventScrollReset>Ver mais 2 meses</Link>
+            <Link to={`/guia/quadro?dias=${Math.min(days + 60, maxDays)}`} className="g-btn" preventScrollReset>{t("Ver mais 2 meses")}</Link>
           </div>
         )}
       </div>

@@ -1,4 +1,18 @@
 import { Link, NavLink, useRouteLoaderData } from "react-router";
+import { guideLocale, translate } from "../../utils/guide-i18n.js";
+
+/** Tradução do app no idioma da pessoa: t("Saídas"), t("Próximos {n} dias", { n }). */
+export function useGuideLang() {
+  const layout = useRouteLoaderData("routes/guia");
+  return layout?.lang || "pt";
+}
+export function useT() {
+  const lang = useGuideLang();
+  return (text, vars) => translate(lang, text, vars);
+}
+export function useGuideLocale() {
+  return guideLocale(useGuideLang());
+}
 
 // Layout leve do portal do guia (celular primeiro, sem Polaris/Shopify).
 export const guideStyles = `
@@ -14,6 +28,15 @@ a { color: inherit; }
 .g-tabs__inner { display:flex; gap:4px; width:100%; max-width:640px; }
 .g-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; border-radius:12px; text-decoration:none; color:var(--g-muted); font-size:12px; font-weight:700; }
 .g-tab svg { width:22px; height:22px; }
+.g-tab__avatar { width:24px; height:24px; border-radius:50%; object-fit:cover; border:1.5px solid currentColor; }
+.g-prefs { display:grid; gap:12px; }
+.g-prefs h2 { margin:0 0 4px; font-size:17px; }
+.g-prefs p { margin:0 0 10px; color:var(--g-muted); font-size:14px; line-height:1.45; }
+.g-photo { display:flex; align-items:center; gap:14px; }
+.g-photo img, .g-photo .g-photo__empty { width:72px; height:72px; border-radius:50%; object-fit:cover; flex:none; background:var(--g-green-soft); color:var(--g-green); display:grid; place-items:center; font-weight:800; font-size:24px; }
+.g-langs { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:8px; }
+.g-secret { font-family:ui-monospace, Menlo, monospace; font-size:15px; letter-spacing:.08em; word-break:break-all; background:var(--g-bg); padding:10px; border-radius:10px; }
+.g-steps { margin:0 0 10px; padding-left:20px; color:var(--g-ink); font-size:14px; line-height:1.55; }
 .g-ico { width:18px; height:18px; flex:none; vertical-align:-3px; }
 .g-periods { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none; }
 .g-chip { flex:none; min-height:36px; padding:6px 14px; border-radius:999px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
@@ -123,6 +146,7 @@ const ICONS = {
   phone: <path d="M5 4h3.5l1.5 4-2 1.5a10 10 0 0 0 6.5 6.5L16 14l4 1.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4Z" />,
   back: <path d="M15 5 8 12l7 7" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  download: <><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M4.5 19.5h15" /></>,
 };
 
 export function GIcon({ name, className = "g-ico" }) {
@@ -141,22 +165,29 @@ const TABS = [
 
 function GuideTabs() {
   const layout = useRouteLoaderData("routes/guia");
+  const t = useT();
   const person = layout?.person;
   if (!person) return null;
   return (
-    <nav className="g-tabs" aria-label="Menu do app">
+    <nav className="g-tabs" aria-label={t("Menu do app")}>
       <div className="g-tabs__inner">
         {TABS.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.end} className={({ isActive }) => `g-tab${isActive ? " active" : ""}`}>
-            <GIcon name={tab.icon} className="" />{tab.label}
+            <GIcon name={tab.icon} className="" />{t(tab.label)}
           </NavLink>
         ))}
         {person.isAdmin && (
           // A Central é outra tela (fora do /guia): carrega a página inteira.
           <Link to="/" reloadDocument className="g-tab">
-            <GIcon name="building" className="" />Central
+            <GIcon name="building" className="" />{t("Central")}
           </Link>
         )}
+        <NavLink to="/guia/preferencias" className={({ isActive }) => `g-tab${isActive ? " active" : ""}`}>
+          {person.photo
+            ? <img className="g-tab__avatar" src={person.photo} alt="" />
+            : <GIcon name="user" className="" />}
+          {t("Perfil")}
+        </NavLink>
       </div>
     </nav>
   );
@@ -183,9 +214,9 @@ export function GuideShell({ children, title = "Portal do guia", wide = false, b
   );
 }
 
-export function lisbonParts(value) {
+export function lisbonParts(value, locale = "pt-PT") {
   const date = new Date(value);
-  const fmt = (opts) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", ...opts }).format(date);
+  const fmt = (opts) => new Intl.DateTimeFormat(locale, { timeZone: "Europe/Lisbon", ...opts }).format(date);
   return {
     time: fmt({ hour: "2-digit", minute: "2-digit" }),
     day: fmt({ weekday: "long", day: "2-digit", month: "long" }),

@@ -3,7 +3,7 @@ import { Form, Link, useActionData, useLoaderData, useNavigation, useSearchParam
 import { DatePicker, DropdownSelect } from "../components/pmy/PmyUI";
 import db from "../db.server";
 import { unauthenticated } from "../shopify.server";
-import { GIcon, GuideShell } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { createDraftCheckout } from "../services/draft-checkout.server";
 import { resolvePrimaryShop } from "../utils/single-tenant.server";
 import { getGuideFromRequest, redirectTo, whatsappLink } from "../utils/guide-portal.server";
@@ -160,6 +160,8 @@ export default function GuideSell() {
   const busy = navigation.state !== "idle";
   const [time, setTime] = useState(times.length === 1 ? times[0] : "");
   const [copied, setCopied] = useState(false);
+  const t = useT();
+  const locale = useGuideLocale();
   const tourKey = tour?.id || "";
   const singleTime = times.length === 1 ? times[0] : "";
   useEffect(() => { setTime(singleTime); }, [tourKey, singleTime]);
@@ -167,17 +169,17 @@ export default function GuideSell() {
 
   if (result?.ok) {
     return (
-      <GuideShell title="Link gerado">
-        <div className="g-top"><Link to="/guia" className="g-link">← Minhas saídas</Link></div>
+      <GuideShell title={t("Link gerado")}>
+        <div className="g-top"><Link to="/guia" className="g-link">← {t("Minhas saídas")}</Link></div>
         <div className="g-card">
-          <h2>Link de pagamento pronto</h2>
-          <div className="g-ok">A vaga fica segura por {result.holdMinutes} minutos. Peça para o cliente pagar dentro desse prazo; depois disso o link vence e a vaga volta para venda.</div>
+          <h2>{t("Link de pagamento pronto")}</h2>
+          <div className="g-ok">{t("A vaga fica segura por {n} minutos. Peça para o cliente pagar dentro desse prazo; depois disso o link vence e a vaga volta para venda.", { n: result.holdMinutes })}</div>
           <label className="g-field">
-            Link
+            {t("Link")}
             <input readOnly value={result.invoiceUrl} onFocus={(e) => e.target.select()} />
           </label>
           <div className="g-row">
-            <a className="g-btn primary" href={result.whatsapp} target="_blank" rel="noreferrer"><GIcon name="chat" /> Enviar por WhatsApp</a>
+            <a className="g-btn primary" href={result.whatsapp} target="_blank" rel="noreferrer"><GIcon name="chat" /> {t("Enviar por WhatsApp")}</a>
             <button
               type="button"
               className="g-btn"
@@ -185,38 +187,38 @@ export default function GuideSell() {
                 navigator.clipboard?.writeText(result.message).then(() => setCopied(true)).catch(() => setCopied(false));
               }}
             >
-              {copied ? "Copiado ✓" : "Copiar mensagem"}
+              {copied ? `${t("Copiado")} ✓` : t("Copiar mensagem")}
             </button>
-            <a className="g-btn" href={result.invoiceUrl} target="_blank" rel="noreferrer">Abrir checkout</a>
+            <a className="g-btn" href={result.invoiceUrl} target="_blank" rel="noreferrer">{t("Abrir checkout")}</a>
           </div>
         </div>
-        <Link to="/guia/vender" className="g-btn" style={{ width: "100%" }}>Gerar outro link</Link>
+        <Link to="/guia/vender" className="g-btn" style={{ width: "100%" }}>{t("Gerar outro link")}</Link>
       </GuideShell>
     );
   }
 
   return (
-    <GuideShell title="Vender">
+    <GuideShell title={t("Vender")}>
       <div className="g-top">
-        <Link to="/guia" className="g-link">← Minhas saídas</Link>
+        <Link to="/guia" className="g-link">← {t("Minhas saídas")}</Link>
       </div>
       <div className="g-card">
-        <h2 style={{ fontSize: 18 }}>Gerar link de pagamento</h2>
-        <p className="g-empty">O cliente paga pelo site da PMY e a reserva entra na Central como venda sua.</p>
+        <h2 style={{ fontSize: 18 }}>{t("Gerar link de pagamento")}</h2>
+        <p className="g-empty">{t("O cliente paga pelo site da PMY e a reserva entra na Central como venda sua.")}</p>
       </div>
 
-      {(error || result?.error) && <div className="g-error" role="alert">{result?.error || error}</div>}
+      {(error || result?.error) && <div className="g-error" role="alert">{t(result?.error || error)}</div>}
 
       <div className="g-card">
         <div className="g-field">
-          Passeio
+          {t("Passeio")}
           <DropdownSelect
             value={tour?.id || params.get("tour") || ""}
-            options={tours.map((t) => ({ value: t.id, label: t.title }))}
-            placeholder="Escolha o passeio"
-            searchPlaceholder="Buscar passeio..."
-            emptyLabel="Nenhum passeio ativo encontrado."
-            ariaLabel="Passeio"
+            options={tours.map((item) => ({ value: item.id, label: item.title }))}
+            placeholder={t("Escolha o passeio")}
+            searchPlaceholder={t("Buscar passeio...")}
+            emptyLabel={t("Nenhum passeio ativo encontrado.")}
+            ariaLabel={t("Passeio")}
             onChange={(value) => {
               const next = new URLSearchParams(params);
               next.set("tour", value);
@@ -234,46 +236,46 @@ export default function GuideSell() {
           <input type="hidden" name="time" value={time} />
           <input type="hidden" name="language" value={language} />
           <div className="g-field">
-            Data
-            <DatePicker value={date} min={today} onChange={(value) => setDate(value || "")} />
+            {t("Data")}
+            <DatePicker value={date} min={today} onChange={(value) => setDate(value || "")} locale={locale} todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
           </div>
           <div className="g-field">
-            Horário
+            {t("Horário")}
             <DropdownSelect
               value={time}
-              options={times.map((t) => ({ value: t, label: t }))}
-              placeholder="Escolha o horário"
-              ariaLabel="Horário"
+              options={times.map((value) => ({ value, label: value }))}
+              placeholder={t("Escolha o horário")}
+              ariaLabel={t("Horário")}
               onChange={(value) => setTime(value)}
             />
           </div>
           <div className="g-field">
-            Idioma
+            {t("Idioma")}
             <DropdownSelect
               value={language}
-              options={LANGUAGES.map(([value, label]) => ({ value, label }))}
-              placeholder="Escolha o idioma"
-              ariaLabel="Idioma"
+              options={LANGUAGES.map(([value, label]) => ({ value, label: t(label) }))}
+              placeholder={t("Escolha o idioma")}
+              ariaLabel={t("Idioma")}
               onChange={(value) => setLanguage(value)}
             />
           </div>
 
-          <div className="g-field" style={{ marginBottom: 4 }}>Ingressos</div>
-          {!time && times.length > 0 && <p className="g-empty" style={{ marginBottom: 12 }}>Escolha o horário para ver os ingressos.</p>}
+          <div className="g-field" style={{ marginBottom: 4 }}>{t("Ingressos")}</div>
+          {!time && times.length > 0 && <p className="g-empty" style={{ marginBottom: 12 }}>{t("Escolha o horário para ver os ingressos.")}</p>}
           {(time || !times.length) && visible.map((v) => (
             <div key={v.id} className="g-ticket">
               <span>{v.title}<small>€{Number(v.price).toFixed(2)}</small></span>
-              <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={`Quantidade de ${v.title}`} />
+              <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: v.title })} />
             </div>
           ))}
 
-          <div className="g-field" style={{ marginTop: 16, marginBottom: 4 }}>Cliente (opcional, ajuda a equipe)</div>
-          <label className="g-field">Nome<input name="customerName" autoComplete="off" /></label>
+          <div className="g-field" style={{ marginTop: 16, marginBottom: 4 }}>{t("Cliente (opcional, ajuda a equipe)")}</div>
+          <label className="g-field">{t("Nome")}<input name="customerName" autoComplete="off" /></label>
           <label className="g-field">WhatsApp<input name="customerPhone" type="tel" inputMode="tel" placeholder="+351 912 345 678" /></label>
-          <label className="g-field">E-mail<input name="customerEmail" type="email" inputMode="email" /></label>
+          <label className="g-field">{t("E-mail")}<input name="customerEmail" type="email" inputMode="email" /></label>
 
           <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !date || !language || (times.length > 0 && !time)}>
-            {busy ? "Gerando…" : "Gerar link de pagamento"}
+            {busy ? t("Gerando…") : t("Gerar link de pagamento")}
           </button>
         </Form>
       )}

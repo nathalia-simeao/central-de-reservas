@@ -5,7 +5,7 @@ import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/
 import { normalizeText } from "../utils/trello-import.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
-import { GIcon, GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, PLATFORM_NAMES, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import {
   CHECK_FIELDS,
   appendNote,
@@ -194,15 +194,15 @@ export const action = async ({ request, params }) => {
 
 const LANGUAGE_NAMES = { en: "Inglês", pt: "Português", es: "Espanhol", fr: "Francês", it: "Italiano", de: "Alemão", nl: "Holandês", zh: "Chinês", ja: "Japonês", ru: "Russo", ar: "Árabe", he: "Hebraico", ko: "Coreano", pl: "Polonês" };
 
-function fmtTime(value) {
-  return value ? lisbonParts(value).time : "";
+function fmtTime(value, locale) {
+  return value ? lisbonParts(value, locale).time : "";
 }
 
-function paxDetail(b) {
+function paxDetail(b, t = (x) => x) {
   return [
     [b.adults, "adulto", "adultos"], [b.children, "criança", "crianças"],
     [b.youths, "jovem", "jovens"], [b.seniors, "sênior", "seniores"],
-  ].filter(([n]) => Number(n) > 0).map(([n, one, many]) => `${n} ${Number(n) === 1 ? one : many}`).join(", ");
+  ].filter(([n]) => Number(n) > 0).map(([n, one, many]) => `${n} ${t(Number(n) === 1 ? one : many)}`).join(", ");
 }
 
 function ChecklistItem({ listId, item }) {
@@ -231,39 +231,41 @@ export default function GuideDeparture() {
   const { departure, permissions, bookings, checklists } = useLoaderData();
   const result = useActionData();
   const navigation = useNavigation();
+  const t = useT();
+  const locale = useGuideLocale();
   const busy = navigation.state !== "idle";
-  const parts = lisbonParts(departure.startTime);
+  const parts = lisbonParts(departure.startTime, locale);
   const totalPax = bookings.reduce((sum, b) => sum + b.pax, 0);
   const present = bookings.filter((b) => b.attendanceStatus === "COMPLETED").reduce((s, b) => s + b.pax, 0);
   const noShow = bookings.filter((b) => b.attendanceStatus === "NO_SHOW").reduce((s, b) => s + b.pax, 0);
 
   const checks = [
-    { key: "start", label: "Início", at: departure.checkStartAt, can: permissions.canCheckStart },
-    { key: "mid", label: "Meio", at: departure.checkMidAt, can: permissions.canCheckMid },
-    { key: "end", label: "Fim", at: departure.checkEndAt, can: permissions.canCheckEnd },
+    { key: "start", label: t("Início"), at: departure.checkStartAt, can: permissions.canCheckStart },
+    { key: "mid", label: t("Meio"), at: departure.checkMidAt, can: permissions.canCheckMid },
+    { key: "end", label: t("Fim"), at: departure.checkEndAt, can: permissions.canCheckEnd },
   ];
 
   return (
     <GuideShell title={departure.title}>
       <div className="g-top">
-        <Link to="/guia" className="g-link">← Minhas saídas</Link>
+        <Link to="/guia" className="g-link">← {t("Minhas saídas")}</Link>
       </div>
 
       <div className="g-card">
         <h2 style={{ fontSize: 18 }}>{departure.title}</h2>
         <div className="g-summary">
           <span><b>{parts.time}</b> · {parts.day}</span>
-          <span><b>{totalPax}</b> pax · {bookings.length} reserva(s)</span>
-          {departure.languages.length > 0 && <span>Seu grupo: <b>{departure.languages.map((k) => LANGUAGE_NAMES[k] || k).join(", ")}</b></span>}
-          <span>Presentes <b>{present}</b> · No-show <b>{noShow}</b></span>
+          <span><b>{totalPax}</b> pax · {bookings.length} {t("reserva(s)")}</span>
+          {departure.languages.length > 0 && <span>{t("Seu grupo:")} <b>{departure.languages.map((k) => t(LANGUAGE_NAMES[k] || k)).join(", ")}</b></span>}
+          <span>{t("Presentes")} <b>{present}</b> · No-show <b>{noShow}</b></span>
         </div>
       </div>
 
-      {result?.error && <div className="g-error" role="alert">{result.error}</div>}
-      {result?.ok && <div className="g-ok" role="status">{result.ok}</div>}
+      {result?.error && <div className="g-error" role="alert">{t(result.error)}</div>}
+      {result?.ok && <div className="g-ok" role="status">{t(result.ok)}</div>}
 
       <div className="g-card">
-        <h2>Checklist</h2>
+        <h2>{t("Checklist")}</h2>
         <Form method="post" className="g-checks">
           {checks.map((c) => (
             <button
@@ -275,7 +277,7 @@ export default function GuideDeparture() {
               disabled={busy || !c.can}
             >
               {c.at ? "✓ " : ""}{c.label}
-              <small>{c.at ? fmtTime(c.at) : c.can ? "toque para marcar" : "—"}</small>
+              <small>{c.at ? fmtTime(c.at, locale) : c.can ? t("toque para marcar") : "—"}</small>
             </button>
           ))}
         </Form>
@@ -283,7 +285,7 @@ export default function GuideDeparture() {
 
       {checklists.length > 0 && (
         <div className="g-card">
-          <h2>Checklists do grupo</h2>
+          <h2>{t("Checklists do grupo")}</h2>
           {checklists.map((list) => {
             const doneCount = list.items.filter((i) => i.done).length;
             return (
@@ -297,44 +299,44 @@ export default function GuideDeparture() {
       )}
 
       <div className="g-card">
-        <h2>Clientes</h2>
-        {!bookings.length && <p className="g-empty">Nenhuma reserva nesta saída.</p>}
+        <h2>{t("Clientes")}</h2>
+        {!bookings.length && <p className="g-empty">{t("Nenhuma reserva nesta saída.")}</p>}
         {bookings.map((b) => (
           <div key={b.id} className="g-guest">
             <div className="g-guest__head">
-              <strong>{b.customerName || "Sem nome"}</strong>
-              {b.attendanceStatus === "COMPLETED" && <span className="g-pill ok">Presente</span>}
+              <strong>{b.customerName || t("Sem nome")}</strong>
+              {b.attendanceStatus === "COMPLETED" && <span className="g-pill ok">{t("Presente")}</span>}
               {b.attendanceStatus === "NO_SHOW" && <span className="g-pill no">No-show</span>}
-              {b.status === "PENDING" && <span className="g-pill wait">Pendente</span>}
+              {b.status === "PENDING" && <span className="g-pill wait">{t("Pendente")}</span>}
             </div>
             <div className="g-guest__meta">
-              {b.pax} pax{paxDetail(b) ? ` (${paxDetail(b)})` : ""} · {b.language || "idioma não informado"} · {PLATFORM_NAMES[b.platform] || b.platform}
+              {b.pax} pax{paxDetail(b, t) ? ` (${paxDetail(b, t)})` : ""} · {b.language || t("idioma não informado")} · {PLATFORM_NAMES[b.platform] || b.platform}
               {b.bookingRef ? ` · ${b.bookingRef}` : ""}
             </div>
             {b.pax > 0 && (
               <details className="g-participants">
-                <summary>Participantes ({b.participants.length}/{b.pax}) · opcional</summary>
+                <summary>{t("Participantes")} ({b.participants.length}/{b.pax}) · {t("opcional")}</summary>
                 <Form method="post">
                   <input type="hidden" name="intent" value="participants" />
                   <input type="hidden" name="bookingId" value={b.id} />
                   {Array.from({ length: Math.min(b.pax, 30) }).map((_, i) => (
                     <div key={i} className="g-participant">
-                      <input name={`name_${i}`} defaultValue={b.participants[i]?.name || ""} placeholder={`Nome ${i + 1}`} aria-label={`Nome do participante ${i + 1}`} disabled={!permissions.canMarkAttendance} autoComplete="off" />
-                      <input name={`country_${i}`} defaultValue={b.participants[i]?.country || ""} placeholder="País" aria-label={`País do participante ${i + 1}`} disabled={!permissions.canMarkAttendance} autoComplete="off" />
+                      <input name={`name_${i}`} defaultValue={b.participants[i]?.name || ""} placeholder={`${t("Nome")} ${i + 1}`} aria-label={t("Nome do participante {n}", { n: i + 1 })} disabled={!permissions.canMarkAttendance} autoComplete="off" />
+                      <input name={`country_${i}`} defaultValue={b.participants[i]?.country || ""} placeholder={t("País")} aria-label={t("País do participante {n}", { n: i + 1 })} disabled={!permissions.canMarkAttendance} autoComplete="off" />
                     </div>
                   ))}
-                  {permissions.canMarkAttendance && <button type="submit" className="g-btn" disabled={busy}>Salvar participantes</button>}
+                  {permissions.canMarkAttendance && <button type="submit" className="g-btn" disabled={busy}>{t("Salvar participantes")}</button>}
                 </Form>
               </details>
             )}
             <div className="g-row">
               {b.wa && <a className="g-btn" href={b.wa} target="_blank" rel="noreferrer"><GIcon name="chat" /> WhatsApp</a>}
-              {b.tel && <a className="g-btn" href={`tel:${b.tel}`}><GIcon name="phone" /> Ligar</a>}
+              {b.tel && <a className="g-btn" href={`tel:${b.tel}`}><GIcon name="phone" /> {t("Ligar")}</a>}
               {b.status === "CONFIRMED" && (
                 <Form method="post" className="g-row">
                   <input type="hidden" name="intent" value="attendance" />
                   <input type="hidden" name="bookingId" value={b.id} />
-                  <button type="submit" name="value" value="COMPLETED" className={`g-btn ${b.attendanceStatus === "COMPLETED" ? "on" : ""}`} disabled={busy || !permissions.canMarkAttendance}>Presente</button>
+                  <button type="submit" name="value" value="COMPLETED" className={`g-btn ${b.attendanceStatus === "COMPLETED" ? "on" : ""}`} disabled={busy || !permissions.canMarkAttendance}>{t("Presente")}</button>
                   <button type="submit" name="value" value="NO_SHOW" className={`g-btn ${b.attendanceStatus === "NO_SHOW" ? "on-no" : ""}`} disabled={busy || !permissions.canMarkAttendance}>No-show</button>
                 </Form>
               )}
@@ -343,14 +345,14 @@ export default function GuideDeparture() {
         ))}
         {!permissions.canMarkAttendance && bookings.length > 0 && (
           <p className="g-empty" style={{ marginTop: 10 }}>
-            {departure.checkEndAt ? "Saída encerrada: a presença não pode mais ser alterada." : "A presença abre 3 horas antes do passeio."}
+            {departure.checkEndAt ? t("Saída encerrada: a presença não pode mais ser alterada.") : t("A presença abre 3 horas antes do passeio.")}
           </p>
         )}
       </div>
 
       <div className="g-card">
-        <h2>Ingressos e arquivos</h2>
-        {!departure.attachments.length && <p className="g-empty">Nenhum arquivo anexado pela gestão.</p>}
+        <h2>{t("Ingressos e arquivos")}</h2>
+        {!departure.attachments.length && <p className="g-empty">{t("Nenhum arquivo anexado pela gestão.")}</p>}
         {departure.attachments.map((file) => (
           <a key={file.id} className="g-file" href={`/guia/anexo/${file.id}`} target="_blank" rel="noreferrer">
             <span><GIcon name="clip" /> {file.fileName}</span>
@@ -360,22 +362,22 @@ export default function GuideDeparture() {
       </div>
 
       <div className="g-card">
-        <h2>Observações</h2>
-        {!departure.notes.length && <p className="g-empty">Nenhuma observação ainda.</p>}
+        <h2>{t("Observações")}</h2>
+        {!departure.notes.length && <p className="g-empty">{t("Nenhuma observação ainda.")}</p>}
         {departure.notes.map((note, index) => (
           <div key={index} className="g-note">
             {note.text}
-            <small>{note.by} · {new Date(note.at).toLocaleString("pt-PT", { timeZone: "Europe/Lisbon", dateStyle: "short", timeStyle: "short" })}</small>
+            <small>{note.by} · {new Date(note.at).toLocaleString(locale, { timeZone: "Europe/Lisbon", dateStyle: "short", timeStyle: "short" })}</small>
           </div>
         ))}
         {permissions.canAddNote && (
           <Form method="post" style={{ marginTop: 12 }}>
             <input type="hidden" name="intent" value="note" />
             <label className="g-field">
-              Nova observação (ex.: todos compareceram, atraso, ocorrência)
+              {t("Nova observação (ex.: todos compareceram, atraso, ocorrência)")}
               <textarea name="text" rows={3} maxLength={1000} required />
             </label>
-            <button type="submit" className="g-btn primary" disabled={busy}>Salvar observação</button>
+            <button type="submit" className="g-btn primary" disabled={busy}>{t("Salvar observação")}</button>
           </Form>
         )}
       </div>

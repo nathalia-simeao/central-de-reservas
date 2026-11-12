@@ -4,7 +4,7 @@ import { startSyncQueueWorker } from "./utils/sync-queue.server";
 // Guide.passwordHash never leaves the database by accident: it is omitted from
 // every query (including `include: { guide: true }`). Only the guide portal login
 // reads it, explicitly, with `omit: { passwordHash: false }`.
-const clientOptions = { omit: { guide: { passwordHash: true } } };
+const clientOptions = { omit: { guide: { passwordHash: true, totpSecret: true, portalPhoto: true } } };
 
 if (process.env.NODE_ENV !== "production") {
   if (!global.prismaGlobal) {
