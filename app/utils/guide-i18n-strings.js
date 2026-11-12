@@ -1,6 +1,8 @@
 // Traduções do app PMY Guias (pt → en, es, fr, it, de). Chave = texto em português.
 // Para um texto novo: use t("…") na tela e acrescente a linha aqui.
 export const GUIDE_STRINGS = {
+  "No autenticador, escolha ler QR code e aponte para o código abaixo. Se estiver no próprio celular, toque em “Abrir no autenticador” ou digite a chave.": {"en": "In the authenticator, choose scan QR code and point it at the code below. If you are on the same phone, tap “Open in authenticator” or type the key.", "es": "En el autenticador, elige escanear código QR y apunta al código de abajo. Si estás en el mismo móvil, toca “Abrir en el autenticador” o escribe la clave.", "fr": "Dans l’authentificateur, choisissez scanner un QR code et visez le code ci-dessous. Si vous êtes sur le même téléphone, touchez « Ouvrir dans l’authentificateur » ou saisissez la clé.", "it": "Nell’autenticatore, scegli scansiona codice QR e inquadra il codice qui sotto. Se sei sullo stesso telefono, tocca “Apri nell’autenticatore” o digita la chiave.", "de": "Wähle im Authenticator QR-Code scannen und richte die Kamera auf den Code unten. Auf demselben Handy tippe auf „Im Authenticator öffnen“ oder gib den Schlüssel ein."},
+  "QR code para o app autenticador": {"en": "QR code for the authenticator app", "es": "Código QR para la app autenticadora", "fr": "QR code pour l’app d’authentification", "it": "Codice QR per l’app di autenticazione", "de": "QR-Code für die Authenticator-App"},
   "15 dias": {"en": "15 days", "es": "15 días", "fr": "15 jours", "it": "15 giorni", "de": "15 Tage"},
   "3 dias": {"en": "3 days", "es": "3 días", "fr": "3 jours", "it": "3 giorni", "de": "3 Tage"},
   "30 dias": {"en": "30 days", "es": "30 días", "fr": "30 jours", "it": "30 giorni", "de": "30 Tage"},

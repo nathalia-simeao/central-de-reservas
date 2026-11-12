@@ -35,6 +35,8 @@ a { color: inherit; }
 .g-photo { display:flex; align-items:center; gap:14px; }
 .g-photo img, .g-photo .g-photo__empty { width:72px; height:72px; border-radius:50%; object-fit:cover; flex:none; background:var(--g-green-soft); color:var(--g-green); display:grid; place-items:center; font-weight:800; font-size:24px; }
 .g-langs { display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:8px; }
+.g-qr { width:220px; max-width:100%; margin:4px 0 12px; padding:10px; background:#fff; border:1px solid var(--g-line); border-radius:12px; }
+.g-qr svg { display:block; width:100%; height:auto; }
 .g-secret { font-family:ui-monospace, Menlo, monospace; font-size:15px; letter-spacing:.08em; word-break:break-all; background:var(--g-bg); padding:10px; border-radius:10px; }
 .g-steps { margin:0 0 10px; padding-left:20px; color:var(--g-ink); font-size:14px; line-height:1.55; }
 .g-ico { width:18px; height:18px; flex:none; vertical-align:-3px; }

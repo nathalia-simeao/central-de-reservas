@@ -8,7 +8,6 @@ export const loader = async ({ request, params }) => {
   const row = await db.guide.findUnique({
     where: { id: String(params.id || "") },
     select: { portalPhoto: true, portalPhotoType: true },
-    omit: { portalPhoto: false },
   });
   if (!row?.portalPhoto || !row.portalPhotoType) return new Response("Sem foto.", { status: 404 });
   return new Response(row.portalPhoto, {

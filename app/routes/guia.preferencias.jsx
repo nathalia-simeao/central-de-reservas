@@ -15,6 +15,7 @@ import {
 } from "../utils/guide-portal.server";
 import { GUIDE_LANGS, guideLang } from "../utils/guide-i18n.js";
 import { generateTotpSecret, otpauthUri, verifyTotp } from "../utils/totp.server.js";
+import QRCode from "qrcode";
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_PHOTO_BYTES = 1024 * 1024; // a tela já reduz para ~400 px antes de enviar
@@ -31,6 +32,15 @@ export const loader = async ({ request }) => {
     totpEnabled: Boolean(guide.totpEnabled),
   };
 };
+
+// QR code da verificação em duas etapas (SVG gerado aqui, sem serviço externo).
+async function qrSvg(uri) {
+  try {
+    return await QRCode.toString(uri, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#1b1b1b", light: "#ffffff" } });
+  } catch {
+    return null;
+  }
+}
 
 export const action = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
@@ -64,7 +74,8 @@ export const action = async ({ request }) => {
     const current = String(form.get("current") || "");
     const next = String(form.get("next") || "");
     const repeat = String(form.get("repeat") || "");
-    const row = await db.guide.findUnique({ where: { id: guide.id }, select: { passwordHash: true }, omit: { passwordHash: false } });
+    // select já traz o campo (não misturar select com omit: o Prisma recusa).
+    const row = await db.guide.findUnique({ where: { id: guide.id }, select: { passwordHash: true } });
     if (!row?.passwordHash || !verifyPassword(current, row.passwordHash)) return { error: "A senha atual não confere.", section: "password" };
     const problem = passwordProblem(next);
     if (problem) return { error: problem, section: "password" };
@@ -79,17 +90,18 @@ export const action = async ({ request }) => {
   if (intent === "totpStart") {
     const secret = generateTotpSecret();
     await db.guide.update({ where: { id: guide.id }, data: { totpSecret: secret, totpEnabled: false } });
-    return { ok: "totpStart", secret, uri: otpauthUri(secret, guide.email || guide.name) };
+    const uri = otpauthUri(secret, guide.email || guide.name);
+    return { ok: "totpStart", secret, uri, qr: await qrSvg(uri) };
   }
 
   if (intent === "totpConfirm" || intent === "totpOff") {
-    const row = await db.guide.findUnique({ where: { id: guide.id }, select: { totpSecret: true }, omit: { totpSecret: false } });
+    const row = await db.guide.findUnique({ where: { id: guide.id }, select: { totpSecret: true } });
     const code = String(form.get("code") || "");
     if (!row?.totpSecret || !verifyTotp(row.totpSecret, code)) {
       return {
         error: "Código inválido. Confira o código de 6 dígitos no app autenticador e tente de novo.",
         section: "totp",
-        ...(intent === "totpConfirm" && row?.totpSecret ? { ok: "totpStart", secret: row.totpSecret, uri: otpauthUri(row.totpSecret, guide.email || guide.name) } : {}),
+        ...(intent === "totpConfirm" && row?.totpSecret ? { ok: "totpStart", secret: row.totpSecret, uri: otpauthUri(row.totpSecret, guide.email || guide.name), qr: await qrSvg(otpauthUri(row.totpSecret, guide.email || guide.name)) } : {}),
       };
     }
     if (intent === "totpConfirm") {
@@ -247,9 +259,13 @@ export default function GuidePreferences() {
             <>
               <ol className="g-steps">
                 <li>{t("Instale um app autenticador (Google Authenticator, Microsoft Authenticator ou o app Senhas do iPhone).")}</li>
-                <li>{t("Neste celular, toque em \"Abrir no autenticador\". Em outro aparelho, adicione uma conta e digite a chave abaixo.")}</li>
+                <li>{t("No autenticador, escolha ler QR code e aponte para o código abaixo. Se estiver no próprio celular, toque em “Abrir no autenticador” ou digite a chave.")}</li>
                 <li>{t("Digite o código de 6 dígitos que aparece no autenticador.")}</li>
               </ol>
+              {settingUp.qr && (
+                <div className="g-qr" role="img" aria-label={t("QR code para o app autenticador")}
+                  dangerouslySetInnerHTML={{ __html: settingUp.qr }} />
+              )}
               <a className="g-btn" href={settingUp.uri}>{t("Abrir no autenticador")}</a>
               <p style={{ marginTop: 10 }}>{t("Chave")}:</p>
               <div className="g-secret">{settingUp.secret.replace(/(.{4})/g, "$1 ").trim()}</div>
