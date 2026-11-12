@@ -1,7 +1,6 @@
 import AgendaBoard from "./AgendaBoard";
-import SharedSeatsIndicator from "./SharedSeatsIndicator";
-import ChannelCapacityEditor from "./ChannelCapacityEditor";
-import LanguageQuotaEditor from "./LanguageQuotaEditor";
+import CalendarMirror from "./CalendarMirror";
+import CapacityPanel from "./CapacityPanel";
 import AgendaLabelsEditor from "./AgendaLabelsEditor";
 import TourCountryFlag from "./TourCountryFlag";
 import "../../styles/pmy-tour-info.css";
@@ -9,7 +8,7 @@ import { useMemo, useState } from "react";
 
 import { variantMatchesTourLanguage } from "../../utils/tour-languages";
 
-import { Badge, Button, Card, DatePicker, DropdownSelect, EmptyState, FormField, Icon, Input, SectionHeader, Tabs, Toast, TimeSelect } from "./PmyUI";
+import { Badge, Button, Card, DatePicker, DropdownSelect, EmptyState, FormField, Icon, Input, Modal, SectionHeader, Toast, TimeSelect } from "./PmyUI";
 
 
 const TOUR_FIELD_LABELS = {
@@ -96,8 +95,6 @@ export default function AgendaTab(props) {
     bookingDate,
     bookingTime,
     calendarView,
-    currentMonthLabel,
-    currentYear,
     custEmail,
     custLang,
     custName,
@@ -120,14 +117,10 @@ export default function AgendaTab(props) {
     guideAssignmentsList = [],
     handleCreateBlock,
     handleGeneratePaymentLink,
-    handleNextMonth,
-    handlePrevMonth,
     handleRemoveBlock,
     handleTogglePlatformSelection,
     handleTourSelectionChange,
-    imageShape,
     platformConnections,
-    renderCalendarDays,
     reservationPlatforms,
     selectedTour,
     setBlockDateTime,
@@ -150,6 +143,8 @@ export default function AgendaTab(props) {
     tourOptions,
     tourVariants,
     variantMatchesBookingTime,
+    calendarProps = null,
+    onOpenBoard,
     lang
   } = props;
 
@@ -158,6 +153,9 @@ export default function AgendaTab(props) {
   const [blockTourSearch, setBlockTourSearch] = useState("");
   const [boardLabelsOpen, setBoardLabelsOpen] = useState(false);
   const [blockTourPickerOpen, setBlockTourPickerOpen] = useState(false);
+  // "Nova reserva", "Bloqueio manual" e "Capacidade" abrem em janelas (pedido 12/11).
+  const [panel, setPanel] = useState("");
+  const closePanel = () => setPanel("");
 
   const normalizedBlockTourSearch = blockTourSearch
     .normalize("NFD")
@@ -217,13 +215,6 @@ export default function AgendaTab(props) {
       !blockPlatforms.includes(platform.key),
   ).length;
 
-  const calendarTabs = [
-    { value: "1d", label: t.view_1d },
-    { value: "3d", label: t.view_3d },
-    { value: "7d", label: t.view_7d },
-    { value: "month", label: t.view_month },
-  ];
-
   // Quadro estilo Trello: ocupa a tela inteira da Agenda, sem os formulários.
   if (calendarView === "board" && boardProps) {
     return (
@@ -252,16 +243,42 @@ export default function AgendaTab(props) {
 
   return (
     <div className="pmy-ds-stack">
-      <div className="pmy-agenda-form-grid">
-        <Card>
-          <SectionHeader
-            eyebrow={tr("Reservas", "Bookings")}
-            title={tr("Inserir nova reserva", "Add new booking")}
-            subtitle={tr(
+      <Card>
+        <div className="pmy-agenda-actions">
+          <Button type="button" variant="primary" icon="plus" onClick={() => setPanel("booking")}>
+            {tr("Nova reserva", "New booking")}
+          </Button>
+          <Button type="button" variant="secondary" icon="lock" onClick={() => setPanel("block")}>
+            {tr("Bloqueio manual", "Manual block")}
+            {blockedDates.length > 0 ? <Badge>{blockedDates.length}</Badge> : null}
+          </Button>
+          <Button type="button" variant="secondary" icon="users" onClick={() => setPanel("capacity")}>
+            {tr("Capacidade e vagas", "Capacity and seats")}
+          </Button>
+        </div>
+        <CalendarMirror
+          {...(calendarProps || {})}
+          blockedDates={blockedDates}
+          view={["1d", "3d", "7d", "month", "quarter", "semester", "year"].includes(calendarView) ? calendarView : "month"}
+          onViewChange={setCalendarView}
+          onOpenBoard={onOpenBoard}
+          lang={lang}
+        />
+      </Card>
+
+      <Modal
+        open={panel === "booking"}
+        title={tr("Nova reserva", "New booking")}
+        onClose={closePanel}
+        closeLabel={tr("Fechar", "Close")}
+        className="pmy-ds-modal--form"
+      >
+          <p className="pmy-agenda-modal__lead">
+            {tr(
               "Crie o checkout real no Shopify usando os dados do cliente, tour e variantes selecionadas.",
               "Create a real Shopify checkout using the selected customer, tour and variant data.",
             )}
-          />
+          </p>
 
           {/* Booking controls intentionally use PMY DropdownSelect instead of native <select>.
               Keep generic/lowest variant prices out of the tour picker; prices belong to ticket variants below. */}
@@ -504,17 +521,21 @@ export default function AgendaTab(props) {
               </div>
             </div>
           ) : null}
-        </Card>
+      </Modal>
 
-        <Card>
-          <SectionHeader
-            eyebrow={tr("Disponibilidade", "Availability")}
-            title={tr("Inserir bloqueio manual", "Add manual block")}
-            subtitle={tr(
+      <Modal
+        open={panel === "block"}
+        title={tr("Bloqueio manual", "Manual block")}
+        onClose={closePanel}
+        closeLabel={tr("Fechar", "Close")}
+        className="pmy-ds-modal--form"
+      >
+          <p className="pmy-agenda-modal__lead">
+            {tr(
               "Bloqueie datas, horários e canais específicos sem afetar as demais plataformas.",
               "Block specific dates, times and channels without affecting the others.",
             )}
-          />
+          </p>
 
           <form onSubmit={handleCreateBlock} className="pmy-ds-form-stack">
             <FormField
@@ -845,125 +866,27 @@ export default function AgendaTab(props) {
               </div>
             )}
           </div>
-        </Card>
-      </div>
+      </Modal>
 
-      <Card>
-        <div className="pmy-ds-calendar-toolbar">
-          <div className="pmy-ds-calendar-month">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon="chevronRight"
-              iconOnly
-              aria-label={tr("Mês anterior", "Previous month")}
-              onClick={handlePrevMonth}
-              className="pmy-calendar-prev-button"
-            />
-            <div className="pmy-calendar-current-month-year-label">
-              {currentMonthLabel} {currentYear}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon="chevronRight"
-              iconOnly
-              aria-label={tr("Próximo mês", "Next month")}
-              onClick={handleNextMonth}
-            />
-          </div>
-
-          <Tabs
-            items={calendarTabs}
-            value={calendarView}
-            onChange={setCalendarView}
-            ariaLabel={tr("Visualização da agenda", "Calendar view")}
-          />
-        </div>
-
-        {calendarView === "board" && boardProps ? (
-          <AgendaBoard {...boardProps} lang={lang} />
-        ) : (
-        <div className="pmy-calendar-scroll">
-          {calendarView === "month" ? (
-            <div className="pmy-calendar-week-headers">
-              <div>{tr("Seg", "Mon")}</div>
-              <div>{tr("Ter", "Tue")}</div>
-              <div>{tr("Qua", "Wed")}</div>
-              <div>{tr("Qui", "Thu")}</div>
-              <div>{tr("Sex", "Fri")}</div>
-              <div>{tr("Sáb", "Sat")}</div>
-              <div>{tr("Dom", "Sun")}</div>
-            </div>
-          ) : null}
-          <div className={`pmy-calendar-grid ${calendarView === "month" ? "month-view" : ""}`}>
-            {renderCalendarDays()}
-          </div>
-        </div>
-        )}
-
-        <div className="pmy-ds-subsection">
-          <h3 className="pmy-ds-capacity-heading">
-            {tr("Capacidade máxima por tour e horário", "Maximum capacity by tour and time")}
-          </h3>
-          <p className="pmy-ds-capacity-description">
-            {tr(
-              "A Central desconta automaticamente desta capacidade todas as reservas confirmadas e pré-reservas ativas, independentemente do canal de venda.",
-              "The Central automatically deducts all confirmed bookings and active pre-bookings from this capacity, regardless of sales channel.",
-            )}
-          </p>
-
-          {tourOptions.map((tour) => {
-            const capacity =
-              tourCapacities[tour.id] !== undefined
-                ? tourCapacities[tour.id]
-                : 20;
-
-            return (
-              <div className="pmy-capacity-vertical-item pmy-capacity-card" key={tour.id}>
-                <div className="pmy-ds-tour-row-main" style={{display:"flex",width:"100%",minWidth:0,alignItems:"flex-start",gap:14}}>
-                  <div className={`pmy-ds-tour-placeholder pmy-capacity-card__thumb ${imageShape}`}>
-                    {tour.image ? (
-                      <img src={tour.image} alt={tour.imageAlt || tour.title} loading="lazy" />
-                    ) : (
-                      <Icon name="calendar" size={22} />
-                    )}
-                  </div>
-                  <div style={{flex:1,minWidth:0,width:"100%"}}>
-                    <strong className="pmy-ds-tour-row__title pmy-capacity-card__title" style={{display:"block",whiteSpace:"normal",wordBreak:"normal",overflowWrap:"normal",maxWidth:"100%"}}><TourCountryFlag tour={tour} lang={lang}/>{tour.title}</strong>
-                    <div className="pmy-ds-tour-row__meta">
-                      {tr("Capacidade", "Capacity")}: {capacity}{" "}
-                      {lang === "en"
-                        ? `person${capacity === 1 ? "" : "s"} per time`
-                        : `pessoa${capacity === 1 ? "" : "s"} por horário`}
-                      {capacity === 0 ? (
-                        <> · <span className="pmy-ds-danger-text">
-                          {tr("VENDAS SUSPENSAS", "SALES SUSPENDED")}
-                        </span></>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pmy-capacity-card__sections">
-                <div className="pmy-capacity-card__section">
-                <span className="pmy-capacity-card__label">{tr("Vagas e consulta por data", "Seats and date lookup")}</span>
-                <SharedSeatsIndicator tourId={tour.id} capacity={capacity} limits={channelCapacityLimits[tour.id] || {}} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} lang={lang}/>
-                </div>
-                <div className="pmy-capacity-card__section">
-                <ChannelCapacityEditor tourId={tour.id} physicalCapacity={capacity} limits={channelCapacityLimits[tour.id] || {}} onSave={handleChannelCapacityChange} lang={lang}/>
-                </div>
-                <div className="pmy-capacity-card__section">
-                <LanguageQuotaEditor tour={tour} hours={[...(tour.scheduleSlots || []),...(tour.variants || []).map(v=>v.title)]} rules={languageQuotaRules[tour.id] || []} guides={guidesList} assignments={guideAssignmentsList} onSave={handleLanguageQuotaSave} lang={lang}/>
-                </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+      <Modal
+        open={panel === "capacity"}
+        title={tr("Capacidade e vagas", "Capacity and seats")}
+        onClose={closePanel}
+        closeLabel={tr("Fechar", "Close")}
+        className="pmy-ds-modal--wide"
+      >
+        <CapacityPanel
+          tours={tourOptions}
+          tourCapacities={tourCapacities}
+          channelCapacityLimits={channelCapacityLimits}
+          handleChannelCapacityChange={handleChannelCapacityChange}
+          languageQuotaRules={languageQuotaRules}
+          handleLanguageQuotaSave={handleLanguageQuotaSave}
+          guidesList={guidesList}
+          guideAssignmentsList={guideAssignmentsList}
+          lang={lang}
+        />
+      </Modal>
     </div>
   );
 }

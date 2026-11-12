@@ -510,6 +510,8 @@ export default function AgendaBoard({
   onResetCheck,
   onChecklistOp,
   onMoveDeparture = null,
+  focus = null,
+  onFocusHandled = null,
   onArchiveDeparture = null,
   onDeleteDepartureCard = null,
   waitlist = [],
@@ -555,6 +557,14 @@ export default function AgendaBoard({
   // Arquivados ficam fora do Quadro; "Arquivados" mostra de novo para desarquivar.
   const [showArchived, setShowArchived] = useState(false);
   const [cardAction, setCardAction] = useState({ busy: "", error: "", confirmDelete: false });
+  // Vindo do Calendário ("Editar no Quadro"): começa no dia e abre o cartão.
+  useEffect(() => {
+    if (!focus?.nonce) return;
+    if (focus.dateKey) setStart(focus.dateKey);
+    if (focus.key) setOpenKey(focus.key);
+    if (focus.taskId) setOpenTaskId(focus.taskId);
+    onFocusHandled?.(); // não reabrir o mesmo cartão na próxima visita ao Quadro
+  }, [focus?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (typeof loadWeather !== "function") return undefined;

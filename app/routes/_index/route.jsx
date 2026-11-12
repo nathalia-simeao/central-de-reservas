@@ -508,6 +508,13 @@ function CentralDeReservasContent() {
   };
 
   const navKey = activeTab === "agenda" && calendarView === "board" ? "quadro" : activeTab;
+  // Calendário → "Editar no Quadro": abre o Quadro já no dia e no cartão.
+  const [boardFocus, setBoardFocus] = useState(null);
+  const openInBoard = (focus) => {
+    setBoardFocus({ ...focus, nonce: Date.now() });
+    setCalendarView("board");
+    try { window.scrollTo({ top: 0 }); } catch { /* ok */ }
+  };
   const navRestoredRef = useRef(false);
   // Sem ?tab= no endereço: volta para a última aba usada neste navegador.
   useEffect(() => {
@@ -3230,7 +3237,15 @@ function CentralDeReservasContent() {
             setDraftOrderInfo, setGeneratedLink, setTourVariants, t, tourAvailableHours,
             tourCapacities, tourOptions, tourVariants, tours, variantMatchesBookingTime, lang,
             agendaLabels, handleSaveAgendaLabels, isCentralAdmin,
+            calendarProps: {
+              bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: scheduleGuides,
+              agendaLabels: colorLabels, departureTags, departureInfo, supportCards,
+              loadBookings: loadBoardBookings, loadImage: loadCentralImage,
+              onOpenAttachment: openDepartureAttachment, onOpenSupportAttachment: supportHandlers.openAttachment,
+            },
+            onOpenBoard: openInBoard,
             boardProps: {
+              focus: boardFocus, onFocusHandled: () => setBoardFocus(null),
               bookings: bookingsList, assignments: guideAssignmentsList, tours, guides: scheduleGuides,
               agendaLabels: colorLabels, departureTags, departureInfo,
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
