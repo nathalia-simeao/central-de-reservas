@@ -72,6 +72,25 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
       if (item) { item.done = !item.done; item.at = item.done ? at : null; item.by = item.done ? by : null; }
       break;
     }
+    case "editItem": {
+      const item = findList(op.listId)?.items.find((i) => i.id === op.itemId);
+      const text = clean(op.text);
+      if (item && text) item.text = text;
+      break;
+    }
+    case "moveItem": {
+      // Arrastar para mudar a ordem (pedido 12/11): dentro do mesmo checklist
+      // ou para outro checklist da saída (ex.: cliente que trocou de grupo).
+      const from = findList(op.listId);
+      const to = findList(op.toListId || op.listId);
+      const index = from ? from.items.findIndex((i) => i.id === op.itemId) : -1;
+      if (!from || !to || index < 0) break;
+      if (to !== from && to.items.length >= MAX_ITEMS) throw new Error("Limite de itens atingido.");
+      const [item] = from.items.splice(index, 1);
+      const wanted = Number.isFinite(Number(op.toIndex)) ? Number(op.toIndex) : to.items.length;
+      to.items.splice(Math.max(0, Math.min(wanted, to.items.length)), 0, item);
+      break;
+    }
     case "deleteItem": { const list = findList(op.listId); if (list) list.items = list.items.filter((i) => i.id !== op.itemId); break; }
     case "toggleAuto": {
       const key = clean(op.key, 120);

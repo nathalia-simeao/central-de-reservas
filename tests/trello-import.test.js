@@ -97,3 +97,18 @@ test("parseTrelloBoard splits support cards from dated tour cards", () => {
   assert.deepEqual(card.groups[0].items, [{ text: "JOHN SMITH (2A)", done: true }, { text: "Fim de tour", done: false }]);
   assert.throws(() => parseTrelloBoard({ foo: 1 }), /Trello/);
 });
+
+test("checklist items can be reordered and moved to another checklist", async () => {
+  const { applyChecklistOp } = await import("../app/utils/departure-checklists.js");
+  const base = { lists: [
+    { id: "a", title: "T2", items: [{ id: "1", text: "Encontro" }, { id: "2", text: "Clarissa" }, { id: "3", text: "Amparo" }, { id: "4", text: "Fim" }] },
+    { id: "b", title: "T3", items: [{ id: "5", text: "Summer" }] },
+  ] };
+  const swapped = applyChecklistOp(base, { type: "moveItem", listId: "a", itemId: "3", toIndex: 1 });
+  assert.deepEqual(swapped.lists[0].items.map((i) => i.id), ["1", "3", "2", "4"]);
+  const moved = applyChecklistOp(swapped, { type: "moveItem", listId: "a", itemId: "2", toListId: "b", toIndex: 0 });
+  assert.deepEqual(moved.lists[0].items.map((i) => i.id), ["1", "3", "4"]);
+  assert.deepEqual(moved.lists[1].items.map((i) => i.id), ["2", "5"]);
+  const end = applyChecklistOp(moved, { type: "moveItem", listId: "b", itemId: "2", toIndex: 99 });
+  assert.deepEqual(end.lists[1].items.map((i) => i.id), ["5", "2"]);
+});
