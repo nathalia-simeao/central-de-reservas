@@ -2184,27 +2184,36 @@ function CentralDeReservasContent() {
       window.alert(ui("Não foi possível abrir o arquivo.", "Could not open the file.") + (e?.message ? `\n${e.message}` : ""));
     }
   };
+  // Toda a equipe cria e edita documentos e demandas do Quadro.
+  const mergeSupportCard = (card) => setSupportCards((list) => (list.some((c) => c.id === card.id) ? list.map((c) => (c.id === card.id ? { ...c, ...card } : c)) : [...list, card]));
   const supportHandlers = {
     openAttachment: openSupportAttachment,
-    ...(isCentralAdmin ? {
-      save: async ({ id, title, body, visibleToGuides }) => {
-        const { card } = await postCentral({ _action: "saveSupportCard", id: id || "", title, body: body || "", visibleToGuides: visibleToGuides ? "true" : "false" });
-        setSupportCards((list) => (list.some((c) => c.id === card.id) ? list.map((c) => (c.id === card.id ? { ...c, ...card } : c)) : [...list, card]));
-        return card;
-      },
-      remove: async (id) => {
-        await postCentral({ _action: "deleteSupportCard", id });
-        setSupportCards((list) => list.filter((c) => c.id !== id));
-      },
-      upload: async (cardId, file) => {
-        const { attachment } = await postCentral({ _action: "uploadSupportAttachment", cardId }, file);
-        setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: [...(c.attachments || []), attachment] } : c)));
-      },
-      removeAttachment: async (cardId, id) => {
-        await postCentral({ _action: "removeSupportAttachment", id });
-        setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: (c.attachments || []).filter((a) => a.id !== id) } : c)));
-      },
-    } : {}),
+    save: async ({ id, ...fields }) => {
+      const payload = { _action: "saveSupportCard", id: id || "" };
+      for (const [key, value] of Object.entries(fields)) {
+        if (value === undefined) continue;
+        payload[key] = key === "assigneeIds" ? JSON.stringify(value || []) : typeof value === "boolean" ? String(value) : String(value ?? "");
+      }
+      const { card } = await postCentral(payload);
+      mergeSupportCard(card);
+      return card;
+    },
+    checklistOp: async (id, op) => {
+      const { card } = await postCentral({ _action: "updateSupportChecklist", id, op: JSON.stringify(op) });
+      mergeSupportCard(card);
+    },
+    remove: async (id) => {
+      await postCentral({ _action: "deleteSupportCard", id });
+      setSupportCards((list) => list.filter((c) => c.id !== id));
+    },
+    upload: async (cardId, file) => {
+      const { attachment } = await postCentral({ _action: "uploadSupportAttachment", cardId }, file);
+      setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: [...(c.attachments || []), attachment] } : c)));
+    },
+    removeAttachment: async (cardId, id) => {
+      await postCentral({ _action: "removeSupportAttachment", id });
+      setSupportCards((list) => list.map((c) => (c.id === cardId ? { ...c, attachments: (c.attachments || []).filter((a) => a.id !== id) } : c)));
+    },
   };
 
   // Quadro: checklists do cartão (operação aplicada no servidor).

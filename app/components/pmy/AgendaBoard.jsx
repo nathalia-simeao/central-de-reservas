@@ -5,18 +5,14 @@ import { languageLabel } from "../../utils/tour-languages.js";
 import DepartureTagsSection from "./DepartureTagsSection";
 
 // Campo que recebe o foco ao aparecer (no lugar de autoFocus, que o lint proíbe).
-function FocusInput(props) {
-  const ref = useRef(null);
-  useEffect(() => { ref.current?.focus(); }, []);
-  return <input ref={ref} {...props} />;
-}
 import { DatePicker, DropdownSelect, TimeSelect } from "./PmyUI";
 import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../utils/weather.js";
 import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
 import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
-import { SupportColumn } from "./SupportCards";
+import { SupportColumn, SupportModal, TaskCard } from "./SupportCards";
 import TrelloImportDialog from "./TrelloImportDialog";
+import { ChecklistBlock, ChecklistEditor, FocusInput } from "./ChecklistBlock";
 
 // Agenda → Quadro: a operação no formato do Trello que a equipe já usa.
 // Uma coluna por data, um cartão por saída, etiquetas coloridas, guias no cartão.
@@ -315,14 +311,31 @@ function GuidePicker({ card, guides, onAssign, onRemove, lang }) {
 }
 
 /* ---------- Novo cartão ---------- */
-function AddCardForm({ dateKey, tours, guides, onAssign, onClose, lang }) {
+function AddCardForm({ dateKey, tours, guides, onAssign, onCreateTask, onClose, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
+  // "Passeio" = saída de um passeio do site; "Demanda" = pedido externo, sem passeio.
+  const [mode, setMode] = useState("tour");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskTime, setTaskTime] = useState("");
   const [tourId, setTourId] = useState("");
   const [time, setTime] = useState("10:00");
   const [guideId, setGuideId] = useState("");
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const submitTask = async () => {
+    if (!taskTitle.trim()) { setError(tr("Escreva o que é a demanda.", "Describe the task.")); return; }
+    setBusy(true);
+    setError("");
+    try {
+      await onCreateTask({ title: taskTitle.trim(), dateKey, time: taskTime });
+      onClose();
+    } catch (e) {
+      setError(e?.message || tr("Não foi possível criar.", "Could not create."));
+    } finally {
+      setBusy(false);
+    }
+  };
   const submit = async () => {
     if (!tourId || !time) { setError(tr("Escolha o passeio e o horário.", "Choose tour and time.")); return; }
     if (!guideId) { setError(tr("Escolha o guia para criar o cartão.", "Choose a guide to create the card.")); return; }
@@ -337,8 +350,30 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onClose, lang }) {
       setBusy(false);
     }
   };
+  const modeSwitch = onCreateTask && (
+    <div className="pmy-board-add__mode" role="group" aria-label={tr("Tipo de cartão", "Card type")}>
+      <button type="button" className={mode === "tour" ? "is-on" : ""} aria-pressed={mode === "tour"} onClick={() => { setMode("tour"); setError(""); }}>{tr("Passeio", "Tour")}</button>
+      <button type="button" className={mode === "task" ? "is-on" : ""} aria-pressed={mode === "task"} onClick={() => { setMode("task"); setError(""); }}>{tr("Demanda", "Task")}</button>
+    </div>
+  );
+  if (mode === "task") {
+    return (
+      <div className="pmy-board-add">
+        {modeSwitch}
+        <FocusInput className="pmy-ds-input" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder={tr("Ex.: Transfer aeroporto família Silva", "E.g. airport transfer")}
+          aria-label={tr("Título da demanda", "Task title")} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTask(); } if (e.key === "Escape") onClose(); }} />
+        <TimeSelect value={taskTime} onChange={setTaskTime} lang={lang} placeholder={tr("Horário (opcional)", "Time (optional)")} />
+        {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
+        <div className="pmy-board-pop__actions">
+          <button type="button" className="pmy-board-btn is-primary" disabled={busy} onClick={submitTask}>{busy ? "…" : tr("Adicionar demanda", "Add task")}</button>
+          <button type="button" className="pmy-board-pop__icon" aria-label={tr("Cancelar", "Cancel")} onClick={onClose}>×</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="pmy-board-add">
+      {modeSwitch}
       <DropdownSelect value={tourId} onChange={setTourId} placeholder={tr("Passeio…", "Tour…")} ariaLabel={tr("Passeio", "Tour")}
         searchPlaceholder={tr("Buscar passeio…", "Search tour…")} options={tours.map((t) => ({ value: t.id, label: t.title }))} />
       <div className="pmy-board-add__row">
@@ -361,187 +396,22 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onClose, lang }) {
 }
 
 /* ---------- Checklists (igual ao Trello) ---------- */
-// Texto que vira campo ao clicar em ✎ (Enter salva, Esc cancela).
-function EditableText({ value, onSave, label, className = "", lang }) {
-  const tr = (pt, en) => (lang === "en" ? en : pt);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const savedRef = useRef(false);
-  if (!editing) {
-    return (
-      <span className={`pmy-editable ${className}`}>
-        <span>{value}</span>
-        {onSave && (
-          <button type="button" className="pmy-editable__btn" aria-label={label || tr("Editar", "Edit")} title={label || tr("Editar", "Edit")}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); savedRef.current = false; setDraft(value); setEditing(true); }}>✎</button>
-        )}
-      </span>
-    );
-  }
-  const save = async () => {
-    if (savedRef.current) return; // Enter e o blur logo depois: salva uma vez só
-    savedRef.current = true;
-    const text = draft.trim();
-    setEditing(false);
-    if (text && text !== value) await onSave(text);
-  };
-  return (
-    <span className={`pmy-editable is-editing ${className}`} onClick={(e) => e.preventDefault()} role="presentation">
-      <FocusInput value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={label}
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } if (e.key === "Escape") { e.preventDefault(); savedRef.current = true; setEditing(false); } }}
-        onBlur={save} />
-    </span>
-  );
-}
-
-function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, onMoveItem, onEditItem, onRename, drag, setDrag, busy, lang }) {
-  const tr = (pt, en) => (lang === "en" ? en : pt);
-  const [adding, setAdding] = useState(false);
-  const [text, setText] = useState("");
-  const total = list.items.length;
-  const done = list.items.filter(isDone).length;
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  const items = hidden ? list.items.filter((item) => !isDone(item)) : list.items;
-  const submit = async () => { if (!text.trim()) return; await onAddItem(text); setText(""); };
-  return (
-    <div className={`pmy-checklist${onMoveItem && drag?.over === `${list.id}:end` ? " is-drop" : ""}`}
-      onDragOver={onMoveItem && drag ? (e) => { e.preventDefault(); if (e.target === e.currentTarget || !e.target.closest(".pmy-checklist__item")) { if (drag.over !== `${list.id}:end`) setDrag({ ...drag, over: `${list.id}:end` }); } } : undefined}
-      onDrop={onMoveItem && drag ? (e) => {
-        // Soltou fora de um item (título, barra, espaço): vai para o fim deste checklist.
-        if (e.defaultPrevented) return;
-        e.preventDefault();
-        const from = drag;
-        setDrag(null);
-        const fromIndex = list.items.findIndex((i) => i.id === from.itemId);
-        onMoveItem(from, list.id, fromIndex >= 0 ? list.items.length - 1 : list.items.length);
-      } : undefined}>
-      <div className="pmy-checklist__head">
-        <span className="pmy-checklist__icon" aria-hidden="true">☑</span>
-        <strong>{onRename ? <EditableText value={list.title} onSave={onRename} label={tr("Editar título do checklist", "Edit checklist title")} lang={lang} /> : list.title}</strong>
-        {list.auto && <small className="pmy-checklist__auto" title={tr("Criado sozinho a partir das reservas confirmadas", "Built from confirmed bookings")}>{tr("automático", "automatic")}</small>}
-        <span className="pmy-checklist__actions">
-          {done > 0 && <button type="button" className="pmy-board-btn" onClick={onToggleHide}>{hidden ? tr(`Mostrar itens marcados (${done})`, `Show checked items (${done})`) : tr("Ocultar itens marcados", "Hide checked items")}</button>}
-          {onDelete && <button type="button" className="pmy-board-btn" disabled={busy} onClick={onDelete}>{tr("Excluir", "Delete")}</button>}
-        </span>
-      </div>
-      <div className="pmy-checklist__progress">
-        <small>{pct}%</small>
-        <span><i style={{ width: `${pct}%` }} className={pct === 100 ? "is-done" : ""} /></span>
-      </div>
-      {items.map((item) => {
-        const on = isDone(item);
-        const index = list.items.indexOf(item);
-        const canMove = Boolean(onMoveItem);
-        const isOver = drag?.over === `${list.id}:${item.id}`;
-        return (
-          <label key={item.key || item.id}
-            className={`pmy-checklist__item ${on ? "is-done" : ""}${canMove ? " is-movable" : ""}${drag?.itemId === item.id ? " is-dragging" : ""}${isOver ? " is-over" : ""}`}
-            title={item.by ? `${item.by}` : undefined}
-            draggable={canMove && !busy}
-            onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", item.id); setDrag({ listId: list.id, itemId: item.id }); } : undefined}
-            onDragEnd={canMove ? () => setDrag(null) : undefined}
-            onDragOver={canMove && drag ? (e) => { e.preventDefault(); e.stopPropagation(); if (!isOver) setDrag({ ...drag, over: `${list.id}:${item.id}` }); } : undefined}
-            onDrop={canMove && drag ? (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Solta "em cima" de um item: ocupa o lugar dele.
-              const from = drag;
-              setDrag(null);
-              if (from.itemId !== item.id) onMoveItem(from, list.id, index);
-            } : undefined}>
-            {canMove && <span className="pmy-checklist__grip" aria-hidden="true">⋮⋮</span>}
-            <input type="checkbox" checked={on} disabled={busy} onChange={() => onToggle(item)} />
-            {onEditItem
-              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} />
-              : <span>{item.text}</span>}
-            {canMove && (
-              <span className="pmy-checklist__move">
-                <button type="button" aria-label={tr("Subir item", "Move up")} disabled={busy || index === 0}
-                  onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index - 1); }}>↑</button>
-                <button type="button" aria-label={tr("Descer item", "Move down")} disabled={busy || index === list.items.length - 1}
-                  onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index + 1); }}>↓</button>
-              </span>
-            )}
-            {onDeleteItem && (
-              <button type="button" className="pmy-checklist__del" aria-label={tr("Apagar item", "Delete item")} disabled={busy} onClick={(e) => { e.preventDefault(); onDeleteItem(item); }}>×</button>
-            )}
-          </label>
-        );
-      })}
-      {hidden && done > 0 && !items.length && <p className="pmy-board-pop__empty">{tr("Tudo marcado ✓", "All checked ✓")}</p>}
-      {onAddItem && (adding ? (
-        <div className="pmy-checklist__add">
-          <FocusInput value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item", "Add an item")}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } if (e.key === "Escape") setAdding(false); }} />
-          <div className="pmy-board-pop__actions">
-            <button type="button" className="pmy-board-btn is-primary" disabled={busy || !text.trim()} onClick={submit}>{tr("Adicionar", "Add")}</button>
-            <button type="button" className="pmy-board-btn" onClick={() => { setAdding(false); setText(""); }}>{tr("Cancelar", "Cancel")}</button>
-          </div>
-        </div>
-      ) : (
-        <button type="button" className="pmy-board-btn pmy-checklist__add-btn" onClick={() => setAdding(true)}>{tr("Adicionar um item", "Add an item")}</button>
-      ))}
-    </div>
-  );
-}
-
 function ChecklistSection({ card, raw, onOp, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const state = normalizeChecklists(raw);
   const autos = autoChecklists(card);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState("");
-  const [drag, setDrag] = useState(null); // { listId, itemId, over }
-  const run = async (op) => {
-    setBusy(true);
-    setError("");
-    try { await onOp(op); } catch (e) { setError(e?.message || tr("Não foi possível salvar.", "Could not save.")); }
-    finally { setBusy(false); }
-  };
+  const run = async (op) => { setBusy(true); try { await onOp(op); } finally { setBusy(false); } };
   return (
-    <div className="pmy-board-modal__section">
-      <div className="pmy-checklist__section-head">
-        <span className="pmy-board-pop__sub">{tr("Checklists", "Checklists")}</span>
-        <button type="button" className="pmy-board-btn" onClick={() => setCreating(!creating)}>{tr("+ Checklist", "+ Checklist")}</button>
-      </div>
-      {error && <p role="alert" className="pmy-board-pop__error">{error}</p>}
-      {creating && (
-        <div className="pmy-checklist__add">
-          <FocusInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr("Título (ex.: Ingressos, 10h ESP (3p) 3A Dee)", "Title")}
-            onKeyDown={async (e) => { if (e.key === "Enter" && title.trim()) { e.preventDefault(); await run({ type: "addList", title }); setTitle(""); setCreating(false); } }} />
-          <div className="pmy-board-pop__actions">
-            <button type="button" className="pmy-board-btn is-primary" disabled={busy || !title.trim()} onClick={async () => { await run({ type: "addList", title }); setTitle(""); setCreating(false); }}>{tr("Adicionar", "Add")}</button>
-            <button type="button" className="pmy-board-btn" onClick={() => setCreating(false)}>{tr("Cancelar", "Cancel")}</button>
-          </div>
-        </div>
-      )}
-      {!autos.length && !state.lists.length && !creating && (
-        <p className="pmy-board-pop__empty">{tr("Quando entrar reserva confirmada, o checklist do grupo aparece aqui sozinho (Pronto · clientes · Fim de tour). Também dá para criar um manual.", "A checklist per group appears here automatically once a booking is confirmed.")}</p>
-      )}
-      {autos.map((list) => (
+    <ChecklistEditor raw={raw} onOp={onOp} lang={lang}
+      empty={!autos.length && tr("Quando entrar reserva confirmada, o checklist do grupo aparece aqui sozinho (Pronto · clientes · Fim de tour). Também dá para criar um manual.", "A checklist per group appears here automatically once a booking is confirmed.")}
+      before={autos.map((list) => (
         <ChecklistBlock key={list.id} list={list} busy={busy} lang={lang}
           hidden={Boolean(state.hideDone[list.id])}
           isDone={(item) => Boolean(state.auto[item.key]?.done)}
           onToggle={(item) => run({ type: "toggleAuto", key: item.key })}
           onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })} />
-      ))}
-      {state.lists.map((list) => (
-        <ChecklistBlock key={list.id} list={list} busy={busy} lang={lang}
-          hidden={Boolean(state.hideDone[list.id])}
-          isDone={(item) => item.done}
-          onToggle={(item) => run({ type: "toggleItem", listId: list.id, itemId: item.id })}
-          onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })}
-          onDelete={() => { if (typeof window === "undefined" || window.confirm(tr("Excluir este checklist?", "Delete this checklist?"))) run({ type: "deleteList", listId: list.id }); }}
-          onAddItem={(text) => run({ type: "addItem", listId: list.id, text })}
-          onDeleteItem={(item) => run({ type: "deleteItem", listId: list.id, itemId: item.id })}
-          drag={drag} setDrag={setDrag}
-          onEditItem={(item, text) => run({ type: "editItem", listId: list.id, itemId: item.id, text })}
-          onRename={(text) => run({ type: "renameList", listId: list.id, title: text })}
-          onMoveItem={(from, toListId, toIndex) => run({ type: "moveItem", listId: from.listId, itemId: from.itemId, toListId, toIndex })} />
-      ))}
-    </div>
+      ))} />
   );
 }
 
@@ -666,6 +536,7 @@ export default function AgendaBoard({
   const [guestMsg, setGuestMsg] = useState(""); // modelo aberto em "Avisar clientes"
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [trelloOpen, setTrelloOpen] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState("");
   const [days, setDays] = useState(DAYS);
   const [onlyBusy, setOnlyBusy] = useState(() => {
     try { return window.localStorage.getItem("pmy.board.onlyBusy") === "1"; } catch { return false; }
@@ -742,8 +613,19 @@ export default function AgendaBoard({
     const filtered = collection
       ? built.map((col) => ({ ...col, cards: col.cards.filter((c) => (collectionsByTour.get(c.tourId) || []).includes(collection)) }))
       : built;
-    return onlyBusy ? filtered.filter((col) => col.cards.length) : filtered;
-  }, [start, visibleDays, allBookings, assignments, departureTags, departureInfo, tours, collection, collectionsByTour, onlyBusy]);
+    const tasksByDate = new Map();
+    if (!collection) {
+      for (const task of supportCards) {
+        if (!task.dateKey) continue;
+        if (!tasksByDate.has(task.dateKey)) tasksByDate.set(task.dateKey, []);
+        tasksByDate.get(task.dateKey).push(task);
+      }
+      for (const list of tasksByDate.values()) list.sort((a, b) => String(a.time || "99").localeCompare(String(b.time || "99")) || String(a.title).localeCompare(String(b.title)));
+    }
+    const withTasks = filtered.map((col) => ({ ...col, tasks: tasksByDate.get(col.dateKey) || [] }));
+    return onlyBusy ? withTasks.filter((col) => col.cards.length || col.tasks.length) : withTasks;
+  }, [start, visibleDays, allBookings, assignments, departureTags, departureInfo, tours, collection, collectionsByTour, onlyBusy, supportCards]);
+  const openTask = openTaskId ? supportCards.find((c) => c.id === openTaskId) || null : null;
 
   const onBoardScroll = (e) => {
     const el = e.currentTarget;
@@ -843,7 +725,7 @@ export default function AgendaBoard({
       {onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
       <div className="pmy-board__scroll" ref={scrollRef} onScroll={onBoardScroll}>
         {supportHandlers && (
-          <SupportColumn cards={supportCards} canEdit={Boolean(supportHandlers.save)} handlers={supportHandlers} lang={lang} />
+          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} lang={lang} />
         )}
         {columns.map((col) => (
           <div
@@ -857,7 +739,7 @@ export default function AgendaBoard({
               <strong>{columnTitle(col.dateKey, lang)}</strong>
               <span>
                 {weather?.lisboa?.[col.dateKey] && <span title={tr("Previsão para Lisboa", "Lisbon forecast")}>{weatherIcon(weather.lisboa[col.dateKey])} {Math.round(weather.lisboa[col.dateKey].tempMax)}° · </span>}
-                {col.cards.length}
+                {col.cards.length + (col.tasks?.length || 0)}
               </span>
             </div>
             <div className="pmy-board__cards">
@@ -913,9 +795,13 @@ export default function AgendaBoard({
                   </button>
                 );
               })}
+              {(col.tasks || []).map((task) => (
+                <TaskCard key={task.id} card={task} guides={guides} lang={lang} onOpen={() => setOpenTaskId(task.id)} />
+              ))}
             </div>
             {addingDate === col.dateKey ? (
-              <AddCardForm dateKey={col.dateKey} tours={tourList} guides={guides} onAssign={onAssignGuide} onClose={() => setAddingDate("")} lang={lang} />
+              <AddCardForm dateKey={col.dateKey} tours={tourList} guides={guides} onAssign={onAssignGuide} onClose={() => setAddingDate("")} lang={lang}
+                onCreateTask={supportHandlers?.save ? async (fields) => { const card = await supportHandlers.save(fields); if (card?.id) setOpenTaskId(card.id); } : null} />
             ) : (
               <button type="button" className="pmy-board__add" onClick={() => setAddingDate(col.dateKey)}>+ {tr("Adicionar um cartão", "Add a card")}</button>
             )}
@@ -1039,6 +925,9 @@ export default function AgendaBoard({
           onCancel={() => setPendingMove(null)}
           lang={lang}
         />
+      )}
+      {openTask && (
+        <SupportModal key={openTask.id} card={openTask} guides={guides} handlers={supportHandlers || {}} lang={lang} onClose={() => setOpenTaskId("")} />
       )}
       {trelloOpen && (
         <TrelloImportDialog

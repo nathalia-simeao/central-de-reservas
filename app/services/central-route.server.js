@@ -45,6 +45,7 @@ import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 import { importTrelloPlan } from "./trello-import.server.js";
+import { cardChecklists, isDateKey, isTimeKey } from "../utils/board-tasks.js";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -538,21 +539,65 @@ export const action = async ({ request }) => {
   }
 
   // Coluna "Documentos de suporte" do Quadro.
+  const SUPPORT_SELECT = {
+    id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true,
+    dateKey: true, time: true, assigneeIds: true, done: true,
+    attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+  };
+
+  // Documento de suporte (sem dia) ou demanda do Quadro (com dia). Só os campos
+  // enviados mudam, para a tela poder salvar um pedaço de cada vez.
   if (_action === "saveSupportCard") {
     try {
       const id = String(formData.get("id") || "").trim();
-      const title = String(formData.get("title") || "").replace(/\s+/g, " ").trim().slice(0, 160);
-      if (!title) return json({ success: false, error: "Dê um título ao documento." }, { status: 400 });
-      const body = String(formData.get("body") || "").slice(0, 8000) || null;
-      const visibleToGuides = String(formData.get("visibleToGuides") || "true") !== "false";
-      const select = { id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true, attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } } };
+      const data = {};
+      if (formData.has("title")) {
+        data.title = String(formData.get("title") || "").replace(/\s+/g, " ").trim().slice(0, 160);
+        if (!data.title) return json({ success: false, error: "Dê um título ao cartão." }, { status: 400 });
+      }
+      if (formData.has("body")) data.body = String(formData.get("body") || "").slice(0, 8000) || null;
+      if (formData.has("visibleToGuides")) data.visibleToGuides = String(formData.get("visibleToGuides")) !== "false";
+      if (formData.has("dateKey")) {
+        const dateKey = String(formData.get("dateKey") || "");
+        if (dateKey && !isDateKey(dateKey)) return json({ success: false, error: "Data inválida." }, { status: 400 });
+        data.dateKey = dateKey || null;
+      }
+      if (formData.has("time")) {
+        const time = String(formData.get("time") || "");
+        if (time && !isTimeKey(time)) return json({ success: false, error: "Horário inválido." }, { status: 400 });
+        data.time = time || null;
+      }
+      if (formData.has("assigneeIds")) {
+        let ids = [];
+        try { ids = JSON.parse(String(formData.get("assigneeIds") || "[]")); } catch { ids = []; }
+        data.assigneeIds = (Array.isArray(ids) ? ids : []).map((v) => String(v).slice(0, 64)).filter(Boolean).slice(0, 20);
+      }
+      if (formData.has("done")) data.done = String(formData.get("done")) === "true";
+      if (!id && !data.title) return json({ success: false, error: "Dê um título ao cartão." }, { status: 400 });
       const card = id
-        ? await prisma.supportCard.update({ where: { id }, data: { title, body, visibleToGuides }, select })
-        : await prisma.supportCard.create({ data: { title, body, visibleToGuides, position: (await prisma.supportCard.count()) }, select });
+        ? await prisma.supportCard.update({ where: { id }, data, select: SUPPORT_SELECT })
+        : await prisma.supportCard.create({ data: { ...data, position: await prisma.supportCard.count() }, select: SUPPORT_SELECT });
       return json({ success: true, card });
     } catch (e) {
       console.error("[PMY] saveSupportCard error:", e);
-      return json({ success: false, error: "Não foi possível salvar o documento." }, { status: 500 });
+      return json({ success: false, error: "Não foi possível salvar o cartão." }, { status: 500 });
+    }
+  }
+
+  if (_action === "updateSupportChecklist") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      let op;
+      try { op = JSON.parse(String(formData.get("op") || "{}")); } catch { op = null; }
+      if (!id || !op?.type) return json({ success: false, error: "Checklist inválido." }, { status: 400 });
+      const current = await prisma.supportCard.findUnique({ where: { id }, select: { checklists: true } });
+      if (!current) return json({ success: false, error: "Cartão não encontrado." }, { status: 404 });
+      const checklists = applyChecklistOp(cardChecklists(current.checklists), op, centralUser?.name || "Equipe");
+      const card = await prisma.supportCard.update({ where: { id }, data: { checklists }, select: SUPPORT_SELECT });
+      return json({ success: true, card });
+    } catch (e) {
+      console.error("[PMY] updateSupportChecklist error:", e);
+      return json({ success: false, error: e?.message?.startsWith("Limite") ? e.message : "Não foi possível salvar o checklist." }, { status: 500 });
     }
   }
 

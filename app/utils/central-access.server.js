@@ -86,8 +86,4 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "moveDeparture",
   "saveFeatureFlags",
   "importTrelloBoard",
-  "saveSupportCard",
-  "deleteSupportCard",
-  "uploadSupportAttachment",
-  "removeSupportAttachment",
 ]);

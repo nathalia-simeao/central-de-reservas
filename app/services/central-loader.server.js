@@ -218,6 +218,7 @@ export const loader = async ({ request }) => {
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: {
         id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true,
+        dateKey: true, time: true, assigneeIds: true, done: true,
         attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       },
     })

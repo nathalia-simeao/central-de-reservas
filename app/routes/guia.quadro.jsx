@@ -46,7 +46,7 @@ export const loader = async ({ request }) => {
     db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true } }),
     db.supportCard
       .findMany({
-        where: { visibleToGuides: true },
+        where: { visibleToGuides: true, dateKey: null },
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
         select: { id: true, title: true, body: true, attachments: { select: { id: true, fileName: true }, orderBy: { createdAt: "asc" } } },
       })

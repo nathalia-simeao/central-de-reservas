@@ -118,12 +118,19 @@ model SupportCard {
   checklists      Json?
   position        Int                     @default(0)
   visibleToGuides Boolean                 @default(true)
+  // Demanda avulsa no Quadro (sem passeio): com dia, aparece na coluna do dia;
+  // sem dia, é documento de suporte (coluna fixa).
+  dateKey         String?
+  time            String?
+  assigneeIds     String[]                @default([])
+  done            Boolean                 @default(false)
   trelloId        String?                 @unique
   attachments     SupportCardAttachment[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @default(now()) @updatedAt
 
   @@index([position])
+  @@index([dateKey])
 }
 
 model SupportCardAttachment {

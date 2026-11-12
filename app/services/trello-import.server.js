@@ -220,10 +220,13 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, now = new Da
       links: (Array.isArray(raw?.attachments) ? raw.attachments : []).slice(0, 40)
         .map((a) => ({ name: asText(a?.name, 160) || "Anexo", url: String(a?.url || "").slice(0, 1000) }))
         .filter((a) => /^https?:\/\//.test(a.url)),
-      checklists: (Array.isArray(raw?.checklists) ? raw.checklists : []).slice(0, 20).map((cl) => ({
-        title: asText(cl?.title, 120) || "Checklist",
-        items: (Array.isArray(cl?.items) ? cl.items : []).slice(0, 60).map((it) => ({ text: asText(it?.text), done: Boolean(it?.done) })).filter((it) => it.text),
-      })),
+      checklists: {
+        lists: (Array.isArray(raw?.checklists) ? raw.checklists : []).slice(0, 20).map((cl, i) => ({
+          id: `trello_${trelloId}_${i}`.slice(0, 64),
+          title: asText(cl?.title, 120) || "Checklist",
+          items: (Array.isArray(cl?.items) ? cl.items : []).slice(0, 60).map((it, j) => ({ id: `trello_${trelloId}_${i}_${j}`.slice(0, 64), text: asText(it?.text), done: Boolean(it?.done) })).filter((it) => it.text),
+        })),
+      },
       position: index,
     };
     await prisma.supportCard.upsert({ where: { trelloId }, create: { ...data, trelloId }, update: data });

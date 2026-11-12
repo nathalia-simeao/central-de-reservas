@@ -6375,3 +6375,20 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-editable.is-editing input { width: 100%; font: inherit; padding: 4px 8px; border: 1px solid #0c66e4; border-radius: 6px; }
 .pmy-checklist__item.is-done .pmy-editable__btn { text-decoration: none; }
 @media (hover: none) { .pmy-editable__btn { opacity: 1; } }
+/* Quadro: demandas sem passeio (12/11/2026) */
+.pmy-task-card { border-left: 4px solid #6e5dc6; }
+.pmy-task-card.is-done { opacity: .65; }
+.pmy-task-card.is-done .pmy-board-card__title { text-decoration: line-through; }
+.pmy-task-card__badge { display: inline-block; font-size: 11px; font-weight: 700; color: #5e4db2; background: #f3f0ff; border-radius: 999px; padding: 1px 8px; margin-bottom: 4px; }
+.pmy-support-modal.is-task { border-top-color: #6e5dc6; }
+.pmy-support-modal h3.is-done { text-decoration: line-through; color: #626f86; }
+.pmy-task-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: start; }
+.pmy-task-meta__field { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 0; }
+.pmy-task-meta__field:last-child { grid-column: 1 / -1; }
+.pmy-task-meta__time { display: flex; gap: 6px; align-items: center; }
+.pmy-task-meta__done { align-self: end; font-weight: 600; }
+.pmy-task-people { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-weight: 400; }
+.pmy-task-people__menu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pmy-board-add__mode { display: inline-flex; border: 1px solid #dcdfe4; border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
+.pmy-board-add__mode button { border: 0; background: #fff; padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; color: #44546f; cursor: pointer; }
+.pmy-board-add__mode button.is-on { background: #0c66e4; color: #fff; }
