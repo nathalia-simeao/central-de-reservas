@@ -161,8 +161,8 @@
 .pmy-ds-tabs {
   display: inline-flex;
   align-items: center;
-  gap: var(--pmy-space-1);
-  padding: var(--pmy-space-1);
+  gap: 4px;
+  padding: 5px;
   border: 1px solid var(--pmy-ds-border);
   border-radius: var(--pmy-radius-pill);
   background: var(--pmy-ds-soft);
@@ -170,23 +170,31 @@
   overflow-x: auto;
 }
 .pmy-ds-tab {
-  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
   border: 0;
   border-radius: var(--pmy-radius-pill);
-  padding: 7px 12px;
+  padding: 8px 16px;
   background: transparent;
   color: var(--pmy-ds-muted);
   font-family: var(--pmy-font-ui);
-  font-size: var(--pmy-type-xs);
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  transition: color .15s ease, background-color .15s ease;
 }
+.pmy-ds-tab svg { flex: none; width: 17px; height: 17px; }
+.pmy-ds-tab:hover { color: var(--pmy-ds-text); }
 .pmy-ds-tab.is-active {
   background: var(--pmy-ds-surface);
   color: var(--pmy-ds-accent);
   box-shadow: var(--pmy-shadow-xs);
 }
+.pmy-ds-tab:focus-visible { outline: 2px solid var(--pmy-ds-accent); outline-offset: 1px; }
 
 .pmy-ds-form-field {
   display: flex;

@@ -139,7 +139,7 @@ export function Tabs({ items = [], value, onChange, ariaLabel = "Tabs", classNam
             onClick={() => onChange?.(item.value)}
             disabled={item.disabled}
           >
-            {item.icon ? <Icon name={item.icon} size={14} /> : null}
+            {item.icon ? <Icon name={item.icon} size={17} /> : null}
             {item.label}
           </button>
         );
