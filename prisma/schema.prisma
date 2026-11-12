@@ -147,6 +147,25 @@ model SupportCardAttachment {
   @@index([cardId])
 }
 
+// Comentários e atividade dos cartões do Quadro (como no Trello): quem fez o
+// quê e comentários com @menção. targetType "departure" → targetKey
+// "tourId|ISO" da saída; "card" → id do SupportCard (demanda/documento).
+model BoardActivity {
+  id             String   @id @default(uuid())
+  targetType     String
+  targetKey      String
+  kind           String   @default("event")
+  text           String   @db.Text
+  authorName     String?
+  authorPersonId String?
+  mentionIds     String[] @default([])
+  readBy         String[] @default([])
+  createdAt      DateTime @default(now())
+
+  @@index([targetType, targetKey, createdAt])
+  @@index([createdAt])
+}
+
 model GuideSession {
   id        String   @id @default(uuid())
   guideId   String

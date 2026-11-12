@@ -6408,3 +6408,25 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-attach-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
 .pmy-attach-thumbs .pmy-attach-thumb { width: 120px; height: 90px; border-radius: 8px; cursor: pointer; }
 .pmy-attach-thumbs .pmy-attach-thumb:focus-visible { outline: 2px solid #0c66e4; outline-offset: 2px; }
+/* Comentários e atividade (12/11/2026) */
+.pmy-activity__head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pmy-activity__compose { position: relative; }
+.pmy-activity__field { position: relative; }
+.pmy-activity__compose textarea { width: 100%; resize: vertical; font: inherit; padding: 8px 10px; border: 1px solid #c1c7d0; border-radius: 8px; background: #fff; min-height: 38px; }
+.pmy-activity__compose textarea:focus { border-color: #0c66e4; outline: none; box-shadow: 0 0 0 2px rgba(12,102,228,.15); }
+.pmy-activity__suggest { position: absolute; z-index: 5; left: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #dcdfe4; border-radius: 8px; box-shadow: 0 8px 20px rgba(9,30,66,.18); min-width: 220px; }
+.pmy-activity__suggest button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; text-align: left; }
+.pmy-activity__suggest button:hover, .pmy-activity__suggest li:first-child button { background: #e9f2ff; }
+.pmy-activity__list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 12px; }
+.pmy-activity__item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 14px; }
+.pmy-activity__item.is-new .pmy-activity__bubble { border-color: #0c66e4; }
+.pmy-activity__avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; font-style: normal; flex: 0 0 28px; }
+.pmy-activity__suggest .pmy-activity__avatar { width: 22px; height: 22px; flex-basis: 22px; font-size: 10px; }
+.pmy-activity__who, .pmy-activity__event { margin: 0; overflow-wrap: anywhere; line-height: 1.4; }
+.pmy-activity__who small, .pmy-activity__event small { color: #626f86; font-size: 12px; }
+.pmy-activity__bubble { margin: 4px 0 0; padding: 8px 10px; background: #fff; border: 1px solid #dcdfe4; border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pmy-activity__mention { color: #0c66e4; background: #e9f2ff; border-radius: 4px; padding: 0 2px; }
+.pmy-activity__del { border: 0; background: none; padding: 0; margin-top: 2px; color: #626f86; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.pmy-mentions-btn { position: relative; width: 42px; height: 42px; min-width: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 800; font-size: 17px; }
+.pmy-mentions-btn__count { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; background: #b42318; color: #fff; border-radius: 20px; font-size: 10px; display: grid; place-items: center; }
+.pmy-mentions { max-width: 560px; }

@@ -46,6 +46,7 @@ import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 import { importTrelloPlan } from "./trello-import.server.js";
 import { cardChecklists, isDateKey, isTimeKey } from "../utils/board-tasks.js";
+import { actorFor, departureTargetKey, describeChecklistOp, logActivity } from "./board-activity.server.js";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -170,6 +171,9 @@ export const action = async ({ request }) => {
   const formData = await request.formData();
   const _action = formData.get("_action");
   const centralUser = await resolveCentralUser(prisma, auth);
+  let actorCache = null;
+  const actor = async () => (actorCache ||= await actorFor(prisma, centralUser));
+  const activity = async (targetType, targetKey, text) => { if (text) await logActivity(prisma, { targetType, targetKey, text, actor: await actor() }); };
 
   if (ADMIN_ONLY_ACTIONS.has(String(_action || "")) && !isAdmin(centralUser)) {
     return json({ success: false, error: "Acesso restrito a administradores da Central." }, { status: 403 });
@@ -501,6 +505,7 @@ export const action = async ({ request }) => {
         },
         select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
       });
+      await activity("departure", departureTargetKey(tourId, startTime), `anexou “${attachment.fileName}”`);
       return json({ success: true, attachment, departureId: departure.id });
     } catch (e) {
       console.error("[PMY] uploadDepartureAttachment error:", e);
@@ -511,7 +516,8 @@ export const action = async ({ request }) => {
   if (_action === "removeDepartureAttachment") {
     try {
       const id = String(formData.get("id") || "").trim();
-      await prisma.departureAttachment.delete({ where: { id } });
+      const removed = await prisma.departureAttachment.delete({ where: { id }, select: { fileName: true, departure: { select: { tourId: true, startTime: true } } } });
+      await activity("departure", departureTargetKey(removed.departure.tourId, removed.departure.startTime), `removeu o arquivo “${removed.fileName}”`);
       return json({ success: true, id });
     } catch (e) {
       console.error("[PMY] removeDepartureAttachment error:", e);
@@ -574,9 +580,28 @@ export const action = async ({ request }) => {
       }
       if (formData.has("done")) data.done = String(formData.get("done")) === "true";
       if (!id && !data.title) return json({ success: false, error: "Dê um título ao cartão." }, { status: 400 });
+      const before = id ? await prisma.supportCard.findUnique({ where: { id }, select: { title: true, body: true, dateKey: true, time: true, assigneeIds: true, done: true } }) : null;
       const card = id
         ? await prisma.supportCard.update({ where: { id }, data, select: SUPPORT_SELECT })
         : await prisma.supportCard.create({ data: { ...data, position: await prisma.supportCard.count() }, select: SUPPORT_SELECT });
+      const fmt = (k) => (k ? k.split("-").reverse().join("/") : "sem data");
+      const changes = [];
+      if (!before) changes.push(card.dateKey ? `criou esta demanda para ${fmt(card.dateKey)}` : "criou este documento");
+      else {
+        if ("title" in data && data.title !== before.title) changes.push(`renomeou para “${data.title}”`);
+        if ("body" in data && (data.body || "") !== (before.body || "")) changes.push("editou a descrição");
+        if ("dateKey" in data && data.dateKey !== before.dateKey) changes.push(`mudou o dia de ${fmt(before.dateKey)} para ${fmt(data.dateKey)}`);
+        if ("time" in data && data.time !== before.time) changes.push(data.time ? `marcou o horário ${data.time}` : "tirou o horário");
+        if ("done" in data && data.done !== before.done) changes.push(data.done ? "marcou como concluída" : "reabriu a demanda");
+        if ("assigneeIds" in data) {
+          const added = data.assigneeIds.filter((x) => !before.assigneeIds.includes(x));
+          const removed = before.assigneeIds.filter((x) => !data.assigneeIds.includes(x));
+          const names = async (ids) => (await prisma.guide.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((g) => g.name).join(", ");
+          if (added.length) changes.push(`adicionou ${await names(added)} como responsável`);
+          if (removed.length) changes.push(`tirou ${await names(removed)} dos responsáveis`);
+        }
+      }
+      for (const text of changes) await activity("card", card.id, text);
       return json({ success: true, card });
     } catch (e) {
       console.error("[PMY] saveSupportCard error:", e);
@@ -592,7 +617,8 @@ export const action = async ({ request }) => {
       if (!id || !op?.type) return json({ success: false, error: "Checklist inválido." }, { status: 400 });
       const current = await prisma.supportCard.findUnique({ where: { id }, select: { checklists: true } });
       if (!current) return json({ success: false, error: "Cartão não encontrado." }, { status: 404 });
-      const checklists = applyChecklistOp(cardChecklists(current.checklists), op, centralUser?.name || "Equipe");
+      const checklists = applyChecklistOp(cardChecklists(current.checklists), op, (await actor()).name);
+      await activity("card", id, describeChecklistOp(current.checklists, op, { card: true }));
       const card = await prisma.supportCard.update({ where: { id }, data: { checklists }, select: SUPPORT_SELECT });
       return json({ success: true, card });
     } catch (e) {
@@ -626,6 +652,7 @@ export const action = async ({ request }) => {
         data: { cardId, fileName: safeFileName(file.name), mimeType, size: file.size, data: Buffer.from(await file.arrayBuffer()), uploadedBy: centralUser?.name || "central" },
         select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
       });
+      await activity("card", cardId, `anexou “${attachment.fileName}”`);
       return json({ success: true, attachment, cardId });
     } catch (e) {
       console.error("[PMY] uploadSupportAttachment error:", e);
@@ -636,7 +663,8 @@ export const action = async ({ request }) => {
   if (_action === "removeSupportAttachment") {
     try {
       const id = String(formData.get("id") || "").trim();
-      await prisma.supportCardAttachment.delete({ where: { id } });
+      const removed = await prisma.supportCardAttachment.delete({ where: { id }, select: { cardId: true, fileName: true } });
+      await activity("card", removed.cardId, `removeu o arquivo “${removed.fileName}”`);
       return json({ success: true, id });
     } catch (e) {
       console.error("[PMY] removeSupportAttachment error:", e);
@@ -658,7 +686,9 @@ export const action = async ({ request }) => {
         where: { tourId_startTime: { tourId, startTime } },
         select: { checklists: true },
       });
+      const described = describeChecklistOp(existing?.checklists, op);
       const checklists = applyChecklistOp(existing?.checklists, op, by);
+      await activity("departure", departureTargetKey(tourId, startTime), described);
       const departure = await prisma.tourDeparture.upsert({
         where: { tourId_startTime: { tourId, startTime } },
         create: { tourId, startTime, checklists },
@@ -767,6 +797,8 @@ export const action = async ({ request }) => {
         }).catch((e) => console.error("[PMY] moveDeparture availability sync failed:", e?.message || e));
       }
 
+      const fmtWhen = (d) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d);
+      await activity("departure", departureTargetKey(tour.id, toStartTime), `moveu esta saída de ${fmtWhen(fromStartTime)} para ${fmtWhen(toStartTime)}`);
       return json({ success: true, toStartTime: toStartTime.toISOString(), ...moved });
     } catch (e) {
       console.error("[PMY] moveDeparture error:", e);
@@ -1357,6 +1389,10 @@ export const action = async ({ request }) => {
       let languages = [];
       try { languages = JSON.parse(String(formData.get("languages") || "[]")); } catch { languages = []; }
       const assigned = await assignGuideToDeparture({ tour, guide, startTime, languages });
+      if (assigned.ok) {
+        const langs = (assigned.assignment?.languages || []).map((k) => languageLabel(k, "pt")).join(", ");
+        await activity("departure", departureTargetKey(tour.id, startTime), `escalou ${guide.name}${langs ? ` (${langs})` : ""}`);
+      }
       if (!assigned.ok) {
         return json(
           { success: false, code: assigned.code, error: assigned.error },
@@ -1420,6 +1456,7 @@ export const action = async ({ request }) => {
         where: { id },
         data: { status: "CANCELLED" },
       });
+      await activity("departure", departureTargetKey(existing.tourId, existing.startTime), `tirou ${existing.guide?.name || "o guia"} da saída`);
 
       return json({
         success: true,

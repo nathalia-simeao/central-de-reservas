@@ -12,6 +12,7 @@ import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
 import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
 import { SupportColumn, SupportModal, TaskCard } from "./SupportCards";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
+import ActivityPanel from "./ActivityPanel";
 import TrelloImportDialog from "./TrelloImportDialog";
 import { ChecklistBlock, ChecklistEditor, FocusInput } from "./ChecklistBlock";
 
@@ -410,7 +411,7 @@ function ChecklistSection({ card, raw, onOp, lang }) {
         <ChecklistBlock key={list.id} list={list} busy={busy} lang={lang}
           hidden={Boolean(state.hideDone[list.id])}
           isDone={(item) => Boolean(state.auto[item.key]?.done)}
-          onToggle={(item) => run({ type: "toggleAuto", key: item.key })}
+          onToggle={(item) => run({ type: "toggleAuto", key: item.key, label: item.text })}
           onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })} />
       ))} />
   );
@@ -520,6 +521,7 @@ export default function AgendaBoard({
   loadBookings = null,
   loadTrelloBoard = null,
   loadImage = null,
+  requestJson = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -727,7 +729,7 @@ export default function AgendaBoard({
       {onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
       <div className="pmy-board__scroll" ref={scrollRef} onScroll={onBoardScroll}>
         {supportHandlers && (
-          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} loadImage={loadImage} lang={lang} />
+          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} loadImage={loadImage} requestJson={requestJson} lang={lang} />
         )}
         {columns.map((col) => (
           <div
@@ -919,6 +921,11 @@ export default function AgendaBoard({
               hideTags
               lang={lang}
             />
+
+            {requestJson && (
+              <ActivityPanel targetType="departure" targetKey={openCard.key} requestJson={requestJson} lang={lang}
+                refreshKey={JSON.stringify([departureInfo[openCard.key], openCard.guides])} />
+            )}
           </div>
         </div>
       )}
@@ -934,7 +941,7 @@ export default function AgendaBoard({
         />
       )}
       {openTask && (
-        <SupportModal key={openTask.id} card={openTask} guides={guides} handlers={supportHandlers || {}} loadImage={loadImage} lang={lang} onClose={() => setOpenTaskId("")} />
+        <SupportModal key={openTask.id} card={openTask} guides={guides} handlers={supportHandlers || {}} loadImage={loadImage} requestJson={requestJson} lang={lang} onClose={() => setOpenTaskId("")} />
       )}
       {trelloOpen && (
         <TrelloImportDialog

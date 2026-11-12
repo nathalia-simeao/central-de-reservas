@@ -2,6 +2,7 @@ import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
 import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/departure-checklists.js";
 import { normalizeText } from "../utils/trello-import.js";
+import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
 import { GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
 import {
@@ -118,15 +119,18 @@ export const action = async ({ request, params }) => {
     if (!field || !allowed) return { error: "Esse check não está disponível agora." };
     const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
     await db.tourDeparture.update({ where: { id: departure.id }, data: { [field]: new Date(), checkedBy: by } });
+    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `registrou o check de ${step === "start" ? "Início" : step === "mid" ? "Meio" : "Fim"} (pelo app)`, actor: { name: guide.name, personId: guide.id } });
     return { ok: step === "start" ? "Início registrado." : step === "mid" ? "Meio registrado." : "Fim registrado. Bom trabalho!" };
   }
 
   if (intent === "checklist") {
     const listId = String(form.get("listId") || "");
     const itemId = String(form.get("itemId") || "");
-    const op = listId.startsWith("auto:") ? { type: "toggleAuto", key: itemId } : { type: "toggleItem", listId, itemId };
+    const op = listId.startsWith("auto:") ? { type: "toggleAuto", key: itemId, label: String(form.get("label") || "").slice(0, 160) } : { type: "toggleItem", listId, itemId };
     const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
+    const described = describeChecklistOp(departure.checklists, op);
     const checklists = applyChecklistOp(departure.checklists, op, guide.name);
+    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: described ? `${described} (pelo app)` : null, actor: { name: guide.name, personId: guide.id } });
     await db.tourDeparture.update({ where: { id: departure.id }, data: { checklists } });
     return { checklistSaved: true };
   }
@@ -208,6 +212,7 @@ function ChecklistItem({ listId, item }) {
       <input type="hidden" name="intent" value="checklist" />
       <input type="hidden" name="listId" value={listId} />
       <input type="hidden" name="itemId" value={item.id} />
+      <input type="hidden" name="label" value={item.text} />
       <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
         <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
         <span>{item.text}</span>

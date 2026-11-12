@@ -23,6 +23,9 @@ a { color: inherit; }
 .g-cl-item.done span:last-child { color:var(--g-muted); text-decoration:line-through; }
 .g-cl-box { flex:0 0 22px; height:22px; border-radius:6px; border:2px solid var(--g-line); display:grid; place-items:center; font-size:14px; font-weight:800; color:#fff; }
 .g-cl-item.done .g-cl-box { background:var(--g-green); border-color:var(--g-green); }
+.g-mentions { border-color:#0c66e4; }
+.g-mentions p { margin:0 0 10px; font-size:15px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.g-mentions small { color:var(--g-muted); }
 .g-kpis { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
 .g-kpi { border:1px solid var(--g-line); border-radius:12px; padding:10px 12px; }
 .g-kpi small { display:block; color:var(--g-muted); font-size:12px; font-weight:600; }

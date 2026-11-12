@@ -3,6 +3,7 @@ import { isGuide, normalizeAreas } from "../../utils/team-areas.js";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "react-router";
 import { departureKey } from "../../components/pmy/DepartureTagsSection";
+import MentionsBell from "../../components/pmy/MentionsBell";
 import { normalizeFeatureFlags } from "../../utils/feature-flags";
 import { normalizeAgendaLabels, tourColor, contrastText } from "../../utils/agenda-labels.js";
 import { useLoaderData } from "react-router";
@@ -3123,6 +3124,7 @@ function CentralDeReservasContent() {
             </div>
             {activeTab==='dashboard' && (
               <div className="pmy-header-notification-actions" style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexWrap: "nowrap", gap: 10, width: "auto", flex: "0 0 auto", marginLeft: "auto" }}>
+                <MentionsBell requestJson={requestResourceJson} lang={lang} />
                 {isCentralAdmin && <GygDeactivationAlerts lang={lang} />}
                 <div className="pmy-date-wrapper" style={{ display: "inline-flex", flex: "0 0 auto", width: "auto" }}>
                 <button className="pmy-date-btn" onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}><Icon name="calendar" size={16} /> {getPeriodLabel()} <Icon name="chevronDown" size={14} /></button>
@@ -3210,7 +3212,7 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              supportCards, supportHandlers, loadBookings: loadBoardBookings, loadImage: loadCentralImage,
+              supportCards, supportHandlers, loadBookings: loadBoardBookings, loadImage: loadCentralImage, requestJson: requestResourceJson,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
               loadTrelloBoard: isCentralAdmin ? loadTrelloBoard : null,
               onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,

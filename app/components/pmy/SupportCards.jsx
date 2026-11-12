@@ -7,6 +7,7 @@ import { useState } from "react";
 import { DatePicker, TimeSelect } from "./PmyUI";
 import { ChecklistEditor } from "./ChecklistBlock";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
+import ActivityPanel from "./ActivityPanel";
 import { cardChecklists } from "../../utils/board-tasks.js";
 import { checklistProgress } from "../../utils/departure-checklists.js";
 
@@ -20,7 +21,7 @@ export function taskProgress(card) {
   return checklistProgress({ bookings: [] }, cardChecklists(card?.checklists));
 }
 
-export function SupportModal({ card, guides = [], handlers = {}, loadImage = null, onClose, lang = "pt" }) {
+export function SupportModal({ card, guides = [], handlers = {}, loadImage = null, requestJson = null, onClose, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const isNew = !card.id;
   const isTask = Boolean(card.dateKey);
@@ -174,6 +175,10 @@ export function SupportModal({ card, guides = [], handlers = {}, loadImage = nul
           </div>
         )}
 
+        {!isNew && requestJson && (
+          <ActivityPanel targetType="card" targetKey={card.id} requestJson={requestJson} refreshKey={JSON.stringify(card)} lang={lang} />
+        )}
+
         {!isNew && handlers.remove && (
           <div className="pmy-support-actions">
             <button type="button" className="pmy-board-btn is-danger" disabled={busy}
@@ -216,7 +221,7 @@ function CardCover({ card, loadImage }) {
   return cover ? <AuthedImage path={`/suporte/anexo/${cover.id}`} loadImage={loadImage} className="pmy-board-card__cover" /> : null;
 }
 
-export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImage = null, lang = "pt" }) {
+export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImage = null, requestJson = null, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [openId, setOpenId] = useState(null); // id | "new"
   const docs = cards.filter((c) => !c.dateKey);
@@ -252,7 +257,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImag
       </div>
       {canEdit && <button type="button" className="pmy-board__add" onClick={() => setOpenId("new")}>+ {tr("Adicionar documento", "Add document")}</button>}
       {open && (
-        <SupportModal key={open.id || "new"} card={open} guides={guides} handlers={handlers} loadImage={loadImage} lang={lang} onClose={(nextId) => setOpenId(nextId || null)} />
+        <SupportModal key={open.id || "new"} card={open} guides={guides} handlers={handlers} loadImage={loadImage} requestJson={requestJson} lang={lang} onClose={(nextId) => setOpenId(nextId || null)} />
       )}
     </div>
   );

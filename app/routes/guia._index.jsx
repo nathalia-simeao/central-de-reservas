@@ -52,11 +52,28 @@ export const loader = async ({ request }) => {
 
   // Regrava o cookie com Path=/ para quem entrou antes da correção da setinha de voltar.
   const token = sessionTokenFromRequest(request);
-  return data({ guide: { name: guide.name }, items }, token ? { headers: { "Set-Cookie": sessionCookie(token) } } : undefined);
+  // Comentários do Quadro em que marcaram este guia e que ele ainda não viu.
+  const mentionRows = await db.boardActivity
+    .findMany({ where: { mentionIds: { has: guide.id }, NOT: { readBy: { has: guide.id } } }, orderBy: { createdAt: "desc" }, take: 10 })
+    .catch(() => []);
+  const mentions = mentionRows.map((m) => ({ id: m.id, text: m.text, authorName: m.authorName, createdAt: m.createdAt.toISOString() }));
+  return data({ guide: { name: guide.name }, items, mentions }, token ? { headers: { "Set-Cookie": sessionCookie(token) } } : undefined);
+};
+
+export const action = async ({ request }) => {
+  const guide = await getGuideFromRequest(db, request);
+  if (!guide) return redirectTo("/guia/login");
+  const form = await request.formData();
+  if (form.get("intent") === "mentionsRead") {
+    const ids = String(form.get("ids") || "").split(",").filter(Boolean).slice(0, 50);
+    const rows = await db.boardActivity.findMany({ where: { id: { in: ids }, mentionIds: { has: guide.id } }, select: { id: true, readBy: true } });
+    for (const r of rows) if (!r.readBy.includes(guide.id)) await db.boardActivity.update({ where: { id: r.id }, data: { readBy: { push: guide.id } } });
+  }
+  return { ok: true };
 };
 
 export default function GuideHome() {
-  const { guide, items } = useLoaderData();
+  const { guide, items, mentions = [] } = useLoaderData();
   const groups = [];
   for (const item of items) {
     const parts = lisbonParts(item.startTime);
@@ -77,6 +94,20 @@ export default function GuideHome() {
           <button type="submit" className="g-link" style={{ background: "none", border: 0, cursor: "pointer" }}>Sair</button>
         </Form>
       </div>
+
+      {mentions.length > 0 && (
+        <div className="g-card g-mentions">
+          <h2>💬 Marcaram você ({mentions.length})</h2>
+          {mentions.map((m) => (
+            <p key={m.id}><b>{m.authorName || "Equipe"}</b>: {m.text}<br /><small>{lisbonParts(m.createdAt).day} · {lisbonParts(m.createdAt).time}</small></p>
+          ))}
+          <Form method="post">
+            <input type="hidden" name="intent" value="mentionsRead" />
+            <input type="hidden" name="ids" value={mentions.map((m) => m.id).join(",")} />
+            <button type="submit" className="g-btn" style={{ width: "100%" }}>OK, vi</button>
+          </Form>
+        </div>
+      )}
 
       <div className="g-row" style={{ marginBottom: 12 }}>
         <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}>💳 Vender · gerar link</Link>
