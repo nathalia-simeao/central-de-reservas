@@ -6350,4 +6350,7 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-trello-conn__steps { margin: 0; padding-left: 18px; font-size: 13px; color: #44546f; display: grid; gap: 2px; }
 .pmy-trello-conn__status p { margin: 0 0 6px; font-size: 14px; }
 .pmy-trello-conn__summary { margin-top: 10px; }
-.pmy-departure-file__open { border: 0; background: none; padding: 0; font: inherit; color: #0c66e4; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+/* Arquivo que abre ao clicar: pílula verde PMY com texto branco. */
+.pmy-departure-file:has(.pmy-departure-file__open) { background: #006600; border-color: #006600; color: #fff; }
+.pmy-departure-file .pmy-departure-file__open { font: inherit; font-weight: 600; color: #fff; text-decoration: none; padding: 0; }
+.pmy-departure-file .pmy-departure-file__open:hover { text-decoration: none; opacity: .9; }
