@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 
 import { variantMatchesTourLanguage } from "../../utils/tour-languages";
 
-import { Badge, Button, Card, DatePicker, DropdownSelect, EmptyState, FormField, Icon, Input, Modal, SectionHeader, Toast, TimeSelect } from "./PmyUI";
+import { Badge, Button, Card, DatePicker, DropdownSelect, EmptyState, FormField, Icon, Input, Modal, SectionHeader, Tabs, Toast, TimeSelect } from "./PmyUI";
 
 
 const TOUR_FIELD_LABELS = {
@@ -156,6 +156,9 @@ export default function AgendaTab(props) {
   // "Nova reserva", "Bloqueio manual" e "Capacidade" abrem em janelas (pedido 12/11).
   const [panel, setPanel] = useState("");
   const closePanel = () => setPanel("");
+  // Bloqueio manual em duas abas: criar / ver o que já está bloqueado (com busca).
+  const [blockTab, setBlockTab] = useState("new");
+  const [blockListSearch, setBlockListSearch] = useState("");
 
   const normalizedBlockTourSearch = blockTourSearch
     .normalize("NFD")
@@ -204,6 +207,25 @@ export default function AgendaTab(props) {
     const [year, month, day] = dateKey.split("-");
     return `${day}/${month}/${year}`;
   };
+
+  const weekdayNames = lang === "en"
+    ? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    : ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const describeBlock = (block) => [
+    block.date
+      ? formatBlockDate(block.date)
+      : weekdayNames[Number(block.dayOfWeek)]
+        ? tr(`toda ${weekdayNames[Number(block.dayOfWeek)]}`, `every ${weekdayNames[Number(block.dayOfWeek)]}`)
+        : `${tr("dia da semana", "weekday")} ${block.dayOfWeek}`,
+    block.timeSlot === "ALL" || !block.timeSlot ? tr("todos os horários", "all times") : block.timeSlot,
+    (block.platforms || []).length ? block.platforms.join(", ") : tr("todas as plataformas", "all platforms"),
+  ].join(" · ");
+  const blockQuery = blockListSearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const filteredBlocks = blockQuery
+    ? blockedDates.filter((block) =>
+        `${block.tour?.title || tr("Todos os tours", "All tours")} ${describeBlock(block)}`
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(blockQuery))
+    : blockedDates;
 
   const selectedBlockTour = blockTourId
     ? tourOptions.find((tour) => tour.id === blockTourId)
@@ -537,6 +559,18 @@ export default function AgendaTab(props) {
             )}
           </p>
 
+          <Tabs
+            className="pmy-block-tabs"
+            items={[
+              { value: "new", label: tr("Novo bloqueio", "New block") },
+              { value: "list", label: `${tr("Bloqueados", "Blocked")} (${blockedDates.length})` },
+            ]}
+            value={blockTab}
+            onChange={setBlockTab}
+            ariaLabel={tr("Bloqueio manual", "Manual block")}
+          />
+
+          {blockTab === "new" ? (
           <form onSubmit={handleCreateBlock} className="pmy-ds-form-stack">
             <FormField
               label={t.form_select_tour}
@@ -810,55 +844,35 @@ export default function AgendaTab(props) {
             </Button>
           </form>
 
-          <div className="pmy-ds-subsection">
-            <div className="pmy-ds-subsection__header">
-              <strong className="pmy-ds-subsection__title">
-                <Icon name="lock" size={16} />
-                {tr("Bloqueios ativos no banco", "Active blocks in the database")}
-              </strong>
-              <Badge>{blockedDates.length} {tr("regras", "rules")}</Badge>
-            </div>
-
+          ) : (
+          <div className="pmy-block-list-tab">
+            {blockedDates.length > 0 && (
+              <Input
+                type="search"
+                value={blockListSearch}
+                placeholder={tr("Buscar por passeio, data ou plataforma...", "Search by tour, date or platform...")}
+                aria-label={tr("Buscar bloqueios", "Search blocks")}
+                onChange={(event) => setBlockListSearch(event.target.value)}
+              />
+            )}
             {blockedDates.length === 0 ? (
               <EmptyState
                 compact
                 icon="lock"
                 title={tr("Nenhum bloqueio ativo", "No active blocks")}
-                description={tr(
-                  "Bloqueios criados aparecerão aqui para remoção rápida.",
-                  "Created blocks will appear here for quick removal.",
-                )}
+                description={tr("Os bloqueios criados aparecem aqui para remoção rápida.", "Created blocks will appear here for quick removal.")}
               />
+            ) : !filteredBlocks.length ? (
+              <p className="pmy-agenda-modal__lead">{tr("Nenhum bloqueio encontrado.", "No blocks found.")}</p>
             ) : (
               <div className="pmy-ds-block-list">
-                {blockedDates.slice(0, 30).map((block) => (
+                {filteredBlocks.map((block) => (
                   <div key={block.id} className="pmy-ds-block-row">
                     <div>
-                      <div className="pmy-ds-block-row__title">
-                        {block.tour?.title || tr("Todos os tours", "All tours")}
-                      </div>
-                      <div className="pmy-ds-block-row__meta">
-                        {block.date
-                          ? formatBlockDate(block.date)
-                          : `${tr("dia da semana", "weekday")} ${block.dayOfWeek}`}
-                        {" · "}
-                        {block.timeSlot === "ALL" || !block.timeSlot
-                          ? tr("todos os horários", "all times")
-                          : block.timeSlot}
-                        {" · "}
-                        {(block.platforms || []).length
-                          ? block.platforms.join(", ")
-                          : tr("todas as plataformas", "all platforms")}
-                      </div>
+                      <div className="pmy-ds-block-row__title">{block.tour?.title || tr("Todos os tours", "All tours")}</div>
+                      <div className="pmy-ds-block-row__meta">{describeBlock(block)}</div>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      icon="trash"
-                      onClick={() => handleRemoveBlock(block.id)}
-                    >
+                    <Button type="button" variant="danger" size="sm" icon="trash" onClick={() => handleRemoveBlock(block.id)}>
                       {tr("Remover", "Remove")}
                     </Button>
                   </div>
@@ -866,6 +880,7 @@ export default function AgendaTab(props) {
               </div>
             )}
           </div>
+          )}
       </Modal>
 
       <Modal

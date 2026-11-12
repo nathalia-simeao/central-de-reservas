@@ -6587,3 +6587,8 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
   .pmy-cal__jump { width: 100%; }
 }
 .pmy-capacity-panel .pmy-capacity-card, .pmy-capacity-panel .pmy-capacity-card * { box-sizing: border-box; }
+/* Bloqueio manual: abas Novo bloqueio / Bloqueados */
+.pmy-block-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin-bottom: 18px; }
+.pmy-block-tabs .pmy-ds-tab { justify-content: center; text-align: center; }
+.pmy-block-list-tab { display: grid; gap: 12px; }
+.pmy-block-list-tab .pmy-ds-block-list { max-height: none; }
