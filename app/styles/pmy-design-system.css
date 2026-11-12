@@ -6225,11 +6225,17 @@
 .pmy-checklist__progress { display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 8px; }
 .pmy-checklist__progress small { font-size: 11px; color: #626f86; }
 .pmy-checklist__progress span { height: 8px; border-radius: 4px; background: #e9ebee; overflow: hidden; }
-.pmy-checklist__progress i { display: block; height: 100%; background: #579dff; border-radius: 4px; transition: width .2s ease; }
+.pmy-checklist__progress i { display: block; height: 100%; background: #579dff; border-radius: 4px; transition: width .2s ease, background .2s ease; }
+/* Checklist completo: barra verde (como no Trello). */
 .pmy-checklist__progress i.is-done { background: #1f845a; }
 .pmy-checklist__item { display: grid; grid-template-columns: 24px minmax(0,1fr) 24px; align-items: start; gap: 8px; padding: 6px 4px; border-radius: 8px; font-size: 14px; cursor: pointer; }
 .pmy-checklist__item:hover { background: #f1f2f4; }
-.pmy-checklist__item input { width: 16px; height: 16px; margin-top: 2px; accent-color: #0c66e4; }
+/* Quadradinho no estilo do Trello: vazio com borda cinza; feito = azul com ✓ branco. */
+.pmy-checklist__item input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 2px 0 0; border: 2px solid #8590a2; border-radius: 3px; background: #fff; display: grid; place-items: center; cursor: pointer; transition: background .12s, border-color .12s; }
+.pmy-checklist__item input[type="checkbox"]:hover { border-color: #44546f; }
+.pmy-checklist__item input[type="checkbox"]:checked { background: #0c66e4; border-color: #0c66e4; }
+.pmy-checklist__item input[type="checkbox"]:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.pmy-checklist__item input[type="checkbox"]:focus-visible { outline: 2px solid #388bff; outline-offset: 2px; }
 .pmy-checklist__item.is-done span { text-decoration: line-through; color: #626f86; }
 .pmy-checklist__del { border: 0; background: transparent; color: #626f86; font-size: 16px; cursor: pointer; opacity: 0; }
 .pmy-checklist__item:hover .pmy-checklist__del { opacity: 1; }
