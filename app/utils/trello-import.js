@@ -289,7 +289,7 @@ export function matchGuide(memberName, guides = [], aliases = {}) {
   return byFirst.length === 1 ? byFirst[0] : null;
 }
 
-const NOT_NAMES = new Set(["evening", "morning", "night", "sunset", "horario", "combinar", "checklist", "grupo", "privado", "private", "tour", "transfer", "pm", "am", "pax", "teste"]);
+const NOT_NAMES = new Set(["evening", "afternoon", "morning", "night", "sunset", "horario", "combinar", "checklist", "grupo", "privado", "private", "tour", "transfer", "pm", "am", "pax", "teste"]);
 
 /**
  * Nome do guia escrito no título do checklist do Trello:

@@ -123,6 +123,7 @@ test("guide name comes from the checklist title when the card has no members", (
   assert.equal(guideNameFromTitle("Horário a combinar"), null);
   assert.equal(guideNameFromTitle("Checklist"), null);
   assert.equal(guideNameFromTitle("18h Evening ENG"), null);
+  assert.equal(guideNameFromTitle("Afternoon ENG"), null);
   const guides = [{ id: "m", name: "Miguel Alves" }, { id: "s", name: "Simone Silva" }];
   assert.equal(matchGuide(guideNameFromTitle("14h ENG Miguel"), guides)?.id, "m");
   assert.equal(matchGuide(guideNameFromTitle("14h FR Solal"), guides), null);
