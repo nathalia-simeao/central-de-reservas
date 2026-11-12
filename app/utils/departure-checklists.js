@@ -10,6 +10,7 @@
 // Listas manuais ficam em TourDeparture.checklists.lists.
 
 import { languageKey } from "./tour-languages.js";
+import { bookingPlatformKey, platformKey, splitPlatform } from "./checklist-platforms.js";
 
 const MAX_LISTS = 20;
 const MAX_ITEMS = 60;
@@ -25,13 +26,19 @@ export function normalizeChecklists(raw) {
   const lists = (Array.isArray(source.lists) ? source.lists : []).slice(0, MAX_LISTS).map((list) => ({
     id: clean(list?.id, 64) || newId("cl"),
     title: clean(list?.title, 120) || "Checklist",
-    items: (Array.isArray(list?.items) ? list.items : []).slice(0, MAX_ITEMS).map((item) => ({
-      id: clean(item?.id, 64) || newId("it"),
-      text: clean(item?.text),
-      done: Boolean(item?.done),
-      at: item?.at || null,
-      by: clean(item?.by, 80) || null,
-    })).filter((item) => item.text),
+    items: (Array.isArray(list?.items) ? list.items : []).slice(0, MAX_ITEMS).map((item) => {
+      // Plataforma do cliente: a escolhida, ou a sigla escrita no fim do texto (Trello).
+      const saved = platformKey(item?.platform);
+      const split = saved ? { text: clean(item?.text), platform: saved } : splitPlatform(clean(item?.text));
+      return {
+        id: clean(item?.id, 64) || newId("it"),
+        text: split.text,
+        done: Boolean(item?.done),
+        at: item?.at || null,
+        by: clean(item?.by, 80) || null,
+        ...(split.platform ? { platform: split.platform } : {}),
+      };
+    }).filter((item) => item.text),
   }));
   const auto = {};
   for (const [key, value] of Object.entries(source.auto && typeof source.auto === "object" ? source.auto : {})) {
@@ -63,7 +70,8 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
       const text = clean(op.text);
       if (list && text) {
         if (list.items.length >= MAX_ITEMS) throw new Error("Limite de itens atingido.");
-        list.items.push({ id: newId("it"), text, done: false, at: null, by: null });
+        const chosen = platformKey(op.platform);
+        list.items.push({ id: newId("it"), text, done: false, at: null, by: null, ...(chosen ? { platform: chosen } : {}) });
       }
       break;
     }
@@ -76,6 +84,11 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
       const item = findList(op.listId)?.items.find((i) => i.id === op.itemId);
       const text = clean(op.text);
       if (item && text) item.text = text;
+      // Trocar ou tirar a plataforma (op.platform = "" tira).
+      if (item && op.platform !== undefined) {
+        const chosen = platformKey(op.platform);
+        if (chosen) item.platform = chosen; else delete item.platform;
+      }
       break;
     }
     case "moveItem": {
@@ -159,6 +172,7 @@ export function autoChecklists(card) {
       ...bookings.map((b) => ({
         key: `booking:${b.id}`,
         text: [clean(b.customerName, 80) || "Cliente", ages(b) ? `(${ages(b)})` : "", clean(b.customerPhone, 40)].filter(Boolean).join(" "),
+        platform: bookingPlatformKey(b.platform),
       })),
       { key: `${listId}:end`, text: "Fim de tour" },
     ];

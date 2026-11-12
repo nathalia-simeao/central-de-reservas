@@ -2,6 +2,58 @@
 // com vários. Usado nas saídas (AgendaBoard) e nas demandas (SupportCards).
 import { useEffect, useRef, useState } from "react";
 import { normalizeChecklists } from "../../utils/departure-checklists.js";
+import { CHECKLIST_PLATFORMS, checklistPlatform } from "../../utils/checklist-platforms.js";
+
+/** Selo da plataforma do cliente (GYG, VT, HD…). */
+export function PlatformBadge({ platform, className = "" }) {
+  const info = checklistPlatform(platform);
+  if (!info) return null;
+  return <span className={`pmy-plat ${className}`} style={{ background: info.color }} title={info.name}>{info.label}</span>;
+}
+
+/** Escolher a plataforma: lista curta de selos coloridos (sem select nativo). */
+export function PlatformPicker({ value, onChange, lang = "pt", disabled = false, compact = false }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => { if (!boxRef.current?.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const current = checklistPlatform(value);
+  return (
+    <span className={`pmy-plat-picker${compact ? " is-compact" : ""}`} ref={boxRef} role="presentation" onClick={(e) => e.preventDefault()}>
+      <button type="button" className={current ? "pmy-plat-picker__current" : "pmy-plat-picker__empty"} disabled={disabled}
+        aria-haspopup="true" aria-expanded={open}
+        aria-label={current ? tr(`Plataforma: ${current.name}. Trocar`, `Platform: ${current.name}. Change`) : tr("Escolher plataforma do cliente", "Choose the guest's platform")}
+        title={current ? current.name : tr("Plataforma do cliente", "Guest's platform")}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}>
+        {current ? <PlatformBadge platform={current.key} /> : tr("+ plataforma", "+ platform")}
+      </button>
+      {open && (
+        <span className="pmy-plat-picker__menu" role="menu">
+          {CHECKLIST_PLATFORMS.map((p) => (
+            <button key={p.key} type="button" role="menuitemradio" aria-checked={p.key === current?.key}
+              className={p.key === current?.key ? "is-on" : ""}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onChange(p.key); }}>
+              <PlatformBadge platform={p.key} /> {p.name}
+            </button>
+          ))}
+          {current && (
+            <button type="button" role="menuitem" className="pmy-plat-picker__clear"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); onChange(""); }}>
+              {tr("Sem plataforma", "No platform")}
+            </button>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export function FocusInput(props) {
   const ref = useRef(null);
@@ -42,15 +94,16 @@ export function EditableText({ value, onSave, label, className = "", lang }) {
   );
 }
 
-export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, onMoveItem, onEditItem, onRename, drag, setDrag, busy, lang }) {
+export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, onMoveItem, onEditItem, onSetPlatform, onRename, drag, setDrag, busy, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
+  const [platform, setPlatform] = useState("");
   const total = list.items.length;
   const done = list.items.filter(isDone).length;
   const pct = total ? Math.round((done / total) * 100) : 0;
   const items = hidden ? list.items.filter((item) => !isDone(item)) : list.items;
-  const submit = async () => { if (!text.trim()) return; await onAddItem(text); setText(""); };
+  const submit = async () => { if (!text.trim()) return; await onAddItem(text, platform); setText(""); setPlatform(""); };
   return (
     <div className={`pmy-checklist${onMoveItem && drag?.over === `${list.id}:end` ? " is-drop" : ""}`}
       onDragOver={onMoveItem && drag ? (e) => { e.preventDefault(); if (e.target === e.currentTarget || !e.target.closest(".pmy-checklist__item")) { if (drag.over !== `${list.id}:end`) setDrag({ ...drag, over: `${list.id}:end` }); } } : undefined}
@@ -100,8 +153,11 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {canMove && <span className="pmy-checklist__grip" aria-hidden="true">⋮⋮</span>}
             <input type="checkbox" checked={on} disabled={busy} onChange={() => onToggle(item)} />
             {onEditItem
-              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} />
-              : <span>{item.text}</span>}
+              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" />
+              : <span className="pmy-checklist__text">{item.text}</span>}
+            {onSetPlatform
+              ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
+              : <PlatformBadge platform={item.platform} />}
             {canMove && (
               <span className="pmy-checklist__move">
                 <button type="button" aria-label={tr("Subir item", "Move up")} disabled={busy || index === 0}
@@ -119,8 +175,11 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
       {hidden && done > 0 && !items.length && <p className="pmy-board-pop__empty">{tr("Tudo marcado ✓", "All checked ✓")}</p>}
       {onAddItem && (adding ? (
         <div className="pmy-checklist__add">
-          <FocusInput value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item", "Add an item")}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } if (e.key === "Escape") setAdding(false); }} />
+          <div className="pmy-checklist__add-row">
+            <FocusInput value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("Adicionar um item (ex.: Caroline (1A) +44 7747…)", "Add an item")}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } if (e.key === "Escape") setAdding(false); }} />
+            <PlatformPicker value={platform} onChange={setPlatform} lang={lang} />
+          </div>
           <div className="pmy-board-pop__actions">
             <button type="button" className="pmy-board-btn is-primary" disabled={busy || !text.trim()} onClick={submit}>{tr("Adicionar", "Add")}</button>
             <button type="button" className="pmy-board-btn" onClick={() => { setAdding(false); setText(""); }}>{tr("Cancelar", "Cancel")}</button>
@@ -176,7 +235,8 @@ export function ChecklistEditor({ raw, onOp, lang = "pt", before = null, empty =
           onToggle={(item) => run({ type: "toggleItem", listId: list.id, itemId: item.id })}
           onToggleHide={() => run({ type: "toggleHideDone", listId: list.id })}
           onDelete={() => { if (typeof window === "undefined" || window.confirm(tr("Excluir este checklist?", "Delete this checklist?"))) run({ type: "deleteList", listId: list.id }); }}
-          onAddItem={(text) => run({ type: "addItem", listId: list.id, text })}
+          onAddItem={(text, platform) => run({ type: "addItem", listId: list.id, text, platform })}
+          onSetPlatform={(item, platform) => run({ type: "editItem", listId: list.id, itemId: item.id, platform })}
           onDeleteItem={(item) => run({ type: "deleteItem", listId: list.id, itemId: item.id })}
           drag={drag} setDrag={setDrag}
           onEditItem={(item, text) => run({ type: "editItem", listId: list.id, itemId: item.id, text })}

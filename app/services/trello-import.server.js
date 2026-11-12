@@ -6,6 +6,7 @@
 // fica como está.
 
 import { normalizeChecklists } from "../utils/departure-checklists.js";
+import { splitPlatform } from "../utils/checklist-platforms.js";
 import { lisbonParts } from "../utils/agenda-board.js";
 import { guideNameFromTitle, matchGuide, memberForGroup, normalizeText, noteTextForCard } from "../utils/trello-import.js";
 
@@ -172,11 +173,13 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, aliases = {}
         id: listId,
         title: group.title,
         items: group.items.map((item, index) => {
-          const before = markedHere.get(`${listId}|${normalizeText(item.text)}`);
+          const { text, platform } = splitPlatform(item.text);
+          const before = markedHere.get(`${listId}|${normalizeText(text)}`);
           const done = item.done || Boolean(before);
           return {
             id: `${TRELLO_PREFIX}${group.trelloId}_${index}`.slice(0, 64),
-            text: item.text,
+            text,
+            ...(platform ? { platform } : {}),
             done,
             at: done ? before?.at || nowIso : null,
             by: done ? before?.by || "Trello" : null,

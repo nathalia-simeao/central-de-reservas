@@ -1,3 +1,4 @@
+import { checklistPlatform } from "../utils/checklist-platforms.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
 import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/departure-checklists.js";
@@ -44,13 +45,13 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates }) 
     .filter((list) => !myLanguages.length || myLanguages.includes(list.id.replace("auto:", "")))
     .map((list) => ({
       id: list.id, title: list.title, auto: true, mine: true,
-      items: list.items.map((item) => ({ id: item.key, text: item.text, done: Boolean(state.auto[item.key]?.done) })),
+      items: list.items.map((item) => ({ id: item.key, text: item.text, platform: item.platform || null, done: Boolean(state.auto[item.key]?.done) })),
     }));
   const firstName = normalizeText(guide.name).split(" ")[0];
   const manual = state.lists.map((list) => ({
     id: list.id, title: list.title, auto: false,
     mine: Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
-    items: list.items.map((item) => ({ id: item.id, text: item.text, done: item.done })),
+    items: list.items.map((item) => ({ id: item.id, text: item.text, platform: item.platform || null, done: item.done })),
   }));
   return [...auto, ...manual].sort((a, b) => Number(b.mine) - Number(a.mine));
 }
@@ -215,7 +216,12 @@ function ChecklistItem({ listId, item }) {
       <input type="hidden" name="label" value={item.text} />
       <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
         <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
-        <span>{item.text}</span>
+        <span className="g-cl-text">{item.text}</span>
+        {checklistPlatform(item.platform) && (
+          <span className="g-plat" style={{ background: checklistPlatform(item.platform).color }} title={checklistPlatform(item.platform).name}>
+            {checklistPlatform(item.platform).label}
+          </span>
+        )}
       </button>
     </fetcher.Form>
   );

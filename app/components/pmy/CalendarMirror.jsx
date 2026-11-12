@@ -11,6 +11,7 @@ import { cardChecklists } from "../../utils/board-tasks.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import { guideNameFromTitle, matchGuide, normalizeText } from "../../utils/trello-import.js";
 import AuthedImage, { isPreviewableImage } from "./AuthedImage";
+import { PlatformBadge } from "./ChecklistBlock";
 import { Button, DatePicker, Tabs } from "./PmyUI";
 
 const LANG_COLORS = { en: "#0c66e4", pt: "#1f845a", es: "#c9372c", fr: "#6e5dc6", it: "#b65c02", de: "#44546f" };
@@ -141,7 +142,7 @@ function ReadOnlyChecklist({ title, items, isDone }) {
       <ul>
         {items.map((item) => (
           <li key={item.key || item.id} className={isDone(item) ? "is-done" : ""}>
-            <span className="pmy-mirror__box" aria-hidden="true">{isDone(item) ? "✓" : ""}</span>{item.text}
+            <span className="pmy-mirror__box" aria-hidden="true">{isDone(item) ? "✓" : ""}</span>{item.text} <PlatformBadge platform={item.platform} />
           </li>
         ))}
       </ul>

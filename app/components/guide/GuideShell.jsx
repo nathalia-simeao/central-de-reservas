@@ -20,7 +20,8 @@ a { color: inherit; }
 .g-cl h3 { font-size:14px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; overflow-wrap:anywhere; }
 .g-cl h3 small { color:var(--g-muted); font-weight:600; white-space:nowrap; }
 .g-cl-item { display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; background:none; border:0; border-top:1px solid var(--g-line); padding:10px 2px; font:inherit; font-size:15px; color:var(--g-ink); cursor:pointer; min-height:44px; }
-.g-cl-item.done span:last-child { color:var(--g-muted); text-decoration:line-through; }
+.g-cl-item.done .g-cl-text { color:var(--g-muted); text-decoration:line-through; }
+.g-plat { flex:none; margin-left:auto; align-self:center; padding:1px 7px; border-radius:6px; color:#fff; font-size:12px; font-weight:700; letter-spacing:.02em; }
 .g-cl-box { flex:0 0 22px; height:22px; border-radius:6px; border:2px solid var(--g-line); display:grid; place-items:center; font-size:14px; font-weight:800; color:#fff; }
 .g-cl-item.done .g-cl-box { background:var(--g-green); border-color:var(--g-green); }
 .g-mentions { border-color:#0c66e4; }

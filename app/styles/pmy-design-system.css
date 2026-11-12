@@ -6626,3 +6626,27 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-int-summary__item.is-waiting { --sum-color: #0c66e4; --sum-soft: #e9f2ff; --sum-border: #cce0ff; }
 .pmy-trello-conn.is-bare .pmy-trello-sync:first-of-type { margin-top: 14px; }
 .pmy-guide-portal__hint { margin: 0 0 8px; font-size: 13px; color: var(--pmy-ds-muted); }
+/* Plataforma do cliente nos checklists (GYG, VT, HD…) */
+.pmy-plat { display: inline-flex; align-items: center; flex: none; padding: 1px 7px; border-radius: 5px; color: #fff; font-size: 11.5px; font-weight: 700; line-height: 18px; letter-spacing: .02em; text-decoration: none; }
+.pmy-checklist__item.is-done .pmy-plat { opacity: .75; }
+.pmy-plat-picker { position: relative; display: inline-flex; flex: none; }
+.pmy-plat-picker > button { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.pmy-plat-picker__empty { padding: 1px 7px !important; border: 1px dashed #8590a2 !important; border-radius: 5px; color: #626f86; font-size: 11.5px !important; white-space: nowrap; }
+.pmy-plat-picker.is-compact .pmy-plat-picker__empty { opacity: 0; transition: opacity .12s; }
+.pmy-checklist__item:hover .pmy-plat-picker.is-compact .pmy-plat-picker__empty,
+.pmy-plat-picker.is-compact .pmy-plat-picker__empty:focus-visible,
+.pmy-plat-picker.is-compact .pmy-plat-picker__empty[aria-expanded="true"] { opacity: 1; }
+.pmy-plat-picker__menu { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; display: grid; gap: 2px; min-width: 190px; padding: 6px; border: 1px solid #dfe1e6; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgba(9,30,66,.18); }
+.pmy-plat-picker__menu button { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 6px; background: none; color: #172b4d; font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+.pmy-plat-picker__menu button:hover, .pmy-plat-picker__menu button:focus-visible, .pmy-plat-picker__menu button.is-on { background: #f1f2f4; outline: none; }
+.pmy-plat-picker__clear { color: #626f86 !important; }
+.pmy-checklist__add-row { display: flex; align-items: center; gap: 8px; }
+.pmy-checklist__add-row input { flex: 1; min-width: 0; }
+.pmy-mirror__checklist li .pmy-plat { margin-left: 6px; }
+/* Linha do item em flex: grip, caixa, texto, plataforma, setas, apagar */
+.pmy-checklist__item, .pmy-checklist__item.is-movable { display: flex; align-items: flex-start; gap: 8px; }
+.pmy-checklist__item > .pmy-checklist__text { flex: 1; min-width: 0; }
+.pmy-checklist__item > .pmy-plat, .pmy-checklist__item > .pmy-plat-picker { margin-top: 1px; }
+.pmy-checklist__item > .pmy-checklist__del { margin-left: 2px; }
+.pmy-checklist__item.is-done .pmy-plat, .pmy-checklist__item.is-done .pmy-plat-picker, .pmy-checklist__item.is-done .pmy-plat-picker * { text-decoration: none; }
+.pmy-checklist__item.is-done .pmy-plat { color: #fff; }
