@@ -82,6 +82,7 @@ export default function GuideInstall() {
                   <li>{t("Abra este endereço no Chrome.")}</li>
                   <li>{t("Toque no menu ⋮ (canto de cima).")}</li>
                   <li>{t("Escolha “Instalar app” ou “Adicionar à tela inicial”.")}</li>
+                  <li>{t("Se aparecer “Não é possível instalar”, feche o Chrome, abra de novo este endereço e tente outra vez. Ou escolha “Criar atalho”.")}</li>
                 </ol>
               </section>
             )}

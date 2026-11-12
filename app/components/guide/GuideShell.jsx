@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, NavLink, useRouteLoaderData } from "react-router";
 import { guideLocale, translate } from "../../utils/guide-i18n.js";
 
@@ -197,6 +198,11 @@ function GuideTabs() {
 
 export function GuideShell({ children, title = "Portal do guia", wide = false, bare = false }) {
   const layout = useRouteLoaderData("routes/guia");
+  // Instalar como app no Android exige um service worker (public/guia-sw.js).
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/guia-sw.js", { scope: "/guia" }).catch(() => {});
+  }, []);
   const withTabs = Boolean(layout?.person);
   return (
     <>
