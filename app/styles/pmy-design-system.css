@@ -6345,3 +6345,8 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-board-guide .pmy-board-guide__lang.is-open { background: #e9f2ff; border-color: #0c66e4; color: #0c66e4; }
 .pmy-board-guides__edit { margin-top: 8px; padding: 10px; border: 1px solid #dcdfe4; border-radius: 10px; display: grid; gap: 8px; }
 .pmy-board-guides__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pmy-trello-conn__form { display: grid; gap: 10px; max-width: 560px; }
+.pmy-trello-conn__field { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.pmy-trello-conn__steps { margin: 0; padding-left: 18px; font-size: 13px; color: #44546f; display: grid; gap: 2px; }
+.pmy-trello-conn__status p { margin: 0 0 6px; font-size: 14px; }
+.pmy-trello-conn__summary { margin-top: 10px; }

@@ -45,7 +45,6 @@ import { handleCentralMediaAction } from "./central-media-actions.server";
 import { handleCentralGuideAction } from "./central-guide-actions.server";
 import { upsertLanguageQuotaRule } from "../utils/language-quotas.js";
 import { importTrelloPlan } from "./trello-import.server.js";
-import { createImportToken } from "../utils/import-tokens.server.js";
 
 // Server-only loader/actions for the PMY Central route. Field mappings persist per platform.
 const prisma = db;
@@ -536,11 +535,6 @@ export const action = async ({ request }) => {
       console.error("[PMY] importTrelloBoard error:", e);
       return json({ success: false, error: "Não foi possível importar o quadro do Trello." }, { status: 500 });
     }
-  }
-
-  // Código de 30 min para o navegador logado no Trello enviar os anexos (api.trello-file).
-  if (_action === "createTrelloFileToken") {
-    return json({ success: true, ...createImportToken(centralUser?.name || "Trello") });
   }
 
   // Coluna "Documentos de suporte" do Quadro.

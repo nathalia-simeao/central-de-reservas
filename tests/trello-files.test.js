@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { saveTrelloFile, stripLink } from "../app/services/trello-files.server.js";
-import { checkImportToken, createImportToken } from "../app/utils/import-tokens.server.js";
+import { trelloBoardId } from "../app/utils/trello-api.server.js";
 
 test("stripLink removes the attachment line and an empty header", () => {
   const text = "10 am or 2 pm\n\nAnexos no Trello:\n• T3.pdf: https://trello.com/a/T3.pdf";
@@ -10,11 +10,10 @@ test("stripLink removes the attachment line and an empty header", () => {
   assert.equal(stripLink(two, "https://x/a"), "Anexos no Trello:\n• b: https://x/b");
 });
 
-test("import tokens expire after 30 minutes", () => {
-  const { token } = createImportToken("Nathalia", 1000);
-  assert.ok(checkImportToken(token, 1000 + 60_000));
-  assert.equal(checkImportToken(token, 1000 + 31 * 60_000), null);
-  assert.equal(checkImportToken("nope"), null);
+test("board link becomes the Trello board id", () => {
+  assert.equal(trelloBoardId("https://trello.com/b/TVDR11Il/tours-portugal-me-you"), "TVDR11Il");
+  assert.equal(trelloBoardId("TVDR11Il"), "TVDR11Il");
+  assert.equal(trelloBoardId("https://example.com"), null);
 });
 
 test("tour card file goes to every departure with that Trello note, once", async () => {

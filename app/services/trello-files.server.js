@@ -31,7 +31,7 @@ export async function saveTrelloFile({ prisma, trelloCardId, url, fileName, mime
   }
 
   const departures = (await prisma.tourDeparture.findMany({
-    where: { NOT: { guideNotes: { equals: null } } },
+    where: { startTime: { gte: new Date(Date.now() - 90 * 24 * 3600 * 1000) } },
     select: { id: true, guideNotes: true },
   })).filter((d) => Array.isArray(d.guideNotes) && d.guideNotes.some((n) => n?.source === "trello" && n.trelloId === trelloCardId));
   let saved = 0;

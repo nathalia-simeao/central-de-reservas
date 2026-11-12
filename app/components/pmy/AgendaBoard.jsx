@@ -564,6 +564,7 @@ export default function AgendaBoard({
   supportHandlers = null,
   onImportTrello = null,
   loadBookings = null,
+  loadTrelloBoard = null,
   lang = "pt",
 }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
@@ -959,6 +960,7 @@ export default function AgendaBoard({
         <TrelloImportDialog
           tours={tours}
           lang={lang}
+          loadBoard={loadTrelloBoard}
           onImport={async (plan) => { const summary = await onImportTrello(plan); setTrelloDone(true); return summary; }}
           // Depois de importar, recarrega a Central para trazer as saídas novas.
           onClose={() => { setTrelloOpen(false); if (trelloDone) window.location.reload(); }}

@@ -86,7 +86,6 @@ export const ADMIN_ONLY_ACTIONS = new Set([
   "moveDeparture",
   "saveFeatureFlags",
   "importTrelloBoard",
-  "createTrelloFileToken",
   "saveSupportCard",
   "deleteSupportCard",
   "uploadSupportAttachment",

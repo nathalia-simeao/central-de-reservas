@@ -2161,6 +2161,11 @@ function CentralDeReservasContent() {
     }
     return items;
   }, [requestResourceJson]);
+  const loadTrelloBoard = async () => {
+    const result = await requestResourceJson("/api/trello?board=1");
+    if (!result?.success) throw new Error(result?.error || ui("Não foi possível ler o Trello.", "Could not read Trello."));
+    return result.board;
+  };
   const handleImportTrello = async (plan) => (await postCentral({ _action: "importTrelloBoard", plan })).summary;
   const openSupportAttachment = async (id) => {
     // Abre a janela antes do fetch (bloqueador de pop-up) e troca o endereço depois.
@@ -3181,6 +3186,7 @@ function CentralDeReservasContent() {
               onChecklistOp: handleChecklistOp,
               supportCards, supportHandlers, loadBookings: loadBoardBookings,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
+              loadTrelloBoard: isCentralAdmin ? loadTrelloBoard : null,
               onMoveDeparture: isCentralAdmin && featureFlags.boardMove ? handleMoveDeparture : null,
               waitlist,
               onAddWaitlist: featureFlags.waitlist ? handleAddWaitlist : null,
@@ -3191,6 +3197,7 @@ function CentralDeReservasContent() {
           }} />
 
           <IntegrationsTab {...{
+            requestResourceJson,
             activeTab, activeProdPlatform, allPlatforms, bookings, contentPlatforms,
             formatSyncTime, handleDisconnect, handleOpenConnect,
             handleRequeueSyncJob, handleSyncPlatformNow, intSubTab,

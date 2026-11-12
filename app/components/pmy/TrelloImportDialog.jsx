@@ -22,7 +22,7 @@ const fmtDate = (dateKey) => {
   return d ? `${d}/${m}/${y}` : "—";
 };
 
-export default function TrelloImportDialog({ tours = [], onImport, onClose, lang = "pt" }) {
+export default function TrelloImportDialog({ tours = [], onImport, onClose, loadBoard = null, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [plan, setPlan] = useState(null);
   const [fileError, setFileError] = useState("");
@@ -39,11 +39,14 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, lang
     [tours, lang],
   );
 
-  const readFile = async (file) => {
+  const [reading, setReading] = useState(false);
+  const readFile = async (file) => readBoard(async () => JSON.parse(await file.text()));
+  const readBoard = async (getBoard) => {
     setFileError("");
     setResult(null);
+    setReading(true);
     try {
-      const parsed = parseTrelloBoard(JSON.parse(await file.text()));
+      const parsed = parseTrelloBoard(await getBoard());
       const saved = readMapping();
       const next = {};
       const validIds = new Set(tours.map((t) => t.id));
@@ -57,6 +60,7 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, lang
       setPlan(null);
       setFileError(e instanceof SyntaxError ? tr("Esse arquivo não é um JSON válido.", "Not a valid JSON file.") : e.message);
     }
+    setReading(false);
   };
 
   const groups = useMemo(() => {
@@ -139,7 +143,16 @@ export default function TrelloImportDialog({ tours = [], onImport, onClose, lang
           <>
             <div className="pmy-board-modal__section">
               <h4>{tr("1. Arquivo do Trello", "1. Trello file")}</h4>
-              <p className="pmy-support-empty">{tr("No Trello: menu ⋯ do quadro → Imprimir, exportar e compartilhar → Exportar como JSON.", "In Trello: board menu ⋯ → Print, export and share → Export as JSON.")}</p>
+              {loadBoard && (
+                <div className="pmy-support-actions" style={{ marginTop: 0, marginBottom: 8 }}>
+                  <button type="button" className="pmy-board-btn is-primary" disabled={reading} onClick={() => readBoard(loadBoard)}>
+                    {reading ? tr("Lendo o Trello…", "Reading Trello…") : tr("Ler direto do Trello", "Read from Trello")}
+                  </button>
+                </div>
+              )}
+              <p className="pmy-support-empty">{loadBoard
+                ? tr("Ou envie o arquivo exportado (menu ⋯ do quadro → Imprimir, exportar e compartilhar → Exportar como JSON).", "Or upload the exported JSON file.")
+                : tr("No Trello: menu ⋯ do quadro → Imprimir, exportar e compartilhar → Exportar como JSON. Para ler direto, conecte o Trello em Integrações.", "In Trello: board menu ⋯ → Print, export and share → Export as JSON.")}</p>
               <label className="pmy-board-btn pmy-support-upload">
                 {plan ? tr("Trocar arquivo", "Change file") : tr("Escolher arquivo .json", "Choose .json file")}
                 <input type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readFile(f); }} />
