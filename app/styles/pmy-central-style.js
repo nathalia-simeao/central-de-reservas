@@ -827,7 +827,6 @@ export function buildCentralStyles(theme) {
       .pmy-kpi-card.is-featured {
         grid-column:span 2;
         background:
-          radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--primary-green) 12%, transparent) 0, transparent 8rem),
           var(--surface-color);
       }
       .pmy-kpi-topline {
@@ -1363,7 +1362,6 @@ export function buildCentralStyles(theme) {
   
       .pmy-dashboard .pmy-kpi-card.is-featured {
         background:
-          radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--dashboard-accent) 13%, transparent) 0, transparent 8rem),
           var(--surface-color);
       }
   
