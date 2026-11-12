@@ -208,13 +208,7 @@ export function GuideShell({ children, title = "Portal do guia", wide = false, b
     <>
       <title>{`${title} · Portugal, Me & You`}</title>
       <meta name="robots" content="noindex" />
-      <link rel="manifest" href="/guia.webmanifest" />
-      <meta name="theme-color" content="#006600" />
-      <meta name="apple-mobile-web-app-capable" content="yes" />
-      <meta name="mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-title" content="PMY Guias" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      <link rel="apple-touch-icon" href="/guia-apple-touch-icon.png" />
+      {/* Manifesto, theme-color e ícone do iPhone ficam no <head> (app/root.jsx). */}
       <style dangerouslySetInnerHTML={{ __html: guideStyles }} />
       {bare ? children : <div className={`g-wrap${withTabs ? " has-tabs" : ""}${wide ? " wide" : ""}`}>{children}</div>}
       <GuideTabs />
