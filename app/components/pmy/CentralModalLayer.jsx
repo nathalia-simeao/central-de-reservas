@@ -1,6 +1,7 @@
 import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../../utils/tour-languages.js";
 import GuidePortalAccess from "./GuidePortalAccess";
 import PersonAccessControl from "./PersonAccessControl";
+import PersonPhotoEditor from "./PersonPhotoEditor";
 import { TEAM_AREAS, areaLabel, isGuide, personAreas, sells } from "../../utils/team-areas.js";
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
@@ -1911,45 +1912,30 @@ export default function CentralModalLayer(props) {
         >
           <div className="pmy-ds-migrated-1ig0zoz">
             <div className="pmy-ds-migrated-g4mnio">
-              <div className="pmy-ds-migrated-otectg">
-                <img src={editGuidePhoto || guide.photo} alt={guide.name}
-                  className="pmy-ds-migrated-1sos9w" />
-                {!shopifyManaged && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openMediaLibraryPicker((media) => {
-                          setGuidePhotoUploadError("");
-                          setEditGuidePhoto(media?.url || null);
-                          setEditGuidePhotoMediaId(media?.id || null);
-                        })
-                      }
-                      title={ui("Escolher da Biblioteca PMY", "Choose from PMY Media Library")}
-                      className="pmy-ds-migrated-1canwv8"
-                    >
-                      <Icon name="media" size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="pmy-btn-secondary pmy-ds-compact-action"
-                      disabled={guidePhotoUploading}
-                      onClick={() => editGuidePhotoRef.current?.click()}
-                    >
-                      {guidePhotoUploading
-                        ? ui("Enviando...", "Uploading...")
-                        : ui("Enviar nova foto", "Upload new photo")}
-                    </button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="pmy-ds-migrated-1cibdmr"
-                      ref={editGuidePhotoRef}
-                      onChange={handleEditGuidePhotoChange}
-                    />
-                  </>
-                )}
-              </div>
+              <PersonPhotoEditor
+                src={editGuidePhoto || guide.photo}
+                name={guide.name}
+                editable={!shopifyManaged}
+                uploading={guidePhotoUploading}
+                lang={lang}
+                onUpload={() => editGuidePhotoRef.current?.click()}
+                onPickLibrary={() =>
+                  openMediaLibraryPicker((media) => {
+                    setGuidePhotoUploadError("");
+                    setEditGuidePhoto(media?.url || null);
+                    setEditGuidePhotoMediaId(media?.id || null);
+                  })
+                }
+              />
+              {!shopifyManaged && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="pmy-ds-migrated-1cibdmr"
+                  ref={editGuidePhotoRef}
+                  onChange={handleEditGuidePhotoChange}
+                />
+              )}
               <div>
                 <div className="pmy-ds-migrated-1w8jk2f">
                   {shopifyManaged

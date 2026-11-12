@@ -6690,3 +6690,26 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 /* Central aberta pelo app do celular: caminho de volta para Saídas/Quadro/Dash */
 .pmy-menu-item--app { text-decoration: none; border: 1px dashed var(--pmy-ds-border); margin-bottom: 6px; }
 .pmy-back-to-app { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 12px; border-radius: 999px; background: var(--pmy-ds-accent); color: var(--pmy-ds-accent-contrast); font-size: 13px; font-weight: 700; text-decoration: none; }
+
+/* Equipe → editar pessoa: foto maior; lápis discreto ao passar o mouse. */
+.pmy-person-photo { position: relative; flex: none; }
+.pmy-person-photo__img { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 22px; object-fit: cover; border: 3px solid rgba(255,255,255,.45); background: rgba(255,255,255,.18); color: #fff; font-size: 30px; font-weight: 700; }
+img.pmy-person-photo__img { font-size: 11px; color: transparent; }
+.pmy-person-photo__trigger { position: relative; display: block; padding: 0; border: 0; background: none; border-radius: 22px; cursor: pointer; }
+.pmy-person-photo__trigger:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.pmy-person-photo__hover { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 22px; background: rgba(10, 30, 15, .42); color: #fff; opacity: 0; transition: opacity .18s ease; }
+.pmy-person-photo__trigger:hover .pmy-person-photo__hover,
+.pmy-person-photo__trigger:focus-visible .pmy-person-photo__hover,
+.pmy-person-photo.is-open .pmy-person-photo__hover,
+.pmy-person-photo__trigger:disabled .pmy-person-photo__hover { opacity: 1; }
+@media (hover: none) {
+  /* Celular não tem "passar o mouse": um lápis pequeno no canto. */
+  .pmy-person-photo__hover { inset: auto -6px -6px auto; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--pmy-ds-accent, #006600); opacity: 1; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .pmy-person-photo__hover svg { width: 15px; height: 15px; }
+}
+.pmy-person-photo__spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: pmy-person-spin .8s linear infinite; }
+@keyframes pmy-person-spin { to { transform: rotate(360deg); } }
+.pmy-person-photo__menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 5; min-width: 210px; padding: 6px; display: grid; gap: 2px; background: var(--pmy-ds-surface, #fff); border: 1px solid var(--pmy-ds-border, #e5e7eb); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.16); }
+.pmy-person-photo__menu button { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--pmy-ds-text, #1f2937); font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; white-space: nowrap; }
+.pmy-person-photo__menu button:hover, .pmy-person-photo__menu button:focus-visible { background: var(--pmy-ds-soft, #f3f5f3); outline: none; }
+.pmy-person-photo__menu svg { color: var(--pmy-ds-muted, #6b7280); }
