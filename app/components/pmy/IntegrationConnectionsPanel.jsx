@@ -1,5 +1,15 @@
-import GygNotifySandboxTest from "./GygNotifySandboxTest";
 import { Button, Icon } from "./PmyUI";
+import TrelloIntegrationCard from "./TrelloIntegrationCard";
+
+/** Situação de um canal de reserva, igual à do cartão. */
+export function reservationState(conn = {}) {
+  const isPendingOnboarding = conn.onboardingPending || conn.available === false;
+  const isAwaitingExternal = Boolean(conn.awaitingExternalResponse) || (Boolean(conn.configured) && !conn.connected && !conn.validationError);
+  if (conn.connected) return "connected";
+  if (conn.validationError) return "error";
+  if (isAwaitingExternal || isPendingOnboarding) return "waiting";
+  return "required";
+}
 
 export default function IntegrationConnectionsPanel({
   contentPlatforms,
@@ -8,6 +18,7 @@ export default function IntegrationConnectionsPanel({
   lang,
   platformConnections,
   reservationPlatforms,
+  requestResourceJson = null,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
 
@@ -16,21 +27,25 @@ export default function IntegrationConnectionsPanel({
                       <p className="pmy-ds-migrated-5553a5">
                         {lang==='pt' ? 'Canais de reserva sincronizam vendas e disponibilidade. Integrações de conteúdo, como Tripadvisor, ficam separadas.' : 'Booking channels sync sales and availability. Content integrations, such as Tripadvisor, are kept separate.'}
                       </p>
-                      <div className="pmy-ds-migrated-148qhts">
-                        <div className="pmy-ds-migrated-1c2aa5v">
-                          <span className="pmy-ds-connection-counter-icon is-connected"><Icon name="check" size={18} /></span>
-                          <div>
-                            <div className="pmy-ds-migrated-m37lxr">{reservationPlatforms.filter(p=>platformConnections[p.key]?.connected).length}</div>
-                            <div className="pmy-ds-migrated-htnqm2">{tr("Conectadas", "Connected")}</div>
-                          </div>
-                        </div>
-                        <div className="pmy-ds-migrated-1c2aa5v">
-                          <span className="pmy-ds-connection-counter-icon"><Icon name="clock" size={18} /></span>
-                          <div>
-                            <div className="pmy-ds-migrated-1ppuvw4">{reservationPlatforms.filter(p=>!platformConnections[p.key]?.connected).length}</div>
-                            <div className="pmy-ds-migrated-htnqm2">{tr("Pendentes", "Pending")}</div>
-                          </div>
-                        </div>
+                      <div className="pmy-int-summary" role="list" aria-label={tr("Situação dos canais", "Channel status")}>
+                        {[
+                          { key: "connected", icon: "check", label: [tr("Conectada", "Connected"), tr("Conectadas", "Connected")] },
+                          { key: "required", icon: "warning", label: [tr("Falta configurar", "Needs setup"), tr("Faltam configurar", "Need setup")] },
+                          { key: "error", icon: "warning", label: [tr("Com erro", "With error"), tr("Com erro", "With errors")] },
+                          { key: "waiting", icon: "clock", label: [tr("Aguardando validação", "Awaiting validation"), tr("Aguardando validação", "Awaiting validation")] },
+                        ].map((item) => {
+                          const count = reservationPlatforms.filter((p) => reservationState(platformConnections[p.key]) === item.key).length;
+                          if (!count) return null;
+                          return (
+                            <div key={item.key} className={`pmy-int-summary__item is-${item.key}`} role="listitem">
+                              <span className="pmy-int-summary__icon"><Icon name={item.icon} size={18} /></span>
+                              <div>
+                                <strong>{count}</strong>
+                                <span>{count === 1 ? item.label[0] : item.label[1]}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                       <div className="pmy-ds-migrated-xqzku2">
                         {reservationPlatforms.map(platform => {
@@ -146,9 +161,15 @@ export default function IntegrationConnectionsPanel({
                             </div>
                           );
                         })}
-                        <div className="pmy-gyg-sandbox-standalone" style={{gridColumn:"1 / -1",width:"100%",minWidth:0,marginTop:16}}>
-                          <GygNotifySandboxTest lang={lang} />
-                        </div>
+                        {requestResourceJson && (
+                          <>
+                            <div className="pmy-ds-migrated-1konp2u">
+                              <div className="pmy-ds-migrated-166ghmy"><Icon name="calendar" size={15} /> {tr("Agenda e operação", "Agenda & operations")}</div>
+                              <div className="pmy-ds-migrated-htnqm2">{tr("Ferramentas que atualizam o Quadro e a Agenda da equipe. Não vendem nem mexem nas vagas.", "Tools that update the team's Board and Agenda. They don't sell or change availability.")}</div>
+                            </div>
+                            <TrelloIntegrationCard requestJson={requestResourceJson} lang={lang} />
+                          </>
+                        )}
                         <div className="pmy-ds-migrated-1konp2u">
                           <div className="pmy-ds-migrated-166ghmy"><Icon name="star" size={15} /> {tr("Conteúdo & reputação", "Content & Reputation")}</div>
                           <div className="pmy-ds-migrated-htnqm2">{tr("Integrações que enriquecem reviews, ratings, fotos e presença da marca. Não entram na Agenda nem no inventário de reservas.", "Integrations that enrich reviews, ratings, photos, and brand presence. They do not enter the Agenda or booking inventory.")}</div>

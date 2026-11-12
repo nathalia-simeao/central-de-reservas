@@ -3286,6 +3286,7 @@ function CentralDeReservasContent() {
 
           <GuidesTab {...{
             activeTab, ddiList, getFlagUrl, guideAssignments: guideAssignmentsList,
+            bookings: bookingsList, departureTags, departureInfo, tours,
             guideShopifySync,
             guideDdi, guideEmail, guideName, guidePhoto,
             guidePhotoRef, guideUtmId, guideWhatsapp, guidesList, handleAddGuide,

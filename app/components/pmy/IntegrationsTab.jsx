@@ -3,7 +3,7 @@ import IntegrationConnectionsPanel from "./IntegrationConnectionsPanel";
 import IntegrationProductsPanel from "./IntegrationProductsPanel";
 import IntegrationSyncLogPanel from "./IntegrationSyncLogPanel";
 import PlatformPricesPanel from "./PlatformPricesPanel";
-import TrelloConnectionPanel from "./TrelloConnectionPanel";
+import GygNotifySandboxTest from "./GygNotifySandboxTest";
 
 export default function IntegrationsTab(props) {
   const {
@@ -14,7 +14,6 @@ export default function IntegrationsTab(props) {
     tours = [],
     platformPrices = null,
     handleSavePlatformPrices,
-    requestResourceJson,
   } = props;
 
   if (activeTab !== "integracoes") return null;
@@ -29,6 +28,7 @@ export default function IntegrationsTab(props) {
           { value: "produtos", label: tr("Produtos por Plataforma", "Products by Platform"), icon: "ticket" },
           { value: "precos", label: tr("Preços por plataforma", "Prices by platform"), icon: "revenue" },
           { value: "logs", label: tr("Log de Sincronização", "Sync Log"), icon: "refresh" },
+          { value: "testes", label: tr("Testes", "Tests"), icon: "settings" },
         ]}
         value={intSubTab}
         onChange={setIntSubTab}
@@ -36,11 +36,16 @@ export default function IntegrationsTab(props) {
         className="pmy-u-mb-5"
       />
 
-      {intSubTab === "conexoes" && requestResourceJson ? <TrelloConnectionPanel requestJson={requestResourceJson} lang={lang} /> : null}
       {intSubTab === "conexoes" ? <IntegrationConnectionsPanel {...props} /> : null}
       {intSubTab === "produtos" ? <IntegrationProductsPanel {...props} /> : null}
       {intSubTab === "precos" ? <PlatformPricesPanel tours={tours} platformPrices={platformPrices} onSave={handleSavePlatformPrices} lang={lang} /> : null}
       {intSubTab === "logs" ? <IntegrationSyncLogPanel {...props} /> : null}
+      {intSubTab === "testes" ? (
+        <div className="pmy-gyg-sandbox-standalone">
+          <p className="pmy-agenda-modal__lead">{tr("Testes técnicos das plataformas (sandbox). Nada aqui mexe em reservas ou vagas reais.", "Technical platform tests (sandbox). Nothing here changes real bookings or seats.")}</p>
+          <GygNotifySandboxTest lang={lang} />
+        </div>
+      ) : null}
     </div>
   );
 }

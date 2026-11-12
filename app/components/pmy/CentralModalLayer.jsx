@@ -1,7 +1,7 @@
 import { QUOTA_LANGUAGE_KEYS, languageKey, languageLabel } from "../../utils/tour-languages.js";
 import GuidePortalAccess from "./GuidePortalAccess";
 import PersonAccessControl from "./PersonAccessControl";
-import { TEAM_AREAS, isGuide } from "../../utils/team-areas.js";
+import { TEAM_AREAS, areaLabel, isGuide, personAreas, sells } from "../../utils/team-areas.js";
 /* eslint-disable jsx-a11y/no-static-element-interactions -- modal backdrops dismiss only on direct backdrop press */
 import { useEffect, useRef } from "react";
 import DepartureTagsSection, { departureKey } from "./DepartureTagsSection";
@@ -1369,7 +1369,9 @@ export default function CentralModalLayer(props) {
         />
       );
     } else if (activeModal === 'guideDetails' && selectedGuideInfo) {
-      title = ui("Detalhes do Guia","Guide Details");
+      // Só guia é "guia": marketing, desenvolvimento etc. veem "Detalhes da pessoa".
+      const personIsGuide = isGuide(selectedGuideInfo);
+      title = personIsGuide ? ui("Detalhes do guia", "Guide details") : ui("Detalhes da pessoa", "Person details");
       content = (
         <div>
           <div className="pmy-ds-migrated-s219yw">
@@ -1378,6 +1380,9 @@ export default function CentralModalLayer(props) {
               <h2 className="pmy-ds-migrated-1xc4j8f">{selectedGuideInfo.name}</h2>
               <div className="pmy-ds-migrated-llii8p">✉️ {selectedGuideInfo.email||'N/A'}</div>
               <div className="pmy-ds-migrated-1g1g73g">📱 {selectedGuideInfo.whatsapp||'N/A'}</div>
+              <div className="pmy-person-areas">
+                {personAreas(selectedGuideInfo).map((key) => <span key={key} className="pmy-tag">{areaLabel(key, lang)}</span>)}
+              </div>
               {selectedGuideInfo.shopifyMetaobjectId && (
                 <div className="pmy-u-mt-2">
                   <span className="pmy-tag">Shopify · metaobjeto Guias</span>
@@ -1386,7 +1391,7 @@ export default function CentralModalLayer(props) {
             </div>
           </div>
   
-          {isCentralAdmin && selectedGuideInfo.sales90d && (
+          {isCentralAdmin && selectedGuideInfo.sales90d && sells(selectedGuideInfo) && (
             <div className="pmy-ds-panel-soft pmy-u-mt-3">
               <h4 className="pmy-u-mb-2">{ui("Vendas pelo portal (90 dias)", "Portal sales (90 days)")}</h4>
               <p className="pmy-guide-portal__status">
@@ -1449,6 +1454,7 @@ export default function CentralModalLayer(props) {
               </div>
             </div>
           )}
+          {personIsGuide && (<>
           <h4 className="pmy-ds-migrated-uzos4w">{ui("Próximos 7 Tours Atribuídos:", "Next 7 Assigned Tours:")}</h4>
           <div className="pmy-ds-migrated-1iaao15">
             {guideAssignmentsList
@@ -1486,6 +1492,7 @@ export default function CentralModalLayer(props) {
               </p>
             )}
           </div>
+          </>)}
   
           {selectedGuideInfo?.utmId && (
             <div className="pmy-ds-migrated-1tqyd6n">
@@ -1947,7 +1954,7 @@ export default function CentralModalLayer(props) {
                 <div className="pmy-ds-migrated-1w8jk2f">
                   {shopifyManaged
                     ? ui("Dados operacionais do guia", "Guide operational data")
-                    : ui("Editando guia", "Editing guide")}
+                    : isGuide(guide) ? ui("Editando guia", "Editing guide") : ui("Editando pessoa", "Editing person")}
                 </div>
                 <div className="pmy-ds-migrated-16qi501">{guide.name}</div>
               </div>
@@ -2056,7 +2063,7 @@ export default function CentralModalLayer(props) {
               </button>
               {!shopifyManaged && (
                 <button type="button" onClick={() => { handleDeleteGuide(editingGuide); }}
-                  className="pmy-ds-migrated-138e6nr" aria-label={ui("Excluir guia", "Delete guide")}>
+                  className="pmy-ds-migrated-138e6nr" aria-label={isGuide(guide) ? ui("Excluir guia", "Delete guide") : ui("Excluir pessoa", "Delete person")}>
                   <Icon name="trash" size={16} />
                 </button>
               )}

@@ -1,12 +1,17 @@
 import { useState } from "react";
 import TourCountryFlag from "./TourCountryFlag";
 import { TEAM_AREAS, areaLabel, personAreas } from "../../utils/team-areas.js";
+import { buildBoardColumns } from "../../utils/agenda-board.js";
 import { Badge, Button, Card, EmptyState, Icon, SectionHeader, Tabs, DropdownSelect, PhoneCodeSelect } from "./PmyUI";
 
 export default function GuidesTab(props) {
   const {
     activeTab,
     guideAssignments = [],
+    bookings = [],
+    departureTags = {},
+    departureInfo = {},
+    tours = [],
     guideShopifySync,
     guidesList,
     handleDeleteGuide,
@@ -90,47 +95,21 @@ export default function GuidesTab(props) {
     return `${parts.year}-${parts.month}-${parts.day}`;
   };
 
-  const now = new Date();
-  const todayLisbon = lisbonDateKey(now);
-  const filterDays =
-    upcomingToursFilter === "today"
-      ? 0
-      : Number.parseInt(upcomingToursFilter, 10) || 7;
-  const filterLimit = new Date(now);
-  filterLimit.setDate(filterLimit.getDate() + filterDays);
+  // Próximos tours: todas as saídas do período (com reserva, guia ou cartão no
+  // Quadro), com o guia escalado ou "sem guia" — antes só apareciam as escalas.
+  const todayLisbon = lisbonDateKey(new Date());
+  const rangeDays = upcomingToursFilter === "today" ? 1 : Number.parseInt(upcomingToursFilter, 10) || 7;
+  const nowMs = Date.now();
+  const upcomingDepartures = buildBoardColumns({ startDateKey: todayLisbon, days: rangeDays, bookings, assignments: guideAssignments, departureTags, departureInfo, tours })
+    .flatMap((col) => col.cards)
+    .filter((card) => !departureInfo[card.key]?.archivedAt && new Date(card.startTime).getTime() >= nowMs - 60 * 60 * 1000);
 
-  const upcomingAssignments = (guideAssignments || [])
-    .filter((assignment) => assignment?.status === "ASSIGNED")
-    .filter((assignment) => {
-      const start = new Date(assignment.startTime);
-      if (Number.isNaN(start.getTime()) || start < now) return false;
-      if (upcomingToursFilter === "today") {
-        return lisbonDateKey(start) === todayLisbon;
-      }
-      return start <= filterLimit;
-    })
-    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-
-  const formatAssignmentWhen = (assignment) => {
-    const start = new Date(assignment.startTime);
-    const datePart = start.toLocaleDateString(
-      lang === "pt" ? "pt-PT" : "en-GB",
-      {
-        timeZone: "Europe/Lisbon",
-        day: "2-digit",
-        month: "short",
-      },
-    );
-    const timePart = start.toLocaleTimeString(
-      lang === "pt" ? "pt-PT" : "en-GB",
-      {
-        timeZone: "Europe/Lisbon",
-        hour: "2-digit",
-        minute: "2-digit",
-      },
-    );
-    return `${datePart} · ${timePart} · ${assignment.guide?.name || tr("Guia não encontrado", "Guide unavailable")}`;
+  const formatDepartureWhen = (card) => {
+    const start = new Date(card.startTime);
+    const datePart = start.toLocaleDateString(lang === "pt" ? "pt-PT" : "en-GB", { timeZone: "Europe/Lisbon", day: "2-digit", month: "short" });
+    return `${datePart} · ${card.timeKey}`;
   };
+  const tourById = new Map((tours || []).map((tour) => [tour.id, tour]));
 
   return (
     <div className="pmy-ds-stack">
@@ -260,7 +239,7 @@ export default function GuidesTab(props) {
                       size="sm"
                       icon="trash"
                       iconOnly
-                      aria-label={tr("Excluir guia", "Delete guide")}
+                      aria-label={tr("Excluir pessoa", "Delete person")}
                       onClick={() => handleDeleteGuide(guide.id)}
                     />
                   ) : null}
@@ -304,26 +283,30 @@ export default function GuidesTab(props) {
         />
 
         <div className="pmy-ds-panel-soft">
-          {upcomingAssignments.length === 0 ? (
+          {upcomingDepartures.length === 0 ? (
             <EmptyState
               icon="calendar"
-              title={tr("Nenhuma escala neste período", "No assignments in this period")}
+              title={tr("Nenhum tour neste período", "No tours in this period")}
               description={tr(
-                "As escalas publicadas na Agenda Central aparecerão aqui automaticamente.",
-                "Assignments published in the Central Agenda will appear here automatically.",
+                "Saídas com reserva, guia escalado ou cartão no Quadro aparecem aqui.",
+                "Departures with bookings, guides or a board card show here.",
               )}
             />
           ) : (
             <div className="pmy-ds-list-plain">
-              {upcomingAssignments.map((assignment) => (
-                <div key={assignment.id} className="pmy-ds-list-plain__row">
+              {upcomingDepartures.map((card) => (
+                <div key={card.key} className="pmy-ds-list-plain__row">
                   <span className="pmy-ds-list-plain__title">
                     <Icon name="calendar" size={17} />
-                    <TourCountryFlag tour={assignment.tour} lang={lang}/>{assignment.tour?.title || tr("Tour sem título", "Untitled tour")}
+                    <TourCountryFlag tour={tourById.get(card.tourId)} lang={lang}/>{card.title}
+                    {card.pax + card.pending > 0 ? <small className="pmy-upcoming__pax">{card.pax + card.pending} pax</small> : null}
                   </span>
-                  <Badge tone={lisbonDateKey(assignment.startTime) === todayLisbon ? "accent" : "neutral"}>
-                    {formatAssignmentWhen(assignment)}
-                  </Badge>
+                  <span className="pmy-upcoming__meta">
+                    <Badge tone={lisbonDateKey(card.startTime) === todayLisbon ? "accent" : "neutral"}>{formatDepartureWhen(card)}</Badge>
+                    {card.guides.length
+                      ? <Badge tone="success">{card.guides.map((g) => g.name).join(", ")}</Badge>
+                      : <Badge tone="warning">{tr("Sem guia", "No guide")}</Badge>}
+                  </span>
                 </div>
               ))}
             </div>

@@ -7,6 +7,7 @@ export const TEAM_AREAS = [
   { key: "COMERCIAL", pt: "Comercial", en: "Sales", one: ["Comercial", "Sales"] },
   { key: "MARKETING", pt: "Marketing", en: "Marketing", one: ["Marketing", "Marketing"] },
   { key: "OPERACAO", pt: "Operação", en: "Operations", one: ["Operação", "Operations"] },
+  { key: "DESENVOLVIMENTO", pt: "Desenvolvimento", en: "Development", one: ["Desenvolvimento", "Development"] },
 ];
 
 const KEYS = new Set(TEAM_AREAS.map((a) => a.key));
@@ -27,6 +28,8 @@ export function personAreas(person) {
 }
 
 export const isGuide = (person) => personAreas(person).includes("GUIA");
+/** Quem vende (guias e comercial) tem "Vendas pelo portal"; marketing, dev etc. não. */
+export const sells = (person) => personAreas(person).some((key) => key === "GUIA" || key === "COMERCIAL");
 
 export function areaLabel(key, lang = "pt") {
   const area = TEAM_AREAS.find((a) => a.key === key);

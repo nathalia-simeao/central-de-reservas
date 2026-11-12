@@ -85,7 +85,7 @@ function TrelloSyncStatus({ sync, busy, onToggle, onRunNow, lang }) {
 
 // Integrações → Conexões → Trello. A chave e o token ficam criptografados no
 // servidor; a tela nunca mostra os valores de volta, só se está conectado.
-export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
+export default function TrelloConnectionPanel({ requestJson, lang = "pt", bare = false }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [state, setState] = useState(null);
   const [apiKey, setApiKey] = useState("");
@@ -127,18 +127,23 @@ export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
     }
   };
 
+  const Wrapper = bare ? "div" : Card;
   const connected = state?.configured;
   const showForm = !connected || editing;
 
   return (
-    <Card className="pmy-trello-conn pmy-u-mb-5">
-      <SectionHeader
-        title="Trello"
-        subtitle={tr(
-          "Lê o quadro \"Tours (Portugal, Me & You)\" direto do Trello para importar no Quadro e baixa os anexos (PDFs) para dentro da Central.",
-          "Reads the Trello board for the Board import and downloads attachments into Central.",
-        )}
-      />
+    <Wrapper className={bare ? "pmy-trello-conn is-bare" : "pmy-trello-conn pmy-u-mb-5"}>
+      {bare ? (
+        <p className="pmy-agenda-modal__lead">{tr("Lê o quadro \"Tours (Portugal, Me & You)\" direto do Trello para o Quadro da Central e baixa os anexos (PDFs).", "Reads the Trello board into the Central board and downloads attachments.")}</p>
+      ) : (
+        <SectionHeader
+          title="Trello"
+          subtitle={tr(
+            "Lê o quadro \"Tours (Portugal, Me & You)\" direto do Trello para importar no Quadro e baixa os anexos (PDFs) para dentro da Central.",
+            "Reads the Trello board for the Board import and downloads attachments into Central.",
+          )}
+        />
+      )}
       {error && <p className="pmy-support-error" role="alert">{error}</p>}
       {connected && !editing && (
         <div className="pmy-trello-conn__status">
@@ -197,6 +202,6 @@ export default function TrelloConnectionPanel({ requestJson, lang = "pt" }) {
           </div>
         </form>
       )}
-    </Card>
+    </Wrapper>
   );
 }

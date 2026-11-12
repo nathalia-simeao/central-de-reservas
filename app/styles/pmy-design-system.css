@@ -6611,3 +6611,17 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-trello-aliases li button { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--pmy-ds-muted); }
 .pmy-trello-aliases__add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .pmy-trello-aliases__add { grid-template-columns: minmax(0, 1fr); } }
+.pmy-person-areas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pmy-upcoming__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.pmy-upcoming__pax { margin-left: 8px; color: var(--pmy-ds-muted); font-weight: 500; }
+/* Integrações: resumo por situação, na cor do cartão */
+.pmy-int-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; }
+.pmy-int-summary__item { display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border: 1px solid var(--sum-border); border-left: 5px solid var(--sum-color); border-radius: var(--pmy-radius-sm); background: var(--sum-soft); }
+.pmy-int-summary__item div { display: grid; line-height: 1.15; }
+.pmy-int-summary__item strong { font-size: 24px; color: var(--sum-color); }
+.pmy-int-summary__item span:not(.pmy-int-summary__icon) { font-size: 13px; font-weight: 600; color: var(--pmy-ds-text); }
+.pmy-int-summary__icon { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--pmy-radius-sm); background: #fff; color: var(--sum-color); }
+.pmy-int-summary__item.is-connected { --sum-color: #1f845a; --sum-soft: #dcfff1; --sum-border: #baf3db; }
+.pmy-int-summary__item.is-required, .pmy-int-summary__item.is-error { --sum-color: #c9372c; --sum-soft: #ffeceb; --sum-border: #ffd5d2; }
+.pmy-int-summary__item.is-waiting { --sum-color: #0c66e4; --sum-soft: #e9f2ff; --sum-border: #cce0ff; }
+.pmy-trello-conn.is-bare .pmy-trello-sync:first-of-type { margin-top: 14px; }
