@@ -218,7 +218,7 @@ export const loader = async ({ request }) => {
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: {
         id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true,
-        dateKey: true, time: true, assigneeIds: true, done: true,
+        dateKey: true, time: true, assigneeIds: true, done: true, archivedAt: true,
         attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       },
     })
@@ -232,7 +232,7 @@ export const loader = async ({ request }) => {
       where: { startTime: { gte: assignmentStart, lte: assignmentEnd } },
       select: {
         id: true, tourId: true, startTime: true, tagIds: true,
-        checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true, checklists: true,
+        checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true, checklists: true, archivedAt: true,
         attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       },
     })

@@ -547,7 +547,7 @@ export const action = async ({ request }) => {
   // Coluna "Documentos de suporte" do Quadro.
   const SUPPORT_SELECT = {
     id: true, title: true, body: true, links: true, checklists: true, position: true, visibleToGuides: true,
-    dateKey: true, time: true, assigneeIds: true, done: true,
+    dateKey: true, time: true, assigneeIds: true, done: true, archivedAt: true,
     attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
   };
 
@@ -579,6 +579,7 @@ export const action = async ({ request }) => {
         data.assigneeIds = (Array.isArray(ids) ? ids : []).map((v) => String(v).slice(0, 64)).filter(Boolean).slice(0, 20);
       }
       if (formData.has("done")) data.done = String(formData.get("done")) === "true";
+      if (formData.has("archived")) data.archivedAt = String(formData.get("archived")) === "true" ? new Date() : null;
       if (!id && !data.title) return json({ success: false, error: "Dê um título ao cartão." }, { status: 400 });
       const before = id ? await prisma.supportCard.findUnique({ where: { id }, select: { title: true, body: true, dateKey: true, time: true, assigneeIds: true, done: true } }) : null;
       const card = id
@@ -593,6 +594,7 @@ export const action = async ({ request }) => {
         if ("dateKey" in data && data.dateKey !== before.dateKey) changes.push(`mudou o dia de ${fmt(before.dateKey)} para ${fmt(data.dateKey)}`);
         if ("time" in data && data.time !== before.time) changes.push(data.time ? `marcou o horário ${data.time}` : "tirou o horário");
         if ("done" in data && data.done !== before.done) changes.push(data.done ? "marcou como concluída" : "reabriu a demanda");
+        if ("archivedAt" in data) changes.push(data.archivedAt ? "arquivou este cartão" : "desarquivou este cartão");
         if ("assigneeIds" in data) {
           const added = data.assigneeIds.filter((x) => !before.assigneeIds.includes(x));
           const removed = before.assigneeIds.filter((x) => !data.assigneeIds.includes(x));
@@ -669,6 +671,45 @@ export const action = async ({ request }) => {
     } catch (e) {
       console.error("[PMY] removeSupportAttachment error:", e);
       return json({ success: false, error: "Não foi possível remover o arquivo." }, { status: 500 });
+    }
+  }
+
+  // Arquivar / excluir o cartão de uma saída no Quadro (12/11/2026).
+  if (_action === "archiveDeparture" || _action === "deleteDepartureCard") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      if (!tourId || Number.isNaN(startTime.getTime())) return json({ success: false, error: "Saída inválida." }, { status: 400 });
+      const where = { tourId_startTime: { tourId, startTime } };
+      const key = departureTargetKey(tourId, startTime);
+
+      if (_action === "archiveDeparture") {
+        const archived = String(formData.get("archived") || "true") === "true";
+        const departure = await prisma.tourDeparture.upsert({
+          where,
+          create: { tourId, startTime, archivedAt: archived ? new Date() : null },
+          update: { archivedAt: archived ? new Date() : null },
+          select: { tourId: true, startTime: true, archivedAt: true },
+        });
+        await activity("departure", key, archived ? "arquivou este cartão" : "desarquivou este cartão");
+        return json({ success: true, departure });
+      }
+
+      // Excluir: só sem reserva ativa — com reserva o cartão voltaria sozinho.
+      const slot = { gte: new Date(startTime.getTime() - 60000), lte: new Date(startTime.getTime() + 60000) };
+      const active = await prisma.booking.count({
+        where: { tourId, startTime: slot, status: { in: ["CONFIRMED", "PENDING"] }, NOT: { syncStatus: "HOLD_RELEASED" } },
+      });
+      if (active) {
+        return json({ success: false, code: "HAS_BOOKINGS", error: `Esta saída tem ${active} reserva(s) ativa(s), então o cartão não pode ser excluído. Use "Arquivar" para tirá-lo do Quadro.` }, { status: 409 });
+      }
+      const removedGuides = await prisma.guideAssignment.updateMany({ where: { tourId, startTime: slot, status: "ASSIGNED" }, data: { status: "CANCELLED" } });
+      await prisma.tourDeparture.deleteMany({ where: { tourId, startTime: slot } });
+      await activity("departure", key, `excluiu este cartão${removedGuides.count ? ` (e tirou ${removedGuides.count} guia(s) escalado(s))` : ""}`);
+      return json({ success: true, removedGuides: removedGuides.count });
+    } catch (e) {
+      console.error("[PMY] archive/delete departure error:", e);
+      return json({ success: false, error: "Não foi possível alterar o cartão." }, { status: 500 });
     }
   }
 

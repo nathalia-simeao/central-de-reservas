@@ -6430,3 +6430,13 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-mentions-btn { position: relative; width: 42px; height: 42px; min-width: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 800; font-size: 17px; }
 .pmy-mentions-btn__count { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; background: #b42318; color: #fff; border-radius: 20px; font-size: 10px; display: grid; place-items: center; }
 .pmy-mentions { max-width: 560px; }
+
+/* Arquivar / excluir cartões do Quadro (12/11/2026) */
+.pmy-board-btn.is-danger-text { color: #ae2e24; }
+.pmy-board-btn.is-danger-text:hover { background: #ffeceb; }
+.pmy-board-card.is-archived { position: relative; opacity: .72; }
+.pmy-board-card.is-archived::after { content: "Arquivado"; position: absolute; top: 6px; right: 6px; padding: 1px 6px; border-radius: 4px; background: #44546f; color: #fff; font-size: 11px; font-weight: 600; }
+.pmy-board-archived-tag { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 4px; background: #44546f; color: #fff; font-size: 12px; font-weight: 600; vertical-align: middle; }
+.pmy-board__notice.is-archive { background: #e9f2ff; color: #09326c; }
+.pmy-board-confirm { margin-top: 8px; padding: 10px 12px; border: 1px solid #f87168; border-radius: 8px; background: #fff5f4; color: #5d1f1a; font-size: 14px; }
+.pmy-board-confirm p { margin: 0; }

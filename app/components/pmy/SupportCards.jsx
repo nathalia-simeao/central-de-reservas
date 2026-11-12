@@ -53,7 +53,7 @@ export function SupportModal({ card, guides = [], handlers = {}, loadImage = nul
       <div className={`pmy-board-modal__card pmy-support-modal${isTask ? " is-task" : ""}`} role="dialog" aria-modal="true" aria-label={card.title || tr("Novo cartão", "New card")}>
         <div className="pmy-board-modal__head">
           <div>
-            <small>{isTask ? tr("Demanda (sem passeio)", "Task (no tour)") : tr("Documentos de suporte", "Support documents")}</small>
+            <small>{isTask ? tr("Demanda (sem passeio)", "Task (no tour)") : tr("Documentos de suporte", "Support documents")}{card.archivedAt && <span className="pmy-board-archived-tag">{tr("Arquivado", "Archived")}</span>}</small>
             {editing
               ? <input className="pmy-ds-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isTask ? tr("O que precisa ser feito? (ex.: Transfer aeroporto família Silva)", "What needs doing?") : tr("Título (ex.: Voucher Pastéis)", "Title")} aria-label={tr("Título", "Title")} />
               : <h3 className={card.done ? "is-done" : ""}>{card.title}</h3>}
@@ -179,12 +179,18 @@ export function SupportModal({ card, guides = [], handlers = {}, loadImage = nul
           <ActivityPanel targetType="card" targetKey={card.id} requestJson={requestJson} refreshKey={JSON.stringify(card)} lang={lang} />
         )}
 
-        {!isNew && handlers.remove && (
+        {!isNew && (handlers.remove || canEdit) && (
           <div className="pmy-support-actions">
-            <button type="button" className="pmy-board-btn is-danger" disabled={busy}
+            {canEdit && (
+              <button type="button" className="pmy-board-btn" disabled={busy}
+                onClick={() => run(async () => { await handlers.save({ id: card.id, archived: !card.archivedAt }); onClose(); })}>
+                {card.archivedAt ? tr("Desarquivar", "Unarchive") : tr("Arquivar", "Archive")}
+              </button>
+            )}
+            {handlers.remove && <button type="button" className="pmy-board-btn is-danger" disabled={busy}
               onClick={() => { if (window.confirm(tr(`Apagar "${card.title}" e os arquivos dele?`, `Delete "${card.title}"?`))) run(async () => { await handlers.remove(card.id); onClose(); }); }}>
-              {isTask ? tr("Apagar demanda", "Delete task") : tr("Apagar documento", "Delete document")}
-            </button>
+              {isTask ? tr("Excluir demanda", "Delete task") : tr("Excluir documento", "Delete document")}
+            </button>}
           </div>
         )}
       </div>
@@ -198,7 +204,7 @@ export function TaskCard({ card, guides = [], loadImage = null, onOpen, lang = "
   const progress = taskProgress(card);
   const people = (card.assigneeIds || []).map((id) => guides.find((g) => g.id === id)).filter(Boolean);
   return (
-    <button type="button" className={`pmy-board-card pmy-task-card${card.done ? " is-done" : ""}`} onClick={onOpen}>
+    <button type="button" className={`pmy-board-card pmy-task-card${card.done ? " is-done" : ""}${card.archivedAt ? " is-archived" : ""}`} onClick={onOpen}>
       <CardCover card={card} loadImage={loadImage} />
       <span className="pmy-task-card__badge">{card.done ? tr("✓ Demanda concluída", "✓ Task done") : tr("Demanda", "Task")}</span>
       <span className="pmy-board-card__title">{card.time && <b>{card.time}</b>} {card.title}</span>
@@ -221,13 +227,13 @@ function CardCover({ card, loadImage }) {
   return cover ? <AuthedImage path={`/suporte/anexo/${cover.id}`} loadImage={loadImage} className="pmy-board-card__cover" /> : null;
 }
 
-export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImage = null, requestJson = null, lang = "pt" }) {
+export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImage = null, requestJson = null, archivedView = false, lang = "pt" }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [openId, setOpenId] = useState(null); // id | "new"
   const docs = cards.filter((c) => !c.dateKey);
   const open = openId === "new" ? { title: "", body: "", visibleToGuides: true } : docs.find((c) => c.id === openId) || null;
   const canEdit = Boolean(handlers.save);
-  if (!docs.length && !canEdit) return null;
+  if (!docs.length && (!canEdit || archivedView)) return null;
 
   return (
     <div className="pmy-board__col is-support">
@@ -240,7 +246,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImag
           const files = (card.attachments || []).length;
           const links = Array.isArray(card.links) ? card.links.length : 0;
           return (
-            <button key={card.id} type="button" className="pmy-board-card pmy-support-card" onClick={() => setOpenId(card.id)}>
+            <button key={card.id} type="button" className={`pmy-board-card pmy-support-card${card.archivedAt ? " is-archived" : ""}`} onClick={() => setOpenId(card.id)}>
               <CardCover card={card} loadImage={loadImage} />
               <span className="pmy-board-card__title">{card.title}</span>
               <span className="pmy-board-card__foot">
@@ -255,7 +261,7 @@ export function SupportColumn({ cards = [], guides = [], handlers = {}, loadImag
           );
         })}
       </div>
-      {canEdit && <button type="button" className="pmy-board__add" onClick={() => setOpenId("new")}>+ {tr("Adicionar documento", "Add document")}</button>}
+      {canEdit && !archivedView && <button type="button" className="pmy-board__add" onClick={() => setOpenId("new")}>+ {tr("Adicionar documento", "Add document")}</button>}
       {open && (
         <SupportModal key={open.id || "new"} card={open} guides={guides} handlers={handlers} loadImage={loadImage} requestJson={requestJson} lang={lang} onClose={(nextId) => setOpenId(nextId || null)} />
       )}

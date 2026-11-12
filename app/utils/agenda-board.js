@@ -106,7 +106,7 @@ export function buildBoardColumns({
   }
   for (const [key, info] of Object.entries(departureInfo)) {
     const lists = info?.checklists?.lists;
-    if (!(Array.isArray(lists) && lists.length) && !(Array.isArray(info?.guideNotes) && info.guideNotes.length)) continue;
+    if (!info?.archivedAt && !(Array.isArray(lists) && lists.length) && !(Array.isArray(info?.guideNotes) && info.guideNotes.length)) continue;
     const [tourId, iso] = key.split("|");
     ensure(tourId, iso);
   }

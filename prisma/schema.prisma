@@ -83,6 +83,8 @@ model TourDeparture {
   guideNotes   Json?
   // Checklists do cartão no Quadro: { lists: [{ id, title, items: [{ id, text, done, at, by }] }], auto: { [itemKey]: { done, at, by } }, hideDone: { [listId]: true } }
   checklists   Json?
+  // Cartão arquivado no Quadro (some do Quadro; a saída e as reservas continuam).
+  archivedAt   DateTime?
   attachments  DepartureAttachment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
@@ -124,6 +126,7 @@ model SupportCard {
   time            String?
   assigneeIds     String[]                @default([])
   done            Boolean                 @default(false)
+  archivedAt      DateTime?
   trelloId        String?                 @unique
   attachments     SupportCardAttachment[]
   createdAt       DateTime                @default(now())

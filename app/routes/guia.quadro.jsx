@@ -40,13 +40,13 @@ export const loader = async ({ request }) => {
     }),
     db.tourDeparture.findMany({
       where: { startTime: { gte: from, lt: to } },
-      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true },
+      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true, archivedAt: true },
     }),
     db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
     db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true } }),
     db.supportCard
       .findMany({
-        where: { visibleToGuides: true, dateKey: null },
+        where: { visibleToGuides: true, dateKey: null, archivedAt: null },
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
         select: { id: true, title: true, body: true, attachments: { select: { id: true, fileName: true }, orderBy: { createdAt: "asc" } } },
       })
@@ -62,7 +62,9 @@ export const loader = async ({ request }) => {
   }
 
   const collections = new Map(tours.map((t) => [t.id, (Array.isArray(t.shopifySnapshot?.collections) ? t.shopifySnapshot.collections : []).map((c) => c?.title || c).filter(Boolean)]));
-  const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours });
+  // Cartões arquivados na Central não aparecem para os guias.
+  const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours })
+    .map((col) => ({ ...col, cards: col.cards.filter((c) => !departureInfo[c.key]?.archivedAt) }));
   const labels = settings?.agendaLabels || null;
 
   return {

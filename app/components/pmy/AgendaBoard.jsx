@@ -510,6 +510,8 @@ export default function AgendaBoard({
   onResetCheck,
   onChecklistOp,
   onMoveDeparture = null,
+  onArchiveDeparture = null,
+  onDeleteDepartureCard = null,
   waitlist = [],
   onAddWaitlist,
   onWaitlistStatus,
@@ -550,6 +552,9 @@ export default function AgendaBoard({
   const [extraBookings, setExtraBookings] = useState([]);
   const fetchedRef = useRef(new Set());
   const [trelloDone, setTrelloDone] = useState(false);
+  // Arquivados ficam fora do Quadro; "Arquivados" mostra de novo para desarquivar.
+  const [showArchived, setShowArchived] = useState(false);
+  const [cardAction, setCardAction] = useState({ busy: "", error: "", confirmDelete: false });
 
   useEffect(() => {
     if (typeof loadWeather !== "function") return undefined;
@@ -614,21 +619,23 @@ export default function AgendaBoard({
 
   const columns = useMemo(() => {
     const built = buildBoardColumns({ startDateKey: start, days: visibleDays, bookings: allBookings, assignments, departureTags, departureInfo, tours });
-    const filtered = collection
-      ? built.map((col) => ({ ...col, cards: col.cards.filter((c) => (collectionsByTour.get(c.tourId) || []).includes(collection)) }))
-      : built;
+    const keep = (c) => (showArchived ? Boolean(departureInfo[c.key]?.archivedAt) : !departureInfo[c.key]?.archivedAt)
+      && (!collection || (collectionsByTour.get(c.tourId) || []).includes(collection));
+    const filtered = built.map((col) => ({ ...col, cards: col.cards.filter(keep) }));
     const tasksByDate = new Map();
     if (!collection) {
       for (const task of supportCards) {
-        if (!task.dateKey) continue;
+        if (!task.dateKey || Boolean(task.archivedAt) !== showArchived) continue;
         if (!tasksByDate.has(task.dateKey)) tasksByDate.set(task.dateKey, []);
         tasksByDate.get(task.dateKey).push(task);
       }
       for (const list of tasksByDate.values()) list.sort((a, b) => String(a.time || "99").localeCompare(String(b.time || "99")) || String(a.title).localeCompare(String(b.title)));
     }
     const withTasks = filtered.map((col) => ({ ...col, tasks: tasksByDate.get(col.dateKey) || [] }));
-    return onlyBusy ? withTasks.filter((col) => col.cards.length || col.tasks.length) : withTasks;
-  }, [start, visibleDays, allBookings, assignments, departureTags, departureInfo, tours, collection, collectionsByTour, onlyBusy, supportCards]);
+    return onlyBusy || showArchived ? withTasks.filter((col) => col.cards.length || col.tasks.length) : withTasks;
+  }, [start, visibleDays, allBookings, assignments, departureTags, departureInfo, tours, collection, collectionsByTour, onlyBusy, supportCards, showArchived]);
+  const archivedCount = Object.values(departureInfo).filter((info) => info?.archivedAt).length
+    + supportCards.filter((c) => c.archivedAt).length;
   const openTask = openTaskId ? supportCards.find((c) => c.id === openTaskId) || null : null;
 
   const onBoardScroll = (e) => {
@@ -637,6 +644,27 @@ export default function AgendaBoard({
     if (el.scrollLeft + el.clientWidth > el.scrollWidth - 700) setDays((d) => Math.min(d + 14, MAX_DAYS));
   };
   const openCard = columns.flatMap((c) => c.cards).find((c) => c.key === openKey) || null;
+  useEffect(() => { setCardAction({ busy: "", error: "", confirmDelete: false }); }, [openKey]);
+  const archiveOpenCard = async (archived) => {
+    setCardAction({ busy: "archive", error: "", confirmDelete: false });
+    try {
+      await onArchiveDeparture(openCard.tourId, openCard.startTime, archived);
+      setOpenKey("");
+      setMoveNotice(`${openCard.title} (${columnTitle(openCard.dateKey, lang)} ${openCard.timeKey}): ${archived ? tr("cartão arquivado. Ele fica em \"Arquivados\".", "card archived. Find it under \"Archived\".") : tr("cartão de volta ao Quadro.", "card back on the board.")}`);
+    } catch (e) {
+      setCardAction({ busy: "", error: e?.message || tr("Não foi possível arquivar.", "Could not archive."), confirmDelete: false });
+    }
+  };
+  const deleteOpenCard = async () => {
+    setCardAction({ busy: "delete", error: "", confirmDelete: true });
+    try {
+      await onDeleteDepartureCard(openCard.tourId, openCard.startTime);
+      setOpenKey("");
+      setMoveNotice(`${openCard.title} (${columnTitle(openCard.dateKey, lang)} ${openCard.timeKey}): ${tr("cartão excluído.", "card deleted.")}`);
+    } catch (e) {
+      setCardAction({ busy: "", error: e?.message || tr("Não foi possível excluir.", "Could not delete."), confirmDelete: false });
+    }
+  };
   const tourList = useMemo(() => [...tours].sort((a, b) => String(a.title).localeCompare(String(b.title))), [tours]);
 
   useEffect(() => {
@@ -711,6 +739,11 @@ export default function AgendaBoard({
         <button type="button" className="pmy-board-btn" aria-pressed={onlyBusy} onClick={() => setOnlyBusy(!onlyBusy)}>
           {onlyBusy ? tr("Mostrar todos os dias", "Show every day") : tr("Só dias com passeio", "Only days with tours")}
         </button>
+        {(archivedCount > 0 || showArchived) && (
+          <button type="button" className="pmy-board-btn" aria-pressed={showArchived} onClick={() => setShowArchived(!showArchived)}>
+            {showArchived ? tr("Voltar ao Quadro", "Back to board") : `${tr("Arquivados", "Archived")} (${archivedCount})`}
+          </button>
+        )}
         {onImportTrello && (
           <button type="button" className="pmy-board-btn" onClick={() => { setTrelloDone(false); setTrelloOpen(true); }}>
             {tr("Importar do Trello", "Import from Trello")}
@@ -726,10 +759,16 @@ export default function AgendaBoard({
         </p>
       )}
 
-      {onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
+      {showArchived && (
+        <p className="pmy-board__notice is-archive" role="status">
+          {tr("Você está vendo só os cartões arquivados. Abra um cartão para desarquivar.", "Showing archived cards only. Open a card to unarchive it.")}
+        </p>
+      )}
+      {showArchived && !columns.length && <p className="pmy-board__hint">{tr("Nenhum cartão arquivado a partir desta data.", "No archived cards from this date.")}</p>}
+      {!showArchived && onlyBusy && !columns.length && <p className="pmy-board__hint">{tr("Nenhuma saída a partir desta data.", "No departures from this date.")}</p>}
       <div className="pmy-board__scroll" ref={scrollRef} onScroll={onBoardScroll}>
         {supportHandlers && (
-          <SupportColumn cards={supportCards} guides={guides} handlers={supportHandlers} loadImage={loadImage} requestJson={requestJson} lang={lang} />
+          <SupportColumn cards={supportCards.filter((c) => Boolean(c.archivedAt) === showArchived)} guides={guides} handlers={supportHandlers} loadImage={loadImage} requestJson={requestJson} archivedView={showArchived} lang={lang} />
         )}
         {columns.map((col) => (
           <div
@@ -755,7 +794,7 @@ export default function AgendaBoard({
                   <button
                     key={card.key}
                     type="button"
-                    className={`pmy-board-card${dragKey === card.key ? " is-dragging" : ""}`}
+                    className={`pmy-board-card${dragKey === card.key ? " is-dragging" : ""}${showArchived ? " is-archived" : ""}`}
                     style={{ "--tour-color": color }}
                     draggable={canMove}
                     onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.key); setDragKey(card.key); } : undefined}
@@ -807,7 +846,7 @@ export default function AgendaBoard({
                 <TaskCard key={task.id} card={task} guides={guides} loadImage={loadImage} lang={lang} onOpen={() => setOpenTaskId(task.id)} />
               ))}
             </div>
-            {addingDate === col.dateKey ? (
+            {showArchived ? null : addingDate === col.dateKey ? (
               <AddCardForm dateKey={col.dateKey} tours={tourList} guides={guides} onAssign={onAssignGuide} onClose={() => setAddingDate("")} lang={lang}
                 onCreateTask={supportHandlers?.save ? async (fields) => { const card = await supportHandlers.save(fields); if (card?.id) setOpenTaskId(card.id); } : null} />
             ) : (
@@ -826,7 +865,7 @@ export default function AgendaBoard({
                 {(collectionsByTour.get(openCard.tourId) || []).length > 0 && (
                   <small className="pmy-board-modal__collection">{collectionsByTour.get(openCard.tourId).join(" · ")}</small>
                 )}
-                <h3>{openCard.title}</h3>
+                <h3>{openCard.title}{departureInfo[openCard.key]?.archivedAt && <span className="pmy-board-archived-tag">{tr("Arquivado", "Archived")}</span>}</h3>
                 <p>{columnTitle(openCard.dateKey, lang)} · {openCard.timeKey} · {openCard.pax} {tr("pessoas confirmadas", "confirmed people")}{openCard.pending ? ` · ${openCard.pending} ${tr("aguardando pagamento", "awaiting payment")}` : ""}</p>
               </div>
               <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={() => { setOpenKey(""); setLabelsOpen(false); }}>×</button>
@@ -921,6 +960,42 @@ export default function AgendaBoard({
               hideTags
               lang={lang}
             />
+
+            {(onArchiveDeparture || onDeleteDepartureCard) && (
+              <div className="pmy-board-modal__section pmy-board-card-actions">
+                <span className="pmy-board-pop__sub">{tr("Cartão", "Card")}</span>
+                <div className="pmy-support-actions" style={{ marginTop: 0 }}>
+                  {onArchiveDeparture && (
+                    <button type="button" className="pmy-board-btn" disabled={Boolean(cardAction.busy)}
+                      onClick={() => archiveOpenCard(!departureInfo[openCard.key]?.archivedAt)}>
+                      {cardAction.busy === "archive" ? "…" : departureInfo[openCard.key]?.archivedAt ? tr("Desarquivar", "Unarchive") : tr("Arquivar", "Archive")}
+                    </button>
+                  )}
+                  {onDeleteDepartureCard && !cardAction.confirmDelete && (
+                    <button type="button" className="pmy-board-btn is-danger-text" disabled={Boolean(cardAction.busy)}
+                      onClick={() => setCardAction({ busy: "", error: "", confirmDelete: true })}>
+                      {tr("Excluir cartão", "Delete card")}
+                    </button>
+                  )}
+                </div>
+                {cardAction.confirmDelete && (
+                  <div className="pmy-board-confirm" role="alertdialog" aria-label={tr("Confirmar exclusão", "Confirm delete")}>
+                    <p>{openCard.bookings.length
+                      ? tr("Esta saída tem reservas, então o cartão não pode ser excluído. Use \"Arquivar\" para tirá-lo do Quadro.", "This departure has bookings, so the card cannot be deleted. Use \"Archive\" instead.")
+                      : tr("Excluir apaga os checklists, observações, etiquetas e arquivos deste cartão e tira os guias escalados. Não dá para desfazer.", "Deleting removes this card's checklists, notes, labels and files and unassigns its guides. This cannot be undone.")}</p>
+                    <div className="pmy-support-actions" style={{ marginTop: 6 }}>
+                      {!openCard.bookings.length && (
+                        <button type="button" className="pmy-board-btn is-danger" disabled={Boolean(cardAction.busy)} onClick={deleteOpenCard}>
+                          {cardAction.busy === "delete" ? "…" : tr("Excluir de vez", "Delete permanently")}
+                        </button>
+                      )}
+                      <button type="button" className="pmy-board-btn" disabled={Boolean(cardAction.busy)} onClick={() => setCardAction({ busy: "", error: "", confirmDelete: false })}>{tr("Cancelar", "Cancel")}</button>
+                    </div>
+                  </div>
+                )}
+                {cardAction.error && <p className="pmy-support-error" role="alert">{cardAction.error}</p>}
+              </div>
+            )}
 
             {requestJson && (
               <ActivityPanel targetType="departure" targetKey={openCard.key} requestJson={requestJson} lang={lang}

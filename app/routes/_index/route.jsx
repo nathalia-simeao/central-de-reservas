@@ -2140,6 +2140,7 @@ function CentralDeReservasContent() {
       guideNotes: Array.isArray(item.guideNotes) ? item.guideNotes : [],
       attachments: item.attachments || [],
       checklists: item.checklists || null,
+      archivedAt: item.archivedAt || null,
     }])));
   // Quadro: coluna "Documentos de suporte" e importação do Trello (11/11/2026).
   const [supportCards, setSupportCards] = useState(() => initialSupportCards || []);
@@ -2232,6 +2233,31 @@ function CentralDeReservasContent() {
     },
   };
 
+  // Quadro: arquivar / excluir o cartão de uma saída.
+  const handleArchiveDeparture = async (tourId, startTime, archived) => {
+    const fd = new FormData();
+    fd.append("_action", "archiveDeparture");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("archived", archived ? "true" : "false");
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao arquivar.", "Archive failed."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo((current) => ({ ...current, [key]: { ...(current[key] || {}), archivedAt: result.departure?.archivedAt || null } }));
+  };
+  const handleDeleteDepartureCard = async (tourId, startTime) => {
+    const fd = new FormData();
+    fd.append("_action", "deleteDepartureCard");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao excluir.", "Delete failed."));
+    const key = departureKey(tourId, startTime);
+    const at = new Date(startTime).getTime();
+    setDepartureInfo((current) => { const next = { ...current }; delete next[key]; return next; });
+    setDepartureTags((current) => { const next = { ...current }; delete next[key]; return next; });
+    setGuideAssignmentsList((current) => current.filter((a) => !((a.tourId || a.tour?.id) === tourId && Math.abs(new Date(a.startTime).getTime() - at) < 60000)));
+  };
   // Quadro: checklists do cartão (operação aplicada no servidor).
   const handleChecklistOp = async (tourId, startTime, op) => {
     const fd = new FormData();
@@ -3212,6 +3238,7 @@ function CentralDeReservasContent() {
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
+              onArchiveDeparture: handleArchiveDeparture, onDeleteDepartureCard: handleDeleteDepartureCard,
               supportCards, supportHandlers, loadBookings: loadBoardBookings, loadImage: loadCentralImage, requestJson: requestResourceJson,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
               loadTrelloBoard: isCentralAdmin ? loadTrelloBoard : null,
