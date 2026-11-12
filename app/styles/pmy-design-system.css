@@ -6655,3 +6655,6 @@ a.pmy-board-btn { text-decoration: none; display: inline-flex; align-items: cent
 .pmy-plat-picker__menu button { padding: 4px; }
 .pmy-plat-picker__menu button.is-on { box-shadow: inset 0 0 0 2px #172b4d; }
 .pmy-plat-picker__clear { flex-basis: 100%; justify-content: center; font-size: 12.5px !important; }
+/* Central aberta pelo app do celular: caminho de volta para Saídas/Quadro/Dash */
+.pmy-menu-item--app { text-decoration: none; border: 1px dashed var(--pmy-ds-border); margin-bottom: 6px; }
+.pmy-back-to-app { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 12px; border-radius: 999px; background: var(--pmy-ds-accent); color: var(--pmy-ds-accent-contrast); font-size: 13px; font-weight: 700; text-decoration: none; }

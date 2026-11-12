@@ -506,6 +506,8 @@ export const loader = async ({ request }) => {
       name: centralUser.name || null,
       role: centralUser.role,
       legacy: Boolean(centralUser.legacy),
+      // Aberta pelo app do celular (PMY Guias): mostra o caminho de volta ao app.
+      portal: Boolean(centralUser.portal),
     },
     centralUsers: userIsAdmin
       ? await prisma.centralUser

@@ -21,15 +21,20 @@ function hasShopifyContext(request) {
   return ["shop", "host", "id_token", "embedded", "hmac"].some((key) => url.searchParams.has(key));
 }
 
-/** Pessoa logada no app com perfil de adm, ou null. */
-export async function portalAdminFromRequest(request) {
-  const person = await getGuideFromRequest(db, request).catch(() => null);
-  if (!person) return null;
-  if (personAreas(person).includes("ADMIN")) return person;
+/** A pessoa do app é administradora (área Administração ou acesso ADMIN na Central)? */
+export async function isPortalAdmin(person) {
+  if (!person) return false;
+  if (personAreas(person).includes("ADMIN")) return true;
   const linked = await db.centralUser
     .findFirst({ where: { guideId: person.id, role: "ADMIN" }, select: { id: true } })
     .catch(() => null);
-  return linked ? person : null;
+  return Boolean(linked);
+}
+
+/** Pessoa logada no app com perfil de adm, ou null. */
+export async function portalAdminFromRequest(request) {
+  const person = await getGuideFromRequest(db, request).catch(() => null);
+  return (await isPortalAdmin(person)) ? person : null;
 }
 
 /** Igual a authenticate.admin, mas aceita o adm logado pelo app. */

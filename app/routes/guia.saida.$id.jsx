@@ -5,7 +5,7 @@ import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/
 import { normalizeText } from "../utils/trello-import.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
-import { GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, PLATFORM_NAMES, lisbonParts } from "../components/guide/GuideShell";
 import {
   CHECK_FIELDS,
   appendNote,
@@ -328,8 +328,8 @@ export default function GuideDeparture() {
               </details>
             )}
             <div className="g-row">
-              {b.wa && <a className="g-btn" href={b.wa} target="_blank" rel="noreferrer">💬 WhatsApp</a>}
-              {b.tel && <a className="g-btn" href={`tel:${b.tel}`}>📞 Ligar</a>}
+              {b.wa && <a className="g-btn" href={b.wa} target="_blank" rel="noreferrer"><GIcon name="chat" /> WhatsApp</a>}
+              {b.tel && <a className="g-btn" href={`tel:${b.tel}`}><GIcon name="phone" /> Ligar</a>}
               {b.status === "CONFIRMED" && (
                 <Form method="post" className="g-row">
                   <input type="hidden" name="intent" value="attendance" />
@@ -353,7 +353,7 @@ export default function GuideDeparture() {
         {!departure.attachments.length && <p className="g-empty">Nenhum arquivo anexado pela gestão.</p>}
         {departure.attachments.map((file) => (
           <a key={file.id} className="g-file" href={`/guia/anexo/${file.id}`} target="_blank" rel="noreferrer">
-            <span>📎 {file.fileName}</span>
+            <span><GIcon name="clip" /> {file.fileName}</span>
             <small style={{ color: "var(--g-muted)" }}>{Math.max(1, Math.round(file.size / 1024))} KB</small>
           </a>
         ))}

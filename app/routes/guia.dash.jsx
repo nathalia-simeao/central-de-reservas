@@ -1,5 +1,7 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
+import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
+import { DatePicker } from "../components/pmy/PmyUI";
 import db from "../db.server";
 import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
@@ -28,18 +30,32 @@ function lisbonMonthStart(now, offset = 0) {
   return new Date(Date.UTC(y, m - 1 + offset, 1));
 }
 
+const DAY = 24 * 3600 * 1000;
+const lastDays = (n) => (now) => ({ since: new Date(now.getTime() - n * DAY), until: new Date(now.getTime() + 1) });
+// Períodos do Dash (pedido 12/11: também 3, 7, 15 e 30 dias, e datas à escolha).
 const PERIODS = {
+  "3d": { label: "3 dias", range: lastDays(3) },
+  "7d": { label: "7 dias", range: lastDays(7) },
+  "15d": { label: "15 dias", range: lastDays(15) },
+  "30d": { label: "30 dias", range: lastDays(30) },
   mes: { label: "Este mês", range: (now) => ({ since: lisbonMonthStart(now), until: lisbonMonthStart(now, 1) }) },
   anterior: { label: "Mês passado", range: (now) => ({ since: lisbonMonthStart(now, -1), until: lisbonMonthStart(now) }) },
-  "90d": { label: "90 dias", range: (now) => ({ since: new Date(now.getTime() - 90 * 24 * 3600 * 1000), until: new Date(now.getTime() + 1) }) },
+  "90d": { label: "90 dias", range: lastDays(90) },
 };
+const isDateKey = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
 
-  const period = PERIODS[new URL(request.url).searchParams.get("p")] ? new URL(request.url).searchParams.get("p") : "mes";
-  const { since, until } = PERIODS[period].range(new Date());
+  const params = new URL(request.url).searchParams;
+  const from = params.get("de");
+  const to = params.get("ate");
+  const custom = params.get("p") === "datas" && isDateKey(from) && isDateKey(to) && from <= to;
+  const period = custom ? "datas" : PERIODS[params.get("p")] ? params.get("p") : "mes";
+  const { since, until } = custom
+    ? { since: new Date(`${from}T00:00:00Z`), until: new Date(new Date(`${to}T00:00:00Z`).getTime() + DAY) }
+    : PERIODS[period].range(new Date());
   const [sales, past] = await Promise.all([
     db.booking.findMany({
       where: { sellerGuideId: guide.id, createdAt: { gte: since, lt: until } },
@@ -90,6 +106,7 @@ export const loader = async ({ request }) => {
 
   return {
     period,
+    customRange: custom ? { from, to } : null,
     guide: { name: guide.name, code: guide.utmId || null },
     totals: {
       sales: confirmed.length,
@@ -122,8 +139,11 @@ function money(value, currency = "EUR") {
 }
 
 export default function GuideDash() {
-  const { period, guide, totals, sales, past } = useLoaderData();
+  const { period, customRange, guide, totals, sales, past } = useLoaderData();
   const [, setParams] = useSearchParams();
+  const [picking, setPicking] = useState(period === "datas");
+  const [from, setFrom] = useState(customRange?.from || "");
+  const [to, setTo] = useState(customRange?.to || "");
   const conversion = totals.links ? Math.round((totals.sales / totals.links) * 100) : null;
   return (
     <GuideShell title="Dash">
@@ -134,15 +154,29 @@ export default function GuideDash() {
         </div>
       </div>
 
-      <div className="g-row" style={{ marginBottom: 12 }} role="tablist" aria-label="Período">
+      <div className="g-periods" role="tablist" aria-label="Período">
         {Object.entries(PERIODS).map(([key, p]) => (
           <button key={key} type="button" role="tab" aria-selected={period === key}
-            className={`g-btn ${period === key ? "on" : ""}`} style={{ flex: 1, minHeight: 38 }}
-            onClick={() => setParams(key === "mes" ? {} : { p: key })}>
+            className={`g-chip ${period === key ? "on" : ""}`}
+            onClick={() => { setPicking(false); setParams(key === "mes" ? {} : { p: key }); }}>
             {p.label}
           </button>
         ))}
+        <button type="button" role="tab" aria-selected={period === "datas"} className={`g-chip ${period === "datas" || picking ? "on" : ""}`} onClick={() => setPicking(true)}>
+          Escolher datas
+        </button>
       </div>
+      {picking && (
+        <div className="g-card g-range">
+          <div className="g-field"><span>De</span>
+            <DatePicker aria-label="Data inicial" value={from} onChange={(e) => setFrom(e?.target?.value ?? e)} locale="pt-PT" placeholder="dd/mm/aaaa" todayLabel="Hoje" clearLabel="Limpar" />
+          </div>
+          <div className="g-field"><span>Até</span>
+            <DatePicker aria-label="Data final" value={to} onChange={(e) => setTo(e?.target?.value ?? e)} locale="pt-PT" placeholder="dd/mm/aaaa" todayLabel="Hoje" clearLabel="Limpar" />
+          </div>
+          <button type="button" className="g-btn primary" disabled={!from || !to || from > to} onClick={() => setParams({ p: "datas", de: from, ate: to })}>Ver período</button>
+        </div>
+      )}
 
       <div className="g-card">
         <h2>Vendas</h2>

@@ -3098,6 +3098,12 @@ function CentralDeReservasContent() {
           </div>
 
           <nav className="pmy-menu" aria-label={lang === "pt" ? "Navegação principal" : "Main navigation"}>
+            {centralUser?.portal && (
+              <a href="/guia" className="pmy-menu-item pmy-menu-item--app" title={sidebarCollapsed ? ui("Voltar ao app", "Back to the app") : undefined}>
+                <span className="pmy-menu-icon"><Icon name="chevronLeft" size={19} /></span>
+                <span className="pmy-menu-label">{ui("Voltar ao app", "Back to the app")}</span>
+              </a>
+            )}
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -3148,6 +3154,11 @@ function CentralDeReservasContent() {
               >
                 <Icon name="menu" size={19} strokeWidth={2} />
               </button>
+              {centralUser?.portal && (
+                <a href="/guia" className="pmy-back-to-app" aria-label={ui("Voltar ao app: Saídas, Quadro e Dash", "Back to the app")}>
+                  <Icon name="chevronLeft" size={16} /> {ui("App", "App")}
+                </a>
+              )}
               <div className="pmy-header-copy">
                 <div className="pmy-eyebrow">{lang === 'pt' ? 'Portugal Me & You · Central de Reservas' : 'Portugal Me & You · Booking Hub'}</div>
                 <h1 className="pmy-page-title">

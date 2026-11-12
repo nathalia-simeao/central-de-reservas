@@ -2,7 +2,7 @@ import { Link, NavLink, useRouteLoaderData } from "react-router";
 
 // Layout leve do portal do guia (celular primeiro, sem Polaris/Shopify).
 export const guideStyles = `
-:root { --surface-color:var(--g-card); --dashboard-text:var(--g-ink); --dashboard-muted:var(--g-muted); --dashboard-accent:var(--g-green); --dashboard-border:var(--g-line); --g-bg:#f6f4f1; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b7280; --g-line:#e5e1db; --g-green:#166534; --g-green-soft:#dcfce7; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
+:root { --surface-color:var(--g-card); --dashboard-text:var(--g-ink); --dashboard-muted:var(--g-muted); --dashboard-accent:var(--g-green); --dashboard-border:var(--g-line); --g-bg:#f4dcdc; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b6264; --g-line:#ecd6d6; --g-green:#006600; --g-green-soft:#e1f1e1; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
 @media (prefers-color-scheme: dark) { :root { --g-bg:#111614; --g-card:#1a211e; --g-ink:#e8eee9; --g-muted:#9aa5a0; --g-line:#2b3530; --g-green:#4ade80; --g-green-soft:#14361f; --g-red:#f87171; --g-red-soft:#3b1515; --g-amber:#fbbf24; --g-amber-soft:#3a2a0b; } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--g-bg); color:var(--g-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size:16px; -webkit-text-size-adjust:100%; }
@@ -13,7 +13,12 @@ a { color: inherit; }
 .g-tabs { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; justify-content:center; background:var(--g-card); border-top:1px solid var(--g-line); padding:6px 8px calc(6px + env(safe-area-inset-bottom)); }
 .g-tabs__inner { display:flex; gap:4px; width:100%; max-width:640px; }
 .g-tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; border-radius:12px; text-decoration:none; color:var(--g-muted); font-size:12px; font-weight:700; }
-.g-tab span { font-size:20px; line-height:1; }
+.g-tab svg { width:22px; height:22px; }
+.g-ico { width:18px; height:18px; flex:none; vertical-align:-3px; }
+.g-periods { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none; }
+.g-chip { flex:none; min-height:36px; padding:6px 14px; border-radius:999px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+.g-chip.on { background:var(--g-green); border-color:var(--g-green); color:#fff; }
+.g-range { display:grid; gap:10px; }
 .g-tab.active { color:var(--g-green); background:var(--g-green-soft); }
 .g-cl { border:1px solid var(--g-line); border-radius:12px; padding:10px; margin-top:10px; }
 .g-cl.mine { border-color:var(--g-green); }
@@ -104,10 +109,34 @@ a { color: inherit; }
 .g-summary b { color:var(--g-ink); }
 `;
 
+// Ícones de linha (minimalistas), no lugar dos emojis.
+const ICONS = {
+  calendar: <><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>,
+  board: <><rect x="3.5" y="4" width="5" height="16" rx="1.5" /><rect x="9.5" y="4" width="5" height="11" rx="1.5" /><rect x="15.5" y="4" width="5" height="7" rx="1.5" /></>,
+  chart: <><path d="M4 20h16" /><path d="M7 16v-5M12 16V7M17 16v-8" /></>,
+  building: <><path d="M4 20.5h16M6 20.5V5.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 5.5v15" /><path d="M9.5 8h1M13.5 8h1M9.5 11.5h1M13.5 11.5h1M10.5 20.5v-4h3v4" /></>,
+  user: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" /></>,
+  chat: <path d="M5 18.5 3.5 21l.3-4A8 8 0 1 1 7 19.4Z" />,
+  card: <><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="M3 10h18M7 15h3" /></>,
+  file: <><path d="M7 3.5h6.5L18 8v12.5H7z" /><path d="M13.5 3.5V8H18" /></>,
+  clip: <path d="m20 11.5-7.8 7.8a4.5 4.5 0 0 1-6.4-6.4l8-8a3 3 0 0 1 4.3 4.3l-8 8a1.5 1.5 0 1 1-2.1-2.1l7.4-7.4" />,
+  phone: <path d="M5 4h3.5l1.5 4-2 1.5a10 10 0 0 0 6.5 6.5L16 14l4 1.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4Z" />,
+  back: <path d="M15 5 8 12l7 7" />,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+};
+
+export function GIcon({ name, className = "g-ico" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {ICONS[name] || null}
+    </svg>
+  );
+}
+
 const TABS = [
-  { to: "/guia", label: "Saídas", icon: "🗓️", end: true },
-  { to: "/guia/quadro", label: "Quadro", icon: "🗂️" },
-  { to: "/guia/dash", label: "Dash", icon: "📊" },
+  { to: "/guia", label: "Saídas", icon: "calendar", end: true },
+  { to: "/guia/quadro", label: "Quadro", icon: "board" },
+  { to: "/guia/dash", label: "Dash", icon: "chart" },
 ];
 
 function GuideTabs() {
@@ -119,13 +148,13 @@ function GuideTabs() {
       <div className="g-tabs__inner">
         {TABS.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.end} className={({ isActive }) => `g-tab${isActive ? " active" : ""}`}>
-            <span aria-hidden="true">{tab.icon}</span>{tab.label}
+            <GIcon name={tab.icon} className="" />{tab.label}
           </NavLink>
         ))}
         {person.isAdmin && (
           // A Central é outra tela (fora do /guia): carrega a página inteira.
           <Link to="/" reloadDocument className="g-tab">
-            <span aria-hidden="true">🏢</span>Central
+            <GIcon name="building" className="" />Central
           </Link>
         )}
       </div>
@@ -141,7 +170,7 @@ export function GuideShell({ children, title = "Portal do guia", wide = false, b
       <title>{`${title} · Portugal, Me & You`}</title>
       <meta name="robots" content="noindex" />
       <link rel="manifest" href="/guia.webmanifest" />
-      <meta name="theme-color" content="#166534" />
+      <meta name="theme-color" content="#006600" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-title" content="PMY Guias" />

@@ -3,7 +3,7 @@ import { Form, Link, useActionData, useLoaderData, useNavigation, useSearchParam
 import { DatePicker, DropdownSelect } from "../components/pmy/PmyUI";
 import db from "../db.server";
 import { unauthenticated } from "../shopify.server";
-import { GuideShell } from "../components/guide/GuideShell";
+import { GIcon, GuideShell } from "../components/guide/GuideShell";
 import { createDraftCheckout } from "../services/draft-checkout.server";
 import { resolvePrimaryShop } from "../utils/single-tenant.server";
 import { getGuideFromRequest, redirectTo, whatsappLink } from "../utils/guide-portal.server";
@@ -32,84 +32,45 @@ async function shopAdmin() {
   return { shop, admin: await unauthenticated.admin(shop) };
 }
 
-async function loadProduct(admin, productId) {
-  const response = await admin.graphql(
-    `#graphql
-      query GuidePortalProduct($id: ID!) {
-        product(id: $id) {
-          id
-          title
-          status
-          variants(first: 100) { nodes { id title price availableForSale } }
-        }
-      }`,
-    { variables: { id: productId } },
-  );
-  const payload = await response.json();
-  return payload?.data?.product || null;
-}
-
-// Só passeios ATIVOS no Shopify (nada de rascunho, arquivado ou não listado).
-async function activeProductIds(admin, ids) {
-  const active = new Set();
-  for (let i = 0; i < ids.length; i += 100) {
-    const response = await admin.graphql(
-      `#graphql
-        query GuidePortalProductStatus($ids: [ID!]!) {
-          nodes(ids: $ids) { ... on Product { id status } }
-        }`,
-      { variables: { ids: ids.slice(i, i + 100) } },
-    );
-    const payload = await response.json();
-    for (const node of payload?.data?.nodes || []) {
-      if (node?.id && node.status === "ACTIVE") active.add(node.id);
-    }
-  }
-  return active;
-}
-
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
 
+  // Passeios e ingressos vêm da cópia local do Shopify (sincronizada pela Central):
+  // não depende de chamar a Shopify na hora, que falhava no app (12/11).
+  // Só passeios ATIVOS no site (nada de rascunho, arquivado ou não listado).
   const linked = (
     await db.tour.findMany({
-      where: { shopifyProductId: { not: null } },
+      where: { shopifyProductId: { not: null }, shopifyStatus: "ACTIVE" },
       select: { id: true, title: true, shopifyProductId: true },
       orderBy: { title: "asc" },
     })
   ).filter((tour) => /^gid:\/\/shopify\/Product\/\d+$/.test(String(tour.shopifyProductId)));
-
-  let tours = [];
-  let listError = null;
-  try {
-    const { admin } = await shopAdmin();
-    const active = await activeProductIds(admin, [...new Set(linked.map((t) => t.shopifyProductId))]);
-    tours = linked.filter((t) => active.has(t.shopifyProductId));
-  } catch (e) {
-    console.error("[PMY guide sell] product status load failed:", e);
-    listError = "Não foi possível carregar os passeios agora. Tente de novo em instantes.";
-  }
+  const tours = linked;
+  const listError = tours.length ? null : "Nenhum passeio ativo encontrado. Peça para a gestão sincronizar os produtos do Shopify na Central.";
 
   const url = new URL(request.url);
   const tourId = url.searchParams.get("tour");
   const tour = tours.find((item) => item.id === tourId) || null;
-  let product = null;
   let error = null;
+  let variants = [];
   if (tour) {
-    try {
-      const { admin } = await shopAdmin();
-      product = await loadProduct(admin, tour.shopifyProductId);
-      if (!product || product.status !== "ACTIVE") error = "Este passeio não está ativo no site.";
-    } catch (e) {
-      console.error("[PMY guide sell] product load failed:", e);
-      error = "Não foi possível carregar os ingressos agora. Tente de novo em instantes.";
-    }
+    const rows = await db.tourVariant.findMany({
+      where: { tourId: tour.id, active: true, shopifyVariantId: { not: null } },
+      select: { shopifyVariantId: true, title: true, price: true, startTimeSlot: true },
+      orderBy: { title: "asc" },
+    });
+    variants = rows
+      .filter((v) => /^gid:\/\/shopify\/ProductVariant\/\d+$/.test(String(v.shopifyVariantId)))
+      .map((v) => ({
+        id: v.shopifyVariantId,
+        title: v.title || "Ingresso",
+        price: v.price == null ? null : String(v.price),
+        time: v.startTimeSlot || timeFromTitle(v.title),
+      }));
+    if (!variants.length) error = "Este passeio ainda não tem ingressos sincronizados. Avise a gestão.";
   }
-
-  const variants = (product?.variants?.nodes || [])
-    .filter((v) => v.availableForSale !== false)
-    .map((v) => ({ id: v.id, title: v.title, price: v.price, time: timeFromTitle(v.title) }));
+  const product = tour ? { title: tour.title } : null;
   const times = [...new Set(variants.map((v) => v.time).filter(Boolean))].sort();
 
   return {
@@ -216,7 +177,7 @@ export default function GuideSell() {
             <input readOnly value={result.invoiceUrl} onFocus={(e) => e.target.select()} />
           </label>
           <div className="g-row">
-            <a className="g-btn primary" href={result.whatsapp} target="_blank" rel="noreferrer">💬 Enviar por WhatsApp</a>
+            <a className="g-btn primary" href={result.whatsapp} target="_blank" rel="noreferrer"><GIcon name="chat" /> Enviar por WhatsApp</a>
             <button
               type="button"
               className="g-btn"

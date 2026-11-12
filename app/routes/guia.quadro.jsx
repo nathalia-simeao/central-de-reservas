@@ -1,15 +1,16 @@
 import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
-import { GuideShell } from "../components/guide/GuideShell";
+import { GIcon, GuideShell } from "../components/guide/GuideShell";
 import { addDays, buildBoardColumns, initials } from "../utils/agenda-board.js";
 import { tourColor } from "../utils/agenda-labels.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+import { isPortalAdmin } from "../utils/central-auth.server";
 
 // Aba Quadro do app: o mesmo quadro da Agenda (uma coluna por dia, um cartão
-// por saída), só para consulta. O guia vê a operação inteira, mas sem dados
-// de clientes de outras saídas; os cartões dele aparecem destacados e abrem
-// a tela da saída.
+// por saída), só para consulta. O guia vê só as saídas em que está escalado
+// (pedido do Renan, 12/11: nada de ver os passeios e ingressos dos colegas);
+// administradores veem a operação inteira.
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 430;
@@ -63,13 +64,15 @@ export const loader = async ({ request }) => {
 
   const collections = new Map(tours.map((t) => [t.id, (Array.isArray(t.shopifySnapshot?.collections) ? t.shopifySnapshot.collections : []).map((c) => c?.title || c).filter(Boolean)]));
   // Cartões arquivados na Central não aparecem para os guias.
+  const seesAll = await isPortalAdmin(guide);
   const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours })
-    .map((col) => ({ ...col, cards: col.cards.filter((c) => !departureInfo[c.key]?.archivedAt) }));
+    .map((col) => ({ ...col, cards: col.cards.filter((c) => !departureInfo[c.key]?.archivedAt && (seesAll || c.guides.some((g) => g.guideId === guide.id))) }));
   const labels = settings?.agendaLabels || null;
 
   return {
     days: DAYS,
     maxDays: MAX_DAYS,
+    seesAll,
     supportCards,
     // Só os dias com saída (como as listas do Trello).
     columns: columns.filter((col) => col.cards.length).map((col) => ({
@@ -109,7 +112,7 @@ function Card({ card }) {
       <small>
         {card.pax} pax{card.pending ? ` + ${card.pending} pendente(s)` : ""}
         {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : " · sem guia"}
-        {card.checks ? ` · ✓ ${card.checks}/3` : ""}
+        
       </small>
     </>
   );
@@ -127,10 +130,10 @@ function SupportColumn({ cards }) {
       <h3>Documentos de suporte <small>{cards.length}</small></h3>
       {cards.map((card) => (
         <details key={card.id} className="g-bcard">
-          <summary><strong>{card.title}</strong>{card.attachments.length > 0 && <small>📄 {card.attachments.length} arquivo(s)</small>}</summary>
+          <summary><strong>{card.title}</strong>{card.attachments.length > 0 && <small><GIcon name="file" /> {card.attachments.length} arquivo(s)</small>}</summary>
           {card.body && <pre>{card.body}</pre>}
           {card.attachments.map((file) => (
-            <a key={file.id} className="g-doc" href={`/suporte/anexo/${file.id}`} target="_blank" rel="noreferrer">📄 {file.fileName}</a>
+            <a key={file.id} className="g-doc" href={`/suporte/anexo/${file.id}`} target="_blank" rel="noreferrer"><GIcon name="file" /> {file.fileName}</a>
           ))}
         </details>
       ))}
@@ -139,18 +142,20 @@ function SupportColumn({ cards }) {
 }
 
 export default function GuideBoard() {
-  const { columns, supportCards, days, maxDays } = useLoaderData();
+  const { columns, supportCards, days, maxDays, seesAll } = useLoaderData();
   return (
     <GuideShell title="Quadro" wide>
       <div className="g-top">
         <div>
           <h1>Quadro</h1>
-          <small>Próximos {days} dias, só os dias com saída · deslize para o lado · seus cartões em verde</small>
+          <small>{seesAll
+            ? `Próximos ${days} dias, todas as saídas (você é administrador) · seus cartões em verde`
+            : `Próximos ${days} dias · só as saídas em que você está escalado`}</small>
         </div>
       </div>
       <div className="g-board">
         <SupportColumn cards={supportCards} />
-        {!columns.length && <p className="g-empty">Nenhuma saída nos próximos {days} dias.</p>}
+        {!columns.length && <p className="g-empty">{seesAll ? `Nenhuma saída nos próximos ${days} dias.` : `Você não está escalado em nenhuma saída nos próximos ${days} dias.`}</p>}
         {columns.map((col) => (
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey)}>
             <h3>{columnTitle(col.dateKey)} <small>{col.cards.length}</small></h3>

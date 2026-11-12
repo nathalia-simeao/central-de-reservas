@@ -1,7 +1,7 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, data, useLoaderData } from "react-router";
 import db from "../db.server";
-import { GuideShell, lisbonParts } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, lisbonParts } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookie, sessionTokenFromRequest } from "../utils/guide-portal.server";
 
 export const loader = async ({ request }) => {
@@ -97,7 +97,7 @@ export default function GuideHome() {
 
       {mentions.length > 0 && (
         <div className="g-card g-mentions">
-          <h2>💬 Marcaram você ({mentions.length})</h2>
+          <h2><GIcon name="chat" /> Marcaram você ({mentions.length})</h2>
           {mentions.map((m) => (
             <p key={m.id}><b>{m.authorName || "Equipe"}</b>: {m.text}<br /><small>{lisbonParts(m.createdAt).day} · {lisbonParts(m.createdAt).time}</small></p>
           ))}
@@ -110,7 +110,7 @@ export default function GuideHome() {
       )}
 
       <div className="g-row" style={{ marginBottom: 12 }}>
-        <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}>💳 Vender · gerar link</Link>
+        <Link to="/guia/vender" className="g-btn primary" style={{ flex: "1 1 200px" }}><GIcon name="card" /> Vender · gerar link</Link>
       </div>
 
       {!groups.length && (
