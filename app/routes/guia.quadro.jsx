@@ -103,7 +103,7 @@ function columnTitle(dateKey, locale = "pt-PT") {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} (${weekday.replace(".", "")})`;
 }
 
-function Card({ card }) {
+function Card({ card, dateKey, canEdit = false }) {
   const t = useT();
   const body = (
     <>
@@ -117,6 +117,17 @@ function Card({ card }) {
       </small>
     </>
   );
+  // Administradores editam tudo: o cartão abre o mesmo cartão no Quadro da
+  // Central (guias, checklists, mover data…), que é outra tela (fora do /guia).
+  if (canEdit) {
+    const href = `/?tab=quadro&de=quadro&dia=${dateKey}&cartao=${encodeURIComponent(card.key)}`;
+    return (
+      <a href={href} className={`g-bcard g-bcard--edit${card.myAssignmentId ? " mine" : ""}`} aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>
+        {body}
+        <span className="g-bcard__edit"><GIcon name="edit" /> {t("Abrir para editar")}</span>
+      </a>
+    );
+  }
   return card.myAssignmentId ? (
     <Link to={`/guia/saida/${card.myAssignmentId}`} className="g-bcard mine">{body}</Link>
   ) : (
@@ -153,7 +164,7 @@ export default function GuideBoard() {
         <div>
           <h1>{t("Quadro")}</h1>
           <small>{seesAll
-            ? t("Próximos {n} dias, todas as saídas (você é administrador) · seus cartões em verde", { n: days })
+            ? t("Próximos {n} dias, todas as saídas · toque num cartão para editar", { n: days })
             : t("Próximos {n} dias · só as saídas em que você está escalado", { n: days })}</small>
         </div>
       </div>
@@ -164,7 +175,7 @@ export default function GuideBoard() {
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey, locale)}>
             <h3>{columnTitle(col.dateKey, locale)} <small>{col.cards.length}</small></h3>
             {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>{t("Sem saídas.")}</p>}
-            {col.cards.map((card) => <Card key={card.key} card={card} />)}
+            {col.cards.map((card) => <Card key={card.key} card={card} dateKey={col.dateKey} canEdit={seesAll} />)}
           </section>
         ))}
         {days < maxDays && (

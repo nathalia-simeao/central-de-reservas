@@ -61,7 +61,7 @@ export function verifyTotp(secret, code, time = Date.now()) {
   return false;
 }
 
-export function otpauthUri(secret, account, issuer = "PMY Guias") {
+export function otpauthUri(secret, account, issuer = "Central de Reservas") {
   const label = encodeURIComponent(`${issuer}:${account}`);
   return `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 }

@@ -1,7 +1,7 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLocation } from "react-router";
 
 export default function App() {
-  // App PMY Guias: o Chrome do Android só lê o manifesto (e libera "Instalar app")
+  // App Central de Reservas: o Chrome do Android só lê o manifesto (e libera "Instalar app")
   // quando o <link rel="manifest"> está no <head>; antes ele ficava no <body>.
   const isGuideApp = /^\/guia(\/|$)/.test(useLocation().pathname);
   return (
@@ -23,7 +23,7 @@ export default function App() {
             <meta name="theme-color" content="#006600" />
             <meta name="mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-capable" content="yes" />
-            <meta name="apple-mobile-web-app-title" content="PMY Guias" />
+            <meta name="apple-mobile-web-app-title" content="Central de Reservas" />
             <meta name="apple-mobile-web-app-status-bar-style" content="default" />
             <link rel="apple-touch-icon" href="/guia-apple-touch-icon.png" />
           </>

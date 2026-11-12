@@ -1,4 +1,4 @@
-// App PMY Guias → Perfil (pedido 12/11/2026): idioma do app, foto, senha e
+// App Central de Reservas → Perfil (pedido 12/11/2026): idioma do app, foto, senha e
 // verificação em duas etapas. Vale para guias e para a equipe que usa o app.
 import { Buffer } from "node:buffer";
 import { useEffect, useRef, useState } from "react";
@@ -292,7 +292,7 @@ export default function GuidePreferences() {
 
         <section className="g-card" aria-labelledby="pref-app">
           <h2 id="pref-app">{t("App no celular")}</h2>
-          <p>{t("Instale o PMY Guias na tela inicial para abrir como um app.")}</p>
+          <p>{t("Instale a Central de Reservas na tela inicial para abrir como um app.")}</p>
           <Link to="/guia/instalar" className="g-btn">{t("Como instalar")}</Link>
         </section>
       </div>

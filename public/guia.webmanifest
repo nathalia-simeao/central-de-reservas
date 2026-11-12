@@ -1,7 +1,7 @@
 {
   "id": "/guia",
-  "name": "PMY Guias",
-  "short_name": "PMY Guias",
+  "name": "Central de Reservas",
+  "short_name": "Central de Reservas",
   "description": "Portal do guia da Portugal, Me & You: saídas, clientes, check-in e vendas.",
   "lang": "pt",
   "start_url": "/guia",

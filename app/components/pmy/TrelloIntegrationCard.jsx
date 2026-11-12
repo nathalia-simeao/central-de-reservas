@@ -30,7 +30,7 @@ export function useTrelloStatus(requestJson) {
   return [status, load];
 }
 
-export default function TrelloIntegrationCard({ requestJson, status, onReload, lang = "pt" }) {
+export default function TrelloIntegrationCard({ requestJson, status, onReload, lang = "pt", readOnly = false }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [open, setOpen] = useState(false);
   const load = onReload || (() => {});
@@ -62,13 +62,13 @@ export default function TrelloIntegrationCard({ requestJson, status, onReload, l
         {status?.sync?.lastSummary?.guideWarnings?.length > 0 && state !== "error" && (
           <div className="pmy-int-connection-note">{tr(`${status.sync.lastSummary.guideWarnings.length} aviso(s) de guias na última leitura.`, `${status.sync.lastSummary.guideWarnings.length} guide warning(s) in the last read.`)}</div>
         )}
-        <div className="pmy-int-actions">
+        {!readOnly && <div className="pmy-int-actions">
           <Button variant={state === "required" ? "primary" : "secondary"} size="sm" icon="settings" onClick={() => setOpen(true)}>
             {state === "required" ? tr("Configurar", "Configure") : tr("Gerenciar integração", "Manage integration")}
           </Button>
-        </div>
+        </div>}
       </div>
-      <Modal open={open} title="Trello" onClose={() => { setOpen(false); load(); }} closeLabel={tr("Fechar", "Close")} className="pmy-ds-modal--form">
+      <Modal open={open && !readOnly} title="Trello" onClose={() => { setOpen(false); load(); }} closeLabel={tr("Fechar", "Close")} className="pmy-ds-modal--form">
         <TrelloConnectionPanel requestJson={requestJson} lang={lang} bare />
       </Modal>
     </>

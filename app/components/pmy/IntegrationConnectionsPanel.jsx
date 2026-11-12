@@ -19,6 +19,7 @@ export default function IntegrationConnectionsPanel({
   platformConnections,
   reservationPlatforms,
   requestResourceJson = null,
+  readOnly = false,
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
   const [trelloStatus, reloadTrello] = useTrelloStatus(requestResourceJson);
@@ -159,7 +160,7 @@ export default function IntegrationConnectionsPanel({
                                   )}
                                 </div>
                               )}
-                              <div className="pmy-int-actions">
+                              {!readOnly && <div className="pmy-int-actions">
                                 {conn.noDirectApi ? (
                                   <Button variant="secondary" size="sm" icon="mail" disabled>{tr("Via Gmail · em breve", "Via Gmail · soon")}</Button>
                                 ) : (
@@ -180,7 +181,7 @@ export default function IntegrationConnectionsPanel({
                                     {tr("Remover credencial", "Remove credential")}
                                   </button>
                                 )}
-                              </div>
+                              </div>}
                             </div>
                           );
                         })}
@@ -190,7 +191,7 @@ export default function IntegrationConnectionsPanel({
                               <div className="pmy-ds-migrated-166ghmy"><Icon name="calendar" size={15} /> {tr("Agenda e operação", "Agenda & operations")}</div>
                               <div className="pmy-ds-migrated-htnqm2">{tr("Ferramentas que atualizam o Quadro e a Agenda da equipe. Não vendem nem mexem nas vagas.", "Tools that update the team's Board and Agenda. They don't sell or change availability.")}</div>
                             </div>
-                            <TrelloIntegrationCard requestJson={requestResourceJson} status={trelloStatus} onReload={reloadTrello} lang={lang} />
+                            <TrelloIntegrationCard requestJson={requestResourceJson} status={trelloStatus} onReload={reloadTrello} lang={lang} readOnly={readOnly} />
                           </>
                         )}
                         <div className="pmy-ds-migrated-1konp2u">
@@ -248,7 +249,7 @@ export default function IntegrationConnectionsPanel({
                                   )}
                                 </div>
                               )}
-                              <div className="pmy-int-actions">
+                              {!readOnly && <div className="pmy-int-actions">
                                 <Button
                                   variant={isConnected || isConfigured ? "secondary" : "primary"}
                                   size="sm"
@@ -259,7 +260,7 @@ export default function IntegrationConnectionsPanel({
                                     ? tr("Gerenciar integração de conteúdo", "Manage content integration")
                                     : tr("Configurar integração de conteúdo", "Configure content integration")}
                                 </Button>
-                              </div>
+                              </div>}
                             </div>
                           );
                         })}

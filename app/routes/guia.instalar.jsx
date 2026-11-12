@@ -1,4 +1,4 @@
-// "Baixar o app" (pedido 12/11/2026): o PMY Guias é um app web instalável.
+// "Baixar o app" (pedido 12/11/2026): o Central de Reservas é um app web instalável.
 // Android/Chrome: botão Instalar. iPhone: passo a passo do Safari.
 // Funciona sem login, para a gestão mandar o link a quem vai começar.
 import { useEffect, useState } from "react";
@@ -46,7 +46,7 @@ export default function GuideInstall() {
       <div className="g-top">
         <div>
           <h1>{t("Instalar o app")}</h1>
-          <small>{t("O PMY Guias abre como um app, com ícone na tela inicial.")}</small>
+          <small>{t("A Central de Reservas abre como um app, com ícone na tela inicial.")}</small>
         </div>
         {layout?.person ? <Link to="/guia/preferencias" className="g-link">{t("Perfil")}</Link> : <Link to="/guia/login" className="g-link">{t("Entrar")}</Link>}
       </div>
@@ -62,7 +62,7 @@ export default function GuideInstall() {
               <section className="g-card">
                 <h2>{t("Instalar agora")}</h2>
                 <p>{t("Toque no botão e confirme. O ícone aparece na tela inicial.")}</p>
-                <button type="button" className="g-btn primary" onClick={install}><GIcon name="download" /> {t("Instalar o PMY Guias")}</button>
+                <button type="button" className="g-btn primary" onClick={install}><GIcon name="download" /> {t("Instalar a Central de Reservas")}</button>
               </section>
             )}
             {(device === "ios" || device === "other") && (

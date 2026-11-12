@@ -74,6 +74,10 @@ a { color: inherit; }
 .g-bcard__collection { font-weight:700; color:var(--g-green); }
 .g-col.more { background:none; display:flex; align-items:center; }
 .g-bcard.mine { border-color:var(--g-green); box-shadow:0 0 0 1px var(--g-green); }
+.g-bcard--edit { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.g-bcard--edit:active { transform:scale(.99); }
+.g-bcard__edit { display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:12px; font-weight:700; color:var(--g-green); }
+.g-bcard__edit svg { width:14px; height:14px; }
 .g-bcard__bar { height:6px; width:44px; border-radius:99px; margin-bottom:6px; }
 .g-bcard strong { display:block; font-size:14px; overflow-wrap:anywhere; }
 .g-bcard small { display:block; color:var(--g-muted); font-size:12px; margin-top:4px; overflow-wrap:anywhere; }
@@ -149,6 +153,7 @@ const ICONS = {
   phone: <path d="M5 4h3.5l1.5 4-2 1.5a10 10 0 0 0 6.5 6.5L16 14l4 1.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4Z" />,
   back: <path d="M15 5 8 12l7 7" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  edit: <><path d="M4 20h4L19 9l-4-4L4 16v4Z" /><path d="M13.5 6.5l4 4" /></>,
   download: <><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M4.5 19.5h15" /></>,
 };
 

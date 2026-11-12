@@ -12,7 +12,8 @@ import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import DashboardTab from "../../components/pmy/DashboardTab";
 import GygDeactivationAlerts from "../../components/pmy/GygDeactivationAlerts";
 import AgendaTab from "../../components/pmy/AgendaTab";
-import IntegrationsTab from "../../components/pmy/IntegrationsTab";
+import IntegrationsTab, { DesktopOnlyNote } from "../../components/pmy/IntegrationsTab";
+import useIsMobile from "../../components/pmy/useIsMobile";
 import GuidesTab from "../../components/pmy/GuidesTab";
 import SettingsTab from "../../components/pmy/SettingsTab";
 import { ConfirmDialog, DatePicker, Icon, ToastViewport } from "../../components/pmy/PmyUI";
@@ -491,6 +492,7 @@ function CentralDeReservasContent() {
   const guidePhotoRef = useRef(null);
   const t = translations[lang] || translations.pt;
   const ui = (pt, en) => lang === "en" ? en : pt;
+  const isMobile = useIsMobile();
   // Perfis: ADMIN vê tudo; STAFF (equipe) não vê Integrações, Configurações
   // nem as áreas restritas da Visão geral. O servidor também bloqueia.
   const isCentralAdmin = !centralUser || String(centralUser.role || "").toUpperCase() === "ADMIN";
@@ -513,7 +515,20 @@ function CentralDeReservasContent() {
 
   const navKey = activeTab === "agenda" && calendarView === "board" ? "quadro" : activeTab;
   // Calendário → "Editar no Quadro": abre o Quadro já no dia e no cartão.
-  const [boardFocus, setBoardFocus] = useState(null);
+  // Vindo do app (Quadro do celular): /?tab=quadro&dia=AAAA-MM-DD&cartao=<chave> abre o cartão.
+  const [boardFocus, setBoardFocus] = useState(() => {
+    if (initialNavKey !== "quadro") return null;
+    const params = new URLSearchParams(location.search || "");
+    const key = params.get("cartao") || "";
+    const dateKey = params.get("dia") || "";
+    if (!key && !dateKey) return null;
+    return { key: key.slice(0, 200), dateKey: /^\d{4}-\d{2}-\d{2}$/.test(dateKey) ? dateKey : "", nonce: 1 };
+  });
+  // De onde veio do app: o botão "‹ App" volta para a mesma aba (Quadro).
+  const appBackHref = (() => {
+    const from = new URLSearchParams(location.search || "").get("de") || "";
+    return /^(quadro|dash|vender)$/.test(from) ? `/guia/${from}` : "/guia";
+  })();
   const openInBoard = (focus) => {
     setBoardFocus({ ...focus, nonce: Date.now() });
     setCalendarView("board");
@@ -537,8 +552,11 @@ function CentralDeReservasContent() {
     try { localStorage.setItem("pmy_active_tab", navKey); } catch { /* armazenamento bloqueado */ }
     try {
       const url = new URL(window.location.href);
-      if (url.searchParams.get("tab") !== navKey) {
+      if (url.searchParams.get("tab") !== navKey || url.searchParams.has("cartao")) {
         url.searchParams.set("tab", navKey);
+        // O cartão já abriu: recarregar a página não deve abrir de novo.
+        url.searchParams.delete("cartao");
+        url.searchParams.delete("dia");
         window.history.replaceState(window.history.state, "", url.toString());
       }
     } catch { /* sem history */ }
@@ -3155,7 +3173,7 @@ function CentralDeReservasContent() {
                 <Icon name="menu" size={19} strokeWidth={2} />
               </button>
               {centralUser?.portal && (
-                <a href="/guia" className="pmy-back-to-app" aria-label={ui("Voltar ao app: Saídas, Quadro e Dash", "Back to the app")}>
+                <a href={appBackHref} className="pmy-back-to-app" aria-label={ui("Voltar ao app: Saídas, Quadro e Dash", "Back to the app")}>
                   <Icon name="chevronLeft" size={16} /> {ui("App", "App")}
                 </a>
               )}
@@ -3312,7 +3330,9 @@ function CentralDeReservasContent() {
             isCentralAdmin, centralUsers: centralUsersList, centralUser, handleSaveCentralUser, handleAddPerson,
           }} />
 
-          <SettingsTab {...{
+          {activeTab === "configuracoes" && isMobile ? (
+            <DesktopOnlyNote lang={lang}>{ui("As configurações da Central só podem ser mudadas no computador.", "Central settings can only be changed on a computer.")}</DesktopOnlyNote>
+          ) : <SettingsTab {...{
             activeMappingPlatform, activeTab, allPlatforms, defaultMappings, fieldMappings,
             logoLightInputRef, logoDarkInputRef, handleBrandLogoChange, handleRemoveBrandLogo,
             handleThemeChange, handleRestoreThemeDefaults, handleImageShapeChange,
@@ -3322,7 +3342,7 @@ function CentralDeReservasContent() {
             reservationPlatforms, setActiveMappingPlatform, settingsSaveMessage,
             t, theme, lang, centralUsers, centralUser, handleSaveCentralUser, requestResourceJson,
             featureFlags, handleSaveFeatureFlags
-          }} />
+          }} />}
 
 
           </div>

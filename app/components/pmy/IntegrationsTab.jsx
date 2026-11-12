@@ -1,9 +1,21 @@
-import { Tabs } from "./PmyUI";
+import { Icon, Tabs } from "./PmyUI";
+import useIsMobile from "./useIsMobile";
 import IntegrationConnectionsPanel from "./IntegrationConnectionsPanel";
 import IntegrationProductsPanel from "./IntegrationProductsPanel";
 import IntegrationSyncLogPanel from "./IntegrationSyncLogPanel";
 import PlatformPricesPanel from "./PlatformPricesPanel";
 import GygNotifySandboxTest from "./GygNotifySandboxTest";
+
+/** Aviso das telas que só se configuram no computador (pedido da Nathalia, 12/11/2026). */
+export function DesktopOnlyNote({ lang = "pt", children }) {
+  const tr = (pt, en) => (lang === "en" ? en : pt);
+  return (
+    <div className="pmy-desktop-only-note" role="note">
+      <Icon name="settings" size={18} />
+      <p>{children || tr("Para conectar plataformas ou mudar configurações, abra a Central no computador. No celular você acompanha a situação.", "To connect platforms or change settings, open the Central on a computer. On the phone you can follow the status.")}</p>
+    </div>
+  );
+}
 
 export default function IntegrationsTab(props) {
   const {
@@ -16,9 +28,20 @@ export default function IntegrationsTab(props) {
     handleSavePlatformPrices,
   } = props;
 
+  const isMobile = useIsMobile();
   if (activeTab !== "integracoes") return null;
 
   const tr = (pt, en) => lang === "en" ? en : pt;
+
+  // Celular: só a situação das conexões, sem botões de configurar.
+  if (isMobile) {
+    return (
+      <div className="pmy-int-readonly">
+        <DesktopOnlyNote lang={lang} />
+        <IntegrationConnectionsPanel {...props} readOnly />
+      </div>
+    );
+  }
 
   return (
     <div>

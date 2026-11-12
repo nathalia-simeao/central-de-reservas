@@ -1877,6 +1877,55 @@ export function buildCentralStyles(theme) {
         .pmy-guides-grid, .pmy-media-grid { grid-template-columns:1fr; }
         .pmy-platform-pill { padding-inline:10px; }
       }
+
+      /* ===== CELULAR (app Central de Reservas e navegador do telefone) — pedido da Nathalia, 12/11/2026 =====
+         Fica no fim de propósito: vence as regras antigas espalhadas acima.
+         Topo em duas linhas legíveis, um cartão por linha, todos do mesmo jeito,
+         e janelas (modais) com margem e cantos arredondados, nunca coladas na borda. */
+      @media (max-width: 720px) {
+        .pmy-header-top { flex-wrap:wrap; align-items:center; row-gap:10px; column-gap:8px; min-height:0; padding-block:8px; margin-bottom:14px; }
+        .pmy-header-title-wrap { flex:1 1 100%; min-width:0; gap:8px; }
+        .pmy-header-copy { flex:1 1 auto; min-width:0; }
+        .pmy-page-title { font-size:24px !important; line-height:1.15; padding-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pmy-back-to-app { padding:8px 12px; }
+        .pmy-header-notification-actions { flex:1 1 100% !important; width:100% !important; margin-left:0 !important; justify-content:flex-end !important; gap:8px !important; }
+        .pmy-header-notification-actions > .pmy-date-wrapper { order:-1; margin-right:auto; }
+        .pmy-date-btn,
+        .pmy-header-notification-actions .pmy-date-btn {
+          width:auto !important; height:42px !important; min-width:0 !important; max-width:none !important; flex:0 0 auto !important;
+          padding:0 14px !important; border-radius:999px !important; font-size:14px !important; gap:7px; white-space:nowrap; overflow:visible;
+        }
+        .pmy-date-dropdown { top:120px; }
+
+        .pmy-dashboard-kpi-grid,
+        .pmy-dashboard-status-strip,
+        .pmy-guides-grid,
+        .pmy-grid,
+        .pmy-ds-grid--2, .pmy-ds-grid--3, .pmy-ds-grid--4,
+        .pmy-ds-status-grid,
+        .pmy-int-summary { grid-template-columns:minmax(0,1fr) !important; }
+        .pmy-dashboard-kpi-grid { gap:12px !important; }
+        .pmy-int-summary { display:grid !important; gap:10px !important; }
+        .pmy-kpi-card,
+        .pmy-kpi-card.is-featured,
+        .pmy-dashboard .pmy-kpi-card,
+        .pmy-dashboard .pmy-kpi-card.is-featured { grid-column:1 / -1 !important; width:100%; min-height:0 !important; padding:16px 18px !important; border-radius:18px !important; }
+        .pmy-kpi-topline { margin-bottom:10px; }
+        .pmy-kpi-value { font-size:28px !important; }
+
+        .pmy-modal-overlay { align-items:center !important; padding:14px !important; height:100dvh; }
+        .pmy-modal,
+        .pmy-connect-modal { width:100% !important; max-width:100% !important; max-height:calc(100dvh - 28px) !important; border-radius:20px !important; }
+        .pmy-ds-modal-backdrop { padding:14px !important; }
+        .pmy-ds-modal,
+        .pmy-ds-modal--form,
+        .pmy-ds-modal--wide { width:100% !important; max-height:calc(100dvh - 28px) !important; border-radius:20px !important; }
+        .pmy-board-modal { padding:14px !important; place-items:start center; }
+        .pmy-board-modal__card { border-radius:16px !important; min-height:0 !important; padding:16px 16px 20px; }
+      }
+      .pmy-desktop-only-note { display:flex; align-items:flex-start; gap:10px; margin:0 0 16px; padding:14px 16px; border-radius:16px; border:1px solid color-mix(in srgb, var(--primary-green) 22%, transparent); background:color-mix(in srgb, var(--primary-green) 7%, var(--surface-color)); color:var(--text-dark); }
+      .pmy-desktop-only-note svg { flex:none; margin-top:2px; color:var(--primary-green); }
+      .pmy-desktop-only-note p { margin:0; font-size:14px; line-height:1.45; }
     `;
 }
 
