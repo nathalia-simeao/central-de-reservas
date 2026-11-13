@@ -297,7 +297,7 @@ export default function GuidesTab(props) {
               {upcomingDepartures.map((card) => (
                 // Colunas fixas (pedido da Nathalia, 12/11/2026): passeio | data e hora | pax | guias,
                 // cada uma alinhada à esquerda, para ler de cima a baixo sem procurar.
-                <div key={card.key} className="pmy-upcoming__row">
+                <div key={card.uid || card.key} className="pmy-upcoming__row">
                   <span className="pmy-upcoming__tour">
                     <Icon name="calendar" size={16} />
                     <TourCountryFlag tour={tourById.get(card.tourId)} lang={lang}/>

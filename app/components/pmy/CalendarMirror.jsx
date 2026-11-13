@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
-import { addDays, buildBoardColumns, cardLabelIds } from "../../utils/agenda-board.js";
+import { addDays, buildBoardColumns, cardLabelIds, listsForCard } from "../../utils/agenda-board.js";
 import { autoChecklists, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { cardChecklists } from "../../utils/board-tasks.js";
 import { languageLabel } from "../../utils/tour-languages.js";
@@ -176,8 +176,9 @@ function FilesList({ files, basePath, loadImage, onOpen, lang }) {
 
 /** Guias escritos nos checklists do Trello que não estão escalados nesta saída. */
 export function trelloGuideGaps(info, card, guides = [], aliases = {}) {
-  const assignedIds = new Set((card.guides || []).map((g) => g.guideId));
-  const assignedFirst = new Set((card.guides || []).map((g) => normalizeText(g.name).split(" ")[0]));
+  const everyone = card.siblingGuides || card.guides || []; // saída dividida: vale a escala da saída toda
+  const assignedIds = new Set(everyone.map((g) => g.guideId));
+  const assignedFirst = new Set(everyone.map((g) => normalizeText(g.name).split(" ")[0]));
   const gaps = new Map();
   for (const list of normalizeChecklists(info?.checklists).lists) {
     if (!String(list.id).startsWith("trello_")) continue;
@@ -209,7 +210,8 @@ export function TrelloGuideCheck({ gaps, lang = "pt" }) {
 function DepartureDetail({ card, info, agendaLabels, tagById, collections, guides = [], aliases = {}, nav, onOpenBoard, onOpenAttachment, loadImage, onClose, onBack, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
-  const state = normalizeChecklists(info?.checklists);
+  const fullState = normalizeChecklists(info?.checklists);
+  const state = { ...fullState, lists: listsForCard(fullState.lists, card) };
   const autos = autoChecklists(card);
   const notes = Array.isArray(info?.guideNotes) ? info.guideNotes : [];
   const gaps = trelloGuideGaps(info, card, guides, aliases);
@@ -223,7 +225,7 @@ function DepartureDetail({ card, info, agendaLabels, tagById, collections, guide
       footer={(
         <>
           <span className="pmy-mirror__readonly">{tr("Só visualização. As mudanças são feitas no Quadro.", "View only. Changes are made on the board.")}</span>
-          <Button type="button" variant="primary" size="sm" onClick={() => onOpenBoard({ dateKey: card.dateKey, key: card.key })}>{tr("Editar no Quadro", "Edit on board")}</Button>
+          <Button type="button" variant="primary" size="sm" onClick={() => onOpenBoard({ dateKey: card.dateKey, key: card.uid || card.key })}>{tr("Editar no Quadro", "Edit on board")}</Button>
         </>
       )}
     >
@@ -443,8 +445,8 @@ export default function CalendarMirror({
   })), [tours]);
 
   const itemsOn = (key) => itemsByDate.get(key) || [];
-  const findCard = (key) => { for (const list of itemsByDate.values()) for (const it of list) if (it.kind === "departure" && it.card.key === key) return it.card; return null; };
-  const openItem = (item) => setDetail(item.kind === "task" ? { kind: "task", id: item.task.id } : { kind: "departure", key: item.card.key });
+  const findCard = (key) => { for (const list of itemsByDate.values()) for (const it of list) if (it.kind === "departure" && (it.card.uid || it.card.key) === key) return it.card; return null; };
+  const openItem = (item) => setDetail(item.kind === "task" ? { kind: "task", id: item.task.id } : { kind: "departure", key: item.card.uid || item.card.key });
   const closeAll = () => { setDetail(null); setDayKey(""); };
 
   const views = [
@@ -471,7 +473,7 @@ export default function CalendarMirror({
     const people = card.pax + card.pending;
     const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
     return (
-      <button key={card.key} type="button" className="pmy-cal-chip" style={{ background: color, color: contrastText(color) }} onClick={() => openItem(item)}
+      <button key={card.uid || card.key} type="button" className="pmy-cal-chip" style={{ background: color, color: contrastText(color) }} onClick={() => openItem(item)}
         title={`${card.timeKey} · ${card.title} · ${people} pax`}>
         <b>{card.timeKey}</b>
         <span>{card.title}</span>
@@ -573,7 +575,7 @@ export default function CalendarMirror({
               <div className="pmy-cal-daycol__items">
                 {items.length ? items.map((item) => (
                   item.kind === "task" ? renderChip(item) : (
-                    <button key={item.card.key} type="button" className="pmy-cal-event" style={{ "--tour-color": tourColor(agendaLabels, item.card.tourId) }} onClick={() => openItem(item)}>
+                    <button key={item.card.uid || item.card.key} type="button" className="pmy-cal-event" style={{ "--tour-color": tourColor(agendaLabels, item.card.tourId) }} onClick={() => openItem(item)}>
                       <b>{item.card.timeKey}</b>
                       <strong>{item.card.title}</strong>
                       <small>{`${item.card.pax} pax${item.card.pending ? ` +${item.card.pending}` : ""}`} · {item.card.guides.length ? item.card.guides.map((g) => g.name.split(" ")[0]).join(", ") : tr("sem guia", "no guide")}</small>
@@ -594,7 +596,7 @@ export default function CalendarMirror({
   // Setinhas ‹ › para ver os outros passeios do mesmo dia sem fechar a janela.
   const detailDate = detailCard?.dateKey || detailTask?.dateKey || "";
   const siblings = detailDate ? itemsOn(detailDate) : [];
-  const detailIndex = siblings.findIndex((it) => (it.kind === "task" ? detail?.kind === "task" && it.task.id === detail.id : detail?.kind === "departure" && it.card.key === detail.key));
+  const detailIndex = siblings.findIndex((it) => (it.kind === "task" ? detail?.kind === "task" && it.task.id === detail.id : detail?.kind === "departure" && (it.card.uid || it.card.key) === detail.key));
   const nav = siblings.length > 1 && detailIndex >= 0 ? {
     index: detailIndex,
     total: siblings.length,

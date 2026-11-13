@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
-import { addDays, buildBoardColumns, cardLabelIds, initials } from "../../utils/agenda-board.js";
+import { addDays, buildBoardColumns, cardLabelIds, initials, listsForCard } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import DepartureTagsSection from "./DepartureTagsSection";
 
@@ -399,8 +399,19 @@ function AddCardForm({ dateKey, tours, guides, onAssign, onCreateTask, onClose, 
 }
 
 /* ---------- Checklists (igual ao Trello) ---------- */
-function ChecklistSection({ card, raw, onOp, lang }) {
+/** Checklists da saída vistos por um cartão (saída dividida: só as listas daquele guia). */
+function cardChecklistRaw(card, raw) {
+  if (!card?.split) return raw;
+  const state = normalizeChecklists(raw);
+  return { ...state, lists: listsForCard(state.lists, card) };
+}
+
+function ChecklistSection({ card, raw: fullRaw, onOp: sendOp, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
+  const raw = cardChecklistRaw(card, fullRaw);
+  const ownerId = card.split ? card.guides?.[0]?.guideId || "" : "";
+  // Lista nova num cartão de guia fica marcada com aquele guia.
+  const onOp = (op) => sendOp(op?.type === "addList" && ownerId ? { ...op, guideId: ownerId } : op);
   const state = normalizeChecklists(raw);
   const autos = autoChecklists(card);
   const [busy, setBusy] = useState(false);
@@ -655,7 +666,11 @@ export default function AgendaBoard({
     if (onlyBusy || days >= MAX_DAYS) return;
     if (el.scrollLeft + el.clientWidth > el.scrollWidth - 700) setDays((d) => Math.min(d + 14, MAX_DAYS));
   };
-  const openCard = columns.flatMap((c) => c.cards).find((c) => c.key === openKey) || null;
+  // openKey = uid do cartão; vindo de um link (passeio|horário) abre o primeiro cartão daquela saída.
+  const openCard = (() => {
+    const all = columns.flatMap((c) => c.cards);
+    return all.find((c) => c.uid === openKey) || all.find((c) => c.key === openKey) || null;
+  })();
   useEffect(() => { setCardAction({ busy: "", error: "", confirmDelete: false }); }, [openKey]);
   const archiveOpenCard = async (archived) => {
     setCardAction({ busy: "archive", error: "", confirmDelete: false });
@@ -705,7 +720,7 @@ export default function AgendaBoard({
   const allCards = columns.flatMap((c) => c.cards);
   const endDrag = () => { setDragKey(""); setDropDate(""); };
   const dropOn = (dateKey) => {
-    const card = allCards.find((c) => c.key === dragKey);
+    const card = allCards.find((c) => c.uid === dragKey);
     endDrag();
     if (card && dateKey !== card.dateKey) setPendingMove({ card, dateKey, timeKey: card.timeKey });
   };
@@ -801,17 +816,17 @@ export default function AgendaBoard({
               {col.cards.map((card) => {
                 const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
                 const color = tourColor(agendaLabels, card.tourId);
-                const progress = checklistProgress(card, departureInfo[card.key]?.checklists);
+                const progress = checklistProgress(card, cardChecklistRaw(card, departureInfo[card.key]?.checklists));
                 return (
                   <button
-                    key={card.key}
+                    key={card.uid}
                     type="button"
-                    className={`pmy-board-card${dragKey === card.key ? " is-dragging" : ""}${showArchived ? " is-archived" : ""}`}
+                    className={`pmy-board-card${dragKey === card.uid ? " is-dragging" : ""}${showArchived ? " is-archived" : ""}`}
                     style={{ "--tour-color": color }}
                     draggable={canMove}
-                    onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.key); setDragKey(card.key); } : undefined}
+                    onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.uid); setDragKey(card.uid); } : undefined}
                     onDragEnd={canMove ? endDrag : undefined}
-                    onClick={() => { setOpenKey(card.key); setLabelsOpen(false); setGuestMsg(""); setWaitlistOpen(false); }}
+                    onClick={() => { setOpenKey(card.uid); setLabelsOpen(false); setGuestMsg(""); setWaitlistOpen(false); }}
                   >
                     {(() => {
                       const cover = loadImage && (departureInfo[card.key]?.attachments || []).find(isPreviewableImage);

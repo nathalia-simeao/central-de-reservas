@@ -42,3 +42,31 @@ test("utilitários", () => {
   assert.equal(initials("Maria Alves"), "MA");
   assert.equal(initials("Sofia"), "SO");
 });
+
+import { listsForCard, splitCardByGuide } from "../app/utils/agenda-board.js";
+
+test("mesmo passeio e horário com 2 guias vira 2 cartões, clientes pelo idioma", () => {
+  const card = {
+    key: "t1|2026-11-14T09:30:00.000Z", tourId: "t1", pax: 9, present: 0, pending: 0,
+    guides: [{ guideId: "g1", name: "Miguel Alves", languages: ["en"] }, { guideId: "g2", name: "Maria Aldina", languages: ["es"] }],
+    bookings: [
+      { id: "b1", status: "CONFIRMED", language: "English", adults: 2 },
+      { id: "b2", status: "CONFIRMED", language: "Español", adults: 3 },
+      { id: "b3", status: "CONFIRMED", language: "Français", adults: 1 },
+      { id: "b4", status: "CONFIRMED", language: "English", adults: 4, groupGuideId: "g2" },
+    ],
+  };
+  const pieces = splitCardByGuide(card);
+  assert.deepEqual(pieces.map((p) => p.uid), ["t1|2026-11-14T09:30:00.000Z#g1", "t1|2026-11-14T09:30:00.000Z#g2", "t1|2026-11-14T09:30:00.000Z#sem-guia"]);
+  assert.deepEqual(pieces.map((p) => p.bookings.map((b) => b.id)), [["b1"], ["b2", "b4"], ["b3"]]);
+  assert.deepEqual(pieces.map((p) => p.pax), [2, 7, 1]);
+  assert.ok(pieces.every((p) => p.key === card.key));
+  const lists = [{ id: "a", title: "9h ENG Miguel" }, { id: "b", title: "9h ESP Maria" }, { id: "c", title: "Ingressos" }, { id: "d", title: "Extra", guideId: "g2" }];
+  assert.deepEqual(listsForCard(lists, pieces[0]).map((l) => l.id), ["a", "c"]);
+  assert.deepEqual(listsForCard(lists, pieces[1]).map((l) => l.id), ["b", "c", "d"]);
+});
+
+test("um guia só continua um cartão", () => {
+  const card = { key: "k", guides: [{ guideId: "g1", name: "A" }], bookings: [] };
+  assert.deepEqual(splitCardByGuide(card).map((p) => p.uid), ["k"]);
+});

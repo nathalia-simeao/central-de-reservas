@@ -120,7 +120,7 @@ function Card({ card, dateKey, canEdit = false }) {
   // Administradores editam tudo: o cartão abre o mesmo cartão no Quadro da
   // Central (guias, checklists, mover data…), que é outra tela (fora do /guia).
   if (canEdit) {
-    const href = `/?tab=quadro&de=quadro&dia=${dateKey}&cartao=${encodeURIComponent(card.key)}`;
+    const href = `/?tab=quadro&de=quadro&dia=${dateKey}&cartao=${encodeURIComponent(card.uid || card.key)}`;
     return (
       <a href={href} className={`g-bcard g-bcard--edit${card.myAssignmentId ? " mine" : ""}`} aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>
         {body}
@@ -175,7 +175,7 @@ export default function GuideBoard() {
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey, locale)}>
             <h3>{columnTitle(col.dateKey, locale)} <small>{col.cards.length}</small></h3>
             {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>{t("Sem saídas.")}</p>}
-            {col.cards.map((card) => <Card key={card.key} card={card} dateKey={col.dateKey} canEdit={seesAll} />)}
+            {col.cards.map((card) => <Card key={card.uid || card.key} card={card} dateKey={col.dateKey} canEdit={seesAll} />)}
           </section>
         ))}
         {days < maxDays && (

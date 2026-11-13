@@ -59,7 +59,7 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates, vi
   const firstName = normalizeText(guide.name).split(" ")[0];
   const manual = state.lists.map((list) => ({
     id: list.id, title: list.title, auto: false,
-    mine: Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
+    mine: list.guideId ? list.guideId === assignment.guideId : Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
     items: list.items.map((item) => ({ id: item.id, text: item.text, platform: item.platform || null, done: item.done })),
   }));
   return [...auto, ...manual].sort((a, b) => Number(b.mine) - Number(a.mine));

@@ -26,6 +26,7 @@ export function normalizeChecklists(raw) {
   const lists = (Array.isArray(source.lists) ? source.lists : []).slice(0, MAX_LISTS).map((list) => ({
     id: clean(list?.id, 64) || newId("cl"),
     title: clean(list?.title, 120) || "Checklist",
+    ...(clean(list?.guideId, 64) ? { guideId: clean(list.guideId, 64) } : {}),
     items: (Array.isArray(list?.items) ? list.items : []).slice(0, MAX_ITEMS).map((item) => {
       // Plataforma do cliente: a escolhida, ou a sigla escrita no fim do texto (Trello).
       const saved = platformKey(item?.platform);
@@ -60,7 +61,8 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
     case "addList": {
       if (state.lists.length >= MAX_LISTS) throw new Error("Limite de checklists atingido.");
       const items = (Array.isArray(op.items) ? op.items : []).map((text) => ({ id: newId("it"), text: clean(text), done: false, at: null, by: null })).filter((i) => i.text);
-      state.lists.push({ id: newId("cl"), title: clean(op.title, 120) || "Checklist", items });
+      // Saída dividida por guia: a lista nasce no cartão daquele guia.
+      state.lists.push({ id: newId("cl"), title: clean(op.title, 120) || "Checklist", ...(clean(op.guideId, 64) ? { guideId: clean(op.guideId, 64) } : {}), items });
       break;
     }
     case "renameList": { const list = findList(op.listId); if (list) list.title = clean(op.title, 120) || list.title; break; }

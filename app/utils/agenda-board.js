@@ -2,6 +2,8 @@
 // (passeio + horário). Monta tudo a partir do que a Central já tem: reservas,
 // escala de guias e o registro da saída (etiquetas, checks, observações, anexos).
 
+import { languageKey } from "./tour-languages.js";
+
 const LISBON = "Europe/Lisbon";
 
 export function lisbonParts(value) {
@@ -48,6 +50,7 @@ export function buildBoardColumns({
   departureTags = {},
   departureInfo = {},
   tours = [],
+  splitByGuide = true,
 }) {
   const dateKeys = Array.from({ length: days }, (_, i) => addDays(startDateKey, i));
   const inRange = new Set(dateKeys);
@@ -120,11 +123,70 @@ export function buildBoardColumns({
   }
 
   const byDate = new Map(dateKeys.map((k) => [k, []]));
-  for (const card of cards.values()) byDate.get(card.dateKey)?.push(card);
+  for (const card of cards.values()) {
+    for (const piece of splitByGuide ? splitCardByGuide(card) : [{ ...card, uid: card.key }]) byDate.get(card.dateKey)?.push(piece);
+  }
   return dateKeys.map((dateKey) => ({
     dateKey,
     cards: byDate.get(dateKey).sort((a, b) => a.timeKey.localeCompare(b.timeKey) || a.title.localeCompare(b.title)),
   }));
+}
+
+/**
+ * Um cartão por guia (pedido da Nathalia, 13/11/2026): o mesmo passeio no mesmo
+ * horário com 2+ guias vira um cartão para cada guia. Os clientes vão pelo grupo
+ * escolhido na reserva (groupGuideId) ou pelo idioma escalado do guia; quem não
+ * casar com ninguém fica num cartão "Sem guia" para a equipe ver.
+ * `key` continua sendo a saída (passeio|horário) — etiquetas, anexos, observações
+ * e checklists manuais são da saída —, e `uid` identifica o cartão na tela.
+ */
+export function splitCardByGuide(card) {
+  const guides = card.guides || [];
+  if (guides.length < 2) return [{ ...card, uid: card.key }];
+  const buckets = new Map(guides.map((g) => [g.guideId || g.assignmentId, []]));
+  const rest = [];
+  const open = guides.find((g) => !(g.languages || []).length);
+  for (const booking of card.bookings) {
+    const byGroup = booking.groupGuideId && guides.find((g) => g.guideId === booking.groupGuideId);
+    const lang = languageKey(booking.language);
+    const byLang = !byGroup && lang && guides.find((g) => (g.languages || []).includes(lang));
+    const target = byGroup || byLang || open;
+    if (target) buckets.get(target.guideId || target.assignmentId).push(booking);
+    else rest.push(booking);
+  }
+  const piece = (suffix, guideList, bookings) => {
+    const confirmed = bookings.filter((b) => String(b.status || "").toUpperCase() === "CONFIRMED");
+    return {
+      ...card,
+      uid: `${card.key}#${suffix}`,
+      split: true,
+      siblingGuides: guides,
+      guides: guideList,
+      bookings,
+      pax: confirmed.reduce((sum, b) => sum + passengers(b), 0),
+      present: confirmed.filter((b) => String(b.attendanceStatus || "").toUpperCase() === "COMPLETED").reduce((sum, b) => sum + passengers(b), 0),
+      pending: bookings.filter((b) => String(b.status || "").toUpperCase() !== "CONFIRMED").reduce((sum, b) => sum + passengers(b), 0),
+    };
+  };
+  const pieces = guides.map((g) => piece(g.guideId || g.assignmentId, [g], buckets.get(g.guideId || g.assignmentId)));
+  if (rest.length) pieces.push(piece("sem-guia", [], rest));
+  return pieces;
+}
+
+/** Listas manuais que aparecem neste cartão (quando a saída está dividida por guia). */
+export function listsForCard(lists, card) {
+  if (!card?.split) return lists || [];
+  const words = (text) => String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const firstName = (name) => words(name)[0] || "";
+  const guide = card.guides?.[0] || null;
+  const others = (card.siblingGuides || []).filter((g) => g.guideId !== guide?.guideId).map((g) => firstName(g.name)).filter(Boolean);
+  return (lists || []).filter((list) => {
+    if (list.guideId) return Boolean(guide) && list.guideId === guide.guideId;
+    const titleWords = words(list.title);
+    if (guide && titleWords.includes(firstName(guide.name))) return true;
+    // Sem dono (nem guia marcado nem nome de outro guia no título): aparece em todos.
+    return !others.some((n) => titleWords.includes(n));
+  });
 }
 
 /** Etiquetas do cartão: as fixas do passeio (todas as saídas) + as desta saída. */
