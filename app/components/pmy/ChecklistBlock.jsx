@@ -1,6 +1,7 @@
 // Checklists do Quadro (formato do Trello): bloco de um checklist e o editor
 // com vários. Usado nas saídas (AgendaBoard) e nas demandas (SupportCards).
 import { useEffect, useRef, useState } from "react";
+import PhoneText from "./PhoneText";
 import { isClientItem, listPeopleSummary, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { CHECKLIST_PLATFORMS, checklistPlatform } from "../../utils/checklist-platforms.js";
 
@@ -62,7 +63,7 @@ export function FocusInput(props) {
 }
 
 // Texto que vira campo ao clicar em ✎ (Enter salva, Esc cancela).
-export function EditableText({ value, onSave, label, className = "", lang }) {
+export function EditableText({ value, onSave, label, className = "", lang, render = null }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -70,7 +71,7 @@ export function EditableText({ value, onSave, label, className = "", lang }) {
   if (!editing) {
     return (
       <span className={`pmy-editable ${className}`}>
-        <span>{value}</span>
+        <span>{render ? render(value) : value}</span>
         {onSave && (
           <button type="button" className="pmy-editable__btn" aria-label={label || tr("Editar", "Edit")} title={label || tr("Editar", "Edit")}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); savedRef.current = false; setDraft(value); setEditing(true); }}>✎</button>
@@ -154,8 +155,8 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {canMove && <span className="pmy-checklist__grip" aria-hidden="true">⋮⋮</span>}
             <input type="checkbox" checked={on} disabled={busy} onChange={() => onToggle(item)} />
             {onEditItem
-              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" />
-              : <span className="pmy-checklist__text">{item.text}</span>}
+              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" render={(v) => <PhoneText text={v} lang={lang} />} />
+              : <span className="pmy-checklist__text"><PhoneText text={item.text} lang={lang} /></span>}
             {onSetNoShow && isClientItem(item.text)
               ? <button type="button" className={`pmy-checklist__noshow-btn${item.noShow ? " is-on" : ""}`} aria-pressed={Boolean(item.noShow)} disabled={busy}
                   title={item.noShow && item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : tr("Cliente não apareceu", "Customer didn't show up")}
