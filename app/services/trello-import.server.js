@@ -93,10 +93,11 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, aliases = {}
     unplaced: [], guideWarnings: [], skipped: 0,
   };
 
-  const [tours, guides] = await Promise.all([
+  const [tours, team] = await Promise.all([
     prisma.tour.findMany({ select: { id: true, title: true } }),
-    plan?.assignGuides === false ? [] : prisma.guide.findMany({ select: { id: true, name: true } }),
+    prisma.guide.findMany({ select: { id: true, name: true } }),
   ]);
+  const guides = plan?.assignGuides === false ? [] : team;
   const tourById = new Map(tours.map((t) => [t.id, t]));
   const nowIso = now.toISOString();
 
@@ -150,8 +151,20 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, aliases = {}
         reason: card.groups.length ? `${missing || card.groups.length} checklist(s) sem horário` : "Cartão sem checklist e sem horário na Central",
       });
     }
+    // Dono do cartão do Trello (um guia só): a observação e os anexos dele vão para o
+    // cartão desse guia quando a saída tem um cartão por guia.
+    const ownerFor = (bucket) => {
+      const ids = new Set();
+      for (const entry of bucket.guides) {
+        if (entry.card !== card) continue;
+        const g = (entry.name && matchGuide(entry.name, team, aliases)) || (entry.member && matchGuide(entry.member, team, aliases));
+        if (g) ids.add(g.id);
+      }
+      return ids.size === 1 ? [...ids][0] : null;
+    };
+    // (os links dos anexos do Trello vêm no texto da observação, então todo cartão com anexo tem observação)
     const note = noteTextForCard(card);
-    if (note) for (const bucket of placed) bucket.notes.push({ trelloId: card.trelloId, text: note });
+    if (note) for (const bucket of placed) bucket.notes.push({ trelloId: card.trelloId, text: note, guideId: ownerFor(bucket) });
   }
 
   // 2) Grava cada saída: troca o que veio do Trello, mantém o resto.
@@ -200,7 +213,7 @@ export async function importTrelloPlan({ prisma, plan, assignGuide, aliases = {}
     for (const n of bucket.notes) {
       if (seen.has(n.trelloId)) continue;
       seen.add(n.trelloId);
-      notes.push({ at: nowIso, by: "Trello", text: n.text, source: "trello", trelloId: n.trelloId });
+      notes.push({ at: nowIso, by: "Trello", text: n.text, source: "trello", trelloId: n.trelloId, ...(n.guideId ? { guideId: n.guideId } : {}) });
     }
 
     await prisma.tourDeparture.upsert({

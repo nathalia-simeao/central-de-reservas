@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
-import { addDays, buildBoardColumns, cardLabelIds, initials, listsForCard } from "../../utils/agenda-board.js";
+import { addDays, attachmentsForCard, buildBoardColumns, cardLabelIds, initials, listsForCard, notesForCard } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import { langColor } from "../../utils/language-colors.js";
 import DepartureTagsSection from "./DepartureTagsSection";
@@ -517,6 +517,7 @@ export default function AgendaBoard({
   onRemoveAssignment,
   onUpload,
   onRemoveAttachment,
+  onSetAttachmentGuide,
   onOpenAttachment = null,
   onResetCheck,
   onChecklistOp,
@@ -828,7 +829,7 @@ export default function AgendaBoard({
                     onClick={() => { setOpenKey(card.uid); setLabelsOpen(false); setGuestMsg(""); setWaitlistOpen(false); }}
                   >
                     {(() => {
-                      const cover = loadImage && (departureInfo[card.key]?.attachments || []).find(isPreviewableImage);
+                      const cover = loadImage && attachmentsForCard(departureInfo[card.key], card).find(isPreviewableImage);
                       return cover ? <AuthedImage path={`/saida/anexo/${cover.id}`} loadImage={loadImage} className="pmy-board-card__cover" /> : null;
                     })()}
                     <span className="pmy-board-card__labels">
@@ -984,9 +985,19 @@ export default function AgendaBoard({
               departures={[{ tourId: openCard.tourId, startTime: openCard.startTime, title: openCard.title, timeKey: openCard.timeKey, pax: openCard.pax }]}
               agendaLabels={agendaLabels}
               departureTags={departureTags}
-              departureInfo={departureInfo}
+              departureInfo={openCard.split ? {
+                ...departureInfo,
+                // Cartão de um guia: só os ingressos e observações dele (e os da saída toda).
+                [openCard.key]: {
+                  ...(departureInfo[openCard.key] || {}),
+                  attachments: attachmentsForCard(departureInfo[openCard.key], openCard),
+                  guideNotes: notesForCard(departureInfo[openCard.key], openCard),
+                },
+              } : departureInfo}
               assignments={assignments}
-              onUpload={onUpload}
+              onUpload={onUpload ? (tourId, startTime, file) => onUpload(tourId, startTime, file, openCard.split ? openCard.guides[0]?.guideId || null : null) : undefined}
+              ownerGuide={openCard.split ? openCard.guides[0] || null : null}
+              onSetAttachmentGuide={onSetAttachmentGuide}
               onRemoveAttachment={onRemoveAttachment}
               onOpenAttachment={onOpenAttachment}
               loadImage={loadImage}

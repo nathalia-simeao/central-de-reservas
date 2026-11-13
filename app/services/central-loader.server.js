@@ -233,7 +233,7 @@ export const loader = async ({ request }) => {
       select: {
         id: true, tourId: true, startTime: true, tagIds: true,
         checkStartAt: true, checkMidAt: true, checkEndAt: true, guideNotes: true, checklists: true, archivedAt: true,
-        attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+        attachments: { select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true, guideId: true, trelloCardId: true }, orderBy: { createdAt: "asc" } },
       },
     })
     .catch((error) => {

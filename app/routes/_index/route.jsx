@@ -2062,9 +2062,10 @@ function CentralDeReservasContent() {
     setDepartureInfo(current => ({ ...current, [key]: { ...(current[key] || {}), ...result.checks } }));
   };
 
-  const handleUploadDepartureAttachment = async (tourId, startTime, file) => {
+  const handleUploadDepartureAttachment = async (tourId, startTime, file, guideId = null) => {
     const fd = new FormData();
     fd.append("_action", "uploadDepartureAttachment");
+    if (guideId) fd.append("guideId", guideId);
     fd.append("tourId", tourId);
     fd.append("startTime", new Date(startTime).toISOString());
     fd.append("file", file);
@@ -2074,6 +2075,20 @@ function CentralDeReservasContent() {
     setDepartureInfo(current => ({
       ...current,
       [key]: { ...(current[key] || {}), attachments: [...(current[key]?.attachments || []), result.attachment] },
+    }));
+  };
+
+  const handleSetAttachmentGuide = async (tourId, startTime, attachmentId, guideId) => {
+    const fd = new FormData();
+    fd.append("_action", "setAttachmentGuide");
+    fd.append("id", attachmentId);
+    if (guideId) fd.append("guideId", guideId);
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao mudar o arquivo.", "Could not move the file."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo(current => ({
+      ...current,
+      [key]: { ...(current[key] || {}), attachments: (current[key]?.attachments || []).map(item => item.id === attachmentId ? { ...item, guideId: result.attachment.guideId } : item) },
     }));
   };
 
@@ -3286,6 +3301,7 @@ function CentralDeReservasContent() {
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
               onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
               onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
+              onSetAttachmentGuide: handleSetAttachmentGuide,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
               onArchiveDeparture: handleArchiveDeparture, onDeleteDepartureCard: handleDeleteDepartureCard,

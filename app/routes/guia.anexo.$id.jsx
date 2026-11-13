@@ -1,4 +1,5 @@
 import db from "../db.server";
+import { isPortalAdmin } from "../utils/central-auth.server";
 import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 
 // Download de um ingresso/arquivo da saída — só para o guia escalado nela.
@@ -8,7 +9,7 @@ export const loader = async ({ request, params }) => {
 
   const file = await db.departureAttachment.findUnique({
     where: { id: String(params.id || "") },
-    include: { departure: { select: { tourId: true, startTime: true } } },
+    include: { departure: { select: { tourId: true, startTime: true, guideNotes: true } } },
   });
   if (!file) return new Response("Arquivo não encontrado.", { status: 404 });
 
@@ -22,7 +23,13 @@ export const loader = async ({ request, params }) => {
     },
     select: { id: true },
   });
-  if (!assigned) return new Response("Sem acesso a este arquivo.", { status: 403 });
+  const admin = await isPortalAdmin(guide);
+  if (!assigned && !admin) return new Response("Sem acesso a este arquivo.", { status: 403 });
+  // Ingresso de outro guia da mesma saída (um cartão por guia): só ele e os administradores abrem.
+  const owner = file.guideId || (file.trelloCardId
+    ? (Array.isArray(file.departure.guideNotes) ? file.departure.guideNotes : []).find((n) => n?.source === "trello" && n.trelloId === file.trelloCardId)?.guideId
+    : null);
+  if (owner && owner !== guide.id && !admin) return new Response("Este ingresso é de outro guia.", { status: 403 });
 
   return new Response(file.data, {
     headers: {

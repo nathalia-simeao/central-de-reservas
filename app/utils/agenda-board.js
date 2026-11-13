@@ -124,7 +124,14 @@ export function buildBoardColumns({
 
   const byDate = new Map(dateKeys.map((k) => [k, []]));
   for (const card of cards.values()) {
-    for (const piece of splitByGuide ? splitCardByGuide(card) : [{ ...card, uid: card.key }]) byDate.get(card.dateKey)?.push(piece);
+    for (const piece of splitByGuide ? splitCardByGuide(card) : [{ ...card, uid: card.key }]) {
+      if (piece.split) {
+        const info = departureInfo[card.key] || {};
+        piece.attachments = attachmentsForCard(info, piece).length;
+        piece.notes = notesForCard(info, piece).length;
+      }
+      byDate.get(card.dateKey)?.push(piece);
+    }
   }
   return dateKeys.map((dateKey) => ({
     dateKey,
@@ -187,6 +194,30 @@ export function listsForCard(lists, card) {
     // Sem dono (nem guia marcado nem nome de outro guia no título): aparece em todos.
     return !others.some((n) => titleWords.includes(n));
   });
+}
+
+/** De qual guia é um anexo/observação: o marcado nele ou o do cartão do Trello de onde veio. */
+function ownerOf(item, info) {
+  if (item?.guideId) return item.guideId;
+  const trelloId = item?.trelloCardId || (item?.source === "trello" ? item.trelloId : null);
+  if (!trelloId) return null;
+  const note = (info?.guideNotes || []).find((n) => n?.source === "trello" && n.trelloId === trelloId && n.guideId);
+  return note?.guideId || null;
+}
+
+function belongs(owner, card) {
+  if (!card?.split || !owner) return true; // saída de um cartão só, ou anexo da saída toda
+  return card.guides?.[0]?.guideId === owner;
+}
+
+/** Anexos (ingressos) deste cartão: numa saída dividida, só os do guia dele + os da saída toda. */
+export function attachmentsForCard(info, card) {
+  return (info?.attachments || []).filter((a) => belongs(ownerOf(a, info), card));
+}
+
+/** Observações deste cartão (as do Trello vão para o guia do cartão do Trello). */
+export function notesForCard(info, card) {
+  return (info?.guideNotes || []).filter((n) => belongs(ownerOf(n, info), card));
 }
 
 /** Etiquetas do cartão: as fixas do passeio (todas as saídas) + as desta saída. */

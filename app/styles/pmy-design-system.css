@@ -6804,3 +6804,5 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 }
 /* Sigla da plataforma sempre em branco, também nos itens já marcados. */
 .pmy-plat, .pmy-checklist__item.is-done .pmy-plat, .pmy-checklist__item .pmy-checklist__tail .pmy-plat { color: #fff !important; text-decoration: none !important; }
+.pmy-departure-file__owner { margin-left: 4px; padding: 0 7px; border-radius: 999px; border: 1px solid #1f845a; background: #e9f6ef; color: #1f845a; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.pmy-departure-file__owner.is-shared { border-color: #dcdfe4; background: #fff; color: #626f86; }

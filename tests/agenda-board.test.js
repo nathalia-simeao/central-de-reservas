@@ -70,3 +70,18 @@ test("um guia só continua um cartão", () => {
   const card = { key: "k", guides: [{ guideId: "g1", name: "A" }], bookings: [] };
   assert.deepEqual(splitCardByGuide(card).map((p) => p.uid), ["k"]);
 });
+
+import { attachmentsForCard, notesForCard } from "../app/utils/agenda-board.js";
+
+test("anexos e observações por cartão de guia", () => {
+  const info = {
+    guideNotes: [{ source: "trello", trelloId: "t1", guideId: "g1", text: "ingressos Miguel" }, { source: "trello", trelloId: "t2", guideId: "g2", text: "ingressos Maria" }, { by: "Renan", text: "geral" }],
+    attachments: [{ id: "a", trelloCardId: "t1" }, { id: "b", trelloCardId: "t2" }, { id: "c", guideId: "g2" }, { id: "d" }],
+  };
+  const miguel = { split: true, guides: [{ guideId: "g1" }] };
+  const maria = { split: true, guides: [{ guideId: "g2" }] };
+  assert.deepEqual(attachmentsForCard(info, miguel).map((a) => a.id), ["a", "d"]);
+  assert.deepEqual(attachmentsForCard(info, maria).map((a) => a.id), ["b", "c", "d"]);
+  assert.deepEqual(notesForCard(info, miguel).map((n) => n.text), ["ingressos Miguel", "geral"]);
+  assert.equal(attachmentsForCard(info, { guides: [] }).length, 4);
+});

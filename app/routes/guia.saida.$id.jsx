@@ -1,6 +1,7 @@
 import { checklistPlatform } from "../utils/checklist-platforms.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
+import { attachmentsForCard, notesForCard } from "../utils/agenda-board.js";
 import { applyChecklistOp, autoChecklists, isClientItem, listPeopleSummary, normalizeChecklists } from "../utils/departure-checklists.js";
 import { normalizeText } from "../utils/trello-import.js";
 import { languageKey } from "../utils/tour-languages.js";
@@ -107,7 +108,7 @@ export const loader = async ({ request, params }) => {
     }),
     db.tourDeparture.findUnique({
       where: { tourId_startTime: { tourId: assignment.tourId, startTime: assignment.startTime } },
-      include: { attachments: { select: { id: true, fileName: true, mimeType: true, size: true }, orderBy: { createdAt: "asc" } } },
+      include: { attachments: { select: { id: true, fileName: true, mimeType: true, size: true, guideId: true, trelloCardId: true }, orderBy: { createdAt: "asc" } } },
     }),
     db.guideAssignment.findMany({
       where: { tourId: assignment.tourId, startTime: assignment.startTime, status: "ASSIGNED" },
@@ -131,8 +132,15 @@ export const loader = async ({ request, params }) => {
       checkStartAt: departure?.checkStartAt?.toISOString() || null,
       checkMidAt: departure?.checkMidAt?.toISOString() || null,
       checkEndAt: departure?.checkEndAt?.toISOString() || null,
-      notes: Array.isArray(departure?.guideNotes) ? departure.guideNotes : [],
-      attachments: departure?.attachments || [],
+      // Saída com um cartão por guia: cada guia vê só os ingressos e observações dele (+ os da saída toda).
+      ...(() => {
+        const mineOnly = !viewAll && teammates.length > 1 ? { split: true, guides: [{ guideId: assignment.guideId }] } : null;
+        const info = { attachments: departure?.attachments || [], guideNotes: Array.isArray(departure?.guideNotes) ? departure.guideNotes : [] };
+        return {
+          notes: mineOnly ? notesForCard(info, mineOnly) : info.guideNotes,
+          attachments: (mineOnly ? attachmentsForCard(info, mineOnly) : info.attachments).map(({ id, fileName, mimeType, size }) => ({ id, fileName, mimeType, size })),
+        };
+      })(),
     },
     permissions: guidePermissions(departure, assignment.startTime),
     bookings: groupBookings.map((b) => ({

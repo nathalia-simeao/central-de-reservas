@@ -104,6 +104,10 @@ model DepartureAttachment {
   size        Int
   data        Bytes
   uploadedBy  String?
+  // Saída com 2+ guias (um cartão por guia): de qual guia é o ingresso. Vazio = da saída toda.
+  guideId     String?
+  // Anexo que veio de um cartão do Trello (para achar o guia daquele cartão).
+  trelloCardId String?
   createdAt   DateTime      @default(now())
 
   @@index([departureId])

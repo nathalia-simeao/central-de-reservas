@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
-import { addDays, buildBoardColumns, cardLabelIds, listsForCard } from "../../utils/agenda-board.js";
+import { addDays, attachmentsForCard, buildBoardColumns, cardLabelIds, listsForCard, notesForCard } from "../../utils/agenda-board.js";
 import { autoChecklists, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { cardChecklists } from "../../utils/board-tasks.js";
 import { languageLabel } from "../../utils/tour-languages.js";
@@ -213,7 +213,7 @@ function DepartureDetail({ card, info, agendaLabels, tagById, collections, guide
   const fullState = normalizeChecklists(info?.checklists);
   const state = { ...fullState, lists: listsForCard(fullState.lists, card) };
   const autos = autoChecklists(card);
-  const notes = Array.isArray(info?.guideNotes) ? info.guideNotes : [];
+  const notes = notesForCard(info, card);
   const gaps = trelloGuideGaps(info, card, guides, aliases);
   return (
     <MirrorShell
@@ -286,7 +286,7 @@ function DepartureDetail({ card, info, agendaLabels, tagById, collections, guide
         </div>
       )}
 
-      <FilesList files={info?.attachments || []} basePath="/saida/anexo" loadImage={loadImage} onOpen={onOpenAttachment} lang={lang} />
+      <FilesList files={attachmentsForCard(info, card)} basePath="/saida/anexo" loadImage={loadImage} onOpen={onOpenAttachment} lang={lang} />
     </MirrorShell>
   );
 }

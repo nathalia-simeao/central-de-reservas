@@ -19,6 +19,8 @@ export default function DepartureTagsSection({
   departureInfo = {},
   assignments = [],
   onUpload,
+  ownerGuide = null, // cartão de um guia (saída com um cartão por guia)
+  onSetAttachmentGuide,
   onRemoveAttachment,
   onOpenAttachment,
   loadImage = null,
@@ -155,6 +157,13 @@ export default function DepartureTagsSection({
                           {onOpenAttachment
                             ? <button type="button" className="pmy-departure-file__open" title={tr("Abrir arquivo", "Open file")} onClick={() => onOpenAttachment(file.id)}>📎 {file.fileName}</button>
                             : <>📎 {file.fileName}</>}
+                          {ownerGuide && onSetAttachmentGuide && (
+                            file.guideId === ownerGuide.guideId
+                              ? <button type="button" className="pmy-departure-file__owner" title={tr("Mostrar este arquivo em todos os cartões desta saída", "Show this file on every card of this departure")}
+                                  onClick={() => onSetAttachmentGuide(departure.tourId, departure.startTime, file.id, null).catch(() => {})}>{tr(`só ${ownerGuide.name.split(" ")[0]}`, `${ownerGuide.name.split(" ")[0]} only`)}</button>
+                              : <button type="button" className="pmy-departure-file__owner is-shared" title={tr(`Deixar este arquivo só no cartão de ${ownerGuide.name}`, `Keep this file only on ${ownerGuide.name}'s card`)}
+                                  onClick={() => onSetAttachmentGuide(departure.tourId, departure.startTime, file.id, ownerGuide.guideId).catch(() => {})}>{tr("todos os cartões", "all cards")}</button>
+                          )}
                           {onRemoveAttachment && (
                             <button type="button" aria-label={tr(`Remover ${file.fileName}`, `Remove ${file.fileName}`)} onClick={() => remove(departure, file)}>×</button>
                           )}

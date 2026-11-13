@@ -495,22 +495,43 @@ export const action = async ({ request }) => {
       const departure = await ensureDeparture(prisma, tourId, startTime);
       const count = await prisma.departureAttachment.count({ where: { departureId: departure.id } });
       if (count >= 20) return json({ success: false, error: "Limite de 20 arquivos por saída." }, { status: 400 });
+      const ownerId = String(formData.get("guideId") || "").trim() || null;
       const attachment = await prisma.departureAttachment.create({
         data: {
           departureId: departure.id,
+          ...(ownerId ? { guideId: ownerId } : {}),
           fileName: safeFileName(file.name),
           mimeType,
           size: file.size,
           data: Buffer.from(await file.arrayBuffer()),
           uploadedBy: centralUser?.name || centralUser?.shopifyUserId || "central",
         },
-        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true, guideId: true, trelloCardId: true },
       });
       await activity("departure", departureTargetKey(tourId, startTime), `anexou “${attachment.fileName}”`);
       return json({ success: true, attachment, departureId: departure.id });
     } catch (e) {
       console.error("[PMY] uploadDepartureAttachment error:", e);
       return json({ success: false, error: "Não foi possível enviar o arquivo." }, { status: 500 });
+    }
+  }
+
+  // Saída com um cartão por guia: o anexo passa a ser só do cartão de um guia (ou volta a ser da saída toda).
+  if (_action === "setAttachmentGuide") {
+    try {
+      const id = String(formData.get("id") || "").trim();
+      const guideId = String(formData.get("guideId") || "").trim() || null;
+      const updated = await prisma.departureAttachment.update({
+        where: { id },
+        data: { guideId },
+        select: { id: true, fileName: true, guideId: true, departure: { select: { tourId: true, startTime: true } } },
+      });
+      const who = guideId ? (await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } }))?.name : null;
+      await activity("departure", departureTargetKey(updated.departure.tourId, updated.departure.startTime), who ? `deixou “${updated.fileName}” só no cartão de ${who}` : `deixou “${updated.fileName}” para a saída toda`);
+      return json({ success: true, attachment: { id: updated.id, guideId: updated.guideId } });
+    } catch (e) {
+      console.error("[PMY] setAttachmentGuide error:", e);
+      return json({ success: false, error: "Não foi possível mudar o arquivo de cartão." }, { status: 500 });
     }
   }
 

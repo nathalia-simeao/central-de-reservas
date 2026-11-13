@@ -36,11 +36,18 @@ export async function saveTrelloFile({ prisma, trelloCardId, url, fileName, mime
   })).filter((d) => Array.isArray(d.guideNotes) && d.guideNotes.some((n) => n?.source === "trello" && n.trelloId === trelloCardId));
   let saved = 0;
   for (const departure of departures) {
-    const exists = await prisma.departureAttachment.findFirst({ where: { departureId: departure.id, fileName, size }, select: { id: true } });
+    const exists = await prisma.departureAttachment.findFirst({ where: { departureId: departure.id, fileName, size }, select: { id: true, trelloCardId: true, guideId: true } });
+    // Arquivo baixado antes de existir "dono": a leitura do Trello completa o guia dele.
+    if (exists && !exists.trelloCardId) {
+      const owner = departure.guideNotes.find((n) => n?.source === "trello" && n.trelloId === trelloCardId)?.guideId || null;
+      await prisma.departureAttachment.update({ where: { id: exists.id }, data: { trelloCardId, ...(owner && !exists.guideId ? { guideId: owner } : {}) } }).catch(() => {});
+    }
     if (!exists) {
       const count = await prisma.departureAttachment.count({ where: { departureId: departure.id } });
       if (count >= 20) continue;
-      await prisma.departureAttachment.create({ data: { departureId: departure.id, fileName, mimeType, size, data: bytes, uploadedBy: by } });
+      // Dono: o guia do cartão do Trello (saída com um cartão por guia).
+      const owner = departure.guideNotes.find((n) => n?.source === "trello" && n.trelloId === trelloCardId)?.guideId || null;
+      await prisma.departureAttachment.create({ data: { departureId: departure.id, fileName, mimeType, size, data: bytes, uploadedBy: by, trelloCardId, ...(owner ? { guideId: owner } : {}) } });
       saved += 1;
     }
     const notes = departure.guideNotes.map((n) => (n?.source === "trello" && n.trelloId === trelloCardId ? { ...n, text: stripLink(n.text, url) } : n))
