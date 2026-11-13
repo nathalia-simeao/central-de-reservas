@@ -315,5 +315,7 @@ export const GUIDE_STRINGS = {
   "Ainda não há checklist. Toque em “+ Checklist” para criar.": {"en": "No checklist yet. Tap “+ Checklist” to create one.", "es": "Aún no hay checklist. Toca “+ Checklist” para crear uno.", "fr": "Pas encore de checklist. Touchez « + Checklist » pour en créer une.", "it": "Ancora nessuna checklist. Tocca “+ Checklist” per crearne una.", "de": "Noch keine Checkliste. Tippe auf „+ Checklist“, um eine anzulegen."},
   "Escreva uma observação para a equipe…": {"en": "Write a note for the team…", "es": "Escribe una nota para el equipo…", "fr": "Écrivez une note pour l'équipe…", "it": "Scrivi una nota per il team…", "de": "Schreib eine Notiz für das Team…"},
   "Salvar": {"en": "Save", "es": "Guardar", "fr": "Enregistrer", "it": "Salva", "de": "Speichern"},
+  "Finalizado": {"en": "Completed", "es": "Finalizado", "fr": "Terminé", "it": "Completato", "de": "Erledigt"},
+  "Marcar como finalizado": {"en": "Mark as completed", "es": "Marcar como finalizado", "fr": "Marquer comme terminé", "it": "Segna come completato", "de": "Als erledigt markieren"},
   "Mover data, etiquetas e arquivar (abre a Central)": {"en": "Move date, labels and archive (opens the Central)", "es": "Mover fecha, etiquetas y archivar (abre la Central)", "fr": "Déplacer la date, étiquettes et archiver (ouvre la Central)", "it": "Sposta data, etichette e archivia (apre la Central)", "de": "Datum verschieben, Labels und archivieren (öffnet die Central)"},
 };

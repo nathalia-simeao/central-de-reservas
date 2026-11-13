@@ -86,6 +86,8 @@ model TourDeparture {
   checklists   Json?
   // Cartão arquivado no Quadro (some do Quadro; a saída e as reservas continuam).
   archivedAt   DateTime?
+  // Cartão finalizado no Quadro (como no Trello): { "all" | guideId | "sem-guia": { at, by } }.
+  completed    Json?
   attachments  DepartureAttachment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt

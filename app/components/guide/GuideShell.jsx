@@ -141,6 +141,17 @@ a { color: inherit; }
 .g-bcard__edit svg { width:14px; height:14px; }
 .g-bcard__bar { height:6px; width:44px; border-radius:99px; margin-bottom:6px; }
 .g-bcard strong { display:block; font-size:14px; overflow-wrap:anywhere; }
+.g-bcard .g-bcard__title { display:flex; align-items:flex-start; gap:6px; }
+.g-complete { flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#1f845a; display:inline-flex; align-items:center; justify-content:center; }
+.g-complete svg { width:12px; height:12px; fill:none; stroke:#fff; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.g-complete-form { margin:6px 0 2px; }
+.g-complete-btn { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:6px 14px 6px 8px; border-radius:999px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.g-complete-btn .g-complete { background:transparent; border:1.5px solid var(--g-muted); width:20px; height:20px; }
+.g-complete-btn .g-complete svg { stroke:var(--g-muted); opacity:.4; }
+.g-complete-btn.is-on { background:#1f845a; border-color:#1f845a; color:#fff; }
+.g-complete-btn.is-on .g-complete { background:#fff; border-color:#fff; }
+.g-complete-btn.is-on .g-complete svg { stroke:#1f845a; opacity:1; }
+.g-complete-btn:disabled { opacity:.7; }
 .g-bcard small { display:block; color:var(--g-muted); font-size:12px; margin-top:4px; overflow-wrap:anywhere; }
 .g-bcard pre { white-space:pre-wrap; font:inherit; font-size:13px; margin:6px 0 0; color:var(--g-ink); }
 .g-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }

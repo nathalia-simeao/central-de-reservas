@@ -2188,6 +2188,7 @@ function CentralDeReservasContent() {
       attachments: item.attachments || [],
       checklists: item.checklists || null,
       archivedAt: item.archivedAt || null,
+      completed: item.completed || null,
     }])));
   // Quadro: coluna "Documentos de suporte" e importação do Trello (11/11/2026).
   const [supportCards, setSupportCards] = useState(() => initialSupportCards || []);
@@ -2291,6 +2292,19 @@ function CentralDeReservasContent() {
     if (!result?.success) throw new Error(result?.error || ui("Falha ao arquivar.", "Archive failed."));
     const key = departureKey(tourId, startTime);
     setDepartureInfo((current) => ({ ...current, [key]: { ...(current[key] || {}), archivedAt: result.departure?.archivedAt || null } }));
+  };
+  // Quadro: cartão finalizado (check do Trello).
+  const handleCompleteDepartureCard = async (tourId, startTime, owner, done) => {
+    const fd = new FormData();
+    fd.append("_action", "completeDepartureCard");
+    fd.append("tourId", tourId);
+    fd.append("startTime", new Date(startTime).toISOString());
+    fd.append("owner", owner || "all");
+    fd.append("done", done ? "true" : "false");
+    const result = await requestResourceJson("/api/central-actions", fd);
+    if (!result?.success) throw new Error(result?.error || ui("Falha ao salvar.", "Unable to save."));
+    const key = departureKey(tourId, startTime);
+    setDepartureInfo((current) => ({ ...current, [key]: { ...(current[key] || {}), completed: result.departure?.completed || null } }));
   };
   const handleDeleteDepartureCard = async (tourId, startTime) => {
     const fd = new FormData();
@@ -3307,7 +3321,7 @@ function CentralDeReservasContent() {
               onSetAttachmentGuide: handleSetAttachmentGuide,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,
-              onArchiveDeparture: handleArchiveDeparture, onDeleteDepartureCard: handleDeleteDepartureCard,
+              onArchiveDeparture: handleArchiveDeparture, onDeleteDepartureCard: handleDeleteDepartureCard, onCompleteCard: handleCompleteDepartureCard,
               supportCards, supportHandlers, loadBookings: loadBoardBookings, loadImage: loadCentralImage, requestJson: requestResourceJson,
               onImportTrello: isCentralAdmin ? handleImportTrello : null,
               loadTrelloBoard: isCentralAdmin ? loadTrelloBoard : null,

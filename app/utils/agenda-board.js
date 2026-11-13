@@ -220,6 +220,18 @@ export function notesForCard(info, card) {
   return (info?.guideNotes || []).filter((n) => belongs(ownerOf(n, info), card));
 }
 
+/** Dono do cartão para "finalizado": a saída toda ("all") ou o guia do cartão dividido. */
+export function cardOwnerKey(card) {
+  const uid = String(card?.uid || card?.key || "");
+  return uid.includes("#") ? uid.slice(uid.indexOf("#") + 1) : "all";
+}
+
+/** Cartão finalizado (como o "concluído" do Trello). Saída finalizada inteira vale para todos os cartões dela. */
+export function cardCompletion(info, card) {
+  const done = info?.completed && typeof info.completed === "object" ? info.completed : {};
+  return done[cardOwnerKey(card)] || done.all || null;
+}
+
 /** Etiquetas do cartão: as fixas do passeio (todas as saídas) + as desta saída. */
 export function cardLabelIds(labels, card) {
   const key = labels?.colorAliases?.[card.tourId] || card.tourId;

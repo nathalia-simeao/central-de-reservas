@@ -10,7 +10,7 @@ import { isPortalAdmin } from "../utils/central-auth.server";
 import { assignGuideToDeparture } from "../services/central-route.server";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import { applyChecklistOp, autoChecklists, cardLanguages, listPeopleSummary, normalizeChecklists } from "../utils/departure-checklists.js";
-import { lisbonParts as boardParts, listsForCard, splitCardByGuide } from "../utils/agenda-board.js";
+import { lisbonParts as boardParts, cardCompletion, cardOwnerKey, listsForCard, splitCardByGuide } from "../utils/agenda-board.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { appendNote, bookingPax, departureBookingWhere, ensureDeparture, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 import { isGuide } from "../utils/team-areas.js";
@@ -58,7 +58,7 @@ export const loader = async ({ request }) => {
       where: { tourId, startTime, status: "ASSIGNED" },
       select: { id: true, guideId: true, languages: true, guide: { select: { id: true, name: true, photoUrl: true, portalPhotoType: true, updatedAt: true } } },
     }),
-    db.tourDeparture.findUnique({ where: { tourId_startTime: { tourId, startTime } }, select: { checklists: true, guideNotes: true } }),
+    db.tourDeparture.findUnique({ where: { tourId_startTime: { tourId, startTime } }, select: { checklists: true, guideNotes: true, completed: true } }),
     db.guide.findMany({ select: { id: true, name: true, areas: true }, orderBy: { name: "asc" } }),
   ]);
   if (!tour) throw redirectTo("/guia/quadro");
@@ -77,6 +77,7 @@ export const loader = async ({ request }) => {
 
   return {
     uid: card.uid,
+    complete: Boolean(cardCompletion(departure, card)),
     tourId,
     startTime: startTime.toISOString(),
     title: tour.translations?.[lang]?.title || tour.title,
@@ -138,6 +139,20 @@ export const action = async ({ request }) => {
     if (!existing) return { error: "Escala não encontrada." };
     await db.guideAssignment.update({ where: { id: existing.id }, data: { status: "CANCELLED" } });
     await logActivity(db, { targetType: "departure", targetKey: target, text: `tirou ${existing.guide?.name || "o guia"} da saída (pelo app)`, actor });
+    return { ok: true };
+  }
+
+  // Cartão finalizado (check do Trello), o mesmo da Central.
+  if (intent === "complete") {
+    const owner = cardOwnerKey({ uid: String(form.get("uid") || "") });
+    const done = String(form.get("done") || "true") === "true";
+    const departure = await ensureDeparture(db, tourId, startTime);
+    const current = await db.tourDeparture.findUnique({ where: { id: departure.id }, select: { completed: true } });
+    const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
+    if (done) completed[owner] = { at: new Date().toISOString(), by: guide.name };
+    else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+    await db.tourDeparture.update({ where: { id: departure.id }, data: { completed } });
+    await logActivity(db, { targetType: "departure", targetKey: target, text: done ? "marcou este cartão como finalizado (pelo app)" : "reabriu este cartão (pelo app)", actor });
     return { ok: true };
   }
 
@@ -232,6 +247,24 @@ function Attendance({ booking }) {
   );
 }
 
+function CompleteToggle({ uid, complete }) {
+  const t = useT();
+  const fetcher = useFetcher();
+  const pending = fetcher.state !== "idle";
+  const on = pending ? fetcher.formData?.get("done") === "true" : complete;
+  return (
+    <fetcher.Form method="post" className="g-complete-form">
+      <input type="hidden" name="intent" value="complete" />
+      <input type="hidden" name="uid" value={uid} />
+      <input type="hidden" name="done" value={on ? "false" : "true"} />
+      <button type="submit" className={`g-complete-btn${on ? " is-on" : ""}`} aria-pressed={on} disabled={pending}>
+        <span className="g-complete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg></span>
+        {on ? t("Finalizado") : t("Marcar como finalizado")}
+      </button>
+    </fetcher.Form>
+  );
+}
+
 export default function GuideCardEditor() {
   const data = useLoaderData();
   const t = useT();
@@ -257,6 +290,7 @@ export default function GuideCardEditor() {
 
       <div className="g-card">
         <h2 style={{ fontSize: 18 }}>{data.title}</h2>
+        <CompleteToggle uid={data.uid} complete={data.complete} />
         <div className="g-summary">
           <span><b>{parts.time}</b> · {parts.day}</span>
           <span><b>{data.pax}</b> pax{people.total ? ` · ${people.label}` : ""}</span>

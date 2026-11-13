@@ -748,6 +748,34 @@ export const action = async ({ request }) => {
     }
   }
 
+  // Cartão finalizado no Quadro, igual ao Trello (13/11/2026). owner = "all" ou o guia do cartão dividido.
+  if (_action === "completeDepartureCard") {
+    try {
+      const tourId = String(formData.get("tourId") || "").trim();
+      const startTime = new Date(String(formData.get("startTime") || ""));
+      const owner = String(formData.get("owner") || "all").trim().slice(0, 80) || "all";
+      const done = String(formData.get("done") || "true") === "true";
+      if (!tourId || Number.isNaN(startTime.getTime())) return json({ success: false, error: "Saída inválida." }, { status: 400 });
+      const where = { tourId_startTime: { tourId, startTime } };
+      const current = await prisma.tourDeparture.findUnique({ where, select: { completed: true } });
+      const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
+      const by = centralUser?.name || centralUser?.email || "Equipe";
+      if (done) completed[owner] = { at: new Date().toISOString(), by };
+      else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+      const departure = await prisma.tourDeparture.upsert({
+        where,
+        create: { tourId, startTime, completed },
+        update: { completed },
+        select: { tourId: true, startTime: true, completed: true },
+      });
+      await activity("departure", departureTargetKey(tourId, startTime), done ? "marcou este cartão como finalizado" : "reabriu este cartão");
+      return json({ success: true, departure });
+    } catch (e) {
+      console.error("[PMY] completeDepartureCard error:", e);
+      return json({ success: false, error: "Não foi possível marcar o cartão." }, { status: 500 });
+    }
+  }
+
   if (_action === "updateDepartureChecklist") {
     try {
       const tourId = String(formData.get("tourId") || "").trim();

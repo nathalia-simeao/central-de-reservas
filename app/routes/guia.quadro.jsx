@@ -2,7 +2,7 @@ import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
 import { guideLang } from "../utils/guide-i18n.js";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
-import { addDays, buildBoardColumns, initials, listsForCard } from "../utils/agenda-board.js";
+import { addDays, buildBoardColumns, cardCompletion, initials, listsForCard } from "../utils/agenda-board.js";
 import { cardLanguages, normalizeChecklists } from "../utils/departure-checklists.js";
 import { langColor } from "../utils/language-colors.js";
 import { tourColor } from "../utils/agenda-labels.js";
@@ -44,7 +44,7 @@ export const loader = async ({ request }) => {
     }),
     db.tourDeparture.findMany({
       where: { startTime: { gte: from, lt: to } },
-      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true, archivedAt: true },
+      select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true, archivedAt: true, completed: true },
     }),
     db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
     db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true, translations: true } }),
@@ -105,6 +105,7 @@ export const loader = async ({ request }) => {
             return { name: g.name, initials: initials(g.name), photo };
           }),
           checks: card.checks,
+          complete: Boolean(cardCompletion(departureInfo[card.key], card)),
           myAssignmentId: mine?.assignmentId || null,
         };
       }),
@@ -124,7 +125,10 @@ function Card({ card, canEdit = false }) {
   const body = (
     <>
       <div className="g-bcard__bar" style={{ background: card.color }} />
-      <strong>{card.time} · {card.title}</strong>
+      <strong className="g-bcard__title">
+        {card.complete && <span className="g-complete" role="img" aria-label={t("Finalizado")} title={t("Finalizado")}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg></span>}
+        <span>{card.time} · {card.title}</span>
+      </strong>
       {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
       {card.langs?.length > 0 && (
         <span className="g-bcard__langs" aria-label={t("Idioma")}>

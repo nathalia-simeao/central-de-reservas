@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
-import { addDays, attachmentsForCard, buildBoardColumns, cardLabelIds, initials, listsForCard, notesForCard } from "../../utils/agenda-board.js";
+import { addDays, attachmentsForCard, buildBoardColumns, cardCompletion, cardLabelIds, cardOwnerKey, initials, listsForCard, notesForCard } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
 import { langColor } from "../../utils/language-colors.js";
 import DepartureTagsSection from "./DepartureTagsSection";
@@ -527,6 +527,7 @@ export default function AgendaBoard({
   trelloAliases = {},
   onArchiveDeparture = null,
   onDeleteDepartureCard = null,
+  onCompleteCard = null,
   waitlist = [],
   onAddWaitlist,
   onWaitlistStatus,
@@ -682,6 +683,20 @@ export default function AgendaBoard({
       setCardAction({ busy: "", error: e?.message || tr("Não foi possível arquivar.", "Could not archive."), confirmDelete: false });
     }
   };
+  // Cartão finalizado (check do Trello, 13/11/2026).
+  const [completeBusy, setCompleteBusy] = useState("");
+  const toggleComplete = async (card) => {
+    if (!onCompleteCard || completeBusy) return;
+    const done = !cardCompletion(departureInfo[card.key], card);
+    setCompleteBusy(card.uid);
+    try {
+      await onCompleteCard(card.tourId, card.startTime, cardOwnerKey(card), done);
+    } catch (e) {
+      setMoveNotice(e?.message || tr("Não foi possível marcar o cartão.", "Could not update the card."));
+    } finally {
+      setCompleteBusy("");
+    }
+  };
   const deleteOpenCard = async () => {
     setCardAction({ busy: "delete", error: "", confirmDelete: true });
     try {
@@ -817,11 +832,12 @@ export default function AgendaBoard({
                 const labelIds = cardLabelIds(agendaLabels, card).filter((id) => tagById.has(id));
                 const color = tourColor(agendaLabels, card.tourId);
                 const progress = checklistProgress(card, cardChecklistRaw(card, departureInfo[card.key]?.checklists));
+                const completion = cardCompletion(departureInfo[card.key], card);
                 return (
                   <button
                     key={card.uid}
                     type="button"
-                    className={`pmy-board-card${dragKey === card.uid ? " is-dragging" : ""}${showArchived ? " is-archived" : ""}`}
+                    className={`pmy-board-card${dragKey === card.uid ? " is-dragging" : ""}${showArchived ? " is-archived" : ""}${completion ? " is-complete" : ""}`}
                     style={{ "--tour-color": color }}
                     draggable={canMove}
                     onDragStart={canMove ? (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", card.uid); setDragKey(card.uid); } : undefined}
@@ -840,7 +856,25 @@ export default function AgendaBoard({
                           })
                         : <span className="pmy-board-chip" style={{ background: color }} title={card.title} />}
                     </span>
-                    <span className="pmy-board-card__title"><b>{card.timeKey}</b> {card.title}</span>
+                    <span className="pmy-board-card__title-row">
+                      {onCompleteCard ? (
+                        <span
+                          role="checkbox"
+                          tabIndex={0}
+                          aria-checked={Boolean(completion)}
+                          aria-label={completion ? tr("Reabrir cartão", "Reopen card") : tr("Marcar como finalizado", "Mark as complete")}
+                          title={completion ? tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`) : tr("Marcar como finalizado", "Mark as complete")}
+                          className={`pmy-board-complete${completion ? " is-on" : ""}${completeBusy === card.uid ? " is-busy" : ""}`}
+                          onClick={(e) => { e.stopPropagation(); toggleComplete(card); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); toggleComplete(card); } }}
+                        >
+                          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg>
+                        </span>
+                      ) : completion ? (
+                        <span className="pmy-board-complete is-on is-static" aria-label={tr("Finalizado", "Complete")}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg></span>
+                      ) : null}
+                      <span className="pmy-board-card__title"><b>{card.timeKey}</b> {card.title}</span>
+                    </span>
                     {(() => {
                       const langs = cardLanguages(card, cardChecklistRaw(card, departureInfo[card.key]?.checklists));
                       return langs.length > 0 && (
@@ -899,7 +933,20 @@ export default function AgendaBoard({
                 {(collectionsByTour.get(openCard.tourId) || []).length > 0 && (
                   <small className="pmy-board-modal__collection">{collectionsByTour.get(openCard.tourId).join(" · ")}</small>
                 )}
-                <h3>{openCard.title}{departureInfo[openCard.key]?.archivedAt && <span className="pmy-board-archived-tag">{tr("Arquivado", "Archived")}</span>}</h3>
+                <h3>
+                  {onCompleteCard && (() => {
+                    const completion = cardCompletion(departureInfo[openCard.key], openCard);
+                    return (
+                      <button type="button" className={`pmy-board-complete is-modal${completion ? " is-on" : ""}${completeBusy === openCard.uid ? " is-busy" : ""}`}
+                        aria-pressed={Boolean(completion)}
+                        title={completion ? tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`) : tr("Marcar como finalizado", "Mark as complete")}
+                        aria-label={completion ? tr("Reabrir cartão", "Reopen card") : tr("Marcar como finalizado", "Mark as complete")}
+                        onClick={() => toggleComplete(openCard)}>
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg>
+                      </button>
+                    );
+                  })()}
+                  {openCard.title}{departureInfo[openCard.key]?.archivedAt && <span className="pmy-board-archived-tag">{tr("Arquivado", "Archived")}</span>}</h3>
                 <p>{columnTitle(openCard.dateKey, lang)} · {openCard.timeKey} · {openCard.pax} {tr("pessoas confirmadas", "confirmed people")}{openCard.pending ? ` · ${openCard.pending} ${tr("aguardando pagamento", "awaiting payment")}` : ""}</p>
               </div>
               <button type="button" className="pmy-board-pop__icon" aria-label={tr("Fechar", "Close")} onClick={() => { setOpenKey(""); setLabelsOpen(false); }}>×</button>

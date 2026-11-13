@@ -85,3 +85,14 @@ test("anexos e observações por cartão de guia", () => {
   assert.deepEqual(notesForCard(info, miguel).map((n) => n.text), ["ingressos Miguel", "geral"]);
   assert.equal(attachmentsForCard(info, { guides: [] }).length, 4);
 });
+
+test("completed cards: whole departure or one guide's card", async () => {
+  const { cardCompletion, cardOwnerKey } = await import("../app/utils/agenda-board.js");
+  assert.equal(cardOwnerKey({ uid: "t|2026-11-14T09:30:00.000Z" }), "all");
+  assert.equal(cardOwnerKey({ uid: "t|2026-11-14T09:30:00.000Z#g1" }), "g1");
+  const info = { completed: { g1: { at: "x", by: "Nathalia" } } };
+  assert.ok(cardCompletion(info, { uid: "k#g1" }));
+  assert.equal(cardCompletion(info, { uid: "k#g2" }), null);
+  assert.ok(cardCompletion({ completed: { all: { at: "x" } } }, { uid: "k#g2" }));
+  assert.equal(cardCompletion(null, { uid: "k" }), null);
+});

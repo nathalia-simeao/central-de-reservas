@@ -6866,3 +6866,22 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-octo-fresh small { color: #a54800; font-size: 12px; }
 .pmy-octo-note { margin: 0; font-size: 12.5px; color: var(--pmy-ds-muted); }
 @media (max-width: 640px) { .pmy-octo-copy { grid-template-columns: 1fr; } }
+
+/* Cartão finalizado no Quadro (check do Trello, 13/11/2026). */
+.pmy-board-card__title-row { display: flex; align-items: flex-start; gap: 6px; }
+.pmy-board-card__title-row .pmy-board-card__title { flex: 1; min-width: 0; }
+.pmy-board-complete { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; border: 1.5px solid #8590a2; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s ease, border-color .12s ease, opacity .12s ease; }
+.pmy-board-complete svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.pmy-board-card:not(.is-complete) .pmy-board-complete { opacity: 0; width: 0; margin-right: -6px; border-width: 0; transition: opacity .12s ease, width .12s ease, margin .12s ease; }
+.pmy-board-card:not(.is-complete):hover .pmy-board-complete, .pmy-board-card:not(.is-complete):focus-within .pmy-board-complete { opacity: 1; width: 18px; margin-right: 0; border-width: 1.5px; }
+.pmy-board-complete:hover { border-color: #1f845a; }
+.pmy-board-complete:hover svg { opacity: .55; stroke: #1f845a; }
+.pmy-board-complete.is-on { background: #1f845a; border-color: #1f845a; }
+.pmy-board-complete.is-on svg { opacity: 1; stroke: #fff; }
+.pmy-board-complete.is-busy { opacity: .5; pointer-events: none; }
+.pmy-board-complete.is-static { cursor: default; }
+.pmy-board-complete:focus-visible { outline: 2px solid #388bff; outline-offset: 2px; }
+.pmy-board-complete.is-modal { width: 22px; height: 22px; margin: 0 8px 0 0; vertical-align: -3px; padding: 0; }
+.pmy-board-complete.is-modal svg { width: 14px; height: 14px; }
+.pmy-board-card.is-complete .pmy-board-card__title { color: #44546f; }
+@media (hover: none) { .pmy-board-card:not(.is-complete) .pmy-board-complete { opacity: 1; width: 18px; margin-right: 0; border-width: 1.5px; } }
