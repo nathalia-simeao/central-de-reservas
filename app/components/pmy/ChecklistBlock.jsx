@@ -157,25 +157,33 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {onEditItem
               ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" render={(v) => <PhoneText text={v} lang={lang} />} />
               : <span className="pmy-checklist__text"><PhoneText text={item.text} lang={lang} /></span>}
-            {onSetNoShow && isClientItem(item.text)
-              ? <button type="button" className={`pmy-checklist__noshow-btn${item.noShow ? " is-on" : ""}`} aria-pressed={Boolean(item.noShow)} disabled={busy}
-                  title={item.noShow && item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : tr("Cliente não apareceu", "Customer didn't show up")}
-                  onClick={() => onSetNoShow(item, !item.noShow)}>No-show</button>
-              : item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
-            {onSetPlatform
-              ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
-              : <PlatformBadge platform={item.platform} />}
-            {canMove && (
-              <span className="pmy-checklist__move">
-                <button type="button" aria-label={tr("Subir item", "Move up")} disabled={busy || index === 0}
-                  onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index - 1); }}>↑</button>
-                <button type="button" aria-label={tr("Descer item", "Move down")} disabled={busy || index === list.items.length - 1}
-                  onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index + 1); }}>↓</button>
+            {/* Colunas fixas à direita (No-show · plataforma · mover · apagar), com espaço
+                reservado quando a linha não tem um deles: tudo alinhado de cima a baixo. */}
+            <span className="pmy-checklist__tail">
+              <span className="pmy-checklist__slot is-noshow">
+                {onSetNoShow && isClientItem(item.text)
+                  ? <button type="button" className={`pmy-checklist__noshow-btn${item.noShow ? " is-on" : ""}`} aria-pressed={Boolean(item.noShow)} disabled={busy}
+                      title={item.noShow && item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : tr("Cliente não apareceu", "Customer didn't show up")}
+                      onClick={() => onSetNoShow(item, !item.noShow)}>No-show</button>
+                  : item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
               </span>
-            )}
-            {onDeleteItem && (
-              <button type="button" className="pmy-checklist__del" aria-label={tr("Apagar item", "Delete item")} disabled={busy} onClick={(e) => { e.preventDefault(); onDeleteItem(item); }}>×</button>
-            )}
+              <span className="pmy-checklist__slot is-platform">
+                {onSetPlatform
+                  ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
+                  : <PlatformBadge platform={item.platform} />}
+              </span>
+              {canMove && (
+                <span className="pmy-checklist__move">
+                  <button type="button" aria-label={tr("Subir item", "Move up")} disabled={busy || index === 0}
+                    onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index - 1); }}>↑</button>
+                  <button type="button" aria-label={tr("Descer item", "Move down")} disabled={busy || index === list.items.length - 1}
+                    onClick={(e) => { e.preventDefault(); onMoveItem({ listId: list.id, itemId: item.id }, list.id, index + 1); }}>↓</button>
+                </span>
+              )}
+              {onDeleteItem && (
+                <button type="button" className="pmy-checklist__del" aria-label={tr("Apagar item", "Delete item")} disabled={busy} onClick={(e) => { e.preventDefault(); onDeleteItem(item); }}>×</button>
+              )}
+            </span>
           </label>
         );
       })}

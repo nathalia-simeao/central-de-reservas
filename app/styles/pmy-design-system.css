@@ -6755,3 +6755,34 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-phone__menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; display: grid; min-width: 170px; padding: 4px; background: var(--pmy-ds-surface, #fff); border: 1px solid var(--pmy-ds-border, #dcdfe4); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.16); }
 .pmy-phone__menu button { padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--pmy-ds-text, #172b4d); font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
 .pmy-phone__menu button:hover { background: var(--pmy-ds-soft, #f1f2f4); }
+
+/* Checklist: botões da direita em colunas fixas (13/11/2026) */
+.pmy-checklist__item, .pmy-checklist__item.is-movable { align-items: center; }
+.pmy-checklist__item > input[type="checkbox"] { margin-top: 0; }
+.pmy-checklist__tail { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
+.pmy-checklist__slot { display: inline-flex; align-items: center; }
+.pmy-checklist__slot.is-noshow { width: 74px; justify-content: flex-end; }
+.pmy-checklist__slot.is-platform { width: 62px; justify-content: flex-start; }
+.pmy-checklist__slot.is-platform:empty { width: 62px; }
+.pmy-checklist__noshow-btn, .pmy-checklist__noshow { align-self: center; line-height: 18px; }
+@media (max-width: 560px) {
+  /* Telemóvel: os botões descem para baixo do nome, alinhados com o texto. */
+  .pmy-checklist__tail { flex-basis: 100%; justify-content: flex-start; padding-left: 26px; margin-left: 0; }
+  .pmy-checklist__slot.is-noshow { width: auto; justify-content: flex-start; }
+  .pmy-checklist__slot:empty { display: none; }
+}
+/* Item feito: só o texto fica riscado (botões e telefone não). */
+.pmy-checklist__item.is-done .pmy-checklist__tail *,
+.pmy-checklist__item.is-done .pmy-phone,
+.pmy-checklist__item.is-done .pmy-phone * { text-decoration: none; }
+.pmy-checklist__item.is-done .pmy-phone__chip { opacity: .75; }
+@media (max-width: 560px) {
+  .pmy-checklist__grip { display: none; }
+  .pmy-checklist__tail { padding-left: 24px; }
+  .pmy-checklist__tail:not(:has(button, .pmy-plat, .pmy-checklist__noshow)) { display: none; }
+}
+.pmy-checklist__item.is-done .pmy-checklist__tail,
+.pmy-checklist__item.is-done .pmy-checklist__tail span { text-decoration: none; color: inherit; }
+@media (hover: none) { .pmy-plat-picker.is-compact .pmy-plat-picker__empty { opacity: .7; } }
+@media (max-width: 560px) { .pmy-checklist__slot.is-platform { width: auto; } }
+.pmy-checklist__item.is-done .pmy-editable__btn { text-decoration: none; }
