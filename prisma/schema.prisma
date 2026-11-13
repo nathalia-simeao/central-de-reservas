@@ -388,6 +388,8 @@ model Guide {
   portalPhotoType     String?
   totpSecret          String?
   totpEnabled         Boolean           @default(false)
+  // Link secreto da agenda (Google Agenda, iPhone, Outlook assinam este endereço).
+  calendarToken       String?           @unique
   // Equipe: áreas da pessoa (GUIA, ADMIN, COMERCIAL, MARKETING, OPERACAO). Só GUIA aparece na escala.
   areas               String[]          @default(["GUIA"])
   sessions            GuideSession[]

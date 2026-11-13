@@ -16,6 +16,21 @@ import {
 import { GUIDE_LANGS, guideLang } from "../utils/guide-i18n.js";
 import { generateTotpSecret, otpauthUri, verifyTotp } from "../utils/totp.server.js";
 import QRCode from "qrcode";
+import { randomBytes } from "node:crypto";
+import { calendarLinks } from "../utils/guide-calendar.js";
+
+const SITE = "https://central.portugalmeandyou.com";
+const newCalendarToken = () => randomBytes(24).toString("base64url");
+
+/** Link da agenda do guia (cria na primeira vez). */
+async function calendarFor(guide) {
+  let token = guide.calendarToken;
+  if (!token) {
+    token = newCalendarToken();
+    await db.guide.update({ where: { id: guide.id }, data: { calendarToken: token } });
+  }
+  return calendarLinks(`${SITE}/guia-agenda/${token}`);
+}
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_PHOTO_BYTES = 1024 * 1024; // a tela já reduz para ~400 px antes de enviar
@@ -30,6 +45,7 @@ export const loader = async ({ request }) => {
     hasOwnPhoto: Boolean(guide.portalPhotoType),
     photo: guide.portalPhotoType ? `/guia/foto/${guide.id}?v=${new Date(guide.updatedAt || 0).getTime()}` : guide.photoUrl || null,
     totpEnabled: Boolean(guide.totpEnabled),
+    calendar: await calendarFor(guide),
   };
 };
 
@@ -47,6 +63,12 @@ export const action = async ({ request }) => {
   if (!guide) return redirectTo("/guia/login");
   const form = await request.formData();
   const intent = String(form.get("intent") || "");
+
+  // Novo link da agenda: o antigo para de funcionar (se alguém recebeu o link por engano).
+  if (intent === "calendarReset") {
+    await db.guide.update({ where: { id: guide.id }, data: { calendarToken: newCalendarToken() } });
+    return { ok: "calendar", message: "Link da agenda trocado. Adicione de novo no seu calendário." };
+  }
 
   if (intent === "lang") {
     await db.guide.update({ where: { id: guide.id }, data: { portalLanguage: guideLang(form.get("lang")) } });
@@ -145,6 +167,34 @@ function PasswordInput({ name, label, autoComplete }) {
         <button type="button" className="g-btn" onClick={() => setShow(!show)} aria-pressed={show}>{show ? t("Esconder") : t("Mostrar")}</button>
       </span>
     </label>
+  );
+}
+
+// Agenda pessoal (Google, iPhone, Outlook): o guia assina um link e as saídas
+// aparecem no calendário dele, sem digitar e-mail nem conectar conta.
+function CalendarSection({ calendar, busy, message }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  if (!calendar) return null;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(calendar.https); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* sem permissão */ }
+  };
+  return (
+    <section className="g-card" aria-labelledby="pref-cal">
+      <h2 id="pref-cal">{t("Minha agenda")}</h2>
+      <p>{t("Suas saídas aparecem no calendário do celular, junto da sua agenda pessoal. Atualiza sozinho.")}</p>
+      <div className="g-row">
+        <a className="g-btn primary" href={calendar.google} target="_blank" rel="noreferrer"><GIcon name="calendar" /> {t("Adicionar ao Google Agenda")}</a>
+        <a className="g-btn" href={calendar.webcal}>{t("iPhone / Outlook")}</a>
+        <button type="button" className="g-btn" onClick={copy}>{copied ? t("Copiado!") : t("Copiar link")}</button>
+      </div>
+      <p className="g-hint">{t("O Google pode levar algumas horas para mostrar mudanças. Não compartilhe este link: quem tiver ele vê suas saídas.")}</p>
+      <Form method="post">
+        <input type="hidden" name="intent" value="calendarReset" />
+        <button type="submit" className="g-link-btn" disabled={busy}>{t("Gerar um link novo")}</button>
+      </Form>
+      {message}
+    </section>
   );
 }
 
@@ -289,6 +339,8 @@ export default function GuidePreferences() {
             </>
           )}
         </section>
+
+        <CalendarSection calendar={data.calendar} busy={busy} message={message("calendar")} />
 
         <section className="g-card" aria-labelledby="pref-app">
           <h2 id="pref-app">{t("App no celular")}</h2>

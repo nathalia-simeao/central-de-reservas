@@ -126,6 +126,7 @@ a { color: inherit; }
 .g-btn.on-no { background:var(--g-red-soft); border-color:var(--g-red); color:var(--g-red); }
 .g-btn[disabled] { opacity:.45; cursor:not-allowed; }
 .g-row { display:flex; flex-wrap:wrap; gap:8px; }
+.g-hint { margin:10px 0 4px; font-size:13px; color:var(--g-muted); }
 .g-undo-checks { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin-top:10px; font-size:13px; color:var(--g-muted); }
 .g-link-btn { padding:4px 0; border:0; background:none; color:var(--g-red); font:inherit; font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
 .g-link-btn[disabled] { opacity:.5; }
