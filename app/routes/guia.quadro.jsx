@@ -4,6 +4,7 @@ import { guideLang } from "../utils/guide-i18n.js";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { addDays, buildBoardColumns, initials, listsForCard } from "../utils/agenda-board.js";
 import { cardLanguages, normalizeChecklists } from "../utils/departure-checklists.js";
+import { langColor } from "../utils/language-colors.js";
 import { tourColor } from "../utils/agenda-labels.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
@@ -127,7 +128,7 @@ function Card({ card, dateKey, canEdit = false }) {
       {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
       {card.langs?.length > 0 && (
         <span className="g-bcard__langs" aria-label={t("Idioma")}>
-          {card.langs.map((k) => <span key={k} className="g-lang">{k.toUpperCase()}</span>)}
+          {card.langs.map((k) => <span key={k} className="g-lang" style={{ background: langColor(k), borderColor: langColor(k) }}>{k.toUpperCase()}</span>)}
         </span>
       )}
       <span className="g-bcard__foot">

@@ -108,7 +108,7 @@ a { color: inherit; }
 .g-bcard__guide img, .g-bcard__initials { width:26px; height:26px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--g-line); }
 .g-bcard__initials { display:inline-grid; place-items:center; background:var(--g-green-soft); color:var(--g-green); font-size:10px; font-weight:800; }
 .g-bcard__langs { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 2px; }
-.g-lang { padding:1px 7px; border-radius:6px; border:1px solid color-mix(in srgb, var(--g-green) 35%, transparent); background:var(--g-green-soft); color:var(--g-green); font-size:11px; font-weight:800; letter-spacing:.03em; }
+.g-lang { padding:1px 7px; border-radius:6px; border:1px solid transparent; color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em; }
 .g-bcard--edit { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .g-bcard--edit:active { transform:scale(.99); }
 .g-bcard__edit { display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:12px; font-weight:700; color:var(--g-green); }

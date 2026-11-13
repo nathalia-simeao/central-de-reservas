@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AGENDA_PICKER_PALETTE, contrastText, normalizeAgendaLabels, tourColor } from "../../utils/agenda-labels.js";
 import { addDays, buildBoardColumns, cardLabelIds, initials, listsForCard } from "../../utils/agenda-board.js";
 import { languageLabel } from "../../utils/tour-languages.js";
+import { langColor } from "../../utils/language-colors.js";
 import DepartureTagsSection from "./DepartureTagsSection";
 
 // Campo que recebe o foco ao aparecer (no lugar de autoFocus, que o lint proíbe).
@@ -31,9 +32,7 @@ export function tourCollections(tour) {
   return (Array.isArray(list) ? list : []).map((c) => (typeof c === "string" ? c : c?.title)).filter(Boolean);
 }
 const LANG_KEYS = ["en", "pt", "es", "fr", "it", "de"];
-// Uma cor por idioma para bater o olho no grupo de cada guia (pedido 12/11).
-const LANG_COLORS = { en: "#0c66e4", pt: "#1f845a", es: "#c9372c", fr: "#6e5dc6", it: "#b65c02", de: "#44546f" };
-const langColor = (key) => LANG_COLORS[key] || "#626f86";
+
 
 function todayLisbon() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
@@ -845,7 +844,7 @@ export default function AgendaBoard({
                       const langs = cardLanguages(card, cardChecklistRaw(card, departureInfo[card.key]?.checklists));
                       return langs.length > 0 && (
                         <span className="pmy-board-card__langs" title={langs.map((k) => languageLabel(k, lang)).join(", ")}>
-                          {langs.map((k) => <span key={k} className="pmy-board-lang">{k.toUpperCase()}</span>)}
+                          {langs.map((k) => <span key={k} className="pmy-board-lang" style={{ background: langColor(k), borderColor: langColor(k) }}>{k.toUpperCase()}</span>)}
                         </span>
                       );
                     })()}

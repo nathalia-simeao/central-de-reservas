@@ -6728,5 +6728,5 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 
 /* Quadro: idiomas do cartão (PT, EN, ES…) */
 .pmy-board-card__langs { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
-.pmy-board-lang { padding:1px 6px; border-radius:6px; border:1px solid color-mix(in srgb, var(--pmy-ds-accent, #006600) 30%, transparent); background:color-mix(in srgb, var(--pmy-ds-accent, #006600) 8%, #fff); color:var(--pmy-ds-accent, #006600); font-size:11px; font-weight:800; letter-spacing:.03em; }
+.pmy-board-lang { padding:1px 6px; border-radius:6px; border:1px solid transparent; color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em; }
 .pmy-checklist__people { padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--pmy-ds-accent, #006600) 10%, #fff); color:var(--pmy-ds-accent, #006600); font-size:11px; font-weight:800; white-space:nowrap; }
