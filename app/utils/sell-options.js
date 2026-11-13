@@ -35,7 +35,11 @@ export function tourSellOptions({ snapshot = {}, variants = [], scheduleSlots = 
     return options.length === parts.length ? options.map((o, i) => ({ name: o.name, value: parts[i] })) : [];
   };
 
-  const tickets = variants.map((variant) => {
+  // Só as variantes que existem hoje na Shopify (a cópia local pode ter sobras antigas,
+  // o que fazia o mesmo ingresso aparecer duas vezes).
+  const current = Object.keys(variantOptions);
+  const live = current.length ? variants.filter((v) => variantOptions[v.id]) : variants;
+  const tickets = live.map((variant) => {
     const selected = selectedOf(variant);
     const session = timeOption ? selected.find((o) => o.name === timeOption.name)?.value || null : null;
     const language = langOption ? selected.find((o) => o.name === langOption.name)?.value || null : null;

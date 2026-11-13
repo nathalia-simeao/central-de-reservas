@@ -3,7 +3,8 @@ import { Form, Link, useActionData, useLoaderData, useNavigation, useSearchParam
 import { DatePicker, DropdownSelect, TimeSelect } from "../components/pmy/PmyUI";
 import db from "../db.server";
 import { unauthenticated } from "../shopify.server";
-import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
+import { GIcon, GuideShell, useGuideLang, useGuideLocale, useT } from "../components/guide/GuideShell";
+import { displayLanguageName, translateTicketTitle } from "../utils/ticket-labels.js";
 import { createDemandCheckout, createDraftCheckout } from "../services/draft-checkout.server";
 import { getCentralAvailability } from "../utils/capacity.server";
 import { blockMatchesCalendarSlot, getActiveAvailabilityBlocks } from "../utils/availability.server";
@@ -281,6 +282,7 @@ export default function GuideSell() {
   const [params, setParams] = useSearchParams();
   const t = useT();
   const locale = useGuideLocale();
+  const appLang = useGuideLang();
   const busy = navigation.state !== "idle";
   const mode = params.get("modo") === "demanda" ? "demand" : "tour";
   const sessions = sell?.sessions || [];
@@ -382,7 +384,7 @@ export default function GuideSell() {
                 {t("Idioma")}
                 <DropdownSelect
                   value={language}
-                  options={sell.languages.map((value) => ({ value, label: value }))}
+                  options={sell.languages.map((value) => ({ value, label: displayLanguageName(value, locale) }))}
                   placeholder={t("Escolha o idioma")}
                   ariaLabel={t("Idioma")}
                   onChange={(value) => setLanguage(value)}
@@ -393,8 +395,8 @@ export default function GuideSell() {
               {!time && <p className="g-empty" style={{ marginBottom: 12 }}>{t("Escolha o horário para ver os ingressos.")}</p>}
               {time && visible.map((v) => (
                 <div key={v.id} className="g-ticket">
-                  <span>{v.title}<small>€{Number(v.price).toFixed(2)}</small></span>
-                  <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: v.title })} />
+                  <span>{translateTicketTitle(v.title, appLang)}<small>€{Number(v.price).toFixed(2)}</small></span>
+                  <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: translateTicketTitle(v.title, appLang) })} />
                 </div>
               ))}
 
