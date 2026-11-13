@@ -38,6 +38,9 @@ export function normalizeChecklists(raw) {
         at: item?.at || null,
         by: clean(item?.by, 80) || null,
         ...(split.platform ? { platform: split.platform } : {}),
+        // Cliente que não apareceu (pedido do Renan, 13/11/2026): conta no no-show do guia
+        // e fica de fora da pesquisa de satisfação.
+        ...(item?.noShow ? { noShow: true, noShowAt: item.noShowAt || null, noShowBy: clean(item.noShowBy, 80) || null } : {}),
       };
     }).filter((item) => item.text),
   }));
@@ -104,6 +107,14 @@ export function applyChecklistOp(raw, op = {}, by = null, now = new Date()) {
       const [item] = from.items.splice(index, 1);
       const wanted = Number.isFinite(Number(op.toIndex)) ? Number(op.toIndex) : to.items.length;
       to.items.splice(Math.max(0, Math.min(wanted, to.items.length)), 0, item);
+      break;
+    }
+    case "setNoShow": {
+      const item = findList(op.listId)?.items.find((i) => i.id === op.itemId);
+      if (item) {
+        if (op.value) Object.assign(item, { noShow: true, noShowAt: at, noShowBy: by });
+        else { delete item.noShow; delete item.noShowAt; delete item.noShowBy; }
+      }
       break;
     }
     case "deleteItem": { const list = findList(op.listId); if (list) list.items = list.items.filter((i) => i.id !== op.itemId); break; }
@@ -183,6 +194,38 @@ export function autoChecklists(card) {
 }
 
 /** Contagem para o selo do cartão (☑ feitos/total), juntando automáticos e manuais. */
+/** Item de checklist que é um cliente (tem telefone ou a contagem tipo "(2A)"). */
+export function isClientItem(text) {
+  const value = String(text || "");
+  return /\(\s*\d+\s*[ACSYJ](\s+\d+\s*[ACSYJ])*\s*\)/i.test(value) || /(?:\+|\b00)\d[\d\s().-]{6,}\d/.test(value);
+}
+
+/** Pessoas de um item de cliente: "(3A 1C)" = 4; sem contagem = 1. */
+export function clientItemPax(text) {
+  const match = String(text || "").match(/\(\s*(\d+\s*[ACSYJ](?:\s+\d+\s*[ACSYJ])*)\s*\)/i);
+  if (!match) return 1;
+  return (match[1].match(/\d+/g) || []).reduce((sum, n) => sum + Number(n), 0) || 1;
+}
+
+/** Clientes dos checklists manuais (Trello/equipe) de um guia: total e no-show, em pessoas. */
+export function manualClientCounts(raw, { guideId = null, guideName = "", onlyGuide = false } = {}) {
+  const words = (v) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const first = words(guideName)[0] || "";
+  let pax = 0;
+  let noShow = 0;
+  for (const list of normalizeChecklists(raw).lists) {
+    const mine = onlyGuide || (list.guideId ? list.guideId === guideId : Boolean(first) && words(list.title).includes(first));
+    if (!mine) continue;
+    for (const item of list.items) {
+      if (!isClientItem(item.text)) continue;
+      const n = clientItemPax(item.text);
+      pax += n;
+      if (item.noShow) noShow += n;
+    }
+  }
+  return { pax, noShow };
+}
+
 export function checklistProgress(card, raw) {
   const state = normalizeChecklists(raw);
   let done = 0;

@@ -1,7 +1,7 @@
 import { checklistPlatform } from "../utils/checklist-platforms.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
-import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/departure-checklists.js";
+import { applyChecklistOp, autoChecklists, isClientItem, normalizeChecklists } from "../utils/departure-checklists.js";
 import { normalizeText } from "../utils/trello-import.js";
 import { languageKey } from "../utils/tour-languages.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
@@ -83,7 +83,7 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates, vi
   const manual = state.lists.map((list) => ({
     id: list.id, title: list.title, auto: false,
     mine: list.guideId ? list.guideId === assignment.guideId : Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
-    items: list.items.map((item) => ({ id: item.id, text: item.text, platform: item.platform || null, done: item.done })),
+    items: list.items.map((item) => ({ id: item.id, text: item.text, platform: item.platform || null, done: item.done, noShow: Boolean(item.noShow) })),
   }));
   return [...auto, ...manual]
     .map((list) => ({ ...list, items: list.items.filter((item) => !isStepItem(item)) }))
@@ -195,6 +195,21 @@ export const action = async ({ request, params }) => {
     return { checklistSaved: true };
   }
 
+  // No-show de um cliente do checklist (itens do Trello/equipe, sem reserva na Central).
+  if (intent === "itemNoShow") {
+    if (!perms.canMarkAttendance && !admin) return { error: "A presença só pode ser marcada no dia do passeio, até o check de Fim." };
+    const listId = String(form.get("listId") || "");
+    const itemId = String(form.get("itemId") || "");
+    const value = form.get("value") === "1";
+    const op = { type: "setNoShow", listId, itemId, value };
+    const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
+    const described = describeChecklistOp(departure.checklists, op);
+    const checklists = applyChecklistOp(departure.checklists, op, guide.name);
+    await db.tourDeparture.update({ where: { id: departure.id }, data: { checklists } });
+    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: described ? `${described} (pelo app)` : null, actor: { name: guide.name, personId: guide.id } });
+    return { checklistSaved: true };
+  }
+
   if (intent === "attendance") {
     if (!perms.canMarkAttendance) return { error: "A presença só pode ser marcada no dia do passeio, até o check de Fim." };
     const bookingId = String(form.get("bookingId") || "");
@@ -287,14 +302,36 @@ function AttendanceActions({ booking, canMark, close }) {
 
 // Só a caixinha e o texto marcam o item; o número é um botão à parte
 // (abrir o WhatsApp não pode marcar o cliente como feito).
+function NoShowButton({ listId, item, booking, canMark }) {
+  const t = useT();
+  const fetcher = useFetcher();
+  const on = booking ? booking.attendanceStatus === "NO_SHOW" : Boolean(item.noShow);
+  const pending = fetcher.formData ? fetcher.formData.get("value") === "1" || fetcher.formData.get("value") === "NO_SHOW" : on;
+  const toggle = () => {
+    if (booking) {
+      // Reserva da Central: tirar o no-show volta para "Presente".
+      fetcher.submit({ intent: "attendance", bookingId: booking.id, value: on ? "COMPLETED" : "NO_SHOW" }, { method: "post" });
+    } else {
+      fetcher.submit({ intent: "itemNoShow", listId, itemId: item.id, value: on ? "0" : "1" }, { method: "post" });
+    }
+  };
+  return (
+    <button type="button" className={`g-noshow${pending ? " on" : ""}`} onClick={toggle} disabled={!canMark || fetcher.state !== "idle"}
+      aria-pressed={pending} title={canMark ? t("Cliente não apareceu") : t("A presença abre 3 horas antes do passeio.")}>
+      No-show
+    </button>
+  );
+}
+
 function ChecklistItem({ listId, item, booking, canMark }) {
   const fetcher = useFetcher();
   const done = fetcher.formData ? !item.done : item.done;
   const { text, phones } = textWithoutPhones(item.text);
   const plat = checklistPlatform(item.platform);
   const title = booking?.customerName || text;
+  const client = Boolean(booking) || isClientItem(item.text);
   return (
-    <div className="g-cl-row">
+    <div className={`g-cl-row${(booking ? booking.attendanceStatus === "NO_SHOW" : item.noShow) ? " is-noshow" : ""}`}>
       <fetcher.Form method="post">
         <input type="hidden" name="intent" value="checklist" />
         <input type="hidden" name="listId" value={listId} />
@@ -303,16 +340,17 @@ function ChecklistItem({ listId, item, booking, canMark }) {
         <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
           <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
           <span className="g-cl-text">{text || item.text}</span>
-          {booking?.attendanceStatus === "NO_SHOW" && <span className="g-pill no">No-show</span>}
+
         </button>
       </fetcher.Form>
-      {(plat || phones.length > 0) && (
+      {(plat || phones.length > 0 || client) && (
         <span className="g-cl-side">
           {phones.map((phone) => (
             <PhoneChip key={phone} phone={phone} title={title}
               extra={booking ? (close) => <AttendanceActions booking={booking} canMark={canMark} close={close} /> : null} />
           ))}
           {plat && <span className="g-plat" style={{ background: plat.color }} title={plat.name}>{plat.label}</span>}
+          {client && <NoShowButton listId={listId} item={item} booking={booking} canMark={canMark} />}
         </span>
       )}
     </div>
@@ -397,7 +435,7 @@ export default function GuideDeparture() {
             return (
               <section key={list.id} className={`g-cl${list.mine ? " mine" : ""}`} aria-label={list.title}>
                 <h3>{list.title}<small>{doneCount}/{list.items.length}</small></h3>
-                {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} booking={item.bookingId ? bookingById.get(item.bookingId) : null} canMark={permissions.canMarkAttendance} />)}
+                {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} booking={item.bookingId ? bookingById.get(item.bookingId) : null} canMark={permissions.canMarkAttendance || canUndoChecks} />)}
               </section>
             );
           })}

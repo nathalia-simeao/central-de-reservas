@@ -34,3 +34,18 @@ test("automatic checklists show where each booking came from", () => {
   const [list] = autoChecklists({ timeKey: "10:00", guides: [], bookings: [{ id: "b1", status: "CONFIRMED", customerName: "Ana", adults: 2, platform: "VIATOR", language: "en" }] });
   assert.equal(list.items[1].platform, "VT");
 });
+
+import { clientItemPax, isClientItem, manualClientCounts } from "../app/utils/departure-checklists.js";
+
+test("no-show nos clientes do checklist do Trello", () => {
+  assert.equal(clientItemPax("Jose Luis (3A) CIV ES"), 3);
+  assert.equal(clientItemPax("Ana (2A 1C)"), 3);
+  assert.equal(isClientItem("No local de encontro"), false);
+  let raw = { lists: [{ id: "l1", title: "14h PT e ES (6p) 6A Dee", items: [{ id: "a", text: "Jose (3A) CIV ES" }, { id: "b", text: "Marcelo (1A) CIV ES" }, { id: "c", text: "Fim de tour" }] }] };
+  raw = applyChecklistOp(raw, { type: "setNoShow", listId: "l1", itemId: "a", value: true }, "Maria");
+  assert.equal(raw.lists[0].items[0].noShow, true);
+  assert.deepEqual(manualClientCounts(raw, { onlyGuide: true }), { pax: 4, noShow: 3 });
+  assert.deepEqual(manualClientCounts(raw, { guideName: "Dee Silva" }), { pax: 4, noShow: 3 });
+  raw = applyChecklistOp(raw, { type: "setNoShow", listId: "l1", itemId: "a", value: false }, "Maria");
+  assert.equal(raw.lists[0].items[0].noShow, undefined);
+});

@@ -6723,3 +6723,5 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-area--DESENVOLVIMENTO { --area: #6d28d9; }
 .pmy-area-tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--area, #6b7280) 35%, transparent); background: color-mix(in srgb, var(--area, #6b7280) 9%, #fff); color: var(--area, #6b7280); font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
 .pmy-person-areas__chips button[class*="pmy-area--"].is-on { background: color-mix(in srgb, var(--area) 10%, #fff); border-color: var(--area); color: var(--area); }
+
+.pmy-checklist__noshow { flex:none; align-self:center; padding:1px 8px; border-radius:999px; border:1px solid color-mix(in srgb, #b91c1c 40%, transparent); background:#fee2e2; color:#b91c1c; font-size:11px; font-weight:700; }

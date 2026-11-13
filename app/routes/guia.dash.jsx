@@ -1,3 +1,4 @@
+import { manualClientCounts } from "../utils/departure-checklists.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
@@ -84,6 +85,13 @@ export const loader = async ({ request }) => {
       })
     : [];
   const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60 * 1000;
+  // Checklists do Trello/equipe: clientes e no-shows marcados no app (sem reserva na Central).
+  const [pastDepartures, pastTeams] = tourIds.length
+    ? await Promise.all([
+        db.tourDeparture.findMany({ where: { tourId: { in: tourIds }, startTime: { gte: since, lt: until } }, select: { tourId: true, startTime: true, checklists: true } }),
+        db.guideAssignment.findMany({ where: { tourId: { in: tourIds }, status: "ASSIGNED", startTime: { gte: since, lt: until } }, select: { tourId: true, startTime: true } }),
+      ])
+    : [[], []];
 
   // Links que venceram sem pagamento aparecem como "Link vencido" e não contam.
   const realSales = sales;
@@ -99,8 +107,16 @@ export const loader = async ({ request }) => {
       id: a.id,
       title: a.tour?.title || "Passeio",
       startTime: a.startTime.toISOString(),
-      pax: group.reduce((sum, b) => sum + bookingPax(b), 0),
-      noShow: group.filter((b) => b.attendanceStatus === "NO_SHOW").reduce((sum, b) => sum + bookingPax(b), 0),
+      ...(() => {
+        const dep = pastDepartures.find((d) => d.tourId === a.tourId && near(d.startTime, a.startTime));
+        const guidesHere = pastTeams.filter((x) => x.tourId === a.tourId && near(x.startTime, a.startTime)).length;
+        const manual = manualClientCounts(dep?.checklists, { guideId: guide.id, guideName: guide.name, onlyGuide: guidesHere <= 1 });
+        const bookedPax = group.reduce((sum, b) => sum + bookingPax(b), 0);
+        return {
+          pax: bookedPax || manual.pax,
+          noShow: group.filter((b) => b.attendanceStatus === "NO_SHOW").reduce((sum, b) => sum + bookingPax(b), 0) + manual.noShow,
+        };
+      })(),
     };
   });
 

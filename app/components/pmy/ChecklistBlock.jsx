@@ -155,6 +155,7 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {onEditItem
               ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" />
               : <span className="pmy-checklist__text">{item.text}</span>}
+            {item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
             {onSetPlatform
               ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
               : <PlatformBadge platform={item.platform} />}

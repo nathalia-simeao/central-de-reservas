@@ -56,6 +56,7 @@ export function describeChecklistOp(raw, op = {}, { card = false } = {}) {
     case "renameList": return list ? `renomeou o checklist ${q(list.title)} para ${q(op.title)}` : null;
     case "addItem": return list ? `adicionou ${q(op.text)} em ${q(list.title)}` : null;
     case "deleteItem": return item ? `apagou ${q(item.text)} de ${q(list.title)}` : null;
+    case "setNoShow": return item ? (op.value ? `marcou ${q(item.text)} como no-show` : `tirou o no-show de ${q(item.text)}`) : null;
     case "editItem": return item ? `alterou ${q(item.text)} para ${q(op.text)}` : null;
     case "moveItem": {
       if (!item) return null;

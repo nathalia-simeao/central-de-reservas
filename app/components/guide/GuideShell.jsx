@@ -50,10 +50,16 @@ a { color: inherit; }
 .g-cl.mine { border-color:var(--g-green); }
 .g-cl h3 { font-size:14px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; overflow-wrap:anywhere; }
 .g-cl h3 small { color:var(--g-muted); font-weight:600; white-space:nowrap; }
-.g-cl-row { display:flex; align-items:flex-start; gap:6px; border-top:1px solid var(--g-line); }
+.g-cl-row { display:flex; flex-wrap:wrap; align-items:flex-start; column-gap:6px; border-top:1px solid var(--g-line); }
 .g-cl-row .g-cl-item { border-top:0; flex:1 1 auto; min-width:0; }
-.g-cl-row > form { flex:1 1 auto; min-width:0; display:flex; }
-.g-cl-side { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding:8px 0; }
+.g-cl-row > form { flex:1 1 210px; min-width:0; display:flex; }
+.g-cl-side { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding:8px 0; margin-left:auto; }
+@media (max-width: 520px) { .g-cl-side { padding:0 0 10px 34px; margin-left:0; justify-content:flex-start; flex-wrap:nowrap; } .g-cl-side { gap:5px; } .g-cl-side .g-phone-chip { min-width:0; padding:5px 8px; font-size:12px; } .g-cl-side .g-noshow { padding:5px 9px; } }
+@media (max-width: 400px) { .g-cl-side { padding-left:0; } }
+.g-noshow { min-height:34px; padding:5px 11px; border-radius:999px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-muted); font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.g-noshow.on { background:var(--g-red-soft); border-color:var(--g-red); color:var(--g-red); }
+.g-noshow[disabled] { opacity:.5; cursor:not-allowed; }
+.g-cl-row.is-noshow .g-cl-text { color:var(--g-muted); text-decoration:line-through; text-decoration-color:var(--g-red); }
 .g-phone-chip { display:inline-flex; align-items:center; gap:5px; min-height:34px; padding:5px 10px; border-radius:999px; border:1px solid color-mix(in srgb, var(--g-green) 35%, transparent); background:var(--g-green-soft); color:var(--g-green); font:inherit; font-size:13px; font-weight:700; white-space:nowrap; cursor:pointer; }
 .g-phone-chip svg { width:14px; height:14px; }
 .g-icon-btn { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:50%; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-muted); cursor:pointer; }
