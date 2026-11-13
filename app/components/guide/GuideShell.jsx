@@ -19,6 +19,19 @@ export function useGuideLocale() {
 export const guideStyles = `
 :root { --surface-color:var(--g-card); --dashboard-text:var(--g-ink); --dashboard-muted:var(--g-muted); --dashboard-accent:var(--g-green); --dashboard-border:var(--g-line); --g-bg:#f4dcdc; --g-card:#ffffff; --g-ink:#1f2933; --g-muted:#6b6264; --g-line:#ecd6d6; --g-green:#006600; --g-green-soft:#e1f1e1; --g-red:#b91c1c; --g-red-soft:#fee2e2; --g-amber:#b45309; --g-amber-soft:#fef3c7; }
 @media (prefers-color-scheme: dark) { :root { --g-bg:#111614; --g-card:#1a211e; --g-ink:#e8eee9; --g-muted:#9aa5a0; --g-line:#2b3530; --g-green:#4ade80; --g-green-soft:#14361f; --g-red:#f87171; --g-red-soft:#3b1515; --g-amber:#fbbf24; --g-amber-soft:#3a2a0b; } }
+/* Modo escuro: peças da Central usadas dentro do app (checklist, botões do quadro, telefone). */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  .pmy-board-btn, .pmy-checklist__move button { background:#232b27; color:var(--g-ink); border-color:var(--g-line); }
+  .pmy-board-btn:hover { background:#2b3530; }
+  .pmy-checklist__progress span { background:#2b3530; }
+  .pmy-checklist__progress small, .pmy-checklist__icon, .pmy-checklist__del { color:var(--g-muted); }
+  .pmy-phone__chip { background:#14361f; color:#86efac; border-color:#1f5a33; }
+  .pmy-checklist__noshow-btn { background:#232b27; color:var(--g-muted); border-color:var(--g-line); }
+  .pmy-checklist__noshow-btn.is-on { background:#3b1515; color:#fca5a5; border-color:#5b2020; }
+  .pmy-checklist__add input, input[type="text"], input[type="email"], input[type="search"], input:not([type]), textarea { background:#111614; color:var(--g-ink); }
+  input[type="checkbox"] { accent-color:#4ade80; }
+}
 * { box-sizing: border-box; }
 body { margin:0; background:var(--g-bg); color:var(--g-ink); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-size:16px; -webkit-text-size-adjust:100%; }
 a { color: inherit; }

@@ -24,12 +24,13 @@ export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request).catch(() => null);
   if (guide) return redirectTo("/guia");
   const brand = await db.businessSetting
-    .findFirst({ select: { logoOnLightUrl: true, logoUrl: true } })
+    .findFirst({ select: { logoOnLightUrl: true, logoOnDarkUrl: true, logoUrl: true } })
     .catch(() => null);
   // Senha certa e verificação em duas etapas ligada: falta só o código.
   const pending = await getPendingLogin(db, request).catch(() => null);
   return {
     logoLight: brand?.logoOnLightUrl || brand?.logoUrl || null,
+    logoDark: brand?.logoOnDarkUrl || null,
     needsCode: Boolean(pending),
   };
 };
@@ -108,6 +109,16 @@ const TILE = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="
 </g>
 <g fill="#006600"><circle cx="48" cy="48" r="4"/><circle cx="48" cy="20" r="2.6"/><circle cx="48" cy="76" r="2.6"/><circle cx="20" cy="48" r="2.6"/><circle cx="76" cy="48" r="2.6"/></g>
 </svg>`);
+// O mesmo azulejo para o modo escuro do telemóvel (verde apagado sobre quase preto).
+const TILE_DARK = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<rect width="96" height="96" fill="#151b18"/>
+<g fill="none" stroke="#24603a" stroke-width="2.2">
+<path d="M48 6 C62 22 74 34 90 48 C74 62 62 74 48 90 C34 74 22 62 6 48 C22 34 34 22 48 6Z"/>
+<circle cx="48" cy="48" r="11"/>
+<path d="M0 0 Q22 10 24 24 Q10 22 0 0Z M96 0 Q74 10 72 24 Q86 22 96 0Z M0 96 Q22 86 24 72 Q10 74 0 96Z M96 96 Q74 86 72 72 Q86 74 96 96Z"/>
+</g>
+<g fill="#24603a"><circle cx="48" cy="48" r="4"/><circle cx="48" cy="20" r="2.6"/><circle cx="48" cy="76" r="2.6"/><circle cx="20" cy="48" r="2.6"/><circle cx="76" cy="48" r="2.6"/></g>
+</svg>`);
 
 const loginStyles = `
 .gl { --pmy-pink:#F4DCDC; --pmy-green:#006600; --pmy-green-dark:#004d00; --pmy-ink:#2B2B2B; --pmy-muted:#6f6363; --pmy-line:#ecd6d6;
@@ -134,11 +145,30 @@ const loginStyles = `
 @keyframes gl-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gl-spin { animation:none; } }
 .gl-help { color:var(--pmy-muted); font-size:13px; margin:18px 0 0; line-height:1.5; text-align:center; }
+.gl-error { padding:10px 12px; border-radius:12px; font-size:14px; margin-bottom:12px; background:#fdecec; color:#9b1c1c; border:1px solid #f5c2c2; }
+
+/* Modo escuro do telemóvel (13/11/2026): tela própria, para o aparelho não "escurecer" a página sozinho. */
+@media (prefers-color-scheme: dark) {
+  .gl { --pmy-pink:#111614; --pmy-green:#4ade80; --pmy-green-dark:#86efac; --pmy-ink:#e8eee9; --pmy-muted:#9aa5a0; --pmy-line:#2b3530; }
+  .gl-tiles { background:#151b18 url(data:image/svg+xml,${TILE_DARK}) 0 0 / 96px 96px; border-bottom-color:#1f7a3a; }
+  .gl-tiles::after { background:linear-gradient(180deg, transparent 45%, rgba(17,22,20,.92)); }
+  .gl-card { background:#1a211e; border-color:#2b3530; box-shadow:0 18px 40px -18px rgba(0,0,0,.7); }
+  .gl-logo.is-light { filter:brightness(0) invert(1); opacity:.92; }
+  .gl h1 { color:#4ade80; }
+  .gl-input { background:#111614; border-color:#2f3a35; }
+  .gl-input:focus-within { border-color:#4ade80; box-shadow:0 0 0 4px rgba(74,222,128,.15); }
+  .gl-input input { color:#e8eee9; }
+  .gl-input input::placeholder { color:#6f7a75; }
+  .gl-submit { background:#1f7a3a; color:#fff; }
+  .gl-submit:hover { background:#25904a; }
+  .gl-eye { color:#4ade80; }
+  .gl-error { background:#3b1515; color:#fca5a5; border-color:#5b2020; }
+}
 `;
 
 export default function GuideLogin() {
   const result = useActionData();
-  const { logoLight, needsCode } = useLoaderData() || {};
+  const { logoLight, logoDark, needsCode } = useLoaderData() || {};
   const t = useT();
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
@@ -152,13 +182,16 @@ export default function GuideLogin() {
         <div className="gl-tiles" aria-hidden="true" />
         <main className="gl-main">
           <div className="gl-card">
-            <img className="gl-logo" src={logoLight || PMY_LOGO} alt="Portugal, Me & You" />
+            <picture>
+              {logoDark && <source media="(prefers-color-scheme: dark)" srcSet={logoDark} />}
+              <img className={`gl-logo${logoDark ? "" : " is-light"}`} src={logoLight || PMY_LOGO} alt="Portugal, Me & You" />
+            </picture>
             <h1>{t("Portal dos guias")}</h1>
             <p className="gl-sub">{needsCode && !result?.restart
               ? t("Digite o código de 6 dígitos do seu app autenticador.")
               : t("Entre com o e-mail e a senha que a gestão te enviou.")}</p>
 
-            {result?.error && <div className="g-error" role="alert">{t(result.error)}</div>}
+            {result?.error && <div className="g-error gl-error" role="alert">{t(result.error)}</div>}
 
             {needsCode && !result?.restart ? (
               <>

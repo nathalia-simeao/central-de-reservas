@@ -20,7 +20,9 @@ export default function App() {
         {isGuideApp ? (
           <>
             <link rel="manifest" href="/guia.webmanifest" />
-            <meta name="theme-color" content="#006600" />
+            <meta name="color-scheme" content="light dark" />
+            <meta name="theme-color" content="#006600" media="(prefers-color-scheme: light)" />
+            <meta name="theme-color" content="#111614" media="(prefers-color-scheme: dark)" />
             <meta name="mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-title" content="Central de Reservas" />
