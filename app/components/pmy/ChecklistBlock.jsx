@@ -1,7 +1,7 @@
 // Checklists do Quadro (formato do Trello): bloco de um checklist e o editor
 // com vários. Usado nas saídas (AgendaBoard) e nas demandas (SupportCards).
 import { useEffect, useRef, useState } from "react";
-import { listPeopleSummary, normalizeChecklists } from "../../utils/departure-checklists.js";
+import { isClientItem, listPeopleSummary, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { CHECKLIST_PLATFORMS, checklistPlatform } from "../../utils/checklist-platforms.js";
 
 /** Selo da plataforma do cliente (GYG, VT, HD…). */
@@ -94,7 +94,7 @@ export function EditableText({ value, onSave, label, className = "", lang }) {
   );
 }
 
-export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, onMoveItem, onEditItem, onSetPlatform, onRename, drag, setDrag, busy, lang }) {
+export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, onDelete, onAddItem, onDeleteItem, onMoveItem, onEditItem, onSetPlatform, onSetNoShow, onRename, drag, setDrag, busy, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
@@ -156,7 +156,11 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {onEditItem
               ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" />
               : <span className="pmy-checklist__text">{item.text}</span>}
-            {item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
+            {onSetNoShow && isClientItem(item.text)
+              ? <button type="button" className={`pmy-checklist__noshow-btn${item.noShow ? " is-on" : ""}`} aria-pressed={Boolean(item.noShow)} disabled={busy}
+                  title={item.noShow && item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : tr("Cliente não apareceu", "Customer didn't show up")}
+                  onClick={() => onSetNoShow(item, !item.noShow)}>No-show</button>
+              : item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
             {onSetPlatform
               ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
               : <PlatformBadge platform={item.platform} />}
@@ -239,6 +243,7 @@ export function ChecklistEditor({ raw, onOp, lang = "pt", before = null, empty =
           onDelete={() => { if (typeof window === "undefined" || window.confirm(tr("Excluir este checklist?", "Delete this checklist?"))) run({ type: "deleteList", listId: list.id }); }}
           onAddItem={(text, platform) => run({ type: "addItem", listId: list.id, text, platform })}
           onSetPlatform={(item, platform) => run({ type: "editItem", listId: list.id, itemId: item.id, platform })}
+          onSetNoShow={(item, value) => run({ type: "setNoShow", listId: list.id, itemId: item.id, value })}
           onDeleteItem={(item) => run({ type: "deleteItem", listId: list.id, itemId: item.id })}
           drag={drag} setDrag={setDrag}
           onEditItem={(item, text) => run({ type: "editItem", listId: list.id, itemId: item.id, text })}

@@ -6730,3 +6730,20 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-board-card__langs { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
 .pmy-board-lang { padding:1px 6px; border-radius:6px; border:1px solid transparent; color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em; }
 .pmy-checklist__people { padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--pmy-ds-accent, #006600) 10%, #fff); color:var(--pmy-ds-accent, #006600); font-size:11px; font-weight:800; white-space:nowrap; }
+.pmy-checklist__noshow-btn { flex:none; align-self:center; padding:2px 9px; border-radius:999px; border:1px solid var(--pmy-ds-border, #dcdfe4); background:var(--pmy-ds-surface, #fff); color:var(--pmy-ds-muted, #6b7280); font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.pmy-checklist__noshow-btn.is-on { border-color:#b91c1c; background:#fee2e2; color:#b91c1c; }
+
+/* Checklist em linha flexível (13/11/2026): com plataforma, no-show, mover e apagar
+   na mesma linha, a grade fixa espremia o texto (no telemóvel virava letra por linha). */
+.pmy-checklist__head { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 4px; }
+.pmy-checklist__head > strong { flex: 1 1 160px; min-width: 0; }
+.pmy-checklist__auto { margin-top: 0; }
+.pmy-checklist__actions { margin-left: auto; }
+.pmy-checklist__item, .pmy-checklist__item.is-movable { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: 8px; row-gap: 4px; }
+.pmy-checklist__item > input[type="checkbox"], .pmy-checklist__grip { flex: none; }
+.pmy-checklist__item .pmy-checklist__text { flex: 1 1 150px; min-width: 0; overflow-wrap: anywhere; }
+.pmy-checklist__item > :not(input):not(.pmy-checklist__grip):not(.pmy-checklist__text) { flex: none; }
+@media (hover: none) {
+  .pmy-checklist__move, .pmy-checklist__del { opacity: 1; }
+  .pmy-checklist__grip { display: none; }
+}

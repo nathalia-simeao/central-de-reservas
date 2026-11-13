@@ -119,7 +119,7 @@ function columnTitle(dateKey, locale = "pt-PT") {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} (${weekday.replace(".", "")})`;
 }
 
-function Card({ card, dateKey, canEdit = false }) {
+function Card({ card, canEdit = false }) {
   const t = useT();
   const body = (
     <>
@@ -149,12 +149,13 @@ function Card({ card, dateKey, canEdit = false }) {
   // Administradores editam tudo: o cartão abre o mesmo cartão no Quadro da
   // Central (guias, checklists, mover data…), que é outra tela (fora do /guia).
   if (canEdit) {
-    const href = `/?tab=quadro&de=quadro&dia=${dateKey}&cartao=${encodeURIComponent(card.uid || card.key)}`;
+    // Abre o editor do cartão dentro do app (sem carregar a Central).
+    const href = `/guia/cartao?k=${encodeURIComponent(card.uid || card.key)}`;
     return (
-      <a href={href} className={`g-bcard g-bcard--edit${card.myAssignmentId ? " mine" : ""}`} aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>
+      <Link to={href} className={`g-bcard g-bcard--edit${card.myAssignmentId ? " mine" : ""}`} aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>
         {body}
         <span className="g-bcard__edit"><GIcon name="edit" /> {t("Abrir para editar")}</span>
-      </a>
+      </Link>
     );
   }
   return card.myAssignmentId ? (
@@ -204,7 +205,7 @@ export default function GuideBoard() {
           <section key={col.dateKey} className="g-col" aria-label={columnTitle(col.dateKey, locale)}>
             <h3>{columnTitle(col.dateKey, locale)} <small>{col.cards.length}</small></h3>
             {!col.cards.length && <p className="g-empty" style={{ margin: "0 4px 6px" }}>{t("Sem saídas.")}</p>}
-            {col.cards.map((card) => <Card key={card.uid || card.key} card={card} dateKey={col.dateKey} canEdit={seesAll} />)}
+            {col.cards.map((card) => <Card key={card.uid || card.key} card={card} canEdit={seesAll} />)}
           </section>
         ))}
         {days < maxDays && (

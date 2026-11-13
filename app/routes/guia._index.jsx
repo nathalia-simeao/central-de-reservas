@@ -125,7 +125,6 @@ async function allDepartures({ guide, from, to }) {
     .filter((e) => !depByKey.get(e.key)?.archivedAt)
     .map((e) => {
       const dep = depByKey.get(e.key);
-      const dateKey = e.startTime.slice(0, 10);
       const cardKey = `${e.tourId}|${e.startTime}`;
       return {
         id: e.key,
@@ -138,8 +137,8 @@ async function allDepartures({ guide, from, to }) {
         guides: e.guides,
         mine: Boolean(e.mineId),
         // Com guia: abre a saída no app (a dele ou a de quem está escalado). Sem guia: o cartão no Quadro da Central.
-        href: e.mineId || e.anyId ? `/guia/saida/${e.mineId || e.anyId}` : `/?tab=quadro&de=quadro&dia=${dateKey}&cartao=${encodeURIComponent(cardKey)}`,
-        external: !(e.mineId || e.anyId),
+        href: e.mineId || e.anyId ? `/guia/saida/${e.mineId || e.anyId}` : `/guia/cartao?k=${encodeURIComponent(cardKey)}`,
+        external: false,
         status: dep?.checkEndAt ? "done" : dep?.checkStartAt ? "running" : "todo",
       };
     });

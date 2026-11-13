@@ -107,6 +107,19 @@ a { color: inherit; }
 .g-bcard__guide { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:var(--g-ink); }
 .g-bcard__guide img, .g-bcard__initials { width:26px; height:26px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--g-line); }
 .g-bcard__initials { display:inline-grid; place-items:center; background:var(--g-green-soft); color:var(--g-green); font-size:10px; font-weight:800; }
+.g-card-guide { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--g-line); }
+.g-card-guide img, .g-card-guide .g-bcard__initials { width:36px; height:36px; border-radius:50%; object-fit:cover; flex:none; }
+.g-card-guide__name { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.g-assign { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--g-line); }
+.g-assign__langs { display:flex; flex-wrap:wrap; gap:6px; }
+.g-lang-toggle { min-width:42px; min-height:34px; padding:4px 10px; border-radius:8px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+.g-lang-toggle.on { color:#fff; }
+.g-noshow.on-ok { background:var(--g-green-soft); border-color:var(--g-green); color:var(--g-green); }
+.g-note-form { display:grid; gap:8px; margin-bottom:10px; }
+.g-note-form textarea { font:inherit; font-size:16px; padding:10px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); }
+.g-note { margin:0 0 10px; font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.g-note small { color:var(--g-muted); }
+.g-card-checklists .pmy-board-modal__section { margin:0; }
 .g-bcard__langs { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 2px; }
 .g-lang { padding:1px 7px; border-radius:6px; border:1px solid transparent; color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em; }
 .g-bcard--edit { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
