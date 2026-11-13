@@ -218,10 +218,11 @@ export function departureBookingWhere(tourId, startTime) {
   };
 }
 
-export async function loadGuideAssignment(prisma, guide, assignmentId) {
+/** `anyGuide`: administradores abrem a saída de qualquer guia (para acompanhar). */
+export async function loadGuideAssignment(prisma, guide, assignmentId, { anyGuide = false } = {}) {
   if (!guide || !assignmentId) return null;
   const assignment = await prisma.guideAssignment.findFirst({
-    where: { id: String(assignmentId), guideId: guide.id, status: "ASSIGNED" },
+    where: { id: String(assignmentId), ...(anyGuide ? {} : { guideId: guide.id }), status: "ASSIGNED" },
     include: { tour: { select: { id: true, title: true, timezone: true, durationMinutes: true } } },
   });
   return assignment || null;

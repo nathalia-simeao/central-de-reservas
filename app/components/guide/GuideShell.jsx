@@ -50,6 +50,26 @@ a { color: inherit; }
 .g-cl.mine { border-color:var(--g-green); }
 .g-cl h3 { font-size:14px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; overflow-wrap:anywhere; }
 .g-cl h3 small { color:var(--g-muted); font-weight:600; white-space:nowrap; }
+.g-cl-row { display:flex; align-items:flex-start; gap:6px; border-top:1px solid var(--g-line); }
+.g-cl-row .g-cl-item { border-top:0; flex:1 1 auto; min-width:0; }
+.g-cl-row > form { flex:1 1 auto; min-width:0; display:flex; }
+.g-cl-side { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding:8px 0; }
+.g-phone-chip { display:inline-flex; align-items:center; gap:5px; min-height:34px; padding:5px 10px; border-radius:999px; border:1px solid color-mix(in srgb, var(--g-green) 35%, transparent); background:var(--g-green-soft); color:var(--g-green); font:inherit; font-size:13px; font-weight:700; white-space:nowrap; cursor:pointer; }
+.g-phone-chip svg { width:14px; height:14px; }
+.g-icon-btn { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:50%; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-muted); cursor:pointer; }
+.g-icon-btn svg { width:18px; height:18px; }
+.g-sheet-backdrop { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.38); display:flex; align-items:flex-end; justify-content:center; padding:12px; }
+.g-sheet { width:100%; max-width:440px; background:var(--g-card); color:var(--g-ink); border-radius:20px; padding:14px 14px 10px; box-shadow:0 20px 50px rgba(0,0,0,.25); margin-bottom:max(8px, env(safe-area-inset-bottom)); }
+.g-sheet__head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 4px 10px; border-bottom:1px solid var(--g-line); margin-bottom:6px; }
+.g-sheet__head strong { display:block; font-size:16px; }
+.g-sheet__head small { color:var(--g-muted); font-size:13px; }
+.g-sheet__item { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:10px 8px; border:0; border-radius:12px; background:none; color:var(--g-ink); font:inherit; font-size:15px; font-weight:600; text-align:left; text-decoration:none; cursor:pointer; }
+.g-sheet__item:active, .g-sheet__item:hover { background:var(--g-green-soft); }
+.g-sheet__item svg { width:20px; height:20px; color:var(--g-green); flex:none; }
+.g-sheet__item.is-danger svg { color:var(--g-red); }
+.g-sheet__item[disabled] { opacity:.45; cursor:not-allowed; }
+.g-sheet__sep { height:1px; background:var(--g-line); margin:6px 4px; }
+.g-sheet__note { margin:4px 8px 6px; font-size:12px; color:var(--g-muted); }
 .g-cl-item { display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; background:none; border:0; border-top:1px solid var(--g-line); padding:10px 2px; font:inherit; font-size:15px; color:var(--g-ink); cursor:pointer; min-height:44px; }
 .g-cl-item.done .g-cl-text { color:var(--g-muted); text-decoration:line-through; }
 .g-plat { flex:none; margin-left:auto; align-self:center; padding:1px 7px; border-radius:6px; color:#fff; font-size:12px; font-weight:700; letter-spacing:.02em; }
@@ -94,6 +114,7 @@ a { color: inherit; }
 .g-dep__main { flex:1; min-width:0; }
 .g-dep__main strong { display:block; overflow-wrap:anywhere; }
 .g-dep__main span { color:var(--g-muted); font-size:14px; }
+.g-dep__guides { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
 .g-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:700; }
 .g-pill.ok { background:var(--g-green-soft); color:var(--g-green); }
 .g-pill.no { background:var(--g-red-soft); color:var(--g-red); }
@@ -150,6 +171,12 @@ const ICONS = {
   card: <><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="M3 10h18M7 15h3" /></>,
   file: <><path d="M7 3.5h6.5L18 8v12.5H7z" /><path d="M13.5 3.5V8H18" /></>,
   clip: <path d="m20 11.5-7.8 7.8a4.5 4.5 0 0 1-6.4-6.4l8-8a3 3 0 0 1 4.3 4.3l-8 8a1.5 1.5 0 1 1-2.1-2.1l7.4-7.4" />,
+  sms: <><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /><path d="M8 10h.01M12 10h.01M16 10h.01" /></>,
+  copy: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>,
+  more: <><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></>,
+  x: <path d="M6 6l12 12M18 6 6 18" />,
+  userX: <><circle cx="10" cy="8" r="4" /><path d="M3 21v-1a6 6 0 0 1 10-4.5M16 16l5 5M21 16l-5 5" /></>,
+  userCheck: <><circle cx="10" cy="8" r="4" /><path d="M3 21v-1a6 6 0 0 1 10-4.5M15.5 18.5 17.5 20.5 21.5 16" /></>,
   phone: <path d="M5 4h3.5l1.5 4-2 1.5a10 10 0 0 0 6.5 6.5L16 14l4 1.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4Z" />,
   back: <path d="M15 5 8 12l7 7" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,

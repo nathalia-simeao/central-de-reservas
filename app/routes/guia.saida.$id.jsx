@@ -5,6 +5,9 @@ import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/
 import { normalizeText } from "../utils/trello-import.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
+import { isPortalAdmin } from "../utils/central-auth.server";
+import { PhoneChip } from "../components/guide/PhoneActions";
+import { textWithoutPhones } from "../utils/phone-actions.js";
 import { GIcon, GuideShell, PLATFORM_NAMES, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import {
   CHECK_FIELDS,
@@ -25,27 +28,33 @@ import {
 async function load(request, params) {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) throw redirectTo("/guia/login");
-  const assignment = await loadGuideAssignment(db, guide, params.id);
+  const admin = await isPortalAdmin(guide);
+  const assignment = await loadGuideAssignment(db, guide, params.id, { anyGuide: admin });
   if (!assignment) throw redirectTo("/guia");
-  return { guide, assignment };
+  // Admin acompanhando a saída de outro guia: vê e marca tudo da saída (todos os idiomas).
+  const viewAll = admin && assignment.guideId !== guide.id;
+  return { guide, assignment, viewAll };
 }
 
 // Checklists da saída, iguais aos do Quadro (e do Trello): os automáticos por
 // grupo de idioma (pronto → um item por cliente → fim de tour) e os da equipe /
 // importados do Trello. O guia vê os do grupo dele primeiro e só marca/desmarca.
-function guideChecklists({ guide, assignment, bookings, departure, teammates }) {
+function guideChecklists({ guide, assignment, bookings, departure, teammates, viewAll = false }) {
   const state = normalizeChecklists(departure?.checklists);
   const card = {
     timeKey: lisbonParts(assignment.startTime).time,
     bookings,
     guides: teammates.map((t) => ({ guideId: t.guideId, name: t.guide?.name || "Guia", languages: t.languages || [] })),
   };
-  const myLanguages = assignment.languages || [];
+  const myLanguages = viewAll ? [] : assignment.languages || [];
   const auto = autoChecklists(card)
     .filter((list) => !myLanguages.length || myLanguages.includes(list.id.replace("auto:", "")))
     .map((list) => ({
       id: list.id, title: list.title, auto: true, mine: true,
-      items: list.items.map((item) => ({ id: item.key, text: item.text, platform: item.platform || null, done: Boolean(state.auto[item.key]?.done) })),
+      items: list.items.map((item) => ({
+        id: item.key, text: item.text, platform: item.platform || null, done: Boolean(state.auto[item.key]?.done),
+        bookingId: item.key.startsWith("booking:") ? item.key.slice(8) : null,
+      })),
     }));
   const firstName = normalizeText(guide.name).split(" ")[0];
   const manual = state.lists.map((list) => ({
@@ -57,7 +66,7 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates }) 
 }
 
 export const loader = async ({ request, params }) => {
-  const { guide, assignment } = await load(request, params);
+  const { guide, assignment, viewAll } = await load(request, params);
   const [bookings, departure, teammates] = await Promise.all([
     db.booking.findMany({
       where: { AND: [departureBookingWhere(assignment.tourId, assignment.startTime), excludeTestBookingsWhere()] },
@@ -77,10 +86,12 @@ export const loader = async ({ request, params }) => {
     }),
   ]);
 
-  const groupBookings = bookingsForGuideLanguages(bookings, assignment.languages, assignment.guideId);
+  const groupBookings = viewAll ? bookings : bookingsForGuideLanguages(bookings, assignment.languages, assignment.guideId);
   return {
-    checklists: guideChecklists({ guide, assignment, bookings, departure, teammates }),
+    checklists: guideChecklists({ guide, assignment, bookings, departure, teammates, viewAll }),
     guide: { name: guide.name },
+    viewAll,
+    guideNames: teammates.map((tm) => tm.guide?.name).filter(Boolean),
     departure: {
       languages: assignment.languages || [],
       id: assignment.id,
@@ -104,7 +115,7 @@ export const loader = async ({ request, params }) => {
 };
 
 export const action = async ({ request, params }) => {
-  const { guide, assignment } = await load(request, params);
+  const { guide, assignment, viewAll } = await load(request, params);
   const form = await request.formData();
   const intent = String(form.get("intent") || "");
   const existing = await db.tourDeparture.findUnique({
@@ -145,7 +156,7 @@ export const action = async ({ request, params }) => {
       where: { id: bookingId, ...departureBookingWhere(assignment.tourId, assignment.startTime), status: "CONFIRMED" },
       select: { id: true, language: true, groupGuideId: true },
     });
-    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length) {
+    if (!booking || (!viewAll && !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length)) {
       return { error: "Reserva não encontrada no seu grupo desta saída." };
     }
     await db.booking.update({
@@ -162,7 +173,7 @@ export const action = async ({ request, params }) => {
       where: { id: bookingId, ...departureBookingWhere(assignment.tourId, assignment.startTime) },
       select: { id: true, language: true, groupGuideId: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true },
     });
-    if (!booking || !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length) {
+    if (!booking || (!viewAll && !bookingsForGuideLanguages([booking], assignment.languages, assignment.guideId).length)) {
       return { error: "Reserva não encontrada no seu grupo desta saída." };
     }
     const rows = [];
@@ -205,30 +216,64 @@ function paxDetail(b, t = (x) => x) {
   ].filter(([n]) => Number(n) > 0).map(([n, one, many]) => `${n} ${t(Number(n) === 1 ? one : many)}`).join(", ");
 }
 
-function ChecklistItem({ listId, item }) {
+function AttendanceActions({ booking, canMark, close }) {
+  const t = useT();
+  const fetcher = useFetcher();
+  if (!booking || booking.status !== "CONFIRMED") return null;
+  const send = (value) => {
+    fetcher.submit({ intent: "attendance", bookingId: booking.id, value }, { method: "post" });
+    close?.();
+  };
+  return (
+    <>
+      <button type="button" className="g-sheet__item" disabled={!canMark} onClick={() => send("COMPLETED")}>
+        <GIcon name="userCheck" /> {booking.attendanceStatus === "COMPLETED" ? `✓ ${t("Presente")}` : t("Marcar presente")}
+      </button>
+      <button type="button" className="g-sheet__item is-danger" disabled={!canMark} onClick={() => send("NO_SHOW")}>
+        <GIcon name="userX" /> {booking.attendanceStatus === "NO_SHOW" ? "✓ No-show" : t("Marcar no-show")}
+      </button>
+      {!canMark && <p className="g-sheet__note">{t("A presença abre 3 horas antes do passeio.")}</p>}
+    </>
+  );
+}
+
+// Só a caixinha e o texto marcam o item; o número é um botão à parte
+// (abrir o WhatsApp não pode marcar o cliente como feito).
+function ChecklistItem({ listId, item, booking, canMark }) {
   const fetcher = useFetcher();
   const done = fetcher.formData ? !item.done : item.done;
+  const { text, phones } = textWithoutPhones(item.text);
+  const plat = checklistPlatform(item.platform);
+  const title = booking?.customerName || text;
   return (
-    <fetcher.Form method="post">
-      <input type="hidden" name="intent" value="checklist" />
-      <input type="hidden" name="listId" value={listId} />
-      <input type="hidden" name="itemId" value={item.id} />
-      <input type="hidden" name="label" value={item.text} />
-      <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
-        <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
-        <span className="g-cl-text">{item.text}</span>
-        {checklistPlatform(item.platform) && (
-          <span className="g-plat" style={{ background: checklistPlatform(item.platform).color }} title={checklistPlatform(item.platform).name}>
-            {checklistPlatform(item.platform).label}
-          </span>
-        )}
-      </button>
-    </fetcher.Form>
+    <div className="g-cl-row">
+      <fetcher.Form method="post">
+        <input type="hidden" name="intent" value="checklist" />
+        <input type="hidden" name="listId" value={listId} />
+        <input type="hidden" name="itemId" value={item.id} />
+        <input type="hidden" name="label" value={item.text} />
+        <button type="submit" className={`g-cl-item${done ? " done" : ""}`} aria-pressed={done}>
+          <span className="g-cl-box" aria-hidden="true">{done ? "✓" : ""}</span>
+          <span className="g-cl-text">{text || item.text}</span>
+          {booking?.attendanceStatus === "NO_SHOW" && <span className="g-pill no">No-show</span>}
+        </button>
+      </fetcher.Form>
+      {(plat || phones.length > 0) && (
+        <span className="g-cl-side">
+          {phones.map((phone) => (
+            <PhoneChip key={phone} phone={phone} title={title}
+              extra={booking ? (close) => <AttendanceActions booking={booking} canMark={canMark} close={close} /> : null} />
+          ))}
+          {plat && <span className="g-plat" style={{ background: plat.color }} title={plat.name}>{plat.label}</span>}
+        </span>
+      )}
+    </div>
   );
 }
 
 export default function GuideDeparture() {
-  const { departure, permissions, bookings, checklists } = useLoaderData();
+  const { departure, permissions, bookings, checklists, viewAll, guideNames = [] } = useLoaderData();
+  const bookingById = new Map(bookings.map((b) => [b.id, b]));
   const result = useActionData();
   const navigation = useNavigation();
   const t = useT();
@@ -256,7 +301,8 @@ export default function GuideDeparture() {
         <div className="g-summary">
           <span><b>{parts.time}</b> · {parts.day}</span>
           <span><b>{totalPax}</b> pax · {bookings.length} {t("reserva(s)")}</span>
-          {departure.languages.length > 0 && <span>{t("Seu grupo:")} <b>{departure.languages.map((k) => t(LANGUAGE_NAMES[k] || k)).join(", ")}</b></span>}
+          {viewAll && <span>{t("Acompanhando como administrador")} · {t("Guias")}: <b>{guideNames.join(", ") || "—"}</b></span>}
+          {!viewAll && departure.languages.length > 0 && <span>{t("Seu grupo:")} <b>{departure.languages.map((k) => t(LANGUAGE_NAMES[k] || k)).join(", ")}</b></span>}
           <span>{t("Presentes")} <b>{present}</b> · No-show <b>{noShow}</b></span>
         </div>
       </div>
@@ -291,7 +337,7 @@ export default function GuideDeparture() {
             return (
               <section key={list.id} className={`g-cl${list.mine ? " mine" : ""}`} aria-label={list.title}>
                 <h3>{list.title}<small>{doneCount}/{list.items.length}</small></h3>
-                {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} />)}
+                {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} booking={item.bookingId ? bookingById.get(item.bookingId) : null} canMark={permissions.canMarkAttendance} />)}
               </section>
             );
           })}
@@ -330,8 +376,7 @@ export default function GuideDeparture() {
               </details>
             )}
             <div className="g-row">
-              {b.wa && <a className="g-btn" href={b.wa} target="_blank" rel="noreferrer"><GIcon name="chat" /> WhatsApp</a>}
-              {b.tel && <a className="g-btn" href={`tel:${b.tel}`}><GIcon name="phone" /> {t("Ligar")}</a>}
+              {b.tel && <PhoneChip phone={b.customerPhone} title={b.customerName} />}
               {b.status === "CONFIRMED" && (
                 <Form method="post" className="g-row">
                   <input type="hidden" name="intent" value="attendance" />
