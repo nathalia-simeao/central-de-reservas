@@ -314,7 +314,7 @@ function eventPayload(mail, parsed, extra = {}) {
  * Lê um e-mail e decide: IMPORTED (entrou), REVIEW (equipe confere), IGNORED.
  * mode "review" (backfill) nunca cria reserva sozinho.
  */
-export async function processEmail(prisma, mail, { catalog, aliases = {}, mode = "auto", now = new Date() } = {}) {
+export async function processEmail(prisma, mail, { catalog, aliases = {}, mode = "auto", now = new Date(), directPlatforms = [] } = {}) {
   const exists = await prisma.integrationEvent.findUnique({
     where: { provider_externalEventId: { provider: GMAIL_PROVIDER, externalEventId: mail.messageId } },
     select: { id: true },
@@ -339,7 +339,8 @@ export async function processEmail(prisma, mail, { catalog, aliases = {}, mode =
   };
 
   if (!platform) return record("IGNORED", { reason: "NOT_A_PLATFORM" });
-  if (platform.direct) return record("IGNORED", { reason: "DIRECT_CONNECTION" });
+  // Plataforma que já vende pela conexão direta: a reserva chega pela API, o e-mail só fica registrado.
+  if (platform.direct || directPlatforms.includes(platform.key)) return record("IGNORED", { reason: "DIRECT_CONNECTION" });
   if (parsed.kind === "OTHER") return record("IGNORED", { reason: "NOT_A_BOOKING" });
 
   if (parsed.kind === "CANCEL") {
@@ -377,6 +378,20 @@ export async function processEmail(prisma, mail, { catalog, aliases = {}, mode =
 
 // ---- Leitura completa ----
 
+/** Plataformas cuja conexão direta já está no ar (Viator/Civitatis em produção, OCTO marcado como ativo). */
+async function liveDirectPlatforms(prisma) {
+  const out = [];
+  try {
+    const { octoLivePlatforms } = await import("../utils/octo.server.js");
+    out.push(...(await octoLivePlatforms(prisma)));
+  } catch { /* sem OCTO */ }
+  for (const provider of ["VIATOR", "CIVITATIS"]) {
+    const record = await getSafeIntegrationSecretStatus(prisma, provider).catch(() => null);
+    if (record?.status === "CONNECTED" && String(record.environment || "").toLowerCase() === "live") out.push(provider);
+  }
+  return out;
+}
+
 let running = false;
 
 export async function runGmailSync(prisma, { since = null, mode = "auto", max = 200 } = {}) {
@@ -396,6 +411,7 @@ export async function runGmailSync(prisma, { since = null, mode = "auto", max = 
       return { ok: false, error: message };
     }
     const catalog = await loadTourCatalog(prisma);
+    const directPlatforms = await liveDirectPlatforms(prisma);
     const summary = { read: 0, imported: 0, review: 0, ignored: 0, duplicate: 0, errors: 0 };
     for (const raw of fetched.messages) {
       summary.read += 1;
@@ -403,7 +419,7 @@ export async function runGmailSync(prisma, { since = null, mode = "auto", max = 
         const mail = await toMail(raw);
         // E-mails de antes de ligar a leitura nunca entram sozinhos (a equipe pode já ter lançado à mão).
         const before = !since && state.connectedAt && new Date(mail.date) < new Date(state.connectedAt);
-        const result = await processEmail(prisma, mail, { catalog, aliases: state.aliases, mode: before ? "review" : mode });
+        const result = await processEmail(prisma, mail, { catalog, aliases: state.aliases, mode: before ? "review" : mode, directPlatforms });
         const key = { IMPORTED: "imported", REVIEW: "review", IGNORED: "ignored", DUPLICATE: "duplicate" }[result.status] || "errors";
         summary[key] += 1;
       } catch (error) {

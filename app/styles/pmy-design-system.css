@@ -6846,3 +6846,23 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
   .pmy-gmail-recent__when, .pmy-gmail-recent__plat { font-size: 12px; }
   .pmy-gmail-recent__subject { grid-column: 1 / -1; }
 }
+
+/* Conexão direta OCTO (Klook, Tiqets, Headout) — 13/11/2026. */
+.pmy-octo { display: grid; gap: 14px; }
+.pmy-octo-copy { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--pmy-ds-border); border-radius: 10px; background: var(--pmy-ds-surface); font-size: 13px; }
+.pmy-octo-copy > span { font-weight: 600; }
+.pmy-octo-copy code { overflow-wrap: anywhere; font-size: 12.5px; }
+.pmy-octo-copy button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--pmy-ds-border); background: var(--pmy-ds-surface); border-radius: 8px; padding: 5px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--pmy-ds-accent); cursor: pointer; }
+.pmy-octo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pmy-octo-item { border: 1px solid var(--pmy-ds-border); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; background: var(--pmy-ds-surface); }
+.pmy-octo-item__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pmy-octo-state { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px; background: color-mix(in srgb, var(--pmy-ds-border) 50%, transparent); color: var(--pmy-ds-muted); }
+.pmy-octo-state.is-waiting { background: #fff4e5; color: #a54800; }
+.pmy-octo-state.is-testing { background: #e9f2ff; color: #0c66e4; }
+.pmy-octo-state.is-connected { background: #dcfff1; color: #1f845a; }
+.pmy-octo-item__meta { margin: 0; font-size: 13px; color: var(--pmy-ds-muted); }
+.pmy-octo-item__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pmy-octo-fresh { display: grid; gap: 6px; }
+.pmy-octo-fresh small { color: #a54800; font-size: 12px; }
+.pmy-octo-note { margin: 0; font-size: 12.5px; color: var(--pmy-ds-muted); }
+@media (max-width: 640px) { .pmy-octo-copy { grid-template-columns: 1fr; } }

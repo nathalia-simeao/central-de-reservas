@@ -1,6 +1,7 @@
 import { Button, Icon } from "./PmyUI";
 import TrelloIntegrationCard, { trelloCardState, useTrelloStatus } from "./TrelloIntegrationCard";
 import GmailIntegrationCard, { gmailCardState, useGmailStatus } from "./GmailIntegrationCard";
+import OctoIntegrationCard, { useOctoStatus } from "./OctoIntegrationCard";
 
 // Canais que entram pelo Gmail enquanto não há conexão direta (13/11/2026).
 const GMAIL_CHANNELS = new Set(["airbnb", "tiqets", "klook", "civitatis", "viator", "headout"]);
@@ -28,6 +29,8 @@ export default function IntegrationConnectionsPanel({
   const tr = (pt, en) => lang === "en" ? en : pt;
   const [trelloStatus, reloadTrello] = useTrelloStatus(requestResourceJson);
   const [gmailStatus, reloadGmail] = useGmailStatus(requestResourceJson);
+  const [octoStatus, reloadOcto] = useOctoStatus(requestResourceJson);
+  const octoLive = new Set((octoStatus?.resellers || []).filter((r) => r.hasKey && r.live).map((r) => r.key.toLowerCase()));
   const gmailOn = gmailCardState(gmailStatus) === "connected";
   const viaGmail = (key, conn = {}) => gmailOn && GMAIL_CHANNELS.has(key) && !conn.connected;
   const gmailState = { connected: "connected", configured: "waiting", error: "error", required: "required" }[gmailCardState(gmailStatus)];
@@ -35,7 +38,7 @@ export default function IntegrationConnectionsPanel({
   const contentState = (conn = {}) => (conn.connected ? "connected" : conn.validationError ? "error" : conn.configured ? "waiting" : "required");
   const trelloState = { connected: "connected", configured: "waiting", error: "error", required: "required" }[trelloCardState(trelloStatus)];
   const allStates = [
-    ...reservationPlatforms.map((p) => (viaGmail(p.key, platformConnections[p.key]) ? "connected" : reservationState(platformConnections[p.key]))),
+    ...reservationPlatforms.map((p) => (octoLive.has(p.key) || viaGmail(p.key, platformConnections[p.key]) ? "connected" : reservationState(platformConnections[p.key]))),
     ...(requestResourceJson && gmailStatus ? [gmailState] : []),
     ...contentPlatforms.map((p) => contentState(platformConnections[p.key])),
     ...(requestResourceJson && trelloStatus ? [trelloState] : []),
@@ -68,10 +71,15 @@ export default function IntegrationConnectionsPanel({
                       </div>
                       <div className="pmy-ds-migrated-xqzku2">
                         {requestResourceJson && (
-                          <GmailIntegrationCard requestJson={requestResourceJson} status={gmailStatus} onReload={reloadGmail} lang={lang} readOnly={readOnly} />
+                          <>
+                            <GmailIntegrationCard requestJson={requestResourceJson} status={gmailStatus} onReload={reloadGmail} lang={lang} readOnly={readOnly} />
+                            <OctoIntegrationCard requestJson={requestResourceJson} status={octoStatus} onReload={reloadOcto} lang={lang} readOnly={readOnly} />
+                          </>
                         )}
                         {reservationPlatforms.map(platform => {
-                          const conn = platformConnections[platform.key] || {};
+                          const conn = octoLive.has(platform.key)
+                            ? { ...(platformConnections[platform.key] || {}), connected: true, noDirectApi: false }
+                            : platformConnections[platform.key] || {};
                           const byGmail = viaGmail(platform.key, conn);
                           const isPendingOnboarding =
                             conn.onboardingPending || conn.available === false;

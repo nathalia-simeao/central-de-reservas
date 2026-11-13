@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import db from "../db.server";
 import {
   calculateAvailabilityForCalendarSlotFromLoaded,
@@ -17,6 +18,17 @@ import {
 
 const prisma = db;
 const PLATFORM = "CIVITATIS";
+
+// A mesma Supplier API atende outras plataformas pelo padrão OCTO (Klook, Tiqets,
+// Headout — 13/11/2026). Cada chamada /octo/* roda "como" a plataforma dona da
+// chave, e as reservas ficam marcadas com ela (não com CIVITATIS).
+const resellerStore = new AsyncLocalStorage();
+export function runAsReseller(platform, fn) {
+  return resellerStore.run({ platform: String(platform || PLATFORM).toUpperCase() }, fn);
+}
+function activePlatform() {
+  return resellerStore.getStore()?.platform || PLATFORM;
+}
 const OPTION_ID = "STANDARD";
 const INDIVIDUAL_CATEGORIES = ["ADULT", "CHILD", "YOUTH", "SENIOR"];
 const DEFAULT_HOLD_MINUTES = 30;
@@ -141,7 +153,8 @@ export async function requireCivitatisAuth(
 
 export function civitatisCapabilities(request) {
   return new Set(
-    String(request.headers.get("Capabilities") || "")
+    `${request.headers.get("Capabilities") || ""},${request.headers.get("Octo-Capabilities") || ""}`
+      .replace(/octo\//gi, "")
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean),
@@ -718,6 +731,20 @@ function detailedBookingResponse(booking) {
   };
 }
 
+/** Passeios vendáveis pela Supplier API, com os dados da Central (para o OCTO). */
+export async function supplierCatalog(productId = null) {
+  if (productId) {
+    const tour = await findTour(productId);
+    return tour ? [{ tour, details: productDetails(tour) }] : [];
+  }
+  const tours = await prisma.tour.findMany({
+    where: { shopifyStatus: { not: "INACTIVE" } },
+    include: { variants: true },
+    orderBy: { title: "asc" },
+  });
+  return tours.filter(eligibleTour).map((tour) => ({ tour, details: productDetails(tour) }));
+}
+
 export async function civitatisProducts() {
   const tours = await prisma.tour.findMany({
     where: { shopifyStatus: { not: "INACTIVE" } },
@@ -821,7 +848,7 @@ export async function civitatisAvailability(request, body) {
           blocks,
           dateKey,
           timeKey,
-          platform: PLATFORM,
+          platform: activePlatform(),
           requestedSeats: counts.totalParticipants,
         });
 
@@ -917,7 +944,7 @@ export async function civitatisCreateBooking(request, body) {
     const guarded = await createBookingWithCapacityGuard(prisma, {
       tourId: tour.id,
       startTime: instant,
-      platform: PLATFORM,
+      platform: activePlatform(),
       requestedSeats: counts.totalParticipants,
       bookingData: {
         customerName: contactName(leadContact),
@@ -925,7 +952,7 @@ export async function civitatisCreateBooking(request, body) {
         customerPhone: contactPhone(leadContact),
         language: contactLanguage(leadContact),
         startTime: instant,
-        platform: PLATFORM,
+        platform: activePlatform(),
         status: "PENDING",
         externalProductId: tour.id,
         externalVariantId: OPTION_ID,
@@ -955,7 +982,7 @@ export async function civitatisCreateBooking(request, body) {
       eventId: `civitatis-hold:${guarded.booking.id}`,
       eventType: SYNC_EVENT_TYPES.BOOKING_CREATED,
       booking: guarded.booking,
-      sourcePlatform: PLATFORM,
+      sourcePlatform: activePlatform(),
       payload: { origin: "CIVITATIS_HOLD" },
     });
 
@@ -990,7 +1017,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
 
   try {
     const booking = await prisma.booking.findFirst({
-      where: { id: uuid, platform: PLATFORM },
+      where: { id: uuid, platform: activePlatform() },
     });
 
     if (!booking) {
@@ -1022,7 +1049,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
           eventId: `civitatis-expired:${expired.id}`,
           eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
           booking: expired,
-          sourcePlatform: PLATFORM,
+          sourcePlatform: activePlatform(),
           force: true,
           payload: { reason: "civitatis_hold_expired" },
         });
@@ -1050,7 +1077,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
 
     const duplicate = await prisma.booking.findFirst({
       where: {
-        platform: PLATFORM,
+        platform: activePlatform(),
         externalBookingId: resellerReference,
         id: { not: booking.id },
       },
@@ -1134,7 +1161,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
       eventId: `civitatis-confirm:${confirmed.id}:${resellerReference}`,
       eventType: SYNC_EVENT_TYPES.BOOKING_UPDATED,
       booking: confirmed,
-      sourcePlatform: PLATFORM,
+      sourcePlatform: activePlatform(),
       payload: { origin: "CIVITATIS_CONFIRM" },
     });
 
@@ -1151,7 +1178,7 @@ export async function civitatisConfirmBooking(request, uuid, body) {
 
 export async function civitatisGetBooking(uuid) {
   const booking = await prisma.booking.findFirst({
-    where: { id: uuid, platform: PLATFORM },
+    where: { id: uuid, platform: activePlatform() },
   });
 
   if (!booking) {
@@ -1164,7 +1191,7 @@ export async function civitatisGetBooking(uuid) {
 export async function civitatisCancelBooking(uuid) {
   try {
     const booking = await prisma.booking.findFirst({
-      where: { id: uuid, platform: PLATFORM },
+      where: { id: uuid, platform: activePlatform() },
     });
 
     if (!booking) {
@@ -1191,7 +1218,7 @@ export async function civitatisCancelBooking(uuid) {
       eventId: `civitatis-cancel:${canceled.id}`,
       eventType: SYNC_EVENT_TYPES.BOOKING_CANCELLED,
       booking: canceled,
-      sourcePlatform: PLATFORM,
+      sourcePlatform: activePlatform(),
       force: true,
       payload: { reason: "civitatis_booking_cancelled" },
     });

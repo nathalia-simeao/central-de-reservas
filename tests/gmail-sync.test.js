@@ -98,3 +98,10 @@ test("reviews and messages are ignored; GetYourGuide e-mails never become bookin
   assert.equal((await processEmail(db, { ...viatorMail(), messageId: "<g>", from: "supplier@getyourguide.com" }, { catalog, now })).status, "IGNORED");
   assert.equal(db.bookings.length, 0);
 });
+
+test("platforms already selling through the direct connection are not added again from e-mail", async () => {
+  const db = fakeDb();
+  const result = await processEmail(db, viatorMail(), { catalog, now, directPlatforms: ["VIATOR"] });
+  assert.equal(result.status, "IGNORED");
+  assert.equal(db.bookings.length, 0);
+});
