@@ -237,7 +237,7 @@ export default function GuideSell() {
           <input type="hidden" name="language" value={language} />
           <div className="g-field">
             {t("Data")}
-            <DatePicker value={date} min={today} onChange={(value) => setDate(value || "")} locale={locale} todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
+            <DatePicker value={date} min={today} onChange={(e) => setDate(e?.target?.value ?? (typeof e === "string" ? e : ""))} locale={locale} todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
           </div>
           <div className="g-field">
             {t("Horário")}
