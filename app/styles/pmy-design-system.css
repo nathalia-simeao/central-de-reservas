@@ -6806,3 +6806,43 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 .pmy-plat, .pmy-checklist__item.is-done .pmy-plat, .pmy-checklist__item .pmy-checklist__tail .pmy-plat { color: #fff !important; text-decoration: none !important; }
 .pmy-departure-file__owner { margin-left: 4px; padding: 0 7px; border-radius: 999px; border: 1px solid #1f845a; background: #e9f6ef; color: #1f845a; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .pmy-departure-file__owner.is-shared { border-color: #dcdfe4; background: #fff; color: #626f86; }
+
+/* Gmail → Central (13/11/2026): conexão, leitura e "Para revisar". */
+.pmy-gmail-modal .pmy-ds-modal__panel, .pmy-gmail-modal { --pmy-gmail-gap: 14px; }
+.pmy-gmail { display: grid; gap: var(--pmy-gmail-gap, 14px); }
+.pmy-gmail-steps { margin: 0 0 4px; padding-left: 20px; display: grid; gap: 6px; color: var(--pmy-ds-text); font-size: 14px; line-height: 1.45; }
+.pmy-gmail-steps a { color: var(--pmy-ds-accent); font-weight: 600; }
+.pmy-gmail-connect { display: grid; gap: 12px; }
+.pmy-gmail-connect__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pmy-gmail-status { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--pmy-ds-border); border-radius: 12px; background: var(--pmy-ds-surface); }
+.pmy-gmail-status__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pmy-gmail-status__row > span { display: inline-flex; align-items: center; gap: 6px; }
+.pmy-gmail-status__meta { margin: 0; font-size: 13px; color: var(--pmy-ds-muted); line-height: 1.45; }
+.pmy-gmail-review h4 { margin: 8px 0 8px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.pmy-gmail-count { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #c9372c; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.pmy-gmail-empty { margin: 0; font-size: 13px; color: var(--pmy-ds-muted); }
+.pmy-gmail-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pmy-gmail-item { border: 1px solid var(--pmy-ds-border); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; background: var(--pmy-ds-surface); }
+.pmy-gmail-item__head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pmy-gmail-item__ref { font-size: 12px; font-weight: 600; color: var(--pmy-ds-muted); }
+.pmy-gmail-item__when { margin-left: auto; font-size: 12px; color: var(--pmy-ds-muted); }
+.pmy-gmail-item__subject { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.pmy-gmail-item__reason { margin: 0; font-size: 13px; color: #a54800; display: flex; gap: 6px; align-items: flex-start; }
+.pmy-gmail-item__product { margin: 0; font-size: 13px; color: var(--pmy-ds-muted); }
+.pmy-gmail-item__form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+.pmy-gmail-item__form > :first-child { grid-column: 1 / -1; }
+.pmy-gmail-item__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pmy-gmail-item__toggle { margin-left: auto; border: 0; background: none; color: var(--pmy-ds-accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.pmy-gmail-item__mail { margin: 0; max-height: 260px; overflow: auto; white-space: pre-wrap; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--pmy-ds-border) 35%, transparent); border-radius: 8px; padding: 10px; }
+.pmy-gmail-recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+.pmy-gmail-recent li { display: grid; grid-template-columns: 92px 80px minmax(0, 1fr) 170px; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--pmy-ds-border); align-items: baseline; }
+.pmy-gmail-recent__when, .pmy-gmail-recent__state { color: var(--pmy-ds-muted); }
+.pmy-gmail-recent__plat { font-weight: 600; }
+.pmy-gmail-recent__subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pmy-gmail-recent li.is-imported .pmy-gmail-recent__state { color: #1f845a; font-weight: 600; }
+@media (max-width: 640px) {
+  .pmy-gmail-item__form { grid-template-columns: 1fr 1fr; }
+  .pmy-gmail-recent li { grid-template-columns: 1fr auto; }
+  .pmy-gmail-recent__when, .pmy-gmail-recent__plat { font-size: 12px; }
+  .pmy-gmail-recent__subject { grid-column: 1 / -1; }
+}

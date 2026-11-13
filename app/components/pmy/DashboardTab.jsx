@@ -292,6 +292,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
     if (["GETYOURGUIDE", "GET_YOUR_GUIDE", "GYG"].includes(platform)) return "GetYourGuide";
     if (platform === "CIVITATIS") return "Civitatis";
     if (platform === "HEADOUT") return "Headout";
+    if (platform === "AIRBNB") return "Airbnb";
+    if (platform === "TIQETS") return "Tiqets";
+    if (platform === "KLOOK") return "Klook";
     if (["MANUAL", "CENTRAL"].includes(platform)) return "Manual";
     if (platform === "SHOPIFY") return "Site";
     return "Outro";
@@ -310,6 +313,9 @@ const ChannelBookingsChart = ({ bookings = [], lang }) => {
     { key: "GetYourGuide", label: "GetYourGuide" },
     { key: "Headout", label: "Headout" },
     { key: "Civitatis", label: "Civitatis" },
+    { key: "Airbnb", label: "Airbnb" },
+    { key: "Tiqets", label: "Tiqets" },
+    { key: "Klook", label: "Klook" },
     { key: "TikTok", label: "TikTok" },
     { key: "Microsoft Ads", label: "Microsoft Ads" },
     { key: "Referência", label: lang === "pt" ? "Referência" : "Referral" },

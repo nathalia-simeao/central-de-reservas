@@ -318,5 +318,8 @@ export const PLATFORM_NAMES = {
   VIATOR: "Viator",
   CIVITATIS: "Civitatis",
   HEADOUT: "Headout",
+  AIRBNB: "Airbnb",
+  TIQETS: "Tiqets",
+  KLOOK: "Klook",
   CENTRAL: "Central",
 };

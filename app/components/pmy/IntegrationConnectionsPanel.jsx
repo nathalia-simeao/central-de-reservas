@@ -1,5 +1,9 @@
 import { Button, Icon } from "./PmyUI";
 import TrelloIntegrationCard, { trelloCardState, useTrelloStatus } from "./TrelloIntegrationCard";
+import GmailIntegrationCard, { gmailCardState, useGmailStatus } from "./GmailIntegrationCard";
+
+// Canais que entram pelo Gmail enquanto não há conexão direta (13/11/2026).
+const GMAIL_CHANNELS = new Set(["airbnb", "tiqets", "klook", "civitatis", "viator", "headout"]);
 
 /** Situação de um canal de reserva, igual à do cartão. */
 export function reservationState(conn = {}) {
@@ -23,11 +27,16 @@ export default function IntegrationConnectionsPanel({
 }) {
   const tr = (pt, en) => lang === "en" ? en : pt;
   const [trelloStatus, reloadTrello] = useTrelloStatus(requestResourceJson);
+  const [gmailStatus, reloadGmail] = useGmailStatus(requestResourceJson);
+  const gmailOn = gmailCardState(gmailStatus) === "connected";
+  const viaGmail = (key, conn = {}) => gmailOn && GMAIL_CHANNELS.has(key) && !conn.connected;
+  const gmailState = { connected: "connected", configured: "waiting", error: "error", required: "required" }[gmailCardState(gmailStatus)];
   // Resumo de TODAS as integrações da página: canais de reserva, Trello e conteúdo.
   const contentState = (conn = {}) => (conn.connected ? "connected" : conn.validationError ? "error" : conn.configured ? "waiting" : "required");
   const trelloState = { connected: "connected", configured: "waiting", error: "error", required: "required" }[trelloCardState(trelloStatus)];
   const allStates = [
-    ...reservationPlatforms.map((p) => reservationState(platformConnections[p.key])),
+    ...reservationPlatforms.map((p) => (viaGmail(p.key, platformConnections[p.key]) ? "connected" : reservationState(platformConnections[p.key]))),
+    ...(requestResourceJson && gmailStatus ? [gmailState] : []),
     ...contentPlatforms.map((p) => contentState(platformConnections[p.key])),
     ...(requestResourceJson && trelloStatus ? [trelloState] : []),
   ];
@@ -58,14 +67,20 @@ export default function IntegrationConnectionsPanel({
                         })}
                       </div>
                       <div className="pmy-ds-migrated-xqzku2">
+                        {requestResourceJson && (
+                          <GmailIntegrationCard requestJson={requestResourceJson} status={gmailStatus} onReload={reloadGmail} lang={lang} readOnly={readOnly} />
+                        )}
                         {reservationPlatforms.map(platform => {
                           const conn = platformConnections[platform.key] || {};
+                          const byGmail = viaGmail(platform.key, conn);
                           const isPendingOnboarding =
                             conn.onboardingPending || conn.available === false;
                           const isConfigured = Boolean(conn.configured);
                           const isAwaitingExternal = Boolean(conn.awaitingExternalResponse) ||
                             (isConfigured && !conn.connected && !conn.validationError);
-                          const statusLabel = conn.noDirectApi
+                          const statusLabel = byGmail
+                            ? tr("CONECTADO · VIA GMAIL", "CONNECTED · VIA GMAIL")
+                            : conn.noDirectApi
                             ? tr("SEM CONEXÃO DIRETA", "NO DIRECT CONNECTION")
                             : conn.connected
                             ? tr("CONECTADO · TRÁFEGO VERIFICADO", "CONNECTED · TRAFFIC VERIFIED")
@@ -76,7 +91,7 @@ export default function IntegrationConnectionsPanel({
                               : isPendingOnboarding
                                 ? tr("ONBOARDING PENDENTE", "ONBOARDING PENDING")
                                 : tr("FALTA CONFIGURAR", "CONFIGURATION REQUIRED");
-                          const statusClass = conn.connected
+                          const statusClass = conn.connected || byGmail
                             ? "is-connected"
                             : conn.validationError
                               ? "is-error"
@@ -97,11 +112,11 @@ export default function IntegrationConnectionsPanel({
                             <div
                               key={platform.key}
                               className={[
-                                `pmy-int-card-v2 ${conn.connected ? "connected" : ""}`,
-                                conn.validationError ? "is-error" : "",
-                                isAwaitingExternal ? "is-configured" : "",
-                                isPendingOnboarding && !isAwaitingExternal ? "is-pending" : "",
-                                !conn.connected && !conn.validationError && !isPendingOnboarding && !isAwaitingExternal ? "is-required" : "",
+                                `pmy-int-card-v2 ${conn.connected || byGmail ? "connected" : ""}`,
+                                !byGmail && conn.validationError ? "is-error" : "",
+                                !byGmail && isAwaitingExternal ? "is-configured" : "",
+                                !byGmail && isPendingOnboarding && !isAwaitingExternal ? "is-pending" : "",
+                                !byGmail && !conn.connected && !conn.validationError && !isPendingOnboarding && !isAwaitingExternal ? "is-required" : "",
                                 "pmy-ds-migrated-15s4y9o",
                               ].filter(Boolean).join(" ")}
                             >
@@ -115,7 +130,7 @@ export default function IntegrationConnectionsPanel({
                               </div>
                               <div className="pmy-ds-migrated-1gcp9k1">
                                 <span
-                                  className={`pmy-int-status-dot ${conn.connected ? "on" : conn.validationError ? "error" : isAwaitingExternal ? "configured" : isPendingOnboarding ? "pending" : "required"}`}
+                                  className={`pmy-int-status-dot ${conn.connected || byGmail ? "on" : conn.validationError ? "error" : isAwaitingExternal ? "configured" : isPendingOnboarding ? "pending" : "required"}`}
                                 ></span>
                                 <span className={`pmy-ds-connection-state ${statusClass}`}>
                                   {statusLabel}
@@ -123,7 +138,7 @@ export default function IntegrationConnectionsPanel({
                               </div>
                               <div className="pmy-int-name-v2">{platform.name}</div>
                               <div className="pmy-int-desc-v2">{lang==='pt' ? platform.desc.pt : platform.desc.en}</div>
-                              {conn.validationError && (
+                              {!byGmail && conn.validationError && (
                                 <div className="pmy-int-connection-note is-error">
                                   {conn.lastValidationMessage || tr(
                                     "O último teste da credencial falhou. Abra a integração para revisar ou substituir os dados.",
@@ -131,7 +146,7 @@ export default function IntegrationConnectionsPanel({
                                   )}
                                 </div>
                               )}
-                              {isAwaitingExternal && (
+                              {isAwaitingExternal && !byGmail && (
                                 <div className="pmy-int-connection-note is-waiting">
                                   {conn.awaitingExternalResponse
                                     ? tr(
@@ -144,15 +159,22 @@ export default function IntegrationConnectionsPanel({
                                       )}
                                 </div>
                               )}
-                              {conn.noDirectApi && (
+                              {byGmail && (
+                                <div className="pmy-int-connection-note">
+                                  {conn.noDirectApi
+                                    ? tr("As reservas entram sozinhas pela leitura do Gmail.", "Bookings come in automatically through Gmail.")
+                                    : tr("Enquanto a conexão direta não fica pronta, as reservas entram pela leitura do Gmail.", "Until the direct connection is ready, bookings come in through Gmail.")}
+                                </div>
+                              )}
+                              {conn.noDirectApi && !byGmail && (
                                 <div className="pmy-int-connection-note is-error">
                                   {tr(
-                                    "Esta plataforma ainda não tem integração com a Central. As reservas vão entrar pela leitura automática do Gmail (em construção).",
-                                    "No integration with the Central yet. Bookings will come in through the automatic Gmail reading (in progress).",
+                                    "Sem conexão direta. Conecte o Gmail (primeiro cartão) para as reservas entrarem sozinhas.",
+                                    "No direct connection. Connect Gmail (first card) so bookings come in automatically.",
                                   )}
                                 </div>
                               )}
-                              {isPendingOnboarding && !conn.noDirectApi && (
+                              {isPendingOnboarding && !conn.noDirectApi && !byGmail && (
                                 <div className="pmy-int-connection-note">
                                   {tr(
                                     "Campos de credencial ocultos até existir uma API verificável para a conta PMY.",
@@ -162,7 +184,7 @@ export default function IntegrationConnectionsPanel({
                               )}
                               {!readOnly && <div className="pmy-int-actions">
                                 {conn.noDirectApi ? (
-                                  <Button variant="secondary" size="sm" icon="mail" disabled>{tr("Via Gmail · em breve", "Via Gmail · soon")}</Button>
+                                  <Button variant="secondary" size="sm" icon="mail" disabled>{byGmail ? tr("Via Gmail", "Via Gmail") : tr("Conecte o Gmail", "Connect Gmail")}</Button>
                                 ) : (
                                 <Button
                                   variant={conn.connected || isAwaitingExternal || isPendingOnboarding ? "secondary" : "primary"}

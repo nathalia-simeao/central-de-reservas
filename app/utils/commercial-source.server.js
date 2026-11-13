@@ -12,6 +12,9 @@ export const COMMERCIAL_SOURCES = Object.freeze({
   GETYOURGUIDE: "GetYourGuide",
   HEADOUT: "Headout",
   CIVITATIS: "Civitatis",
+  AIRBNB: "Airbnb",
+  TIQETS: "Tiqets",
+  KLOOK: "Klook",
   TIKTOK: "TikTok",
   MICROSOFT_ADS: "Microsoft Ads",
   REFERRAL: "Referência",
@@ -101,6 +104,9 @@ export function classifyCommercialSource({
   }
   if (normalizedPlatform === "headout") return COMMERCIAL_SOURCES.HEADOUT;
   if (normalizedPlatform === "civitatis") return COMMERCIAL_SOURCES.CIVITATIS;
+  if (normalizedPlatform === "airbnb") return COMMERCIAL_SOURCES.AIRBNB;
+  if (normalizedPlatform === "tiqets") return COMMERCIAL_SOURCES.TIQETS;
+  if (normalizedPlatform === "klook") return COMMERCIAL_SOURCES.KLOOK;
   if (["manual", "central"].includes(normalizedPlatform)) {
     return COMMERCIAL_SOURCES.MANUAL;
   }

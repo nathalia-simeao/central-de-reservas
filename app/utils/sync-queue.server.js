@@ -849,6 +849,15 @@ export function startSyncQueueWorker(
           }
         }
       }
+      // Gmail → Central: reservas das plataformas sem conexão direta (a cada 5 minutos).
+      try {
+        const { gmailSyncWorkerStep } = await import("../services/gmail-sync.server.js");
+        const gmail = await gmailSyncWorkerStep(prisma);
+        if (gmail?.ok && (gmail.summary.imported || gmail.summary.review)) console.log("[GMAIL_SYNC] ok", JSON.stringify(gmail.summary));
+        else if (gmail && !gmail.ok) console.error("[GMAIL_SYNC] failed:", gmail.error);
+      } catch (error) {
+        console.error("[GMAIL_SYNC] failed:", error?.message || error);
+      }
       // Trello → Central uma vez por dia, depois das 6h de Lisboa (confere a cada 5 minutos).
       if (Date.now() - lastTrelloCheckAt > 5 * 60 * 1000) {
         lastTrelloCheckAt = Date.now();

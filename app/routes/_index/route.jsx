@@ -1100,6 +1100,9 @@ function CentralDeReservasContent() {
     VIATOR: { label: "Viator", icon: "ticket" },
     CIVITATIS: { label: "Civitatis", icon: "building" },
     HEADOUT: { label: "Headout", icon: "globe" },
+    AIRBNB: { label: "Airbnb", icon: "mapPin" },
+    TIQETS: { label: "Tiqets", icon: "ticket" },
+    KLOOK: { label: "Klook", icon: "globe" },
     CENTRAL: { label: "Central PMY", icon: "dashboard" },
     MANUAL: { label: "Manual", icon: "file" },
   };
