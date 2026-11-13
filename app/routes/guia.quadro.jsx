@@ -1,5 +1,6 @@
 import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
+import { guideLang } from "../utils/guide-i18n.js";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { addDays, buildBoardColumns, initials } from "../utils/agenda-board.js";
 import { tourColor } from "../utils/agenda-labels.js";
@@ -44,7 +45,7 @@ export const loader = async ({ request }) => {
       select: { tourId: true, startTime: true, tagIds: true, checkStartAt: true, checkMidAt: true, checkEndAt: true, checklists: true, guideNotes: true, archivedAt: true },
     }),
     db.businessSetting.findFirst({ select: { agendaLabels: true } }).catch(() => null),
-    db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true } }),
+    db.tour.findMany({ select: { id: true, title: true, shopifySnapshot: true, translations: true } }),
     db.supportCard
       .findMany({
         where: { visibleToGuides: true, dateKey: null, archivedAt: null },
@@ -66,7 +67,9 @@ export const loader = async ({ request }) => {
   // Cartões arquivados na Central não aparecem para os guias.
   const seesAll = await isPortalAdmin(guide);
   const columns = buildBoardColumns({ startDateKey: start, days: DAYS, bookings, assignments, departureTags, departureInfo, tours })
-    .map((col) => ({ ...col, cards: col.cards.filter((c) => !departureInfo[c.key]?.archivedAt && (seesAll || c.guides.some((g) => g.guideId === guide.id))) }));
+    .map((col) => ({ ...col, cards: col.cards.filter((c) => !departureInfo[c.key]?.archivedAt && (seesAll || c.guides.some((g) => g.guideId === guide.id))) }))
+    // Título do passeio no idioma do app (como no site).
+    .map((col) => ({ ...col, cards: col.cards.map((c) => ({ ...c, title: tours.find((t) => t.id === c.tourId)?.translations?.[guideLang(guide.portalLanguage)]?.title || c.title })) }));
   const labels = settings?.agendaLabels || null;
 
   return {

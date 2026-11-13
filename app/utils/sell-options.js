@@ -46,6 +46,7 @@ export function tourSellOptions({ snapshot = {}, variants = [], scheduleSlots = 
     const rest = selected.filter((o) => o.name !== timeOption?.name && o.name !== langOption?.name).map((o) => o.value).filter(Boolean);
     return {
       id: variant.id,
+      parts: selected.filter((o) => o.name !== timeOption?.name && o.name !== langOption?.name && o.value),
       title: rest.length ? rest.join(" · ") : variant.title || "Ingresso",
       price: variant.price,
       session,
@@ -75,6 +76,7 @@ export function tourSellOptions({ snapshot = {}, variants = [], scheduleSlots = 
     : extractTourLanguages({ languages: snapshot?.languages, options, metafields: snapshot?.metafields || {} });
 
   return {
+    timeOptionName: timeOption?.name || null,
     sessions: sessions.sort((a, b) => a.time.localeCompare(b.time) || a.label.localeCompare(b.label)),
     languages: languages.length ? languages : DEFAULT_LANGUAGES,
     languageFromProduct: languages.length > 0,

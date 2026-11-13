@@ -190,6 +190,8 @@ model Tour {
   productType            String?
   shopifyStatus          String?
   shopifySnapshot        Json?
+  // Títulos e opções traduzidos do site (pt, es, fr, it, de), lidos das páginas públicas da loja.
+  translations           Json?
   maxCapacity            Int           @default(20)
   platformCapacityLimits Json?
   // Vagas liberadas por idioma em cada saída. Ver app/utils/language-quotas.js.

@@ -6,6 +6,9 @@ import { normalizeText } from "../utils/trello-import.js";
 import { languageKey } from "../utils/tour-languages.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
+import { tourTitlesIn } from "../utils/tour-translations.server";
+import { guideLang } from "../utils/guide-i18n.js";
+
 import { isPortalAdmin } from "../utils/central-auth.server";
 import { PhoneChip } from "../components/guide/PhoneActions";
 import { textWithoutPhones } from "../utils/phone-actions.js";
@@ -122,7 +125,7 @@ export const loader = async ({ request, params }) => {
     departure: {
       languages: assignment.languages || [],
       id: assignment.id,
-      title: assignment.tour?.title || "Passeio",
+      title: (await tourTitlesIn(db, [assignment.tourId], guideLang(guide.portalLanguage))).get(assignment.tourId) || assignment.tour?.title || "Passeio",
       startTime: assignment.startTime.toISOString(),
       checkMeetAt: departure?.checkMeetAt?.toISOString() || null,
       checkStartAt: departure?.checkStartAt?.toISOString() || null,

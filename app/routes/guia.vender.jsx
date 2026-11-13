@@ -10,6 +10,8 @@ import { getCentralAvailability } from "../utils/capacity.server";
 import { blockMatchesCalendarSlot, getActiveAvailabilityBlocks } from "../utils/availability.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
 import { ticketsFor, tourSellOptions } from "../utils/sell-options.js";
+import { optionValueIn } from "../utils/tour-i18n.js";
+import { guideLang } from "../utils/guide-i18n.js";
 import { resolvePrimaryShop } from "../utils/single-tenant.server";
 import { getGuideFromRequest, redirectTo, whatsappLink } from "../utils/guide-portal.server";
 
@@ -30,6 +32,7 @@ async function shopAdmin() {
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
   if (!guide) return redirectTo("/guia/login");
+  const lang = guideLang(guide.portalLanguage);
 
   // Passeios e ingressos vêm da cópia local do Shopify (sincronizada pela Central):
   // não depende de chamar a Shopify na hora, que falhava no app (12/11).
@@ -37,10 +40,14 @@ export const loader = async ({ request }) => {
   const tours = (
     await db.tour.findMany({
       where: { shopifyProductId: { not: null }, shopifyStatus: "ACTIVE" },
-      select: { id: true, title: true, shopifyProductId: true },
+      select: { id: true, title: true, shopifyProductId: true, translations: true },
       orderBy: { title: "asc" },
     })
-  ).filter((tour) => /^gid:\/\/shopify\/Product\/\d+$/.test(String(tour.shopifyProductId)));
+  )
+    // Nome do passeio no idioma do app, como no site.
+    .map((tour) => ({ ...tour, title: tour.translations?.[lang]?.title || tour.title }))
+    .sort((a, b) => a.title.localeCompare(b.title, lang))
+    .filter((tour) => /^gid:\/\/shopify\/Product\/\d+$/.test(String(tour.shopifyProductId)));
   const listError = tours.length ? null : "Nenhum passeio ativo encontrado. Peça para a gestão sincronizar os produtos do Shopify na Central.";
 
   const url = new URL(request.url);
@@ -50,7 +57,7 @@ export const loader = async ({ request }) => {
   let error = null;
   let sell = null;
   if (listed) {
-    const tour = await db.tour.findUnique({ where: { id: listed.id }, select: { id: true, title: true, shopifySnapshot: true, scheduleSlots: true } });
+    const tour = await db.tour.findUnique({ where: { id: listed.id }, select: { id: true, title: true, shopifySnapshot: true, scheduleSlots: true, translations: true } });
     const rows = await db.tourVariant.findMany({
       where: { tourId: listed.id, active: true, shopifyVariantId: { not: null } },
       select: { shopifyVariantId: true, title: true, price: true, startTimeSlot: true },
@@ -62,6 +69,13 @@ export const loader = async ({ request }) => {
     if (!variants.length) error = "Este passeio ainda não tem ingressos sincronizados. Avise a gestão.";
     // Horários, idiomas e ingressos como estão nas variantes da Shopify.
     sell = tourSellOptions({ snapshot: tour?.shopifySnapshot || {}, variants, scheduleSlots: tour?.scheduleSlots || [] });
+    // Horários e ingressos com os nomes traduzidos do site (o valor enviado continua o original).
+    const tr = tour?.translations;
+    if (tr?.[lang]) {
+      sell.translated = true;
+      sell.sessions = sell.sessions.map((x) => ({ ...x, label: sell.timeOptionName ? optionValueIn(tr, lang, sell.timeOptionName, x.value) : x.label }));
+      sell.tickets = sell.tickets.map((x) => (x.parts?.length ? { ...x, title: x.parts.map((p) => optionValueIn(tr, lang, p.name, p.value)).join(" · ") } : x));
+    }
     // Dias bloqueados pela gestão (Agenda da Central ou bloqueio do site): o guia não vende.
     // Bloqueado = todos os horários do passeio bloqueados naquele dia.
     const blocks = await getActiveAvailabilityBlocks(db, listed.id);
@@ -395,8 +409,8 @@ export default function GuideSell() {
               {!time && <p className="g-empty" style={{ marginBottom: 12 }}>{t("Escolha o horário para ver os ingressos.")}</p>}
               {time && visible.map((v) => (
                 <div key={v.id} className="g-ticket">
-                  <span>{translateTicketTitle(v.title, appLang)}<small>€{Number(v.price).toFixed(2)}</small></span>
-                  <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: translateTicketTitle(v.title, appLang) })} />
+                  <span>{sell.translated ? v.title : translateTicketTitle(v.title, appLang)}<small>€{Number(v.price).toFixed(2)}</small></span>
+                  <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: sell.translated ? v.title : translateTicketTitle(v.title, appLang) })} />
                 </div>
               ))}
 

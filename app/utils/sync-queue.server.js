@@ -829,6 +829,9 @@ export function startSyncQueueWorker(
         lastCatalogAt = Date.now();
         const { syncCatalogFromShopify } = await import("./catalog-auto-sync.server.js");
         await syncCatalogFromShopify(prisma, { reason: "worker", force: true }).catch((error) => console.error("[CATALOG_SYNC] worker failed:", error?.message || error));
+        // Traduções do site (títulos, horários, ingressos) a cada 6 horas.
+        const { refreshTourTranslations } = await import("./tour-translations.server.js");
+        await refreshTourTranslations(prisma).catch((error) => console.error("[TRANSLATIONS] worker failed:", error?.message || error));
         if (!webhooksEnsured) {
           webhooksEnsured = true;
           try {

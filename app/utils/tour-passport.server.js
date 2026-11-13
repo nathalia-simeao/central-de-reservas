@@ -105,6 +105,7 @@ function deriveSchedule(product) {
 
 function buildShopifySnapshot(product) {
   return {
+    handle: product?.handle ? String(product.handle) : null,
     description: String(product?.description || ""),
     image: product?.image || null,
     imageAlt: product?.imageAlt || product?.name || null,

@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import { DatePicker } from "../components/pmy/PmyUI";
 import db from "../db.server";
+import { tourTitlesIn } from "../utils/tour-translations.server";
+import { guideLang } from "../utils/guide-i18n.js";
+
 import { GuideShell, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
 
@@ -63,7 +66,7 @@ export const loader = async ({ request }) => {
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {
-        id: true, status: true, syncStatus: true, startTime: true, createdAt: true, bookingRef: true,
+        id: true, tourId: true, status: true, syncStatus: true, startTime: true, createdAt: true, bookingRef: true,
         totalPrice: true, totalPriceEur: true, currency: true, adults: true, children: true, youths: true, seniors: true, totalParticipants: true,
         tour: { select: { title: true } },
       },
@@ -97,6 +100,7 @@ export const loader = async ({ request }) => {
   const realSales = sales;
   const confirmed = realSales.filter((s) => s.status === "CONFIRMED");
 
+  const titles = await tourTitlesIn(db, [...past.map((a) => a.tourId), ...sales.map((x) => x.tourId)], guideLang(guide.portalLanguage));
   const pastRows = past.map((a) => {
     const group = bookingsForGuideLanguages(
       pastBookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime)),
@@ -105,7 +109,7 @@ export const loader = async ({ request }) => {
     );
     return {
       id: a.id,
-      title: a.tour?.title || "Passeio",
+      title: titles.get(a.tourId) || a.tour?.title || "Passeio",
       startTime: a.startTime.toISOString(),
       ...(() => {
         const dep = pastDepartures.find((d) => d.tourId === a.tourId && near(d.startTime, a.startTime));
@@ -135,7 +139,7 @@ export const loader = async ({ request }) => {
     },
     sales: realSales.map((s) => ({
       id: s.id,
-      title: s.tour?.title || "Passeio",
+      title: titles.get(s.tourId) || s.tour?.title || "Passeio",
       startTime: s.startTime.toISOString(),
       createdAt: s.createdAt.toISOString(),
       ref: s.bookingRef,

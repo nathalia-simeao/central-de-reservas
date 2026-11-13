@@ -1,6 +1,9 @@
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, data, useLoaderData } from "react-router";
 import db from "../db.server";
+import { tourTitlesIn } from "../utils/tour-translations.server";
+import { guideLang } from "../utils/guide-i18n.js";
+
 import { isPortalAdmin } from "../utils/central-auth.server";
 import { GIcon, GuideShell, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookieHeaders, sessionTokenFromRequest } from "../utils/guide-portal.server";
@@ -18,6 +21,8 @@ export const loader = async ({ request }) => {
   // Administradores acompanham TODAS as saídas, escalados ou não (pedido do Renan, 13/11/2026).
   if (await isPortalAdmin(guide)) {
     const items = await allDepartures({ guide, from, to });
+    const titles = await tourTitlesIn(db, items.map((i) => i.tourId), guideLang(guide.portalLanguage));
+    for (const item of items) item.title = titles.get(item.tourId) || item.title;
     const mentions = await loadMentions(guide);
     return data({ guide: { name: guide.name }, items, mentions, admin: true }, cookie);
   }
@@ -43,6 +48,7 @@ export const loader = async ({ request }) => {
     : [[], []];
 
   const near = (a, b) => Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60 * 1000;
+  const titles = await tourTitlesIn(db, tourIds, guideLang(guide.portalLanguage));
   const items = assignments.map((a) => {
     const list = bookingsForGuideLanguages(
       bookings.filter((b) => b.tourId === a.tourId && near(b.startTime, a.startTime)),
@@ -52,7 +58,7 @@ export const loader = async ({ request }) => {
     const dep = departures.find((d) => d.tourId === a.tourId && near(d.startTime, a.startTime));
     return {
       id: a.id,
-      title: a.tour?.title || "Passeio",
+      title: titles.get(a.tourId) || a.tour?.title || "Passeio",
       startTime: a.startTime.toISOString(),
       bookings: list.length,
       pax: list.reduce((sum, b) => sum + bookingPax(b), 0),
@@ -123,6 +129,7 @@ async function allDepartures({ guide, from, to }) {
       const cardKey = `${e.tourId}|${e.startTime}`;
       return {
         id: e.key,
+        tourId: e.tourId,
         title: e.title,
         startTime: e.startTime,
         bookings: e.bookings,

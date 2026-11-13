@@ -162,6 +162,7 @@ export async function fetchShopifyCatalog(admin) {
           node {
             id
             title
+            handle
             productType
             tags
             status
@@ -260,6 +261,7 @@ export async function fetchShopifyCatalog(admin) {
     return {
       id: node.id,
       name: node.title,
+      handle: node.handle || null,
       productType: node.productType || null,
       tags: node.tags || [],
       description: node.description || "",
