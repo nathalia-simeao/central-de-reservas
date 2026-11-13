@@ -1,13 +1,14 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router";
 import db from "../db.server";
 import { guideLang } from "../utils/guide-i18n.js";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
-import { addDays, buildBoardColumns, cardCompletion, initials, listsForCard } from "../utils/agenda-board.js";
+import { addDays, buildBoardColumns, cardCompletion, cardOwnerKey, initials, listsForCard } from "../utils/agenda-board.js";
 import { cardLanguages, normalizeChecklists } from "../utils/departure-checklists.js";
 import { langColor } from "../utils/language-colors.js";
 import { tourColor } from "../utils/agenda-labels.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
-import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+import { ensureDeparture, getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
+import { departureTargetKey, logActivity } from "../services/board-activity.server.js";
 import { isPortalAdmin } from "../utils/central-auth.server";
 
 // Aba Quadro do app: o mesmo quadro da Agenda (uma coluna por dia, um cartão
@@ -21,6 +22,29 @@ const MAX_DAYS = 430;
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 }
+
+// Admin marca/reabre o cartão como finalizado direto no Quadro (13/11/2026), sem abrir o cartão.
+export const action = async ({ request }) => {
+  const guide = await getGuideFromRequest(db, request);
+  if (!guide) throw redirectTo("/guia/login");
+  if (!(await isPortalAdmin(guide))) return { error: "Só a gestão pode finalizar cartões." };
+  const form = await request.formData();
+  if (String(form.get("intent") || "") !== "complete") return { error: "Ação desconhecida." };
+  const uid = String(form.get("uid") || "");
+  const [tourId, iso] = uid.split("#")[0].split("|");
+  const startTime = new Date(iso);
+  if (!tourId || Number.isNaN(startTime.getTime())) return { error: "Cartão inválido." };
+  const owner = cardOwnerKey({ uid });
+  const done = String(form.get("done") || "true") === "true";
+  const departure = await ensureDeparture(db, tourId, startTime);
+  const current = await db.tourDeparture.findUnique({ where: { id: departure.id }, select: { completed: true } });
+  const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
+  if (done) completed[owner] = { at: new Date().toISOString(), by: guide.name };
+  else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+  await db.tourDeparture.update({ where: { id: departure.id }, data: { completed } });
+  await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(tourId, startTime), text: done ? "marcou este cartão como finalizado (pelo app)" : "reabriu este cartão (pelo app)", actor: { name: guide.name, personId: guide.id } });
+  return { ok: true };
+};
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
@@ -120,15 +144,28 @@ function columnTitle(dateKey, locale = "pt-PT") {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} (${weekday.replace(".", "")})`;
 }
 
+function CompleteDot({ card }) {
+  const t = useT();
+  const fetcher = useFetcher();
+  const on = fetcher.state !== "idle" ? fetcher.formData?.get("done") === "true" : card.complete;
+  return (
+    <fetcher.Form method="post" className="g-complete-dot">
+      <input type="hidden" name="intent" value="complete" />
+      <input type="hidden" name="uid" value={card.uid || card.key} />
+      <input type="hidden" name="done" value={on ? "false" : "true"} />
+      <button type="submit" className={`g-complete-toggle${on ? " is-on" : ""}`} aria-pressed={on}
+        aria-label={on ? t("Finalizado") : t("Marcar como finalizado")} title={on ? t("Finalizado") : t("Marcar como finalizado")}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg>
+      </button>
+    </fetcher.Form>
+  );
+}
+
 function Card({ card, canEdit = false }) {
   const t = useT();
-  const body = (
+  const href = `/guia/cartao?k=${encodeURIComponent(card.uid || card.key)}`;
+  const rest = (
     <>
-      <div className="g-bcard__bar" style={{ background: card.color }} />
-      <strong className="g-bcard__title">
-        {card.complete && <span className="g-complete" role="img" aria-label={t("Finalizado")} title={t("Finalizado")}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg></span>}
-        <span>{card.time} · {card.title}</span>
-      </strong>
       {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
       {card.langs?.length > 0 && (
         <span className="g-bcard__langs" aria-label={t("Idioma")}>
@@ -150,18 +187,31 @@ function Card({ card, canEdit = false }) {
       </span>
     </>
   );
-  // Administradores editam tudo: o cartão abre o mesmo cartão no Quadro da
-  // Central (guias, checklists, mover data…), que é outra tela (fora do /guia).
+  // Administradores: o cartão todo abre o editor (link "esticado"), e a bolinha
+  // antes do título finaliza/reabre o cartão sem abrir (como no Trello).
   if (canEdit) {
-    // Abre o editor do cartão dentro do app (sem carregar a Central).
-    const href = `/guia/cartao?k=${encodeURIComponent(card.uid || card.key)}`;
     return (
-      <Link to={href} className={`g-bcard g-bcard--edit${card.myAssignmentId ? " mine" : ""}`} aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>
-        {body}
+      <div className={`g-bcard g-bcard--edit g-bcard--stretch${card.myAssignmentId ? " mine" : ""}`}>
+        <div className="g-bcard__bar" style={{ background: card.color }} />
+        <strong className="g-bcard__title">
+          <CompleteDot card={card} />
+          <Link to={href} className="g-bcard__stretch" aria-label={`${t("Abrir para editar")}: ${card.time} ${card.title}`}>{card.time} · {card.title}</Link>
+        </strong>
+        {rest}
         <span className="g-bcard__edit"><GIcon name="edit" /> {t("Abrir para editar")}</span>
-      </Link>
+      </div>
     );
   }
+  const body = (
+    <>
+      <div className="g-bcard__bar" style={{ background: card.color }} />
+      <strong className="g-bcard__title">
+        {card.complete && <span className="g-complete" role="img" aria-label={t("Finalizado")} title={t("Finalizado")}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg></span>}
+        <span>{card.time} · {card.title}</span>
+      </strong>
+      {rest}
+    </>
+  );
   return card.myAssignmentId ? (
     <Link to={`/guia/saida/${card.myAssignmentId}`} className="g-bcard mine">{body}</Link>
   ) : (

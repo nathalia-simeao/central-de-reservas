@@ -145,6 +145,17 @@ a { color: inherit; }
 .g-complete { flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; background:#1f845a; display:inline-flex; align-items:center; justify-content:center; }
 .g-complete svg { width:12px; height:12px; fill:none; stroke:#fff; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
 .g-complete-form { margin:6px 0 2px; }
+.g-bcard--stretch { position:relative; }
+.g-bcard__stretch { color:inherit; text-decoration:none; }
+.g-bcard__stretch::after { content:""; position:absolute; inset:0; border-radius:inherit; }
+.g-complete-dot { position:relative; z-index:1; margin:0; flex:none; }
+.g-complete-toggle { position:relative; width:32px; height:32px; margin:-7px -7px -7px -7px; padding:0; border-radius:50%; border:0; background:transparent; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.g-complete-toggle::before { content:""; position:absolute; width:18px; height:18px; border-radius:50%; border:1.5px solid var(--g-muted); box-sizing:border-box; }
+.g-complete-toggle svg { position:relative; width:12px; height:12px; fill:none; stroke:var(--g-muted); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+.g-complete-toggle:hover svg { opacity:.5; }
+.g-complete-toggle.is-on::before { background:#1f845a; border-color:#1f845a; }
+.g-complete-toggle.is-on svg { stroke:#fff; opacity:1; }
+.g-complete-toggle:focus-visible { outline:2px solid var(--g-green); outline-offset:1px; }
 .g-complete-btn { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:6px 14px 6px 8px; border-radius:999px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 .g-complete-btn .g-complete { background:transparent; border:1.5px solid var(--g-muted); width:20px; height:20px; }
 .g-complete-btn .g-complete svg { stroke:var(--g-muted); opacity:.4; }
