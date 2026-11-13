@@ -58,7 +58,7 @@ export const loader = async ({ request }) => {
       where: { tourId, startTime, status: "ASSIGNED" },
       select: { id: true, guideId: true, languages: true, guide: { select: { id: true, name: true, photoUrl: true, portalPhotoType: true, updatedAt: true } } },
     }),
-    db.tourDeparture.findUnique({ where: { tourId_startTime: { tourId, startTime } }, select: { checklists: true, guideNotes: true, completed: true } }),
+    db.tourDeparture.findUnique({ where: { tourId_startTime: { tourId, startTime } }, select: { checklists: true, guideNotes: true, completed: true, checkEndAt: true } }),
     db.guide.findMany({ select: { id: true, name: true, areas: true }, orderBy: { name: "asc" } }),
   ]);
   if (!tour) throw redirectTo("/guia/quadro");
@@ -150,7 +150,7 @@ export const action = async ({ request }) => {
     const current = await db.tourDeparture.findUnique({ where: { id: departure.id }, select: { completed: true } });
     const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
     if (done) completed[owner] = { at: new Date().toISOString(), by: guide.name };
-    else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+    else completed[owner] = { open: true, at: new Date().toISOString(), by: guide.name };
     await db.tourDeparture.update({ where: { id: departure.id }, data: { completed } });
     await logActivity(db, { targetType: "departure", targetKey: target, text: done ? "marcou este cartão como finalizado (pelo app)" : "reabriu este cartão (pelo app)", actor });
     return { ok: true };

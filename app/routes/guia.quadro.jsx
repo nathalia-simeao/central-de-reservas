@@ -40,7 +40,7 @@ export const action = async ({ request }) => {
   const current = await db.tourDeparture.findUnique({ where: { id: departure.id }, select: { completed: true } });
   const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
   if (done) completed[owner] = { at: new Date().toISOString(), by: guide.name };
-  else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+  else completed[owner] = { open: true, at: new Date().toISOString(), by: guide.name };
   await db.tourDeparture.update({ where: { id: departure.id }, data: { completed } });
   await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(tourId, startTime), text: done ? "marcou este cartão como finalizado (pelo app)" : "reabriu este cartão (pelo app)", actor: { name: guide.name, personId: guide.id } });
   return { ok: true };

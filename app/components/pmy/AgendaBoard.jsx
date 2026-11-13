@@ -863,7 +863,7 @@ export default function AgendaBoard({
                           tabIndex={0}
                           aria-checked={Boolean(completion)}
                           aria-label={completion ? tr("Reabrir cartão", "Reopen card") : tr("Marcar como finalizado", "Mark as complete")}
-                          title={completion ? tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`) : tr("Marcar como finalizado", "Mark as complete")}
+                          title={completion ? (completion.auto ? tr("Finalizado automaticamente: passeio feito e todos os checks marcados. Clique para reabrir.", "Completed automatically: tour done and every check ticked. Click to reopen.") : tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`)) : tr("Marcar como finalizado", "Mark as complete")}
                           className={`pmy-board-complete${completion ? " is-on" : ""}${completeBusy === card.uid ? " is-busy" : ""}`}
                           onClick={(e) => { e.stopPropagation(); toggleComplete(card); }}
                           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); toggleComplete(card); } }}
@@ -939,7 +939,7 @@ export default function AgendaBoard({
                     return (
                       <button type="button" className={`pmy-board-complete is-modal${completion ? " is-on" : ""}${completeBusy === openCard.uid ? " is-busy" : ""}`}
                         aria-pressed={Boolean(completion)}
-                        title={completion ? tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`) : tr("Marcar como finalizado", "Mark as complete")}
+                        title={completion ? (completion.auto ? tr("Finalizado automaticamente: passeio feito e todos os checks marcados. Clique para reabrir.", "Completed automatically: tour done and every check ticked. Click to reopen.") : tr(`Finalizado por ${completion.by || "—"}. Clique para reabrir.`, `Completed by ${completion.by || "—"}. Click to reopen.`)) : tr("Marcar como finalizado", "Mark as complete")}
                         aria-label={completion ? tr("Reabrir cartão", "Reopen card") : tr("Marcar como finalizado", "Mark as complete")}
                         onClick={() => toggleComplete(openCard)}>
                         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4l2.6 2.5L12 5.5" /></svg>

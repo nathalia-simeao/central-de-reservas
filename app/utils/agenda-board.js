@@ -3,6 +3,7 @@
 // escala de guias e o registro da saída (etiquetas, checks, observações, anexos).
 
 import { languageKey } from "./tour-languages.js";
+import { checklistProgress, normalizeChecklists } from "./departure-checklists.js";
 
 const LISBON = "Europe/Lisbon";
 
@@ -226,10 +227,25 @@ export function cardOwnerKey(card) {
   return uid.includes("#") ? uid.slice(uid.indexOf("#") + 1) : "all";
 }
 
-/** Cartão finalizado (como o "concluído" do Trello). Saída finalizada inteira vale para todos os cartões dela. */
-export function cardCompletion(info, card) {
+/**
+ * Cartão finalizado (como o "concluído" do Trello). Saída finalizada inteira vale para todos os cartões dela.
+ * Sem marcação manual, fica verde sozinho quando o passeio já começou (ou o guia marcou "Fim")
+ * e todos os itens dos checklists do cartão estão marcados (pedido de 13/11/2026).
+ * Reabrir à mão grava { open: true } e impede o verde automático.
+ */
+export function cardCompletion(info, card, { now = Date.now(), auto = true } = {}) {
   const done = info?.completed && typeof info.completed === "object" ? info.completed : {};
-  return done[cardOwnerKey(card)] || done.all || null;
+  const owner = cardOwnerKey(card);
+  const explicit = done[owner] || (owner !== "all" ? done.all : null) || null;
+  if (explicit?.open) return null;
+  if (explicit) return explicit;
+  if (!auto || !card) return null;
+  const start = new Date(card.startTime).getTime();
+  if (!info?.checkEndAt && !(Number.isFinite(start) && start <= now)) return null;
+  const state = normalizeChecklists(info?.checklists);
+  const raw = card.split ? { ...state, lists: listsForCard(state.lists, card) } : state;
+  const progress = checklistProgress(card, raw);
+  return progress.total > 0 && progress.done === progress.total ? { auto: true, at: info?.checkEndAt || null, by: null } : null;
 }
 
 /** Etiquetas do cartão: as fixas do passeio (todas as saídas) + as desta saída. */

@@ -96,3 +96,16 @@ test("completed cards: whole departure or one guide's card", async () => {
   assert.ok(cardCompletion({ completed: { all: { at: "x" } } }, { uid: "k#g2" }));
   assert.equal(cardCompletion(null, { uid: "k" }), null);
 });
+
+test("card turns green by itself when the tour happened and every check is ticked; manual reopen wins", async () => {
+  const { cardCompletion } = await import("../app/utils/agenda-board.js");
+  const card = { key: "t|2026-11-14T09:30:00.000Z", uid: "t|2026-11-14T09:30:00.000Z", startTime: "2026-11-14T09:30:00.000Z", bookings: [], guides: [] };
+  const lists = (done) => ({ lists: [{ id: "l1", title: "9h30", items: [{ id: "a", text: "Ana (2A)", done: true }, { id: "b", text: "Rui (1A)", done }] }] });
+  const after = Date.parse("2026-11-14T12:00:00Z");
+  const before = Date.parse("2026-11-14T08:00:00Z");
+  assert.equal(cardCompletion({ checklists: lists(false) }, card, { now: after }), null);
+  assert.equal(cardCompletion({ checklists: lists(true) }, card, { now: before }), null);
+  assert.equal(cardCompletion({ checklists: lists(true) }, card, { now: after }).auto, true);
+  assert.equal(cardCompletion({ checklists: lists(true), completed: { all: { open: true } } }, card, { now: after }), null);
+  assert.equal(cardCompletion({ checklists: { lists: [] } }, card, { now: after }), null);
+});

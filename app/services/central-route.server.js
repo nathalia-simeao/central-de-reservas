@@ -761,7 +761,7 @@ export const action = async ({ request }) => {
       const completed = { ...((current?.completed && typeof current.completed === "object") ? current.completed : {}) };
       const by = centralUser?.name || centralUser?.email || "Equipe";
       if (done) completed[owner] = { at: new Date().toISOString(), by };
-      else { delete completed[owner]; if (owner !== "all") delete completed.all; }
+      else completed[owner] = { open: true, at: new Date().toISOString(), by: by };
       const departure = await prisma.tourDeparture.upsert({
         where,
         create: { tourId, startTime, completed },
