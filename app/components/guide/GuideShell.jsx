@@ -151,6 +151,10 @@ a { color: inherit; }
 .g-field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:14px; font-weight:600; }
 .g-field input, .g-field textarea, .g-select { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); width:100%; }
 .g-seats { padding:12px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-bg); color:var(--g-ink); font-size:15px; font-weight:700; }
+.g-seats { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.g-seats__note { font-size:12px; font-weight:600; color:var(--g-muted); }
+.g-seats.is-full { border-color:var(--g-amber); background:var(--g-amber-soft); }
+.g-seats.is-over { border-color:var(--g-red); background:var(--g-red-soft); color:var(--g-red); }
 .g-seg { display:flex; gap:4px; padding:4px; margin-top:12px; border-radius:14px; background:var(--g-bg); }
 .g-seg button { flex:1 1 0; min-height:40px; padding:8px 10px; border:0; border-radius:10px; background:transparent; color:var(--g-muted); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 .g-seg button.on { background:var(--g-card); color:var(--g-green); box-shadow:0 1px 3px rgba(0,0,0,.08); }

@@ -303,14 +303,21 @@ export default function GuideSell() {
   const [session, setSession] = useState("");
   const [freeTime, setFreeTime] = useState("");
   const [language, setLanguage] = useState("");
+  // Quantidade de cada ingresso: o campo Vagas desconta na hora (pedido da Nathalia, 13/11/2026).
+  const [qty, setQty] = useState({});
   const tourKey = tour?.id || "";
   // Trocar de passeio limpa as escolhas; um horário só já vem escolhido.
+  useEffect(() => { setQty({}); }, [tourKey, session, freeTime, language, day]);
   useEffect(() => {
     setSession(sessions.length === 1 ? sessions[0].value : "");
     setFreeTime("");
     setLanguage(sell?.languages?.length === 1 ? sell.languages[0] : "");
   }, [tourKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = sessions.find((s) => s.value === session) || null;
+  const picked = Object.values(qty).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  const remaining = chosen?.seats?.remaining ?? null;
+  const left = remaining == null ? null : remaining - picked;
+  const over = left != null && left < 0;
   const blockedSet = new Set(sell?.blockedDays || []);
   const dayBlocked = Boolean(day && blockedSet.has(day));
   const time = sell?.freeTime ? freeTime : chosen?.time || "";
@@ -385,11 +392,16 @@ export default function GuideSell() {
               {!sell.freeTime && (
                 <div className="g-field">
                   {t("Vagas")}
-                  <div className="g-seats" aria-live="polite">
+                  <div className={`g-seats${over ? " is-over" : left === 0 && picked > 0 ? " is-full" : ""}`} aria-live="polite">
                     {!day ? t("Escolha a data para ver as vagas.")
                       : !chosen ? t("Escolha o horário.")
                       : chosen.seats?.blocked ? t("Horário bloqueado pela gestão.")
-                      : chosen.seats?.remaining != null ? (chosen.seats.remaining === 1 ? t("1 vaga") : t("{n} vagas", { n: chosen.seats.remaining }))
+                      : left != null ? (
+                        <>
+                          {left === 1 ? t("1 vaga") : t("{n} vagas", { n: Math.max(0, left) })}
+                          {picked > 0 && <small className="g-seats__note">{t("{n} nesta venda, de {total} livres", { n: picked, total: remaining })}</small>}
+                        </>
+                      )
                       : "—"}
                   </div>
                 </div>
@@ -410,13 +422,15 @@ export default function GuideSell() {
               {time && visible.map((v) => (
                 <div key={v.id} className="g-ticket">
                   <span>{sell.translated ? v.title : translateTicketTitle(v.title, appLang)}<small>€{Number(v.price).toFixed(2)}</small></span>
-                  <input type="number" name={`qty:${v.id}`} min="0" max="30" defaultValue="0" inputMode="numeric" aria-label={t("Quantidade de {name}", { name: sell.translated ? v.title : translateTicketTitle(v.title, appLang) })} />
+                  <input type="number" name={`qty:${v.id}`} min="0" max={remaining == null ? 30 : Math.max(0, Math.min(30, (Number(qty[v.id]) || 0) + Math.max(0, left)))}
+                    value={qty[v.id] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [v.id]: Math.max(0, Number.parseInt(e.target.value, 10) || 0) }))} inputMode="numeric" aria-label={t("Quantidade de {name}", { name: sell.translated ? v.title : translateTicketTitle(v.title, appLang) })} />
                 </div>
               ))}
 
               <CustomerFields t={t} />
 
-              <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !day || dayBlocked || !language || !time || Boolean(chosen?.seats?.blocked) || chosen?.seats?.remaining === 0}>
+              {over && <div className="g-error" role="alert">{t("Só restam {n} vagas neste horário. Diminua a quantidade de ingressos.", { n: remaining })}</div>}
+              <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !day || dayBlocked || !language || !time || Boolean(chosen?.seats?.blocked) || chosen?.seats?.remaining === 0 || over || picked === 0}>
                 {busy ? t("Gerando…") : t("Gerar link de pagamento")}
               </button>
             </Form>
