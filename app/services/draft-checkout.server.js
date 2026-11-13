@@ -616,3 +616,106 @@ export async function createDraftCheckout({ admin, session, formData, requestUrl
   }
 }
 
+
+/**
+ * Link de demanda (pedido da Nathalia, 13/11/2026): um serviço fora do catálogo
+ * (ex.: transfer pontual) vira um Draft Order com item avulso — título e preço
+ * digitados —, sem segurar vaga de passeio. Fica rastreado na Shopify como venda
+ * da Central e de quem gerou o link (tags e atributos "PMY …").
+ */
+export async function createDemandCheckout({ admin, seller, demand }) {
+  const title = cleanAttribute(demand?.title || "", 200).trim();
+  const unit = Number(String(demand?.price ?? "").replace(",", "."));
+  const quantity = Number.parseInt(demand?.quantity ?? 1, 10);
+  const date = normalizeDate(demand?.date) || null;
+  const time = normalizeTime(demand?.time) || null;
+  const details = cleanAttribute(demand?.details || "", 1000);
+  const customerName = clean(demand?.customerName);
+  const customerEmail = clean(demand?.customerEmail);
+  const customerPhone = clean(demand?.customerPhone);
+
+  if (!title) return { success: false, error: "Escreva o que está sendo vendido (ex.: Transfer aeroporto → hotel)." };
+  if (!Number.isFinite(unit) || unit <= 0 || unit > 20000) return { success: false, error: "Informe um preço válido em euros." };
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) return { success: false, error: "A quantidade deve ser entre 1 e 100." };
+
+  const who = seller?.name || "Equipe";
+  const attributes = [
+    { key: "PMY Kind", value: "Demanda" },
+    { key: "PMY Commercial Source", value: "guia" },
+    { key: "order_referrer_name", value: "Central PMY" },
+    { key: "order_referrer_channel", value: "guide_portal" },
+    { key: "PMY Guide", value: cleanAttribute(who) },
+    ...(seller?.id ? [{ key: "PMY Guide ID", value: seller.id }] : []),
+    ...(seller?.utmId ? [{ key: "PMY Guide Code", value: cleanAttribute(seller.utmId) }] : []),
+    ...(date ? [{ key: "date", value: date }] : []),
+    ...(time ? [{ key: "time", value: time }] : []),
+    ...(customerName ? [{ key: "customer_name", value: cleanAttribute(customerName) }] : []),
+    ...(customerPhone ? [{ key: "customer_phone", value: cleanAttribute(customerPhone) }] : []),
+  ];
+  const input = {
+    lineItems: [{
+      title,
+      quantity,
+      originalUnitPriceWithCurrency: { amount: unit.toFixed(2), currencyCode: "EUR" },
+      requiresShipping: false,
+      customAttributes: [
+        ...(date ? [{ key: "Data", value: date }] : []),
+        ...(time ? [{ key: "Horário", value: time }] : []),
+        ...(details ? [{ key: "Detalhes", value: details }] : []),
+        { key: "_PMY Kind", value: "Demanda" },
+      ],
+    }],
+    ...(customerEmail ? { email: customerEmail } : {}),
+    ...(customerPhone ? { phone: customerPhone } : {}),
+    customAttributes: attributes,
+    tags: ["PMY Central", "Central de Reservas", "Demanda", "Venda Guia", `Guia: ${cleanAttribute(who)}`],
+    note: [
+      "Demanda avulsa criada pela Central de Reservas PMY (fora do catálogo).",
+      `Serviço: ${title}`,
+      details ? `Detalhes: ${details}` : null,
+      date ? `Data: ${date}${time ? ` às ${time}` : ""}` : null,
+      customerName ? `Cliente: ${customerName}` : null,
+      customerEmail ? `E-mail: ${customerEmail}` : null,
+      customerPhone ? `Telefone / WhatsApp: ${customerPhone}` : null,
+      `Link gerado por: ${who}`,
+    ].filter(Boolean).join("\n"),
+  };
+
+  const response = await admin.graphql(
+    `#graphql
+      mutation CentralDemandDraftOrder($input: DraftOrderInput!) {
+        draftOrderCreate(input: $input) {
+          draftOrder { id name invoiceUrl totalPriceSet { shopMoney { amount currencyCode } } }
+          userErrors { field message }
+        }
+      }
+    `,
+    { variables: { input } },
+  );
+  const payload = await response.json();
+  if (payload?.errors?.length) return { success: false, error: payload.errors.map((e) => e.message).join("; ") };
+  const result = payload?.data?.draftOrderCreate;
+  if (result?.userErrors?.length) return { success: false, error: result.userErrors.map((e) => e.message).join("; ") };
+  const draft = result?.draftOrder;
+  if (!draft?.invoiceUrl) return { success: false, error: "A Shopify não devolveu o link de pagamento." };
+
+  // Aparece no Quadro como demanda do dia (ou em Documentos de suporte, se não tiver data).
+  await db.supportCard.create({
+    data: {
+      title: `Demanda: ${title} (${draft.name})`,
+      body: [
+        `Link de pagamento enviado por ${who} — aguardando pagamento.`,
+        `Valor: €${(unit * quantity).toFixed(2)} (${quantity} × €${unit.toFixed(2)})`,
+        details || null,
+        customerName ? `Cliente: ${customerName}` : null,
+        customerPhone ? `WhatsApp: ${customerPhone}` : null,
+      ].filter(Boolean).join("\n"),
+      dateKey: date,
+      time,
+      visibleToGuides: false,
+      ...(seller?.id ? { assigneeIds: [seller.id] } : {}),
+    },
+  }).catch((error) => console.error("[PMY demand] support card failed:", error));
+
+  return { success: true, draftOrder: { id: draft.id, name: draft.name, checkoutUrl: draft.invoiceUrl, total: draft.totalPriceSet?.shopMoney?.amount || null } };
+}

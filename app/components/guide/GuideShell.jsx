@@ -149,6 +149,9 @@ a { color: inherit; }
 .g-guest__meta { color:var(--g-muted); font-size:14px; margin:4px 0 10px; overflow-wrap:anywhere; }
 .g-field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:14px; font-weight:600; }
 .g-field input, .g-field textarea, .g-select { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); color:var(--g-ink); width:100%; }
+.g-seg { display:flex; gap:4px; padding:4px; margin-top:12px; border-radius:14px; background:var(--g-bg); }
+.g-seg button { flex:1 1 0; min-height:40px; padding:8px 10px; border:0; border-radius:10px; background:transparent; color:var(--g-muted); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.g-seg button.on { background:var(--g-card); color:var(--g-green); box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .g-ticket { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--g-line); }
 .g-ticket span { flex:1; min-width:0; font-size:14px; overflow-wrap:anywhere; }
 .g-ticket small { display:block; color:var(--g-muted); }
