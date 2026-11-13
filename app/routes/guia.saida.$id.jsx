@@ -33,7 +33,7 @@ async function load(request, params) {
   if (!assignment) throw redirectTo("/guia");
   // Admin acompanhando a saída de outro guia: vê e marca tudo da saída (todos os idiomas).
   const viewAll = admin && assignment.guideId !== guide.id;
-  return { guide, assignment, viewAll };
+  return { guide, assignment, viewAll, admin };
 }
 
 // Checklists da saída, iguais aos do Quadro (e do Trello): os automáticos por
@@ -66,7 +66,7 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates, vi
 }
 
 export const loader = async ({ request, params }) => {
-  const { guide, assignment, viewAll } = await load(request, params);
+  const { guide, assignment, viewAll, admin } = await load(request, params);
   const [bookings, departure, teammates] = await Promise.all([
     db.booking.findMany({
       where: { AND: [departureBookingWhere(assignment.tourId, assignment.startTime), excludeTestBookingsWhere()] },
@@ -91,6 +91,7 @@ export const loader = async ({ request, params }) => {
     checklists: guideChecklists({ guide, assignment, bookings, departure, teammates, viewAll }),
     guide: { name: guide.name },
     viewAll,
+    canUndoChecks: admin,
     guideNames: teammates.map((tm) => tm.guide?.name).filter(Boolean),
     departure: {
       languages: assignment.languages || [],
@@ -115,7 +116,7 @@ export const loader = async ({ request, params }) => {
 };
 
 export const action = async ({ request, params }) => {
-  const { guide, assignment, viewAll } = await load(request, params);
+  const { guide, assignment, viewAll, admin } = await load(request, params);
   const form = await request.formData();
   const intent = String(form.get("intent") || "");
   const existing = await db.tourDeparture.findUnique({
@@ -123,6 +124,20 @@ export const action = async ({ request, params }) => {
   });
   const perms = guidePermissions(existing, assignment.startTime);
   const by = `guide:${guide.id}`;
+
+  // Administradores desfazem um check marcado sem querer (pedido da Nathalia, 13/11/2026).
+  if (intent.startsWith("uncheck:")) {
+    const step = intent.slice(8);
+    const field = CHECK_FIELDS[step];
+    if (!admin) return { error: "Só administradores podem desfazer um check." };
+    if (!field || !existing?.[field]) return { error: "Esse check não está marcado." };
+    // Desfazer o Início também desfaz Meio e Fim (a ordem é Início → Meio → Fim).
+    const fields = step === "start" ? ["checkStartAt", "checkMidAt", "checkEndAt"] : step === "mid" ? ["checkMidAt", "checkEndAt"] : ["checkEndAt"];
+    await db.tourDeparture.update({ where: { id: existing.id }, data: Object.fromEntries(fields.map((f) => [f, null])) });
+    const label = step === "start" ? "Início" : step === "mid" ? "Meio" : "Fim";
+    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `desfez o check de ${label} (pelo app)`, actor: { name: guide.name, personId: guide.id } });
+    return { ok: "Check desfeito." };
+  }
 
   if (intent.startsWith("check:")) {
     const step = intent.slice(6);
@@ -272,7 +287,7 @@ function ChecklistItem({ listId, item, booking, canMark }) {
 }
 
 export default function GuideDeparture() {
-  const { departure, permissions, bookings, checklists, viewAll, guideNames = [] } = useLoaderData();
+  const { departure, permissions, bookings, checklists, viewAll, canUndoChecks = false, guideNames = [] } = useLoaderData();
   const bookingById = new Map(bookings.map((b) => [b.id, b]));
   const result = useActionData();
   const navigation = useNavigation();
@@ -327,6 +342,16 @@ export default function GuideDeparture() {
             </button>
           ))}
         </Form>
+        {canUndoChecks && checks.some((c) => c.at) && (
+          <Form method="post" className="g-undo-checks">
+            <span>{t("Marcou sem querer?")}</span>
+            {checks.filter((c) => c.at).map((c) => (
+              <button key={c.key} type="submit" name="intent" value={`uncheck:${c.key}`} className="g-link-btn" disabled={busy}>
+                {t("Desfazer {step}", { step: c.label })}
+              </button>
+            ))}
+          </Form>
+        )}
       </div>
 
       {checklists.length > 0 && (

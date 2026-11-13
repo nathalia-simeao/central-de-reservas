@@ -126,6 +126,9 @@ a { color: inherit; }
 .g-btn.on-no { background:var(--g-red-soft); border-color:var(--g-red); color:var(--g-red); }
 .g-btn[disabled] { opacity:.45; cursor:not-allowed; }
 .g-row { display:flex; flex-wrap:wrap; gap:8px; }
+.g-undo-checks { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin-top:10px; font-size:13px; color:var(--g-muted); }
+.g-link-btn { padding:4px 0; border:0; background:none; color:var(--g-red); font:inherit; font-size:13px; font-weight:700; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+.g-link-btn[disabled] { opacity:.5; }
 .g-checks { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
 .g-check { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:64px; padding:8px; border-radius:12px; border:1px solid var(--g-line); background:var(--g-card); font:inherit; font-weight:700; color:var(--g-ink); cursor:pointer; }
 .g-check small { font-weight:500; color:var(--g-muted); font-size:12px; }

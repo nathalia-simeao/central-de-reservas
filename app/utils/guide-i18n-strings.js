@@ -256,4 +256,9 @@ export const GUIDE_STRINGS = {
   "Todas as saídas dos próximos 30 dias (você é administrador)": {"en": "All departures in the next 30 days (you are an admin)", "es": "Todas las salidas de los próximos 30 días (eres administrador)", "fr": "Tous les départs des 30 prochains jours (vous êtes administrateur)", "it": "Tutte le partenze dei prossimi 30 giorni (sei amministratore)", "de": "Alle Touren der nächsten 30 Tage (du bist Administrator)"},
   "Sem guia": {"en": "No guide", "es": "Sin guía", "fr": "Sans guide", "it": "Senza guida", "de": "Ohne Guide"},
   "Você é o guia": {"en": "You are the guide", "es": "Eres el guía", "fr": "Vous êtes le guide", "it": "Sei la guida", "de": "Du bist der Guide"},
+  "Marcou sem querer?": {"en": "Marked by mistake?", "es": "¿Marcaste por error?", "fr": "Coché par erreur ?", "it": "Segnato per errore?", "de": "Versehentlich markiert?"},
+  "Desfazer {step}": {"en": "Undo {step}", "es": "Deshacer {step}", "fr": "Annuler {step}", "it": "Annulla {step}", "de": "{step} rückgängig"},
+  "Check desfeito.": {"en": "Check undone.", "es": "Check deshecho.", "fr": "Check annulé.", "it": "Check annullato.", "de": "Check rückgängig gemacht."},
+  "Só administradores podem desfazer um check.": {"en": "Only admins can undo a check.", "es": "Solo los administradores pueden deshacer un check.", "fr": "Seuls les administrateurs peuvent annuler un check.", "it": "Solo gli amministratori possono annullare un check.", "de": "Nur Administratoren können einen Check rückgängig machen."},
+  "Esse check não está marcado.": {"en": "That check isn't marked.", "es": "Ese check no está marcado.", "fr": "Ce check n'est pas coché.", "it": "Questo check non è segnato.", "de": "Dieser Check ist nicht markiert."},
 };
