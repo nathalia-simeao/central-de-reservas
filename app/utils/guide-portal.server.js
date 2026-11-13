@@ -11,7 +11,9 @@ import crypto from "node:crypto";
 import { languageKey } from "./tour-languages.js";
 
 export const SESSION_COOKIE = "pmy_guide";
-const SESSION_DAYS = 30;
+// Login fica salvo por 90 dias e renova sozinho a cada uso (pedido da Nathalia, 13/11/2026).
+const SESSION_DAYS = 90;
+const RENEW_AFTER_DAYS = 7;
 const SCRYPT_KEYLEN = 64;
 export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 export const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -88,13 +90,22 @@ function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
 }
 
-function readCookie(request, name) {
+// Pode haver dois cookies com o mesmo nome: o antigo (Path=/guia) e o atual (Path=/).
+// O navegador manda o antigo primeiro nas páginas /guia/...; se ele estiver vencido,
+// o guia "caía" do login ao trocar de aba. Por isso lemos todos.
+function readCookies(request, name) {
   const header = request.headers.get("Cookie") || "";
+  const values = [];
   for (const part of header.split(";")) {
     const [key, ...rest] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(rest.join("="));
+    if (key !== name) continue;
+    try { values.push(decodeURIComponent(rest.join("="))); } catch { /* cookie quebrado */ }
   }
-  return null;
+  return values.filter(Boolean);
+}
+
+function readCookie(request, name) {
+  return readCookies(request, name)[0] || null;
 }
 
 // O cookie vale para o site todo (Path=/). Antes era Path=/guia, e o navegador
@@ -121,8 +132,19 @@ export function logoutCookieHeaders() {
 }
 
 /** Token da sessão atual (para regravar o cookie com Path=/ em quem logou antes da mudança). */
+/** O token de sessão válido (o último que funcionou nesta requisição). */
 export function sessionTokenFromRequest(request) {
-  return readCookie(request, SESSION_COOKIE);
+  return VALID_TOKEN.get(request) || readCookie(request, SESSION_COOKIE);
+}
+
+const VALID_TOKEN = new WeakMap();
+
+/** Cabeçalhos que regravam o cookie atual e apagam o antigo de Path=/guia. */
+export function sessionCookieHeaders(token) {
+  const headers = new Headers();
+  if (token) headers.append("Set-Cookie", sessionCookie(token));
+  headers.append("Set-Cookie", sessionCookie(null, 0, "/guia"));
+  return headers;
 }
 
 export async function createGuideSession(prisma, guideId) {
@@ -168,22 +190,28 @@ export async function getPendingLogin(prisma, request) {
 }
 
 export async function getGuideFromRequest(prisma, request) {
-  const token = readCookie(request, SESSION_COOKIE);
-  if (!token) return null;
-  const session = await prisma.guideSession.findUnique({
-    where: { tokenHash: sha256(token) },
-    include: { guide: { omit: { passwordHash: false } } },
-  });
-  if (!session || session.pending || session.expiresAt < new Date()) return null;
-  if (!session.guide?.portalEnabled || !session.guide?.passwordHash) return null;
-  const guide = { ...session.guide };
-  delete guide.passwordHash;
-  return guide;
+  for (const token of readCookies(request, SESSION_COOKIE).slice(0, 3)) {
+    const session = await prisma.guideSession.findUnique({
+      where: { tokenHash: sha256(token) },
+      include: { guide: { omit: { passwordHash: false } } },
+    });
+    if (!session || session.pending || session.expiresAt < new Date()) continue;
+    if (!session.guide?.portalEnabled || !session.guide?.passwordHash) continue;
+    VALID_TOKEN.set(request, token);
+    // Renova: quem usa o app não precisa entrar de novo.
+    if (session.expiresAt.getTime() - Date.now() < (SESSION_DAYS - RENEW_AFTER_DAYS) * 24 * 3600 * 1000) {
+      await prisma.guideSession.update({ where: { id: session.id }, data: { expiresAt: new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000) } }).catch(() => {});
+    }
+    const guide = { ...session.guide };
+    delete guide.passwordHash;
+    return guide;
+  }
+  return null;
 }
 
 /** Troca de senha: sai de todos os outros aparelhos (fica só a sessão atual). */
 export async function revokeOtherSessions(prisma, guideId, request) {
-  const token = readCookie(request, SESSION_COOKIE);
+  const token = sessionTokenFromRequest(request);
   await prisma.guideSession.deleteMany({
     where: { guideId, ...(token ? { NOT: { tokenHash: sha256(token) } } : {}) },
   });
@@ -196,8 +224,8 @@ export async function destroyPendingLogin(prisma, request) {
 }
 
 export async function destroyGuideSession(prisma, request) {
-  const token = readCookie(request, SESSION_COOKIE);
-  if (token) await prisma.guideSession.deleteMany({ where: { tokenHash: sha256(token) } }).catch(() => {});
+  const hashes = readCookies(request, SESSION_COOKIE).map(sha256);
+  if (hashes.length) await prisma.guideSession.deleteMany({ where: { tokenHash: { in: hashes } } }).catch(() => {});
 }
 
 export function redirectTo(location, headers = {}) {

@@ -3,7 +3,7 @@ import { Form, Link, data, useLoaderData } from "react-router";
 import db from "../db.server";
 import { isPortalAdmin } from "../utils/central-auth.server";
 import { GIcon, GuideShell, lisbonParts, useGuideLocale, useT } from "../components/guide/GuideShell";
-import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookie, sessionTokenFromRequest } from "../utils/guide-portal.server";
+import { bookingPax, bookingsForGuideLanguages, getGuideFromRequest, redirectTo, sessionCookieHeaders, sessionTokenFromRequest } from "../utils/guide-portal.server";
 
 export const loader = async ({ request }) => {
   const guide = await getGuideFromRequest(db, request);
@@ -12,7 +12,8 @@ export const loader = async ({ request }) => {
   const from = new Date(Date.now() - 18 * 3600 * 1000);
   const to = new Date(Date.now() + 30 * 24 * 3600 * 1000);
   const token = sessionTokenFromRequest(request);
-  const cookie = token ? { headers: { "Set-Cookie": sessionCookie(token) } } : undefined;
+  // Regrava o login (90 dias) e apaga o cookie antigo de Path=/guia, que derrubava o login nas abas.
+  const cookie = { headers: sessionCookieHeaders(token) };
 
   // Administradores acompanham TODAS as saídas, escalados ou não (pedido do Renan, 13/11/2026).
   if (await isPortalAdmin(guide)) {

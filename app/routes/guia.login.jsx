@@ -15,6 +15,7 @@ import {
   recordFailedLogin,
   redirectTo,
   sessionCookie,
+  sessionCookieHeaders,
   verifyPassword,
 } from "../utils/guide-portal.server";
 import { verifyTotp } from "../utils/totp.server.js";
@@ -52,6 +53,7 @@ export const action = async ({ request }) => {
     const token = await createGuideSession(db, pending.guide.id);
     const headers = new Headers({ Location: "/guia" });
     headers.append("Set-Cookie", sessionCookie(token));
+    headers.append("Set-Cookie", sessionCookie(null, 0, "/guia"));
     headers.append("Set-Cookie", pendingCookie("", 0));
     return new Response(null, { status: 302, headers });
   }
@@ -87,7 +89,9 @@ export const action = async ({ request }) => {
     return redirectTo("/guia/login", { "Set-Cookie": pendingCookie(pendingToken) });
   }
   const token = await createGuideSession(db, guide.id);
-  return redirectTo("/guia", { "Set-Cookie": sessionCookie(token) });
+  const headers = sessionCookieHeaders(token);
+  headers.set("Location", "/guia");
+  return new Response(null, { status: 302, headers });
 };
 
 // Tela de entrada: faixa de azulejo no topo e cartão com o logo, nas cores da
