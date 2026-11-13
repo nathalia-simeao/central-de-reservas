@@ -37,7 +37,7 @@ export default function TrelloIntegrationCard({ requestJson, status, onReload, l
 
   const state = trelloCardState(status);
   const label = {
-    connected: tr("CONECTADO · LEITURA A CADA 1 HORA", "CONNECTED · HOURLY READ"),
+    connected: tr("CONECTADO · LEITURA DIÁRIA", "CONNECTED · DAILY READ"),
     configured: tr("CONECTADO · LEITURA AUTOMÁTICA DESLIGADA", "CONNECTED · AUTO-READ OFF"),
     error: tr("ERRO NA ÚLTIMA LEITURA", "LAST READ FAILED"),
     required: tr("FALTA CONFIGURAR", "CONFIGURATION REQUIRED"),
