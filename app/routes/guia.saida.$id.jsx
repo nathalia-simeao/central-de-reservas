@@ -131,9 +131,8 @@ export const action = async ({ request, params }) => {
     const field = CHECK_FIELDS[step];
     if (!admin) return { error: "Só administradores podem desfazer um check." };
     if (!field || !existing?.[field]) return { error: "Esse check não está marcado." };
-    // Desfazer o Início também desfaz Meio e Fim (a ordem é Início → Meio → Fim).
-    const fields = step === "start" ? ["checkStartAt", "checkMidAt", "checkEndAt"] : step === "mid" ? ["checkMidAt", "checkEndAt"] : ["checkEndAt"];
-    await db.tourDeparture.update({ where: { id: existing.id }, data: Object.fromEntries(fields.map((f) => [f, null])) });
+    // Cada botão desfaz só o seu check (Início, Meio ou Fim).
+    await db.tourDeparture.update({ where: { id: existing.id }, data: { [field]: null } });
     const label = step === "start" ? "Início" : step === "mid" ? "Meio" : "Fim";
     await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `desfez o check de ${label} (pelo app)`, actor: { name: guide.name, personId: guide.id } });
     return { ok: "Check desfeito." };
