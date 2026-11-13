@@ -101,6 +101,14 @@ a { color: inherit; }
 .g-bcard__collection { font-weight:700; color:var(--g-green); }
 .g-col.more { background:none; display:flex; align-items:center; }
 .g-bcard.mine { border-color:var(--g-green); box-shadow:0 0 0 1px var(--g-green); }
+.g-bcard__foot { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.g-bcard__foot small { margin-top:0; }
+.g-bcard__guides { display:flex; flex-wrap:wrap; gap:6px; }
+.g-bcard__guide { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:var(--g-ink); }
+.g-bcard__guide img, .g-bcard__initials { width:26px; height:26px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--g-line); }
+.g-bcard__initials { display:inline-grid; place-items:center; background:var(--g-green-soft); color:var(--g-green); font-size:10px; font-weight:800; }
+.g-bcard__langs { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 2px; }
+.g-lang { padding:1px 7px; border-radius:6px; border:1px solid color-mix(in srgb, var(--g-green) 35%, transparent); background:var(--g-green-soft); color:var(--g-green); font-size:11px; font-weight:800; letter-spacing:.03em; }
 .g-bcard--edit { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .g-bcard--edit:active { transform:scale(.99); }
 .g-bcard__edit { display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:12px; font-weight:700; color:var(--g-green); }

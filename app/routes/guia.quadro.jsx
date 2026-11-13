@@ -2,7 +2,8 @@ import { Link, useLoaderData } from "react-router";
 import db from "../db.server";
 import { guideLang } from "../utils/guide-i18n.js";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
-import { addDays, buildBoardColumns, initials } from "../utils/agenda-board.js";
+import { addDays, buildBoardColumns, initials, listsForCard } from "../utils/agenda-board.js";
+import { cardLanguages, normalizeChecklists } from "../utils/departure-checklists.js";
 import { tourColor } from "../utils/agenda-labels.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { getGuideFromRequest, redirectTo } from "../utils/guide-portal.server";
@@ -38,7 +39,7 @@ export const loader = async ({ request }) => {
     }),
     db.guideAssignment.findMany({
       where: { status: "ASSIGNED", startTime: { gte: from, lt: to } },
-      select: { id: true, tourId: true, guideId: true, startTime: true, status: true, languages: true, guide: { select: { id: true, name: true } }, tour: { select: { id: true, title: true } } },
+      select: { id: true, tourId: true, guideId: true, startTime: true, status: true, languages: true, guide: { select: { id: true, name: true, photoUrl: true, portalPhotoType: true, updatedAt: true } }, tour: { select: { id: true, title: true } } },
     }),
     db.tourDeparture.findMany({
       where: { startTime: { gte: from, lt: to } },
@@ -84,13 +85,24 @@ export const loader = async ({ request }) => {
         const mine = card.guides.find((g) => g.guideId === guide.id);
         return {
           key: card.key,
+          uid: card.uid || card.key,
+          // Idiomas do tour (reservas, guias escalados e títulos do Trello), como no Quadro da Central.
+          langs: (() => {
+            const state = normalizeChecklists(departureInfo[card.key]?.checklists);
+            return cardLanguages(card, { ...state, lists: listsForCard(state.lists, card) });
+          })(),
           title: card.title,
           collection: (collections.get(card.tourId) || []).join(" · "),
           time: card.timeKey,
           pax: card.pax,
           pending: card.pending,
           color: tourColor(labels, card.tourId),
-          guides: card.guides.map((g) => ({ name: g.name, initials: initials(g.name) })),
+          // Foto do guia: a do app (Perfil) ou a da Equipe.
+          guides: card.guides.map((g) => {
+            const person = assignments.find((a) => a.guideId === g.guideId)?.guide;
+            const photo = person?.portalPhotoType ? `/guia/foto/${person.id}?v=${new Date(person.updatedAt || 0).getTime()}` : person?.photoUrl || null;
+            return { name: g.name, initials: initials(g.name), photo };
+          }),
           checks: card.checks,
           myAssignmentId: mine?.assignmentId || null,
         };
@@ -113,11 +125,24 @@ function Card({ card, dateKey, canEdit = false }) {
       <div className="g-bcard__bar" style={{ background: card.color }} />
       <strong>{card.time} · {card.title}</strong>
       {card.collection && <small className="g-bcard__collection">{card.collection}</small>}
-      <small>
-        {card.pax} pax{card.pending ? ` + ${card.pending} ${t("pendente(s)")}` : ""}
-        {card.guides.length ? ` · ${card.guides.map((g) => g.name.split(" ")[0]).join(", ")}` : ` · ${t("sem guia")}`}
-        
-      </small>
+      {card.langs?.length > 0 && (
+        <span className="g-bcard__langs" aria-label={t("Idioma")}>
+          {card.langs.map((k) => <span key={k} className="g-lang">{k.toUpperCase()}</span>)}
+        </span>
+      )}
+      <span className="g-bcard__foot">
+        <small>{card.pax} pax{card.pending ? ` + ${card.pending} ${t("pendente(s)")}` : ""}{card.guides.length ? "" : ` · ${t("sem guia")}`}</small>
+        {card.guides.length > 0 && (
+          <span className="g-bcard__guides">
+            {card.guides.map((g) => (
+              <span key={g.name} className="g-bcard__guide" title={g.name}>
+                {g.photo ? <img src={g.photo} alt="" loading="lazy" /> : <span className="g-bcard__initials">{g.initials}</span>}
+                <span>{g.name.split(" ")[0]}</span>
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
     </>
   );
   // Administradores editam tudo: o cartão abre o mesmo cartão no Quadro da
