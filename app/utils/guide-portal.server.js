@@ -264,7 +264,7 @@ export async function ensureDeparture(prisma, tourId, startTime) {
   });
 }
 
-export const CHECK_FIELDS = { start: "checkStartAt", mid: "checkMidAt", end: "checkEndAt" };
+export const CHECK_FIELDS = { meet: "checkMeetAt", start: "checkStartAt", mid: "checkMidAt", end: "checkEndAt" };
 
 /**
  * Rules for what a guide may do on a departure right now.
@@ -277,6 +277,7 @@ export function guidePermissions(departure, startTime, now = new Date()) {
   const ended = Boolean(departure?.checkEndAt);
   const windowOpen = t >= start - 3 * 60 * MINUTE && t <= start + 24 * 60 * MINUTE;
   return {
+    canCheckMeet: windowOpen && !departure?.checkMeetAt && !ended,
     canCheckStart: windowOpen && !departure?.checkStartAt,
     canCheckMid: windowOpen && Boolean(departure?.checkStartAt) && !departure?.checkMidAt && !ended,
     canCheckEnd: windowOpen && Boolean(departure?.checkStartAt) && !ended,

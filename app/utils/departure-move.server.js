@@ -38,6 +38,7 @@ export function mergeDepartureRecords(target, source) {
     tagIds: uniq([...(target.tagIds || []), ...(source?.tagIds || [])]),
     guideNotes: mergeNotes(target.guideNotes, source?.guideNotes),
     checklists: mergeChecklists(target.checklists, source?.checklists),
+    checkMeetAt: target.checkMeetAt || source?.checkMeetAt || null,
     checkStartAt: target.checkStartAt || source?.checkStartAt || null,
     checkMidAt: target.checkMidAt || source?.checkMidAt || null,
     checkEndAt: target.checkEndAt || source?.checkEndAt || null,

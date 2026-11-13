@@ -75,6 +75,7 @@ model TourDeparture {
   startTime    DateTime
   tagIds       String[] @default([])
   // Checklist do guia: só a gestão pode desfazer.
+  checkMeetAt  DateTime? // guia chegou ao local de encontro (app)
   checkStartAt DateTime?
   checkMidAt   DateTime?
   checkEndAt   DateTime?

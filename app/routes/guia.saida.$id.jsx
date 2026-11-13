@@ -3,6 +3,7 @@ import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
 import { applyChecklistOp, autoChecklists, normalizeChecklists } from "../utils/departure-checklists.js";
 import { normalizeText } from "../utils/trello-import.js";
+import { languageKey } from "../utils/tour-languages.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
 import db from "../db.server";
 import { isPortalAdmin } from "../utils/central-auth.server";
@@ -39,6 +40,28 @@ async function load(request, params) {
 // Checklists da saída, iguais aos do Quadro (e do Trello): os automáticos por
 // grupo de idioma (pronto → um item por cliente → fim de tour) e os da equipe /
 // importados do Trello. O guia vê os do grupo dele primeiro e só marca/desmarca.
+const STEP_LABELS = { meet: "No local de encontro", start: "Início", mid: "Meio", end: "Fim" };
+const READY_RE = /^(pronto(\(a\))?( e)? )?no local de encontro$/;
+const END_RE = /^fim de tour$/;
+
+/** Marca o item "No local de encontro" / "Fim de tour" dos checklists (automáticos e do Trello). */
+function markStepInChecklists(raw, step, by, langs = []) {
+  if (step !== "meet" && step !== "end") return null;
+  const state = normalizeChecklists(raw);
+  const at = new Date().toISOString();
+  const suffix = step === "meet" ? ":ready" : ":end";
+  const re = step === "meet" ? READY_RE : END_RE;
+  // Automáticos: um grupo por idioma da saída (só os do guia, se ele tem idiomas escalados).
+  for (const lang of langs) state.auto[`auto:${lang || "any"}${suffix}`] = { done: true, at, by };
+  for (const list of state.lists) {
+    for (const item of list.items) if (re.test(normalizeText(item.text).trim())) Object.assign(item, { done: true, at, by });
+  }
+  return state;
+}
+
+/** Itens que viraram os botões do topo (não repetir no checklist do app). */
+const isStepItem = (item) => /:(ready|end)$/.test(item.id) || READY_RE.test(normalizeText(item.text).trim()) || END_RE.test(normalizeText(item.text).trim());
+
 function guideChecklists({ guide, assignment, bookings, departure, teammates, viewAll = false }) {
   const state = normalizeChecklists(departure?.checklists);
   const card = {
@@ -62,7 +85,10 @@ function guideChecklists({ guide, assignment, bookings, departure, teammates, vi
     mine: list.guideId ? list.guideId === assignment.guideId : Boolean(firstName) && normalizeText(list.title).split(" ").includes(firstName),
     items: list.items.map((item) => ({ id: item.id, text: item.text, platform: item.platform || null, done: item.done })),
   }));
-  return [...auto, ...manual].sort((a, b) => Number(b.mine) - Number(a.mine));
+  return [...auto, ...manual]
+    .map((list) => ({ ...list, items: list.items.filter((item) => !isStepItem(item)) }))
+    .filter((list) => list.items.length)
+    .sort((a, b) => Number(b.mine) - Number(a.mine));
 }
 
 export const loader = async ({ request, params }) => {
@@ -98,6 +124,7 @@ export const loader = async ({ request, params }) => {
       id: assignment.id,
       title: assignment.tour?.title || "Passeio",
       startTime: assignment.startTime.toISOString(),
+      checkMeetAt: departure?.checkMeetAt?.toISOString() || null,
       checkStartAt: departure?.checkStartAt?.toISOString() || null,
       checkMidAt: departure?.checkMidAt?.toISOString() || null,
       checkEndAt: departure?.checkEndAt?.toISOString() || null,
@@ -131,9 +158,9 @@ export const action = async ({ request, params }) => {
     const field = CHECK_FIELDS[step];
     if (!admin) return { error: "Só administradores podem desfazer um check." };
     if (!field || !existing?.[field]) return { error: "Esse check não está marcado." };
-    // Cada botão desfaz só o seu check (Início, Meio ou Fim).
+    // Cada botão desfaz só o seu check.
     await db.tourDeparture.update({ where: { id: existing.id }, data: { [field]: null } });
-    const label = step === "start" ? "Início" : step === "mid" ? "Meio" : "Fim";
+    const label = STEP_LABELS[step];
     await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `desfez o check de ${label} (pelo app)`, actor: { name: guide.name, personId: guide.id } });
     return { ok: "Check desfeito." };
   }
@@ -141,12 +168,19 @@ export const action = async ({ request, params }) => {
   if (intent.startsWith("check:")) {
     const step = intent.slice(6);
     const field = CHECK_FIELDS[step];
-    const allowed = { start: perms.canCheckStart, mid: perms.canCheckMid, end: perms.canCheckEnd }[step];
+    const allowed = { meet: perms.canCheckMeet, start: perms.canCheckStart, mid: perms.canCheckMid, end: perms.canCheckEnd }[step];
     if (!field || !allowed) return { error: "Esse check não está disponível agora." };
     const departure = existing || (await ensureDeparture(db, assignment.tourId, assignment.startTime));
-    await db.tourDeparture.update({ where: { id: departure.id }, data: { [field]: new Date(), checkedBy: by } });
-    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `registrou o check de ${step === "start" ? "Início" : step === "mid" ? "Meio" : "Fim"} (pelo app)`, actor: { name: guide.name, personId: guide.id } });
-    return { ok: step === "start" ? "Início registrado." : step === "mid" ? "Meio registrado." : "Fim registrado. Bom trabalho!" };
+    // O botão também marca, no checklist do grupo, "No local de encontro" ou "Fim de tour" (Fim),
+    // para o Quadro da Central mostrar a mesma coisa.
+    const saidaBookings = await db.booking.findMany({ where: { AND: [departureBookingWhere(assignment.tourId, assignment.startTime), excludeTestBookingsWhere()], status: "CONFIRMED" }, select: { language: true } });
+    const mine = viewAll ? [] : assignment.languages || [];
+    const langs = [...new Set(saidaBookings.map((b) => languageKey(b.language) || ""))].filter((l) => !mine.length || mine.includes(l));
+    const checklists = markStepInChecklists(departure.checklists, step, guide.name, langs);
+    await db.tourDeparture.update({ where: { id: departure.id }, data: { [field]: new Date(), checkedBy: by, ...(checklists ? { checklists } : {}) } });
+    const label = STEP_LABELS[step];
+    await logActivity(db, { targetType: "departure", targetKey: departureTargetKey(assignment.tourId, assignment.startTime), text: `marcou "${label}" (pelo app)`, actor: { name: guide.name, personId: guide.id } });
+    return { ok: { meet: "No local de encontro registrado.", start: "Início registrado.", mid: "Meio registrado.", end: "Fim registrado. Bom trabalho!" }[step] };
   }
 
   if (intent === "checklist") {
@@ -298,7 +332,9 @@ export default function GuideDeparture() {
   const present = bookings.filter((b) => b.attendanceStatus === "COMPLETED").reduce((s, b) => s + b.pax, 0);
   const noShow = bookings.filter((b) => b.attendanceStatus === "NO_SHOW").reduce((s, b) => s + b.pax, 0);
 
+  // Pedido do Renan (13/11/2026): "No local de encontro" junto de Início, Meio e Fim.
   const checks = [
+    { key: "meet", label: t("No local de encontro"), at: departure.checkMeetAt, can: permissions.canCheckMeet },
     { key: "start", label: t("Início"), at: departure.checkStartAt, can: permissions.canCheckStart },
     { key: "mid", label: t("Meio"), at: departure.checkMidAt, can: permissions.canCheckMid },
     { key: "end", label: t("Fim"), at: departure.checkEndAt, can: permissions.canCheckEnd },

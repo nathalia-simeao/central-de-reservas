@@ -261,4 +261,8 @@ export const GUIDE_STRINGS = {
   "Check desfeito.": {"en": "Check undone.", "es": "Check deshecho.", "fr": "Check annulé.", "it": "Check annullato.", "de": "Check rückgängig gemacht."},
   "Só administradores podem desfazer um check.": {"en": "Only admins can undo a check.", "es": "Solo los administradores pueden deshacer un check.", "fr": "Seuls les administrateurs peuvent annuler un check.", "it": "Solo gli amministratori possono annullare un check.", "de": "Nur Administratoren können einen Check rückgängig machen."},
   "Esse check não está marcado.": {"en": "That check isn't marked.", "es": "Ese check no está marcado.", "fr": "Ce check n'est pas coché.", "it": "Questo check non è segnato.", "de": "Dieser Check ist nicht markiert."},
+  "No local de encontro": {"en": "At the meeting point", "es": "En el punto de encuentro", "fr": "Au point de rendez-vous", "it": "Al punto d'incontro", "de": "Am Treffpunkt"},
+  "Fim de tour": {"en": "End of tour", "es": "Fin del tour", "fr": "Fin du tour", "it": "Fine del tour", "de": "Tour beendet"},
+  "No local de encontro registrado.": {"en": "Meeting point check saved.", "es": "Llegada al punto de encuentro registrada.", "fr": "Arrivée au point de rendez-vous enregistrée.", "it": "Arrivo al punto d'incontro registrato.", "de": "Ankunft am Treffpunkt gespeichert."},
+  "Fim de tour registrado. Bom trabalho!": {"en": "End of tour saved. Great job!", "es": "Fin del tour registrado. ¡Buen trabajo!", "fr": "Fin du tour enregistrée. Bon travail !", "it": "Fine del tour registrata. Ottimo lavoro!", "de": "Tourende gespeichert. Gute Arbeit!"},
 };
