@@ -6,6 +6,7 @@ import { unauthenticated } from "../shopify.server";
 import { GIcon, GuideShell, useGuideLocale, useT } from "../components/guide/GuideShell";
 import { createDemandCheckout, createDraftCheckout } from "../services/draft-checkout.server";
 import { getCentralAvailability } from "../utils/capacity.server";
+import { blockMatchesCalendarSlot, getActiveAvailabilityBlocks } from "../utils/availability.server";
 import { lisbonLocalDateTimeToUtc } from "../utils/shopify-orders.server";
 import { ticketsFor, tourSellOptions } from "../utils/sell-options.js";
 import { resolvePrimaryShop } from "../utils/single-tenant.server";
@@ -20,7 +21,9 @@ const GUIDE_HOLD_MINUTES = 60;
 async function shopAdmin() {
   const { shop } = await resolvePrimaryShop(db, { allowInitialize: false });
   if (!shop) throw new Error("Loja Shopify não configurada.");
-  return { shop, admin: await unauthenticated.admin(shop) };
+  // unauthenticated.admin devolve { admin, session }: o cliente GraphQL é o .admin.
+  const { admin } = await unauthenticated.admin(shop);
+  return { shop, admin };
 }
 
 export const loader = async ({ request }) => {
@@ -58,12 +61,27 @@ export const loader = async ({ request }) => {
     if (!variants.length) error = "Este passeio ainda não tem ingressos sincronizados. Avise a gestão.";
     // Horários, idiomas e ingressos como estão nas variantes da Shopify.
     sell = tourSellOptions({ snapshot: tour?.shopifySnapshot || {}, variants, scheduleSlots: tour?.scheduleSlots || [] });
+    // Dias bloqueados pela gestão (Agenda da Central ou bloqueio do site): o guia não vende.
+    // Bloqueado = todos os horários do passeio bloqueados naquele dia.
+    const blocks = await getActiveAvailabilityBlocks(db, listed.id);
+    const times = sell.freeTime ? ["ALL"] : [...new Set(sell.sessions.map((x) => x.time))];
+    const blockedDays = [];
+    const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
+    for (let i = 0; i < 366; i += 1) {
+      const d = new Date(`${todayKey}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + i);
+      const dateKey = d.toISOString().slice(0, 10);
+      const dayOfWeek = d.getUTCDay();
+      const blocked = times.every((timeKey) => blocks.some((b) => blockMatchesCalendarSlot(b, { tourId: listed.id, dateKey, timeKey, dayOfWeek, platform: "SHOPIFY" })));
+      if (blocked) blockedDays.push(dateKey);
+    }
+    sell.blockedDays = blockedDays;
     // Vagas de cada horário na data escolhida (bloqueios e capacidade da Central).
     if (day) {
       const seats = {};
       for (const time of [...new Set(sell.sessions.map((s) => s.time))]) {
         try {
-          const a = await getCentralAvailability(db, { tourId: listed.id, startTime: lisbonLocalDateTimeToUtc(day, time), platform: "central" });
+          const a = await getCentralAvailability(db, { tourId: listed.id, startTime: lisbonLocalDateTimeToUtc(day, time), platform: "SHOPIFY" });
           seats[time] = { remaining: a.remainingSeats ?? null, blocked: Boolean(a.blocked) };
         } catch {
           seats[time] = null;
@@ -177,11 +195,10 @@ export const action = async ({ request }) => {
   }
 };
 
-function seatLabel(session, t) {
+function sessionLabel(session, t) {
   const seats = session.seats;
-  if (!seats) return session.label;
-  if (seats.blocked) return `${session.label} · ${t("bloqueado")}`;
-  if (seats.remaining != null) return `${session.label} · ${seats.remaining === 1 ? t("1 vaga") : t("{n} vagas", { n: seats.remaining })}`;
+  if (seats?.blocked) return `${session.label} · ${t("bloqueado")}`;
+  if (seats && seats.remaining === 0) return `${session.label} · ${t("esgotado")}`;
   return session.label;
 }
 
@@ -278,6 +295,8 @@ export default function GuideSell() {
     setLanguage(sell?.languages?.length === 1 ? sell.languages[0] : "");
   }, [tourKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = sessions.find((s) => s.value === session) || null;
+  const blockedSet = new Set(sell?.blockedDays || []);
+  const dayBlocked = Boolean(day && blockedSet.has(day));
   const time = sell?.freeTime ? freeTime : chosen?.time || "";
   const visible = sell ? ticketsFor(sell.tickets, { session: sell.freeTime ? "" : session, language }) : [];
   const setParam = (key, value) => {
@@ -330,7 +349,8 @@ export default function GuideSell() {
               <input type="hidden" name="language" value={language} />
               <div className="g-field">
                 {t("Data")}
-                <DatePicker value={day} min={today} onChange={(e) => setParam("dia", e?.target?.value ?? (typeof e === "string" ? e : ""))} locale={locale} todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
+                <DatePicker value={day} min={today} isDateDisabled={(key) => blockedSet.has(key)} onChange={(e) => setParam("dia", e?.target?.value ?? (typeof e === "string" ? e : ""))} locale={locale} todayLabel={t("Hoje")} clearLabel={t("Limpar")} />
+                {day && blockedSet.has(day) && <small className="g-error" style={{ margin: 0 }}>{t("Este dia está bloqueado pela gestão. Escolha outra data.")}</small>}
               </div>
               <div className="g-field">
                 {t("Horário")}
@@ -339,14 +359,25 @@ export default function GuideSell() {
                 ) : (
                   <DropdownSelect
                     value={session}
-                    options={sessions.map((s) => ({ value: s.value, label: seatLabel(s, t), disabled: Boolean(s.seats && (s.seats.blocked || s.seats.remaining === 0)) }))}
+                    options={sessions.map((s) => ({ value: s.value, label: sessionLabel(s, t), disabled: Boolean(s.seats && (s.seats.blocked || s.seats.remaining === 0)) }))}
                     placeholder={t("Escolha o horário")}
                     ariaLabel={t("Horário")}
                     onChange={(value) => setSession(value)}
                   />
                 )}
-                {!day && !sell.freeTime && <small className="g-hint" style={{ margin: 0 }}>{t("Escolha a data para ver as vagas de cada horário.")}</small>}
               </div>
+              {!sell.freeTime && (
+                <div className="g-field">
+                  {t("Vagas")}
+                  <div className="g-seats" aria-live="polite">
+                    {!day ? t("Escolha a data para ver as vagas.")
+                      : !chosen ? t("Escolha o horário.")
+                      : chosen.seats?.blocked ? t("Horário bloqueado pela gestão.")
+                      : chosen.seats?.remaining != null ? (chosen.seats.remaining === 1 ? t("1 vaga") : t("{n} vagas", { n: chosen.seats.remaining }))
+                      : "—"}
+                  </div>
+                </div>
+              )}
               <div className="g-field">
                 {t("Idioma")}
                 <DropdownSelect
@@ -369,7 +400,7 @@ export default function GuideSell() {
 
               <CustomerFields t={t} />
 
-              <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !day || !language || !time}>
+              <button type="submit" className="g-btn primary" style={{ width: "100%" }} disabled={busy || !day || dayBlocked || !language || !time || Boolean(chosen?.seats?.blocked) || chosen?.seats?.remaining === 0}>
                 {busy ? t("Gerando…") : t("Gerar link de pagamento")}
               </button>
             </Form>

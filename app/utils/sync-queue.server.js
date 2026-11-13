@@ -808,6 +808,8 @@ export function startSyncQueueWorker(
   let running = false;
   let lastFxRunAt = 0;
   let lastTrelloCheckAt = 0;
+  let lastCatalogAt = 0;
+  let webhooksEnsured = false;
 
   const tick = async () => {
     if (running) return;
@@ -820,6 +822,29 @@ export function startSyncQueueWorker(
         lastFxRunAt = Date.now();
         const { convertBookingsToEur } = await import("./fx.server.js");
         await convertBookingsToEur(prisma).catch((error) => console.error("[FX] worker step failed:", error?.message || error));
+      }
+      // Preços e variantes iguais aos da Shopify: relê o catálogo a cada 10 minutos
+      // e garante uma vez por boot que a Shopify avise a cada mudança de produto.
+      if (Date.now() - lastCatalogAt > 10 * 60 * 1000) {
+        lastCatalogAt = Date.now();
+        const { syncCatalogFromShopify } = await import("./catalog-auto-sync.server.js");
+        await syncCatalogFromShopify(prisma, { reason: "worker", force: true }).catch((error) => console.error("[CATALOG_SYNC] worker failed:", error?.message || error));
+        if (!webhooksEnsured) {
+          webhooksEnsured = true;
+          try {
+            const [{ unauthenticated }, { resolvePrimaryShop }, { ensureShopifyOrderWebhooks }] = await Promise.all([
+              import("../shopify.server"), import("./single-tenant.server"), import("./shopify-webhooks.server"),
+            ]);
+            const { shop } = await resolvePrimaryShop(prisma, { allowInitialize: false });
+            if (shop) {
+              const { admin } = await unauthenticated.admin(shop);
+              const status = await ensureShopifyOrderWebhooks(admin, process.env.SHOPIFY_APP_URL);
+              if (!status.ok) console.error("[WEBHOOKS] ensure failed:", status.error);
+            }
+          } catch (error) {
+            console.error("[WEBHOOKS] ensure failed:", error?.message || error);
+          }
+        }
       }
       // Trello → Central uma vez por dia, depois das 6h de Lisboa (confere a cada 5 minutos).
       if (Date.now() - lastTrelloCheckAt > 5 * 60 * 1000) {

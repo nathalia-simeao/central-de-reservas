@@ -491,6 +491,7 @@ export function DatePicker({
   className = "",
   min = "",
   max = "",
+  isDateDisabled = null, // (dateKey "AAAA-MM-DD") => true para dias que não podem ser escolhidos
   ...props
 }) {
   const parsedValue = parseDateKey(value);
@@ -559,7 +560,8 @@ export function DatePicker({
     const key = dateKey(date);
     const disabled =
       (minDate && date < minDate) ||
-      (maxDate && date > maxDate);
+      (maxDate && date > maxDate) ||
+      Boolean(isDateDisabled?.(key));
     cells.push({ key, date, day, disabled });
   }
 

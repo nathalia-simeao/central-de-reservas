@@ -137,7 +137,7 @@ export const action = async ({ request }) => {
   return { error: "Ação inválida." };
 };
 
-/** Reduz a foto no próprio celular (400 px, JPEG) antes de enviar. */
+/** Reduz a foto no próprio telemóvel (400 px, JPEG) antes de enviar. */
 async function shrinkPhoto(file) {
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return file;
@@ -182,7 +182,7 @@ function CalendarSection({ calendar, busy, message }) {
   return (
     <section className="g-card" aria-labelledby="pref-cal">
       <h2 id="pref-cal">{t("Minha agenda")}</h2>
-      <p>{t("Suas saídas aparecem no calendário do celular, junto da sua agenda pessoal. Atualiza sozinho.")}</p>
+      <p>{t("Suas saídas aparecem no calendário do telemóvel, junto da sua agenda pessoal. Atualiza sozinho.")}</p>
       <div className="g-row">
         <a className="g-btn primary" href={calendar.google} target="_blank" rel="noreferrer"><GIcon name="calendar" /> {t("Adicionar ao Google Agenda")}</a>
         <a className="g-btn" href={calendar.webcal}>{t("iPhone / Outlook")}</a>
@@ -309,7 +309,7 @@ export default function GuidePreferences() {
             <>
               <ol className="g-steps">
                 <li>{t("Instale um app autenticador (Google Authenticator, Microsoft Authenticator ou o app Senhas do iPhone).")}</li>
-                <li>{t("No autenticador, escolha ler QR code e aponte para o código abaixo. Se estiver no próprio celular, toque em “Abrir no autenticador” ou digite a chave.")}</li>
+                <li>{t("No autenticador, escolha ler QR code e aponte para o código abaixo. Se estiver no próprio telemóvel, toque em “Abrir no autenticador” ou digite a chave.")}</li>
                 <li>{t("Digite o código de 6 dígitos que aparece no autenticador.")}</li>
               </ol>
               {settingUp.qr && (
@@ -330,7 +330,7 @@ export default function GuidePreferences() {
             </>
           ) : (
             <>
-              <p>{t("Mais segurança: além da senha, o app pede um código que muda a cada 30 segundos no seu celular.")}</p>
+              <p>{t("Mais segurança: além da senha, o app pede um código que muda a cada 30 segundos no seu telemóvel.")}</p>
               {message("totp")}
               <Form method="post">
                 <input type="hidden" name="intent" value="totpStart" />
@@ -343,7 +343,7 @@ export default function GuidePreferences() {
         <CalendarSection calendar={data.calendar} busy={busy} message={message("calendar")} />
 
         <section className="g-card" aria-labelledby="pref-app">
-          <h2 id="pref-app">{t("App no celular")}</h2>
+          <h2 id="pref-app">{t("App no telemóvel")}</h2>
           <p>{t("Instale a Central de Reservas na tela inicial para abrir como um app.")}</p>
           <Link to="/guia/instalar" className="g-btn">{t("Como instalar")}</Link>
         </section>

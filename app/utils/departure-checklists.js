@@ -194,6 +194,30 @@ export function autoChecklists(card) {
 }
 
 /** Contagem para o selo do cartão (☑ feitos/total), juntando automáticos e manuais. */
+const TITLE_LANG = { eng: "en", en: "en", ing: "en", por: "pt", pt: "pt", ptbr: "pt", esp: "es", es: "es", spa: "es", fra: "fr", fr: "fr", fre: "fr", ita: "it", it: "it", deu: "de", de: "de", ger: "de", ale: "de" };
+const LANG_ORDER = ["pt", "en", "es", "fr", "it", "de"];
+
+/**
+ * Idiomas de um cartão do Quadro (pedido do Renan, 13/11/2026): das reservas,
+ * dos idiomas escalados dos guias e dos títulos dos checklists do Trello ("14h PT e ES (6p)").
+ */
+export function cardLanguages(card, raw) {
+  const found = new Set();
+  for (const b of card?.bookings || []) { const k = languageKey(b.language); if (k) found.add(k); }
+  for (const g of card?.guides || []) for (const k of g.languages || []) if (k) found.add(k);
+  for (const list of normalizeChecklists(raw).lists) {
+    // Só o começo do título (antes da contagem de pessoas) fala de idioma.
+    const head = String(list.title || "").split("(")[0];
+    for (const word of head.split(/[^A-Za-z]+/)) {
+      // Siglas de 2 letras só em maiúsculas ("ES", "DE"), para não confundir com "de", "es"…
+      if (word.length <= 2 && word !== word.toUpperCase()) continue;
+      const key = TITLE_LANG[word.toLowerCase()];
+      if (key) found.add(key);
+    }
+  }
+  return [...found].sort((a, b) => (LANG_ORDER.indexOf(a) + 1 || 99) - (LANG_ORDER.indexOf(b) + 1 || 99));
+}
+
 /** Item de checklist que é um cliente (tem telefone ou a contagem tipo "(2A)"). */
 export function isClientItem(text) {
   const value = String(text || "");

@@ -5,6 +5,9 @@ const ORDER_WEBHOOK_TOPICS = [
   "ORDERS_CANCELLED",
 ];
 
+// Produtos: preço/variantes mudaram na Shopify → a Central relê o catálogo.
+const PRODUCT_WEBHOOK_TOPICS = ["PRODUCTS_UPDATE", "PRODUCTS_CREATE"];
+
 const QUERY_SUBSCRIPTIONS = `
   query PMYOrderWebhooks {
     webhookSubscriptions(first: 100) {
@@ -88,6 +91,8 @@ export async function ensureShopifyOrderWebhooks(admin, appUrl) {
   }
 
   const callbackUrl = `${baseUrl}/webhooks/orders`;
+  const callbackFor = (topic) => (PRODUCT_WEBHOOK_TOPICS.includes(topic) ? `${baseUrl}/webhooks/products` : callbackUrl);
+  const TOPICS = [...ORDER_WEBHOOK_TOPICS, ...PRODUCT_WEBHOOK_TOPICS];
 
   try {
     const data = await adminGraphql(admin, QUERY_SUBSCRIPTIONS);
@@ -95,7 +100,7 @@ export async function ensureShopifyOrderWebhooks(admin, appUrl) {
     const byTopic = new Map();
 
     for (const subscription of existing) {
-      if (!ORDER_WEBHOOK_TOPICS.includes(subscription.topic)) continue;
+      if (!TOPICS.includes(subscription.topic)) continue;
       if (!byTopic.has(subscription.topic)) {
         byTopic.set(subscription.topic, subscription);
       }
@@ -103,8 +108,9 @@ export async function ensureShopifyOrderWebhooks(admin, appUrl) {
 
     const results = [];
 
-    for (const topic of ORDER_WEBHOOK_TOPICS) {
+    for (const topic of TOPICS) {
       const current = byTopic.get(topic);
+      const callbackUrl = callbackFor(topic);
 
       if (!current) {
         const createdData = await adminGraphql(admin, CREATE_SUBSCRIPTION, {

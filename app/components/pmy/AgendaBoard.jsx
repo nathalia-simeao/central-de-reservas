@@ -6,7 +6,7 @@ import DepartureTagsSection from "./DepartureTagsSection";
 
 // Campo que recebe o foco ao aparecer (no lugar de autoFocus, que o lint proíbe).
 import { DatePicker, DropdownSelect, TimeSelect } from "./PmyUI";
-import { autoChecklists, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
+import { autoChecklists, cardLanguages, checklistProgress, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { isOutdoorTour, placeForTour, weatherAlert, weatherIcon } from "../../utils/weather.js";
 import { freeSeats, waitlistMatches } from "../../utils/waitlist.js";
 import { GuestMessages, WaitlistSection, WeatherNote } from "./DepartureExtras";
@@ -841,6 +841,14 @@ export default function AgendaBoard({
                         : <span className="pmy-board-chip" style={{ background: color }} title={card.title} />}
                     </span>
                     <span className="pmy-board-card__title"><b>{card.timeKey}</b> {card.title}</span>
+                    {(() => {
+                      const langs = cardLanguages(card, cardChecklistRaw(card, departureInfo[card.key]?.checklists));
+                      return langs.length > 0 && (
+                        <span className="pmy-board-card__langs" title={langs.map((k) => languageLabel(k, lang)).join(", ")}>
+                          {langs.map((k) => <span key={k} className="pmy-board-lang">{k.toUpperCase()}</span>)}
+                        </span>
+                      );
+                    })()}
                     {(collectionsByTour.get(card.tourId) || []).length > 0 && (
                       <span className="pmy-board-card__collection">{collectionsByTour.get(card.tourId).join(" · ")}</span>
                     )}

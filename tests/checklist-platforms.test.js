@@ -49,3 +49,11 @@ test("no-show nos clientes do checklist do Trello", () => {
   raw = applyChecklistOp(raw, { type: "setNoShow", listId: "l1", itemId: "a", value: false }, "Maria");
   assert.equal(raw.lists[0].items[0].noShow, undefined);
 });
+
+import { cardLanguages } from "../app/utils/departure-checklists.js";
+
+test("idiomas do cartão: reservas, guias e títulos do Trello", () => {
+  const raw = { lists: [{ title: "14:01h PT e ES (6p) 6A Dee", items: [] }, { title: "Lista de ingressos", items: [] }, { title: "10h ENG (3p)", items: [] }] };
+  assert.deepEqual(cardLanguages({ bookings: [{ language: "Français" }], guides: [{ languages: ["it"] }] }, raw), ["pt", "en", "es", "fr", "it"]);
+  assert.deepEqual(cardLanguages({}, { lists: [{ title: "Fim de tour", items: [] }] }), []);
+});
