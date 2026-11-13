@@ -6802,3 +6802,5 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 @media (max-width: 560px) {
   .pmy-checklist__slot.is-phone:empty { display: none; }
 }
+/* Sigla da plataforma sempre em branco, também nos itens já marcados. */
+.pmy-plat, .pmy-checklist__item.is-done .pmy-plat, .pmy-checklist__item .pmy-checklist__tail .pmy-plat { color: #fff !important; text-decoration: none !important; }
