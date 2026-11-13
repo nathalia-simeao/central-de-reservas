@@ -6786,3 +6786,19 @@ img.pmy-person-photo__img { font-size: 11px; color: transparent; }
 @media (hover: none) { .pmy-plat-picker.is-compact .pmy-plat-picker__empty { opacity: .7; } }
 @media (max-width: 560px) { .pmy-checklist__slot.is-platform { width: auto; } }
 .pmy-checklist__item.is-done .pmy-editable__btn { text-decoration: none; }
+
+/* Checklist como tabela (13/11/2026): check · nome | telefone | plataforma | no-show | mover/apagar.
+   As mesmas colunas em todas as linhas, alinhadas à esquerda. */
+@media (min-width: 561px) {
+  .pmy-checklist__item, .pmy-checklist__item.is-movable {
+    display: grid; align-items: center; column-gap: 10px;
+    grid-template-columns: 18px minmax(0, 1fr) 150px 66px 76px auto auto;
+  }
+  .pmy-checklist__item.is-movable { grid-template-columns: 12px 18px minmax(0, 1fr) 150px 66px 76px auto auto; }
+  .pmy-checklist__tail { display: contents; }
+  .pmy-checklist__slot { width: auto !important; justify-content: flex-start !important; min-width: 0; }
+  .pmy-checklist__tail > .pmy-checklist__move, .pmy-checklist__tail > .pmy-checklist__del { justify-self: start; }
+}
+@media (max-width: 560px) {
+  .pmy-checklist__slot.is-phone:empty { display: none; }
+}

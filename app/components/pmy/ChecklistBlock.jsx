@@ -1,7 +1,8 @@
 // Checklists do Quadro (formato do Trello): bloco de um checklist e o editor
 // com vários. Usado nas saídas (AgendaBoard) e nas demandas (SupportCards).
 import { useEffect, useRef, useState } from "react";
-import PhoneText from "./PhoneText";
+import { PhoneMenu } from "./PhoneText";
+import { textWithoutPhones } from "../../utils/phone-actions.js";
 import { isClientItem, listPeopleSummary, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { CHECKLIST_PLATFORMS, checklistPlatform } from "../../utils/checklist-platforms.js";
 
@@ -155,22 +156,26 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
             {canMove && <span className="pmy-checklist__grip" aria-hidden="true">⋮⋮</span>}
             <input type="checkbox" checked={on} disabled={busy} onChange={() => onToggle(item)} />
             {onEditItem
-              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" render={(v) => <PhoneText text={v} lang={lang} />} />
-              : <span className="pmy-checklist__text"><PhoneText text={item.text} lang={lang} /></span>}
+              ? <EditableText value={item.text} onSave={(text) => onEditItem(item, text)} label={tr("Editar item", "Edit item")} lang={lang} className="pmy-checklist__text" render={(v) => textWithoutPhones(v).text || v} />
+              : <span className="pmy-checklist__text">{textWithoutPhones(item.text).text || item.text}</span>}
             {/* Colunas fixas à direita (No-show · plataforma · mover · apagar), com espaço
                 reservado quando a linha não tem um deles: tudo alinhado de cima a baixo. */}
+            {/* Como uma tabela (pedido da Nathalia, 13/11/2026): nome · telefone · plataforma · no-show. */}
             <span className="pmy-checklist__tail">
+              <span className="pmy-checklist__slot is-phone">
+                {textWithoutPhones(item.text).phones.map((phone) => <PhoneMenu key={phone} phone={phone} lang={lang} />)}
+              </span>
+              <span className="pmy-checklist__slot is-platform">
+                {onSetPlatform
+                  ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
+                  : <PlatformBadge platform={item.platform} />}
+              </span>
               <span className="pmy-checklist__slot is-noshow">
                 {onSetNoShow && isClientItem(item.text)
                   ? <button type="button" className={`pmy-checklist__noshow-btn${item.noShow ? " is-on" : ""}`} aria-pressed={Boolean(item.noShow)} disabled={busy}
                       title={item.noShow && item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : tr("Cliente não apareceu", "Customer didn't show up")}
                       onClick={() => onSetNoShow(item, !item.noShow)}>No-show</button>
                   : item.noShow && <span className="pmy-checklist__noshow" title={item.noShowBy ? `${tr("Marcado por", "Marked by")} ${item.noShowBy}` : undefined}>No-show</span>}
-              </span>
-              <span className="pmy-checklist__slot is-platform">
-                {onSetPlatform
-                  ? <PlatformPicker value={item.platform} onChange={(key) => onSetPlatform(item, key)} disabled={busy} lang={lang} compact />
-                  : <PlatformBadge platform={item.platform} />}
               </span>
               {canMove && (
                 <span className="pmy-checklist__move">

@@ -9,7 +9,7 @@ function pretty(phone) {
   return /^\+351\d{9}$/.test(phone) ? `+351 ${phone.slice(4, 7)} ${phone.slice(7, 10)} ${phone.slice(10)}` : phone;
 }
 
-function PhoneMenu({ phone, lang }) {
+export function PhoneMenu({ phone, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
