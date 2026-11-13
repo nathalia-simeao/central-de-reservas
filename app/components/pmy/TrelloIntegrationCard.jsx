@@ -1,6 +1,6 @@
 // Integrações → Conexões → "Agenda e operação": o Trello como cartão, igual às
 // outras plataformas. "Gerenciar integração" abre a janela com a conexão,
-// a leitura automática (a cada 1 hora), os apelidos e os anexos.
+// a leitura automática (uma vez por dia), os apelidos e os anexos.
 import { useCallback, useEffect, useState } from "react";
 import TrelloConnectionPanel from "./TrelloConnectionPanel";
 import { Button, Icon, Modal } from "./PmyUI";

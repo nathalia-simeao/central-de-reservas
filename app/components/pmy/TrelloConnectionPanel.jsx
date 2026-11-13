@@ -46,7 +46,7 @@ function TrelloAliases({ sync, busy, onSave, lang }) {
   );
 }
 
-/** Leitura automática do Trello (a cada 1 hora): ligada/desligada, última leitura e avisos. */
+/** Leitura automática do Trello (uma vez por dia): ligada/desligada, última leitura e avisos. */
 function TrelloSyncStatus({ sync, busy, onToggle, onRunNow, lang }) {
   const tr = (pt, en) => (lang === "en" ? en : pt);
   const [open, setOpen] = useState(false);
@@ -56,7 +56,7 @@ function TrelloSyncStatus({ sync, busy, onToggle, onRunNow, lang }) {
   return (
     <div className="pmy-trello-sync">
       <div className="pmy-trello-sync__head">
-        <strong>{sync.enabled ? tr("🔄 Leitura automática ligada (a cada 1 hora)", "🔄 Auto-read on (hourly)") : tr("Leitura automática desligada", "Auto-read off")}</strong>
+        <strong>{sync.enabled ? tr("🔄 Leitura automática ligada (uma vez por dia, de manhã)", "🔄 Auto-read on (once a day, in the morning)") : tr("Leitura automática desligada", "Auto-read off")}</strong>
         <div className="pmy-support-actions" style={{ marginTop: 0 }}>
           <Button size="sm" variant="secondary" disabled={Boolean(busy)} onClick={onRunNow}>{busy === "syncNow" ? tr("Lendo o Trello…", "Reading…") : tr("Ler agora", "Read now")}</Button>
           <Button size="sm" variant={sync.enabled ? "secondary" : "primary"} disabled={Boolean(busy)} onClick={() => onToggle(!sync.enabled)}>

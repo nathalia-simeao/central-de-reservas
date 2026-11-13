@@ -821,7 +821,7 @@ export function startSyncQueueWorker(
         const { convertBookingsToEur } = await import("./fx.server.js");
         await convertBookingsToEur(prisma).catch((error) => console.error("[FX] worker step failed:", error?.message || error));
       }
-      // Trello → Central a cada 1 hora (confere a cada 5 minutos se já está na hora).
+      // Trello → Central uma vez por dia, depois das 6h de Lisboa (confere a cada 5 minutos).
       if (Date.now() - lastTrelloCheckAt > 5 * 60 * 1000) {
         lastTrelloCheckAt = Date.now();
         const { trelloSyncWorkerStep } = await import("../services/trello-sync.server.js");

@@ -102,7 +102,7 @@ export const action = async ({ request }) => {
     return json({ success: true, summary, ...(await status()), pending: (await pendingLinks()).length });
   }
 
-  // Leitura automática a cada 1 hora: ligar/desligar (com a ligação cartão → passeio
+  // Leitura automática uma vez por dia: ligar/desligar (com a ligação cartão → passeio
   // salva neste navegador na última importação) e "Ler agora".
   if (intent === "syncSettings") {
     const enabled = clean(form.get("enabled")) === "true";

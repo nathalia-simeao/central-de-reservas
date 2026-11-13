@@ -1,5 +1,6 @@
 // Leitura automática do Trello (pedido da Nathalia, 12/11/2026): enquanto a equipe
-// ainda usa o Trello, a Central lê o quadro sozinha a cada 1 hora e atualiza as
+// ainda usa o Trello, a Central lê o quadro sozinha uma vez por dia (a partir das 6h
+// de Lisboa; pedido do Renan, 13/11/2026 — antes era a cada 1 hora) e atualiza as
 // saídas (checklists, descrições, guias), os documentos de suporte e baixa os
 // anexos novos. Só Trello → Central: o que muda só na Central não volta ao Trello.
 //
@@ -12,7 +13,21 @@ import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, safeFileName } from "..
 import { importTrelloPlan } from "./trello-import.server.js";
 import { saveTrelloFile } from "./trello-files.server.js";
 
-export const TRELLO_SYNC_EVERY_MS = 60 * 60 * 1000;
+export const TRELLO_SYNC_DAILY_HOUR = 6; // hora de Lisboa a partir da qual roda a leitura do dia
+
+function lisbonDay(date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+    .formatToParts(date).filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
+  return { key: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) };
+}
+
+/** Já está na hora da leitura de hoje? (uma por dia, depois das 6h de Lisboa) */
+export function trelloDailyDue(lastRunAt, now = new Date()) {
+  const today = lisbonDay(now);
+  if (today.hour < TRELLO_SYNC_DAILY_HOUR) return false;
+  if (!lastRunAt) return true;
+  return lisbonDay(new Date(lastRunAt)).key !== today.key;
+}
 const MAX_WARNINGS = 30;
 
 const asText = (value, max = 200) => String(value ?? "").trim().slice(0, max);
@@ -121,13 +136,13 @@ export async function downloadPendingTrelloFiles(prisma, creds, { limit = 80 } =
 
 /**
  * Uma leitura do Trello. Sem `force`, só roda se estiver ligada e se a última
- * leitura tiver sido há quase 1 hora (o relógio fica no banco, então reiniciar
+ * leitura de hoje ainda não tiver rodado (o relógio fica no banco, então reiniciar
  * o servidor não dispara leituras a mais).
  */
 export async function runTrelloSync(prisma, { assignGuide, force = false, now = new Date(), fetchBoard = fetchTrelloBoard, getCreds = trelloCredentials, downloadFiles = true } = {}) {
   const { config } = await readTrelloSync(prisma);
   if (!force && !config.enabled) return { skipped: "disabled" };
-  if (!force && config.lastRunAt && now.getTime() - new Date(config.lastRunAt).getTime() < TRELLO_SYNC_EVERY_MS - 5 * 60 * 1000) {
+  if (!force && !trelloDailyDue(config.lastRunAt, now)) {
     return { skipped: "recent" };
   }
   if (!Object.keys(config.mapping).length) {

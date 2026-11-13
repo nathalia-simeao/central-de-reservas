@@ -36,17 +36,26 @@ function fakeSettings(initial) {
   };
 }
 
-test("hourly read: skips when off or recent, runs when due and records the result", async () => {
+test("daily read: skips when off or already ran today, runs when due and records the result", async () => {
   const now = new Date("2026-11-12T15:00:00Z");
   const off = fakeSettings({ enabled: false, mapping: { a: "b" } });
   assert.equal((await runTrelloSync(off, { now })).skipped, "disabled");
 
-  const recent = fakeSettings({ enabled: true, mapping: { a: "b" }, lastRunAt: "2026-11-12T14:30:00Z" });
+  const recent = fakeSettings({ enabled: true, mapping: { a: "b" }, lastRunAt: "2026-11-12T07:30:00Z" });
   assert.equal((await runTrelloSync(recent, { now })).skipped, "recent");
 
-  const due = fakeSettings({ enabled: true, mapping: { a: "b" }, lastRunAt: "2026-11-12T13:58:00Z" });
+  const due = fakeSettings({ enabled: true, mapping: { a: "b" }, lastRunAt: "2026-11-11T13:58:00Z" });
   const failed = await runTrelloSync(due, { now, getCreds: async () => null });
   assert.equal(failed.ok, false);
   assert.match(due.value.lastError, /Trello desconectado/);
   assert.equal(due.value.lastRunAt, now.toISOString());
+});
+
+import { trelloDailyDue } from "../app/services/trello-sync.server.js";
+
+test("leitura diária: uma vez por dia, depois das 6h de Lisboa", () => {
+  assert.equal(trelloDailyDue(null, new Date("2026-11-13T05:30:00Z")), false); // 5h30 em Lisboa
+  assert.equal(trelloDailyDue(null, new Date("2026-11-13T06:05:00Z")), true);
+  assert.equal(trelloDailyDue("2026-11-13T06:05:00Z", new Date("2026-11-13T20:00:00Z")), false);
+  assert.equal(trelloDailyDue("2026-11-12T22:00:00Z", new Date("2026-11-13T09:00:00Z")), true);
 });
