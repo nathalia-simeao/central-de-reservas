@@ -56,7 +56,7 @@ export const action = async ({ request }) => {
     const email = clean(form.get("email")).toLowerCase() || current?.email || "";
     const appPassword = clean(form.get("appPassword")).replace(/\s+/g, "") || current?.appPassword || "";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ success: false, error: "Digite o e-mail do Gmail que recebe as reservas." }, { status: 400 });
-    if (!/^[a-z]{16}$/i.test(appPassword)) return json({ success: false, error: "A senha de app do Google tem 16 letras (ex.: abcd efgh ijkl mnop). Não é a senha normal do Gmail." }, { status: 400 });
+    if (!/^[a-z]{16}$/i.test(appPassword)) return json({ success: false, error: "Essa parece a senha normal do Gmail. Aqui vai a \"senha de app\": 16 letras que o Google gera em myaccount.google.com/apppasswords (ex.: abcd efgh ijkl mnop)." }, { status: 400 });
     const test = await testGmail({ email, appPassword });
     if (!test.ok) return json({ success: false, error: test.error }, { status: 400 });
     const previous = await readGmailState(db);

@@ -219,10 +219,10 @@ export function GmailConnectionPanel({ requestJson, lang = "pt", onChanged }) {
           <ol className="pmy-gmail-steps">
             <li>{tr("Na conta Google que recebe as reservas, deixe a verificação em duas etapas ligada.", "On the Google account that receives bookings, turn on 2-Step Verification.")}</li>
             <li>
-              {tr("Crie uma senha de app com o nome \"Central PMY\" em ", "Create an app password named \"Central PMY\" at ")}
-              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>.
+              {tr("Gere uma \"senha de app\" (não precisa instalar nada: é uma senha extra de 16 letras que o próprio Google cria, só para a Central). Abra ", "Generate an \"app password\" (nothing to install: a 16-letter extra password Google creates just for the Central). Open ")}
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">myaccount.google.com/apppasswords</a>{tr(", escreva \"Central PMY\" e clique em Criar.", ", type \"Central PMY\" and click Create.")}
             </li>
-            <li>{tr("Cole aqui o e-mail e as 16 letras da senha de app. A senha fica guardada criptografada e não aparece de novo.", "Paste the e-mail and the 16-letter app password. It is stored encrypted and never shown again.")}</li>
+            <li>{tr("Cole aqui o e-mail e as 16 letras que o Google mostrar. Não use a senha normal do Gmail. A senha fica guardada criptografada e não aparece de novo.", "Paste the e-mail and the 16-letter app password. It is stored encrypted and never shown again.")}</li>
           </ol>
           <div className="pmy-gmail-connect__fields">
             <FormField label={tr("E-mail do Gmail", "Gmail address")}>
