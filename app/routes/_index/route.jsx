@@ -3317,7 +3317,7 @@ function CentralDeReservasContent() {
               agendaLabels: colorLabels, departureTags, departureInfo,
               onSaveDepartureTags: handleSaveDepartureTags, onSaveAgendaLabels: handleSaveAgendaLabels,
               onAssignGuide: handleBoardAssignGuide, onRemoveAssignment: handleBoardRemoveAssignment,
-              onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, onOpenAttachment: openDepartureAttachment,
+              onUpload: handleUploadDepartureAttachment, onRemoveAttachment: handleRemoveDepartureAttachment, isAdmin: isCentralAdmin, onOpenAttachment: openDepartureAttachment,
               onSetAttachmentGuide: handleSetAttachmentGuide,
               onResetCheck: isCentralAdmin ? handleResetDepartureCheck : null,
               onChecklistOp: handleChecklistOp,

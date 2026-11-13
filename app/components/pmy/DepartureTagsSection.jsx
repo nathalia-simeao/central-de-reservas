@@ -22,6 +22,7 @@ export default function DepartureTagsSection({
   ownerGuide = null, // cartão de um guia (saída com um cartão por guia)
   onSetAttachmentGuide,
   onRemoveAttachment,
+  confirmRemove = true, // administradores apagam sem a pergunta "Remover?" (13/11/2026)
   onOpenAttachment,
   loadImage = null,
   hideTags = false,
@@ -54,7 +55,7 @@ export default function DepartureTagsSection({
 
   const remove = async (departure, attachment) => {
     if (!onRemoveAttachment) return;
-    if (typeof window !== "undefined" && !window.confirm(tr(`Remover ${attachment.fileName}?`, `Remove ${attachment.fileName}?`))) return;
+    if (confirmRemove && typeof window !== "undefined" && !window.confirm(tr(`Remover ${attachment.fileName}?`, `Remove ${attachment.fileName}?`))) return;
     setError("");
     try {
       await onRemoveAttachment(departure.tourId, departure.startTime, attachment.id);

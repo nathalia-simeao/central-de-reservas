@@ -517,6 +517,7 @@ export default function AgendaBoard({
   onRemoveAssignment,
   onUpload,
   onRemoveAttachment,
+  isAdmin = false,
   onSetAttachmentGuide,
   onOpenAttachment = null,
   onResetCheck,
@@ -1046,6 +1047,7 @@ export default function AgendaBoard({
               ownerGuide={openCard.split ? openCard.guides[0] || null : null}
               onSetAttachmentGuide={onSetAttachmentGuide}
               onRemoveAttachment={onRemoveAttachment}
+              confirmRemove={!isAdmin}
               onOpenAttachment={onOpenAttachment}
               loadImage={loadImage}
               onResetCheck={onResetCheck}
