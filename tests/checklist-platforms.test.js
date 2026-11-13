@@ -57,3 +57,13 @@ test("idiomas do cartão: reservas, guias e títulos do Trello", () => {
   assert.deepEqual(cardLanguages({ bookings: [{ language: "Français" }], guides: [{ languages: ["it"] }] }, raw), ["pt", "en", "es", "fr", "it"]);
   assert.deepEqual(cardLanguages({}, { lists: [{ title: "Fim de tour", items: [] }] }), []);
 });
+
+import { listPeopleSummary } from "../app/utils/departure-checklists.js";
+
+test("total de pessoas e A/S/Y/C do checklist", () => {
+  const items = [{ text: "Robert (1A) +1032" }, { text: "Cathleen (2A 1C)" }, { text: "Andy (1S 1J) CT" }, { text: "Fim de tour" }];
+  const r = listPeopleSummary(items);
+  assert.equal(r.total, 6);
+  assert.deepEqual(r.counts, { A: 3, S: 1, Y: 1, C: 1 });
+  assert.equal(r.label, "6 pessoas · 3A 1S 1Y 1C");
+});

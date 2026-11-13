@@ -1,7 +1,7 @@
 import { checklistPlatform } from "../utils/checklist-platforms.js";
 import { excludeTestBookingsWhere } from "../utils/test-bookings.js";
 import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router";
-import { applyChecklistOp, autoChecklists, isClientItem, normalizeChecklists } from "../utils/departure-checklists.js";
+import { applyChecklistOp, autoChecklists, isClientItem, listPeopleSummary, normalizeChecklists } from "../utils/departure-checklists.js";
 import { normalizeText } from "../utils/trello-import.js";
 import { languageKey } from "../utils/tour-languages.js";
 import { departureTargetKey, describeChecklistOp, logActivity } from "../services/board-activity.server.js";
@@ -435,6 +435,7 @@ export default function GuideDeparture() {
             return (
               <section key={list.id} className={`g-cl${list.mine ? " mine" : ""}`} aria-label={list.title}>
                 <h3>{list.title}<small>{doneCount}/{list.items.length}</small></h3>
+                {listPeopleSummary(list.items).total > 0 && <p className="g-cl-people">{listPeopleSummary(list.items).label}</p>}
                 {list.items.map((item) => <ChecklistItem key={item.id} listId={list.id} item={item} booking={item.bookingId ? bookingById.get(item.bookingId) : null} canMark={permissions.canMarkAttendance || canUndoChecks} />)}
               </section>
             );

@@ -50,6 +50,7 @@ a { color: inherit; }
 .g-cl.mine { border-color:var(--g-green); }
 .g-cl h3 { font-size:14px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; overflow-wrap:anywhere; }
 .g-cl h3 small { color:var(--g-muted); font-weight:600; white-space:nowrap; }
+.g-cl-people { margin:-2px 0 6px; font-size:13px; font-weight:700; color:var(--g-green); }
 .g-cl-row { display:flex; flex-wrap:wrap; align-items:flex-start; column-gap:6px; border-top:1px solid var(--g-line); }
 .g-cl-row .g-cl-item { border-top:0; flex:1 1 auto; min-width:0; }
 .g-cl-row > form { flex:1 1 210px; min-width:0; display:flex; }

@@ -231,6 +231,27 @@ export function clientItemPax(text) {
   return (match[1].match(/\d+/g) || []).reduce((sum, n) => sum + Number(n), 0) || 1;
 }
 
+/**
+ * Total de pessoas de um checklist e quantos adultos/seniores/jovens/crianças
+ * (pedido do Renan, 13/11/2026): lê "(2A 1C)" de cada cliente. J (jovem) conta como Y.
+ */
+export function listPeopleSummary(items = []) {
+  const counts = { A: 0, S: 0, Y: 0, C: 0 };
+  let total = 0;
+  for (const item of items) {
+    if (!isClientItem(item?.text)) continue;
+    const match = String(item.text).match(/\(\s*(\d+\s*[ACSYJ](?:\s+\d+\s*[ACSYJ])*)\s*\)/i);
+    if (!match) { total += 1; continue; }
+    for (const [, n, letter] of match[1].matchAll(/(\d+)\s*([ACSYJ])/gi)) {
+      const key = letter.toUpperCase() === "J" ? "Y" : letter.toUpperCase();
+      counts[key] += Number(n);
+      total += Number(n);
+    }
+  }
+  const parts = ["A", "S", "Y", "C"].filter((k) => counts[k] > 0).map((k) => `${counts[k]}${k}`);
+  return { total, counts, label: total ? `${total} ${total === 1 ? "pessoa" : "pessoas"}${parts.length ? ` · ${parts.join(" ")}` : ""}` : "" };
+}
+
 /** Clientes dos checklists manuais (Trello/equipe) de um guia: total e no-show, em pessoas. */
 export function manualClientCounts(raw, { guideId = null, guideName = "", onlyGuide = false } = {}) {
   const words = (v) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);

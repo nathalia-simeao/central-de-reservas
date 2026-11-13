@@ -1,7 +1,7 @@
 // Checklists do Quadro (formato do Trello): bloco de um checklist e o editor
 // com vários. Usado nas saídas (AgendaBoard) e nas demandas (SupportCards).
 import { useEffect, useRef, useState } from "react";
-import { normalizeChecklists } from "../../utils/departure-checklists.js";
+import { listPeopleSummary, normalizeChecklists } from "../../utils/departure-checklists.js";
 import { CHECKLIST_PLATFORMS, checklistPlatform } from "../../utils/checklist-platforms.js";
 
 /** Selo da plataforma do cliente (GYG, VT, HD…). */
@@ -119,6 +119,7 @@ export function ChecklistBlock({ list, isDone, hidden, onToggle, onToggleHide, o
       <div className="pmy-checklist__head">
         <span className="pmy-checklist__icon" aria-hidden="true">☑</span>
         <strong>{onRename ? <EditableText value={list.title} onSave={onRename} label={tr("Editar título do checklist", "Edit checklist title")} lang={lang} /> : list.title}</strong>
+        {(() => { const people = listPeopleSummary(list.items); return people.total > 0 && <small className="pmy-checklist__people" title={tr("Pessoas neste checklist (A adulto, S sênior, Y jovem, C criança)", "People in this checklist (A adult, S senior, Y youth, C child)")}>{lang === "en" ? people.label.replace("pessoas", "people").replace("pessoa", "person") : people.label}</small>; })()}
         {list.auto && <small className="pmy-checklist__auto" title={tr("Criado sozinho a partir das reservas confirmadas", "Built from confirmed bookings")}>{tr("automático", "automatic")}</small>}
         <span className="pmy-checklist__actions">
           {done > 0 && <button type="button" className="pmy-board-btn" onClick={onToggleHide}>{hidden ? tr(`Mostrar itens marcados (${done})`, `Show checked items (${done})`) : tr("Ocultar itens marcados", "Hide checked items")}</button>}
